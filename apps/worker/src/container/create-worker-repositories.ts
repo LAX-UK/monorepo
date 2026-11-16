@@ -14,6 +14,7 @@ import {
   EnsurePersonalLegalEntityService,
   type IEnsurePersonalLegalEntityService,
   MuteAwareNotificationWriter,
+  PreferenceAwareNotificationWriter,
 } from "@auction/persistence/lib";
 import {
   DrizzleTransactionRunner,
@@ -24,6 +25,7 @@ import {
   DrizzleCrmRecordLinkRepository,
   DrizzleDomainEventDeliveryRepository,
   DrizzleNotificationAccountMuteRepository,
+  DrizzleNotificationPreferenceRepository,
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,
   DrizzleStaffRoleAssignmentReader,
@@ -121,6 +123,9 @@ import { DrizzleUploadValidationRepository } from "../repositories/drizzle-uploa
 import { DrizzleZohoCampaignsSuppressionRepository } from "../repositories/drizzle-zoho-campaigns-suppression.repository.js";
 import type { WorkerDb } from "../workers/types.js";
 
+/** In-app notice types the person's own app switch decides, beyond the mute every notice follows. */
+const PREFERENCE_GOVERNED_NOTICE_TYPES = ["sale_registration_decided", "bidding_limit_changed"];
+
 export type WorkerRepositories = {
   uploadValidationRepo: IUploadValidationRepository;
   emailOutboxRepo: IEmailOutboxRepository;
@@ -209,9 +214,14 @@ export function createWorkerRepositories(
     failedJobPayloadPurge: new DrizzleFailedJobReviewRepository(db),
     marketingClickIdPurgeRepo: new DrizzleMarketingClickIdPurgeRepository(db),
     marketingAttributionPurgeRepo: new DrizzleMarketingAttributionPurgeRepository(db),
-    // Every in-app write skips notifications about an account the recipient has muted.
+    // Every in-app write skips notifications about an account the recipient has muted, and the
+    // registration notices also follow the person's own app switch.
     notificationWriteRepo: new MuteAwareNotificationWriter(
-      new DrizzleNotificationWriteRepository(db),
+      new PreferenceAwareNotificationWriter(
+        new DrizzleNotificationWriteRepository(db),
+        new DrizzleNotificationPreferenceRepository(db),
+        PREFERENCE_GOVERNED_NOTICE_TYPES,
+      ),
       new DrizzleNotificationAccountMuteRepository(db),
     ),
     transactionRunner: new DrizzleTransactionRunner(db),

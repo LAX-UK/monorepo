@@ -27,8 +27,16 @@ export class BidSaleAnnouncer {
       notices: Pick<IBidAlertSaleNoticeWriter, "notifySubscribers">;
       /** In a dry run matches are recorded and nobody is told in the app. */
       sendNotices: boolean;
+      /** The email-safe address of a stored cover picture; null when it cannot be placed. */
+      coverUrl?: (key: string) => string | null;
     },
   ) {}
+
+  private coverOf(sale: { cover: { key: string; alt: string } | null }) {
+    if (!sale.cover || !this.deps.coverUrl) return null;
+    const url = this.deps.coverUrl(sale.cover.key);
+    return url ? { url, alt: sale.cover.alt } : null;
+  }
 
   async handle(event: SalePublishedEvent): Promise<SaleAnnounceOutcome> {
     const sale = await this.deps.sales.find(event.saleId);
@@ -39,7 +47,7 @@ export class BidSaleAnnouncer {
     const result = await this.deps.matches.announce({
       topic: "bid.new_sales",
       itemKey: `sale:${sale.id}`,
-      snapshot: saleSnapshot(sale, event.lotCount),
+      snapshot: saleSnapshot(sale, event.lotCount, this.coverOf(sale)),
       announce: event.announce,
     });
     if (!result.announced) return result.first ? "quiet" : "already_announced";

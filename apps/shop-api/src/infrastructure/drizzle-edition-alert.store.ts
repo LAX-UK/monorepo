@@ -202,6 +202,13 @@ export function createDrizzleEditionAlertStore(
       };
     },
 
+    async ownerOfToken(token) {
+      const found = await ownerForToken(token);
+      return found
+        ? { email: found.owner.email, identitySubjectId: found.owner.identitySubjectId }
+        : null;
+    },
+
     async unsubscribe(token, now) {
       const found = await ownerForToken(token);
       if (!found) return null;

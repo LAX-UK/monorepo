@@ -11,6 +11,7 @@ import type {
   Clock,
   DigestLedger,
   DigestNoticeWriter,
+  InAppTopicLookup,
   MatchLedger,
   MatchValidator,
   SubscriberStore,
@@ -35,6 +36,8 @@ export type DigestRunStats = {
   capped: number;
   /** Digests claimed earlier whose email was sent again after an interruption. */
   resumed: number;
+  /** Digests that held only in-app notices: every email topic of the person was off. */
+  noticeOnly: number;
   failed: number;
 };
 
@@ -52,6 +55,12 @@ export type DigestRunDeps = {
   log: AlertLogger;
   /** In-app notices for signed-in people; omitted where a product has none. */
   notices?: DigestNoticeWriter;
+  /**
+   * Which topics each signed-in person wants in the app. Those matches are kept for the notice
+   * even when the topic's email is off; the email then leaves them out. Omitted, the app tells
+   * the topics the email tells.
+   */
+  inApp?: InAppTopicLookup;
   /** Account time zones, so an account holder's times show on their own clock too. */
   zones?: SubscriberZoneLookup;
   batchSize?: number;
@@ -76,6 +85,7 @@ export class DigestRun {
       empty: 0,
       capped: 0,
       resumed: 0,
+      noticeOnly: 0,
       failed: 0,
     };
     if (mode === "off" || !isDigestDue(now)) return stats;
@@ -113,16 +123,9 @@ export class DigestRun {
     for (const digest of unsent) {
       try {
         const record = await subscribers.findById(digest.subscriberId);
-        const vm = assembleDigest(await digests.matchesOf(digest.digestId));
-        if (record && vm) {
-          await this.notify(record, digest.digestId, vm, localDate);
-          await this.send(
-            record,
-            vm,
-            await this.activeTopics(record.id),
-            localDate,
-            digest.idempotencyKey,
-          );
+        const matches = await digests.matchesOf(digest.digestId);
+        if (record && matches.length > 0) {
+          await this.deliver(record, digest.digestId, matches, localDate, digest.idempotencyKey);
           stats.resumed += 1;
         }
         await digests.markSent(digest.digestId, clock.now());
@@ -147,8 +150,8 @@ export class DigestRun {
       stats.empty += 1;
       return;
     }
-    const active = await this.activeTopics(subscriberId);
-    const live = await this.removeUnwanted(pending, new Set(active), now);
+    const wanted = await this.wantedTopics(record);
+    const live = await this.removeUnwanted(pending, wanted.all, now);
     const vm = assembleDigest(live);
     if (!vm) {
       stats.empty += 1;
@@ -176,10 +179,44 @@ export class DigestRun {
       stats.capped += 1;
       return;
     }
-    await this.notify(record, claim.digestId, vm, localDate);
-    await this.send(record, vm, active, localDate, idempotencyKey);
+    const emailed = await this.deliver(record, claim.digestId, live, localDate, idempotencyKey);
     await digests.markSent(claim.digestId, clock.now());
-    stats.sent += 1;
+    if (emailed) stats.sent += 1;
+    else stats.noticeOnly += 1;
+  }
+
+  /**
+   * Tells the person: the app notice for the topics they want in the app, and the email for the
+   * topics whose email is on, each from its own matches. True when an email went out.
+   */
+  private async deliver(
+    record: SubscriberRecord,
+    digestId: string,
+    matches: readonly PendingMatch[],
+    localDate: string,
+    idempotencyKey: string,
+  ): Promise<boolean> {
+    const wanted = await this.wantedTopics(record);
+    const noticeVm = assembleDigest(matches.filter((m) => wanted.inApp.has(m.topic)));
+    if (noticeVm) await this.notify(record, digestId, noticeVm, localDate);
+    const emailVm = assembleDigest(matches.filter((m) => wanted.email.has(m.topic)));
+    if (!emailVm) return false;
+    await this.send(record, emailVm, [...wanted.email], localDate, idempotencyKey);
+    return true;
+  }
+
+  /** The topics told by email, the topics told in the app, and both together. */
+  private async wantedTopics(record: SubscriberRecord) {
+    const email = new Set(await this.activeTopics(record.id));
+    // Without a lookup the app tells what the email tells, as it did before the app had its own switch.
+    const inApp = new Set<AlertTopic>(
+      !this.deps.inApp
+        ? email
+        : record.subjectId
+          ? await this.deps.inApp.topicsOn(record.subjectId)
+          : [],
+    );
+    return { email, inApp, all: new Set<AlertTopic>([...email, ...inApp]) };
   }
 
   /**

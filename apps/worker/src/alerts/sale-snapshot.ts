@@ -22,7 +22,11 @@ function lots(count: number): string {
  * on the sale's own clock, so each email shows them with their zone and, for a reader with a saved
  * Account zone, on their clock too.
  */
-export function saleSnapshot(sale: AnnouncedSale, lotCount: number | null): MatchSnapshot {
+export function saleSnapshot(
+  sale: AnnouncedSale,
+  lotCount: number | null,
+  cover: { url: string; alt: string } | null = null,
+): MatchSnapshot {
   return {
     title: sale.title,
     subtitle: DELIVERY_LABEL[sale.deliveryMode],
@@ -31,6 +35,7 @@ export function saleSnapshot(sale: AnnouncedSale, lotCount: number | null): Matc
       { label: "Closes", at: sale.endTime.toISOString(), zone: sale.timeZone },
     ],
     ...(lotCount !== null ? { detail: lots(lotCount) } : {}),
+    ...(cover ? { imageUrl: cover.url, imageAlt: cover.alt } : {}),
     path: `/sales/${sale.id}`,
   };
 }

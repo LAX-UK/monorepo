@@ -24,11 +24,6 @@ export type AlertRow = {
    * switch, not a notification preference, and its App switch only counts once subscribed.
    */
   engineTopic?: string;
-  /**
-   * The app notice is built from the daily email, so it only arrives while the email is on. Its
-   * App switch reads off, and is held, until the Email switch is on.
-   */
-  appComesWithEmail?: boolean;
 };
 
 /** What the alert engine holds for the signed-in client, per topic. */
@@ -99,6 +94,20 @@ export const ALERT_ROWS: readonly AlertRow[] = [
     app: ["watchlistInApp"],
   },
   {
+    id: "identity",
+    label: "Identity check",
+    description: "When your identity check is approved or declined",
+    email: "identityEmail",
+    app: ["identityInApp"],
+  },
+  {
+    id: "registrations",
+    label: "Registrations and limits",
+    description: "When you can bid in a sale, or staff change a limit",
+    email: null,
+    app: ["registrationInApp"],
+  },
+  {
     id: "new-sales",
     label: "New sales",
     description: "When LAX Bid announces a sale",
@@ -113,7 +122,6 @@ export const ALERT_ROWS: readonly AlertRow[] = [
     email: null,
     app: ["artistAlertsInApp"],
     engineTopic: "bid.artists",
-    appComesWithEmail: true,
   },
   {
     id: "searches",
@@ -122,7 +130,6 @@ export const ALERT_ROWS: readonly AlertRow[] = [
     email: null,
     app: ["searchAlertsInApp"],
     engineTopic: "bid.searches",
-    appComesWithEmail: true,
   },
 ];
 
@@ -138,9 +145,6 @@ export type AlertCell =
       /** Off and not changeable for now, and why. */
       disabledReason?: string;
     };
-
-/** Why an app notice cannot be switched on while its email is off. */
-export const APP_COMES_WITH_EMAIL_REASON = "Comes with the email";
 
 export function alertCell(
   row: AlertRow,
@@ -158,14 +162,6 @@ export function alertCell(
       };
     }
     const [field] = row.app;
-    if (row.appComesWithEmail && engine.email[row.engineTopic] !== true) {
-      return {
-        kind: "switch",
-        checked: false,
-        lockedReason: null,
-        disabledReason: APP_COMES_WITH_EMAIL_REASON,
-      };
-    }
     return {
       kind: "switch",
       checked:

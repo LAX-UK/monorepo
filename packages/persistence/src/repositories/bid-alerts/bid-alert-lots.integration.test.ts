@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { holdAlertTablesLock } from "../../testing/alert-tables-lock.js";
 import {
   BidAlertFollowerProvisioner,
+  BidAlertInAppTopics,
   BidAlertLotReader,
   BidAlertLotStart,
   BidAlertMatchLedger,
@@ -248,6 +249,64 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
         searchId: id,
         query: { q: "tide", categoryId: category },
       });
+    });
+  });
+
+  describe("in-app alerts independent of email", () => {
+    async function setPreference(userId: string, column: string, on: boolean) {
+      await db.execute(sql`
+        insert into notification_preference (user_id) values (${userId})
+        on conflict (user_id) do nothing`);
+      await db.execute(
+        sql.raw(`update notification_preference set ${column} = ${on} where user_id = '${userId}'`),
+      );
+    }
+
+    it("still returns a follower whose artist email is off while their app switch is on", async () => {
+      const artist = await insertArtist();
+      const person = await insertUser();
+      await follow(person.id, artist);
+      await provisioner.ensureArtistFollowers([artist], NOW);
+      const row = await subscribers.findBySubject("bid", person.id);
+      await topics.setEmail(row?.id ?? "", "bid.artists", false, "person", NOW);
+
+      expect((await watchers.artistWatchers([artist])).map((w) => w.subscriberId)).toEqual([
+        row?.id,
+      ]);
+    });
+
+    it("drops a follower with the email off and the app switch off too", async () => {
+      const artist = await insertArtist();
+      const person = await insertUser();
+      await follow(person.id, artist);
+      await provisioner.ensureArtistFollowers([artist], NOW);
+      const row = await subscribers.findBySubject("bid", person.id);
+      await topics.setEmail(row?.id ?? "", "bid.artists", false, "person", NOW);
+      await setPreference(person.id, "artist_alerts_in_app", false);
+
+      expect(await watchers.artistWatchers([artist])).toEqual([]);
+    });
+
+    it("keeps a saved search with email off for the app, and drops it when the app is off", async () => {
+      const person = await insertUser();
+      const id = await saveSearch(person.id, { q: "tide-app" });
+      await provisioner.ensureSearchers(NOW);
+      const row = await subscribers.findBySubject("bid", person.id);
+      await topics.setEmail(row?.id ?? "", "bid.searches", false, "person", NOW);
+      expect((await watchers.alertingSearches()).some((w) => w.searchId === id)).toBe(true);
+
+      await setPreference(person.id, "search_alerts_in_app", false);
+      expect((await watchers.alertingSearches()).some((w) => w.searchId === id)).toBe(false);
+    });
+
+    it("reads the person's app switches, on unless they turned one off", async () => {
+      const inApp = new BidAlertInAppTopics(db);
+      const person = await insertUser();
+      expect(await inApp.topicsOn(person.id)).toEqual(["bid.artists", "bid.searches"]);
+      await setPreference(person.id, "artist_alerts_in_app", false);
+      expect(await inApp.topicsOn(person.id)).toEqual(["bid.searches"]);
+      await setPreference(person.id, "search_alerts_in_app", false);
+      expect(await inApp.topicsOn(person.id)).toEqual([]);
     });
   });
 

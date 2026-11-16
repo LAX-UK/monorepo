@@ -11,11 +11,13 @@ import { and, eq } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEditionAlertHandlers } from "../application/handlers/edition-alerts.handler.js";
+import { createTestBackInStockLinks } from "../test-support/back-in-stock-test-links.js";
 import { createPublishedArtworkImportWriter } from "../test-support/shop-fixtures.js";
 import { createDrizzleArtworkInterestRepository } from "./drizzle-artwork-interest.repository.js";
 import { createDrizzleEditionAlertStore } from "./drizzle-edition-alert.store.js";
 import { createDrizzleSaleAuthorityWriter } from "./drizzle-sale-authority.writer.js";
 import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
+import { hashEditionAlertToken } from "./edition-alert-token.js";
 import { dispatchShopNotifyMeEmails } from "./shop-notify-me-dispatch.js";
 
 const ownerUrl = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -41,11 +43,13 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
   function setup() {
     const db = createDbFromPool(shopPool);
     const store = createDrizzleEditionAlertStore(db, { domainEventMode: "off" });
+    const { links, codec } = createTestBackInStockLinks(db);
     const alerts = createEditionAlertHandlers({
       artworks: createDrizzleArtworkInterestRepository(db),
       alerts: store,
+      links,
     });
-    return { db, store, alerts };
+    return { db, store, alerts, links, codec };
   }
 
   /** A published edition with nothing authorised for sale, which reads as sold out. */
@@ -224,7 +228,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
   });
 
   it("emails restocked editions first, with a token that stops every waiting alert for the address", async () => {
-    const { db, alerts } = setup();
+    const { db, alerts, links, codec } = setup();
     const suffix = `${Date.now()}-d`;
     const email = `dispatch-${suffix}@example.com`;
     const back = await soldOutEdition(db, `${suffix}-back`);
@@ -243,6 +247,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
     const notifications = createDrizzleShopNotificationPublisher();
     await dispatchShopNotifyMeEmails(db, {
       notifications,
+      links,
       storefrontOrigins: ORIGINS,
       now: new Date(),
     });
@@ -279,16 +284,35 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle edition alert store", () => {
       expect(none).toEqual([]);
     }
 
+    // The email's stop link is the alert engine's, scoped to back in stock.
     const url = new URL((outbox[0]?.vars as { unsubscribeUrl: string }).unsubscribeUrl);
-    const token = url.searchParams.get("token") ?? "";
-    expect(await alerts.previewUnsubscribe(token)).toEqual({
+    expect(url.pathname).toBe("/release-alerts/unsubscribe");
+    const engineToken = url.searchParams.get("token") ?? "";
+    expect(codec.verify(engineToken, new Date())?.payload).toMatchObject({
+      kind: "stop",
+      product: "shop",
+      topic: "shop.back_in_stock",
+    });
+
+    // A link from an email sent before this moved still works, and moves onto the engine.
+    const oldToken = `${suffix.replace(/[^A-Za-z0-9_-]/g, "")}${"x".repeat(43)}`.slice(0, 43);
+    await db
+      .update(shopArtworkInterest)
+      .set({ unsubscribeTokenHash: hashEditionAlertToken(oldToken) })
+      .where(
+        eq(shopArtworkInterest.id, sentRows.find((r) => r.artworkId === back.artworkId)?.id ?? ""),
+      );
+    expect(await alerts.previewUnsubscribe(oldToken)).toEqual({
       maskedEmail: "d•••@example.com",
       artworkTitle: `Alert ${suffix}-back`,
       waitingCount: 1,
     });
-    expect(await alerts.unsubscribe(token)).toEqual({ stopped: 1 });
-    expect(await alerts.unsubscribe(token)).toEqual({ stopped: 0 });
+    const moved = await alerts.engineStopToken(oldToken);
+    expect(moved && codec.verify(moved, new Date())?.payload.topic).toBe("shop.back_in_stock");
+    expect(await alerts.unsubscribe(oldToken)).toEqual({ stopped: 1 });
+    expect(await alerts.unsubscribe(oldToken)).toEqual({ stopped: 0 });
     expect(await alerts.previewUnsubscribe("b".repeat(43))).toBeNull();
     expect(await alerts.unsubscribe("b".repeat(43))).toBeNull();
+    expect(await alerts.engineStopToken("b".repeat(43))).toBeNull();
   });
 });

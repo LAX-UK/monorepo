@@ -240,3 +240,81 @@ describe("alert emails", () => {
     expect(rendered.text).not.toContain("artists you follow");
   });
 });
+
+describe("digest cover pictures", () => {
+  const cover =
+    "https://lax.bid/_next/image?url=https%3A%2F%2Fmedia.lax.bid%2Fspring.jpg&w=640&q=75";
+  const withCover = (over: Partial<DigestMessage> = {}) => {
+    const vm = assembleDigest([
+      {
+        ...sale("Modern British and Irish Art", 1),
+        snapshot: {
+          ...sale("Modern British and Irish Art", 1).snapshot,
+          imageUrl: cover,
+          imageAlt: "A bronze horse on a stone plinth",
+        },
+      },
+    ]);
+    if (!vm) throw new Error("no digest");
+    return message({ vm, ...over });
+  };
+
+  async function html(over: Partial<DigestMessage> = {}) {
+    const { sent, email } = recordingEmail();
+    await new OutboxAlertMailer({ email }).sendDigest(withCover(over));
+    const vars = (sent[0] as EmailEnqueueInput<"alert-digest">).vars;
+    return renderEmail("alert-digest", vars);
+  }
+
+  it("shows the sale's cover full width with its alt text, linked to the sale", async () => {
+    const rendered = await html();
+    expect(rendered.html).toContain('alt="A bronze horse on a stone plinth"');
+    expect(rendered.html).toContain('width="532"');
+    expect(rendered.html).toContain("max-width:100%");
+    expect(rendered.html).toContain("height:auto");
+    expect(rendered.html).toContain("w=640");
+    // The picture is a link to the sale, so the whole card opens it.
+    expect(rendered.html).toMatch(/<a [^>]*href="https:\/\/lax\.bid\/sales\/1"[^>]*><img /);
+  });
+
+  it("keeps a frame colour behind the picture for mail apps that darken it", async () => {
+    const rendered = await html();
+    expect(rendered.html).toMatch(/<img [^>]*style="[^"]*background-color:#/);
+  });
+
+  it("leaves a picture without alt text as the small decorative thumbnail", async () => {
+    const vm = assembleDigest([
+      {
+        ...sale("Prints", 2),
+        snapshot: { ...sale("Prints", 2).snapshot, imageUrl: cover },
+      },
+    ]);
+    if (!vm) throw new Error("no digest");
+    const { sent, email } = recordingEmail();
+    await new OutboxAlertMailer({ email }).sendDigest(message({ vm }));
+    const rendered = await renderEmail(
+      "alert-digest",
+      (sent[0] as EmailEnqueueInput<"alert-digest">).vars,
+    );
+    expect(rendered.html).toContain('alt=""');
+    expect(rendered.html).toContain('width="72"');
+    expect(rendered.html).not.toContain('width="532"');
+  });
+
+  it("matches the stored picture markup", async () => {
+    const rendered = await html();
+    const img =
+      rendered.html.match(/<a href="https:\/\/lax\.bid\/sales\/1"[^>]*><img [^>]*>/)?.[0] ?? "";
+    expect(img).toMatchInlineSnapshot(
+      `"<a href="https://lax.bid/sales/1" style="color:#067df7;text-decoration-line:none;display:block;margin:0 0 10px;text-decoration:none" target="_blank"><img alt="A bronze horse on a stone plinth" src="https://lax.bid/_next/image?url=https%3A%2F%2Fmedia.lax.bid%2Fspring.jpg&amp;w=640&amp;q=75" style="display:block;outline:none;border:1px solid #e6e8eb;text-decoration:none;background-color:#f2f1df;border-radius:4px;color:#525252;font-family:&quot;Outfit&quot;, Helvetica, Arial, &quot;Helvetica Neue&quot;, sans-serif;font-size:13px;height:auto;max-width:100%;width:532px" width="532"/>"`,
+    );
+  });
+
+  it("names the product's own company in the footer, with the cover", async () => {
+    const shop = await html({ product: "shop", siteUrl: (p) => `https://shop.lax.art${p}` });
+    expect(shop.text).toContain("London Art Exchange");
+    expect(shop.text).not.toContain("London Auction Xchange");
+    const bid = await html();
+    expect(bid.text).toContain("London Auction Xchange LTD");
+  });
+});

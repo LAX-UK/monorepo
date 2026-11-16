@@ -44,9 +44,13 @@ describe("migration 0392 collection notification types", () => {
     expect(migration).not.toMatch(/\b(UPDATE|DELETE|INSERT)\b/);
   });
 
-  it("allows every type the schema declares", () => {
+  it("allows every type the schema declares up to its own", () => {
     const allowed = new Set(checkTypes(migration));
-    expect(NOTIFICATION_TYPES.filter((type) => !allowed.has(type))).toEqual([]);
+    // Later migrations add their own types; 0398's test keeps the final list whole.
+    const LATER = ["sale_registration_decided", "bidding_limit_changed"];
+    expect(
+      NOTIFICATION_TYPES.filter((type) => !allowed.has(type) && !LATER.includes(type)),
+    ).toEqual([]);
   });
 
   it("rolls back by deleting the collection notices, restoring the 0354 list and its ledger row", () => {

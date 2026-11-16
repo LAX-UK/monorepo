@@ -1,4 +1,8 @@
 import { type IEmailService, formatMoneyMajor } from "@auction/email";
+import type {
+  CreateNotificationRow,
+  INotificationWriteRepository,
+} from "@auction/persistence/interfaces";
 import { salePath } from "@auction/types";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import type {
@@ -9,10 +13,55 @@ import type {
 
 type Deps = {
   notificationFanoutReader: INotificationFanoutReader;
+  /** In-app notices, written beside each email. */
+  notificationWriteRepo: INotificationWriteRepository;
   emailService: IEmailService;
   supportContactEmail: string;
   eventId: number;
 };
+
+/** The in-app notice for a decision on a request to bid; its wording matches the email. */
+export function registrationDecidedNotice(input: {
+  userId: string;
+  saleId: string;
+  saleTitle: string;
+  approved: boolean;
+  bidLimit: string | null;
+}): CreateNotificationRow {
+  return {
+    userId: input.userId,
+    type: "sale_registration_decided",
+    // A request to bid is the person's own, so the notice is personal.
+    legalEntityId: null,
+    saleId: input.saleId,
+    title: input.approved ? "You can bid in this sale" : "Your request to bid was declined",
+    message: input.approved
+      ? `"${input.saleTitle}": approved${input.bidLimit ? `, with a limit of ${input.bidLimit}` : ""}.`
+      : `"${input.saleTitle}": we couldn't approve your request. Open the email for the reason.`,
+  };
+}
+
+/** The in-app notice for a change to a bidding limit; its wording matches the email. */
+export function limitChangedNotice(input: {
+  userId: string;
+  legalEntityId: string | null;
+  saleId: string | null;
+  scopeName: string;
+  previousLimit: string | null;
+  newLimit: string | null;
+}): CreateNotificationRow {
+  return {
+    userId: input.userId,
+    type: "bidding_limit_changed",
+    legalEntityId: input.legalEntityId,
+    saleId: input.saleId ?? undefined,
+    title: "Your bidding limit changed",
+    message:
+      input.previousLimit && input.newLimit
+        ? `${input.scopeName}: from ${input.previousLimit} to ${input.newLimit}. Bids already placed stand.`
+        : `${input.scopeName}: staff changed your limit. Bids already placed stand.`,
+  };
+}
 
 /** Tells the person whether they can bid in the sale, and under what limit. */
 export async function fanoutSaleRegistrationDecided(
@@ -42,6 +91,15 @@ export async function fanoutSaleRegistrationDecided(
     category: "transactional",
     idempotencyKey: `sale-registration-decision:${options.eventId}:${payload.userId}`,
   });
+  await options.notificationWriteRepo.createMany([
+    registrationDecidedNotice({
+      userId: payload.userId,
+      saleId: payload.saleId,
+      saleTitle,
+      approved,
+      bidLimit: approved ? formatMoneyMajor(payload.bidLimit) : null,
+    }),
+  ]);
 }
 
 /** Tells the registered bidder that staff changed their limit for one sale. */
@@ -70,6 +128,16 @@ export async function fanoutSaleRegistrationLimitChanged(
     category: "transactional",
     idempotencyKey: `bidding-limit-changed:${options.eventId}:${payload.userId}`,
   });
+  await options.notificationWriteRepo.createMany([
+    limitChangedNotice({
+      userId: payload.userId,
+      legalEntityId: null,
+      saleId: payload.saleId,
+      scopeName: saleTitle,
+      previousLimit: formatMoneyMajor(payload.previousLimit),
+      newLimit: formatMoneyMajor(payload.limit),
+    }),
+  ]);
 }
 
 /**
@@ -101,5 +169,15 @@ export async function fanoutOrganisationLimitChanged(
       category: "transactional",
       idempotencyKey: `bidding-limit-changed:${options.eventId}:${recipient.userId}`,
     });
+    await options.notificationWriteRepo.createMany([
+      limitChangedNotice({
+        userId: recipient.userId,
+        legalEntityId: options.legalEntityId,
+        saleId: null,
+        scopeName: entityName,
+        previousLimit: formatMoneyMajor(payload.previous_limit),
+        newLimit: formatMoneyMajor(payload.limit),
+      }),
+    ]);
   }
 }

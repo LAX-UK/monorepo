@@ -22,6 +22,12 @@ export const notificationPreference = pgTable(
     artistAlertsInApp: boolean("artist_alerts_in_app").notNull().default(true),
     /** A notice in the app when new lots match a saved search. */
     searchAlertsInApp: boolean("search_alerts_in_app").notNull().default(true),
+    /** A notice in the app when an identity check is approved or declined. */
+    identityInApp: boolean("identity_in_app").notNull().default(true),
+    /** An email when an identity check is approved or declined. */
+    identityEmail: boolean("identity_email").notNull().default(true),
+    /** A notice in the app when staff decide a registration to bid or change its limit. */
+    registrationInApp: boolean("registration_in_app").notNull().default(true),
     outbidPush: boolean("outbid_push").notNull().default(true),
     wonPush: boolean("won_push").notNull().default(true),
     endingSoonPush: boolean("ending_soon_push").notNull().default(false),

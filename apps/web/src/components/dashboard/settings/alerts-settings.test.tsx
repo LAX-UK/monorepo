@@ -1,3 +1,4 @@
+import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
 import { DEFAULT_NOTIFICATION_PREFERENCES_FORM_VALUES } from "@/lib/notifications/notification-preferences-registry";
 import type { NotificationPreference } from "@auction/types";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -30,19 +31,56 @@ const engine = {
 };
 
 describe("AlertsSettings engine rows", () => {
-  it("holds App off, focusable and disabled, while the email is off", () => {
+  it("keeps App on and changeable while the email is off: they are separate choices", () => {
     render(<AlertsSettings initial={prefs} initialEngine={engine} />);
-    const held = screen.getByRole("switch", { name: "Artists you follow by app" });
-    expect(held).toHaveAttribute("aria-checked", "false");
-    expect(held).toHaveAttribute("aria-disabled", "true");
-    expect(held).toHaveAttribute("tabindex", "0");
-    expect(held).toHaveAccessibleDescription("Comes with the email");
+    const app = screen.getByRole("switch", { name: "Artists you follow by app" });
+    expect(app).toHaveAttribute("aria-checked", "true");
+    expect(app).not.toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("switch", { name: "Artists you follow by email" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
   });
 
   it("leaves App changeable once the email is on", () => {
     render(<AlertsSettings initial={prefs} initialEngine={engine} />);
     const open = screen.getByRole("switch", { name: "Saved searches by app" });
     expect(open).not.toHaveAttribute("aria-disabled", "true");
+  });
+});
+
+describe("AlertsSettings identity and registration rows", () => {
+  it("shows Identity check with Email and App switches, both on by default", () => {
+    render(<AlertsSettings initial={prefs} initialEngine={engine} />);
+    expect(screen.getByRole("switch", { name: "Identity check by email" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("switch", { name: "Identity check by app" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
+  it("saves the email switch apart from the app switch", async () => {
+    const save = vi.mocked(updateNotificationPreferencesFromValuesAction);
+    save.mockResolvedValue({ ok: true } as never);
+    render(<AlertsSettings initial={prefs} initialEngine={engine} />);
+    fireEvent.click(screen.getByRole("switch", { name: "Identity check by email" }));
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    expect(save.mock.calls.at(-1)?.[0]).toMatchObject({
+      identityEmail: false,
+      identityInApp: true,
+    });
+  });
+
+  it("offers Registrations and limits by app alone: its email always goes", () => {
+    render(<AlertsSettings initial={prefs} initialEngine={engine} />);
+    expect(screen.getByRole("switch", { name: "Registrations and limits by app" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.queryByRole("switch", { name: "Registrations and limits by email" })).toBeNull();
   });
 });
 

@@ -11,6 +11,9 @@ const DEFAULTS: NotificationPreference = {
   newSalesInApp: true,
   artistAlertsInApp: true,
   searchAlertsInApp: true,
+  identityInApp: true,
+  identityEmail: true,
+  registrationInApp: true,
   outbidPush: true,
   wonPush: true,
   endingSoonPush: false,
@@ -127,6 +130,45 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
   /** New lots matching a saved search: the Saved searches app switch; the email is the digest. */
   search_lots_listed: {
     inApp: "searchAlertsInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
+  },
+  /**
+   * The result of an identity check. Each follows the Identity checks switches, in the app and by
+   * email. Both are written with the decision, not through the dispatcher, so there is no template
+   * here. A request to send the documents again is not here: it waits for the person to act, so
+   * it is always delivered.
+   */
+  kyc_approved: {
+    inApp: "identityInApp",
+    push: null,
+    email: "identityEmail",
+    whatsapp: null,
+    template: null,
+  },
+  kyc_declined: {
+    inApp: "identityInApp",
+    push: null,
+    email: "identityEmail",
+    whatsapp: null,
+    template: null,
+  },
+  /**
+   * Staff decided a request to bid, or changed a limit. The email is always sent: it carries the
+   * decision and the limit the person bids under. The app notice follows the Registrations and
+   * limits switch.
+   */
+  sale_registration_decided: {
+    inApp: "registrationInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
+  },
+  bidding_limit_changed: {
+    inApp: "registrationInApp",
     push: null,
     email: null,
     whatsapp: null,

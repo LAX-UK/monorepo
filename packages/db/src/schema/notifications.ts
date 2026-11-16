@@ -80,6 +80,8 @@ export const NOTIFICATION_TYPES = [
   "collection_changed",
   "collection_cancelled",
   "collection_reminder",
+  "sale_registration_decided",
+  "bidding_limit_changed",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

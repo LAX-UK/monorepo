@@ -10,6 +10,7 @@ function setup() {
   const stopLegacy = vi.fn(async (id: string, now: Date) => {
     await h.stores.stop(id, "link", now);
   });
+  const cancelWaiting = vi.fn(async () => 0);
   const handlers = createShopAlertHandlers({
     subscribe: h.subscribe,
     confirm: new ConfirmService({
@@ -25,9 +26,10 @@ function setup() {
     legacy: { findByLegacyLinkHash: async (hash) => legacy.get(hash) ?? null },
     hashLegacyToken: (token) => `hash(${token})`,
     stopLegacy,
+    waiting: { cancelWaiting },
     now: () => h.now,
   });
-  return { h, handlers, legacy, stopLegacy };
+  return { h, handlers, legacy, stopLegacy, cancelWaiting };
 }
 
 const tokenOf = (url: string) => new URL(url).searchParams.get("t") ?? "";
@@ -148,14 +150,67 @@ describe("shop alert handlers", () => {
     expect(await handlers.previewUnsubscribe(token)).toEqual({
       maskedEmail: "a•••@example.com",
       active: true,
+      topic: null,
     });
     expect(await handlers.unsubscribe(token)).toBe(true);
     expect(await handlers.previewUnsubscribe(token)).toEqual({
       maskedEmail: "a•••@example.com",
       active: false,
+      topic: null,
     });
     expect(await handlers.unsubscribe(token)).toBe(true);
     expect(await handlers.isSubscribed("sub-1")).toBe(false);
+  });
+
+  describe("a back in stock link", () => {
+    async function backInStockSubscriber() {
+      const ctx = setup();
+      const { h } = ctx;
+      h.accounts.set("sub-1", { email: "ada@example.com", verified: true });
+      await handlers_enable(ctx);
+      const row = await h.stores.findBySubject("shop", "sub-1");
+      await h.stores.setEmail(row?.id ?? "", "shop.back_in_stock", true, "person", h.now);
+      const token = h.codec.create({
+        kind: "stop",
+        product: "shop",
+        subscriberId: row?.id ?? "",
+        linkVersion: 1,
+        topic: "shop.back_in_stock",
+      });
+      return { ...ctx, row, token };
+    }
+    const handlers_enable = (ctx: ReturnType<typeof setup>) =>
+      ctx.handlers.subscribeAccount({ identitySubjectId: "sub-1" });
+
+    it("tells the stop page it covers back in stock alone", async () => {
+      const { handlers, token } = await backInStockSubscriber();
+      expect(await handlers.previewUnsubscribe(token)).toMatchObject({
+        active: true,
+        topic: "back_in_stock",
+      });
+    });
+
+    it("stops back in stock and the requests waiting, and leaves release alerts on", async () => {
+      const { h, handlers, token, row, cancelWaiting } = await backInStockSubscriber();
+      expect(await handlers.unsubscribe(token)).toBe(true);
+      expect(cancelWaiting).toHaveBeenCalledWith(row?.id, h.now);
+      const topics = await h.stores.list(row?.id ?? "");
+      expect(topics.find((t) => t.topic === "shop.back_in_stock")?.emailOn).toBe(false);
+      expect(topics.find((t) => t.topic === "shop.releases")?.emailOn).toBe(true);
+      expect((await h.stores.findById(row?.id ?? ""))?.status).toBe("confirmed");
+    });
+
+    it("rejects the same link for another product's subscriber", async () => {
+      const { h, handlers } = await backInStockSubscriber();
+      const forged = h.codec.create({
+        kind: "stop",
+        product: "bid",
+        subscriberId: "nope",
+        linkVersion: 1,
+        topic: "shop.back_in_stock",
+      });
+      expect(await handlers.unsubscribe(forged)).toBe(false);
+    });
   });
 
   it("serves stop links from emails sent before the engine, by the hash of their token", async () => {
@@ -168,6 +223,7 @@ describe("shop alert handlers", () => {
     expect(await handlers.previewUnsubscribe(token)).toEqual({
       maskedEmail: "o•••@example.com",
       active: true,
+      topic: null,
     });
     expect(await handlers.unsubscribe(token)).toBe(true);
     expect(stopLegacy).toHaveBeenCalledWith(row.id, h.now);

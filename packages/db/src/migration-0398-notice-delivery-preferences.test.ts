@@ -1,0 +1,66 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { NOTIFICATION_TYPES } from "./schema/notifications.js";
+
+const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
+const read = (name: string) => readFileSync(join(drizzleDir, name), "utf8");
+const TAG = "0398_notice_delivery_preferences";
+const migration = read(`${TAG}.sql`);
+const rollback = read("0398_rollback.sql");
+const previousList = read("0392_collection_notification_types.sql");
+const journal = JSON.parse(read("meta/_journal.json")) as {
+  entries: { idx: number; tag: string; when: number }[];
+};
+
+const NEW_TYPES = ["sale_registration_decided", "bidding_limit_changed"];
+const COLUMNS = ["identity_in_app", "identity_email", "registration_in_app"];
+
+function checkTypes(sql: string): string[] {
+  const at = sql.lastIndexOf("ADD CONSTRAINT notification_type_check");
+  const list = sql.slice(at, sql.indexOf(")", sql.indexOf("IN (", at)));
+  return [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1] as string);
+}
+
+describe("migration 0398 notice delivery preferences", () => {
+  it("is the next journal entry after 0397, in a journal that stays ordered", () => {
+    const entry = journal.entries.find((e) => e.tag === TAG);
+    const previous = journal.entries.find((e) => e.tag === "0397_enquiry_inbound_replies");
+    expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
+    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+    expect(journal.entries.at(-1)?.tag).toBe(TAG);
+  });
+
+  it("adds the three switches on by default, under a lock timeout, without touching rows", () => {
+    expect(migration.indexOf("SET LOCAL lock_timeout")).toBeLessThan(
+      migration.indexOf("ALTER TABLE"),
+    );
+    for (const column of COLUMNS) {
+      expect(migration).toMatch(
+        new RegExp(`ADD COLUMN IF NOT EXISTS "${column}" boolean DEFAULT true NOT NULL`),
+      );
+    }
+    expect(migration).not.toMatch(/\b(UPDATE|DELETE|INSERT)\b/);
+  });
+
+  it("rebuilds the type check with the 0392 list and the two new types after its tail", () => {
+    expect(checkTypes(migration)).toEqual([...checkTypes(previousList), ...NEW_TYPES]);
+  });
+
+  it("allows every type the schema declares", () => {
+    const allowed = new Set(checkTypes(migration));
+    expect(NOTIFICATION_TYPES.filter((type) => !allowed.has(type))).toEqual([]);
+  });
+
+  it("rolls back by deleting the two notices, dropping the columns and restoring the 0392 list", () => {
+    for (const type of NEW_TYPES) expect(rollback).toContain(`'${type}'`);
+    for (const column of COLUMNS) expect(rollback).toContain(`DROP COLUMN IF EXISTS "${column}"`);
+    expect(rollback.indexOf("DELETE FROM notification")).toBeLessThan(
+      rollback.indexOf("ADD CONSTRAINT notification_type_check"),
+    );
+    expect(checkTypes(rollback)).toEqual(checkTypes(previousList));
+    const entry = journal.entries.find((e) => e.tag === TAG);
+    expect(rollback).toContain(`created_at = ${entry?.when}`);
+  });
+});

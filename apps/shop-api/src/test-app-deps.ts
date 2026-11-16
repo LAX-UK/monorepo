@@ -221,6 +221,7 @@ export function createMinimalShopApiTestDeps(
         cancelForSubject: async () => "not_found" as const,
         previewUnsubscribe: async () => null,
         unsubscribe: async () => null,
+        engineStopToken: async () => null,
       },
       editionAlertRateLimiter: createEditionAlertRateLimiter(createInMemoryFixedWindowCounter()),
       releaseAlerts: {

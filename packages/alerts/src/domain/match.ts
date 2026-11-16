@@ -23,6 +23,8 @@ export const matchSnapshotSchema = z.object({
     .max(4)
     .optional(),
   imageUrl: z.string().url().nullish(),
+  /** What the picture shows, for the email's alt text; read aloud where images are off. */
+  imageAlt: z.string().max(300).optional(),
   path: z.string().startsWith("/").max(500),
   /** A heading for matches that share a group: the artist, or the saved search. */
   groupLabel: z.string().max(200).optional(),
