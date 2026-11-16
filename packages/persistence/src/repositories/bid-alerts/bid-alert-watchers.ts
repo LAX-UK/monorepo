@@ -2,11 +2,12 @@ import { TOPIC_CATALOGUE } from "@auction/alerts";
 import type { Database } from "@auction/db";
 import {
   artistWatchlist,
+  notificationPreference as pref,
   bidAlertSubscriber as s,
   savedSearch,
   bidAlertTopic as t,
 } from "@auction/db/schema";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { type SQL, sql } from "drizzle-orm";
 import type {
   ArtistWatcher,
@@ -23,7 +24,11 @@ function searchQueryOf(raw: unknown): SearchWatcher["query"] {
   };
 }
 
-/** People with an artist or search alert whose subscription is confirmed and the topic's email on. */
+/**
+ * People with an artist or search alert whose subscription is confirmed and who want the topic by
+ * email or in the app. The two are separate choices: a person who turned the email off still gets
+ * the app notice until they turn that off too, and the digest leaves the email out.
+ */
 export class BidAlertWatcherReader implements IBidAlertWatcherReader {
   constructor(private readonly db: Database) {}
 
@@ -39,8 +44,14 @@ export class BidAlertWatcherReader implements IBidAlertWatcherReader {
       })
       .from(artistWatchlist)
       .innerJoin(s, and(eq(s.subjectId, artistWatchlist.userId), eq(s.status, "confirmed")))
-      .innerJoin(t, and(eq(t.subscriberId, s.id), eq(t.topic, "bid.artists"), eq(t.emailOn, true)))
-      .where(inArray(artistWatchlist.artistId, [...artistIds]))
+      .innerJoin(t, and(eq(t.subscriberId, s.id), eq(t.topic, "bid.artists")))
+      .leftJoin(pref, eq(pref.userId, s.subjectId))
+      .where(
+        and(
+          inArray(artistWatchlist.artistId, [...artistIds]),
+          or(eq(t.emailOn, true), sql`COALESCE(${pref.artistAlertsInApp}, true)`),
+        ),
+      )
       .orderBy(asc(s.id), asc(artistWatchlist.artistId));
     return rows.map((r) => ({
       subscriberId: r.subscriberId,
@@ -59,8 +70,14 @@ export class BidAlertWatcherReader implements IBidAlertWatcherReader {
       })
       .from(savedSearch)
       .innerJoin(s, and(eq(s.subjectId, savedSearch.userId), eq(s.status, "confirmed")))
-      .innerJoin(t, and(eq(t.subscriberId, s.id), eq(t.topic, "bid.searches"), eq(t.emailOn, true)))
-      .where(eq(savedSearch.notifyEmail, true))
+      .innerJoin(t, and(eq(t.subscriberId, s.id), eq(t.topic, "bid.searches")))
+      .leftJoin(pref, eq(pref.userId, s.subjectId))
+      .where(
+        and(
+          eq(savedSearch.notifyEmail, true),
+          or(eq(t.emailOn, true), sql`COALESCE(${pref.searchAlertsInApp}, true)`),
+        ),
+      )
       .orderBy(asc(savedSearch.id));
     return rows.map((r) => ({
       subscriberId: r.subscriberId,

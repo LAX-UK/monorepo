@@ -10,7 +10,7 @@ import { and, asc, eq, exists, isNull, sql } from "drizzle-orm";
 import { normalizeAlertEmail } from "../application/edition-alert-email.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { type StorefrontOrigins, artworkPublicUrl } from "../domain/storefront-origins.js";
-import { editionAlertUnsubscribeUrl, mintEditionAlertToken } from "./edition-alert-token.js";
+import type { BackInStockLinks } from "./alerts/back-in-stock-links.js";
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 import { sellableEditionCondition } from "./shop-edition-availability.js";
 
@@ -25,6 +25,8 @@ export async function dispatchShopNotifyMeEmails(
   db: Database,
   input: {
     notifications: ShopNotificationPublisher;
+    /** The shared alert engine's links: the email's stop link is the engine's, not its own. */
+    links: BackInStockLinks;
     storefrontOrigins: StorefrontOrigins;
     now: Date;
   },
@@ -38,6 +40,8 @@ export async function dispatchShopNotifyMeEmails(
       artworkTitle: shopArtwork.title,
       artistName: shopParty.displayName,
       salesChannel: shopArtwork.salesChannel,
+      // When the person last pressed Notify me for it: a repeat press moves this forward.
+      requestedAt: shopArtworkInterest.updatedAt,
     })
     .from(shopArtworkInterest)
     .innerJoin(shopArtwork, eq(shopArtworkInterest.artworkId, shopArtwork.id))
@@ -67,6 +71,16 @@ export async function dispatchShopNotifyMeEmails(
       : null;
     const to = accountEmail ?? row.contactEmail;
 
+    // The engine decides first: a request made before the person stopped Shop alerts, or this
+    // topic, is closed unsent. One made after the stop is a fresh ask and is sent.
+    const link = to
+      ? await input.links.linkFor({
+          email: to,
+          subjectId: row.identitySubjectId,
+          requestedAt: row.requestedAt,
+        })
+      : null;
+
     const sent = await db.transaction(async (tx) => {
       const [locked] = await tx
         .select({
@@ -88,7 +102,14 @@ export async function dispatchShopNotifyMeEmails(
         return false;
       }
 
-      const unsubscribe = mintEditionAlertToken();
+      if (!link || link.stopped) {
+        await tx
+          .update(shopArtworkInterest)
+          .set({ cancelledAt: input.now, updatedAt: input.now })
+          .where(eq(shopArtworkInterest.id, row.interestId));
+        return false;
+      }
+
       await input.notifications.queueEditionAvailable(tx as Database, {
         idempotencyKey: `edition-available:${row.interestId}`,
         to,
@@ -96,15 +117,15 @@ export async function dispatchShopNotifyMeEmails(
         artworkTitle: row.artworkTitle,
         artistName: row.artistName,
         artworkUrl: artworkPublicUrl(input.storefrontOrigins, row.salesChannel, row.artworkSlug),
-        unsubscribeUrl: editionAlertUnsubscribeUrl(input.storefrontOrigins.shop, unsubscribe.token),
+        unsubscribeUrl: link.stopUrl,
+        ...(link.manageUrl ? { manageUrl: link.manageUrl } : {}),
       });
 
       await tx
         .update(shopArtworkInterest)
         .set({
           notifiedAt: input.now,
-          unsubscribeTokenHash: unsubscribe.hash,
-          // Record the address written to, so the email's unsubscribe link covers it.
+          // Record the address written to, so a stop reaches every alert waiting for it.
           contactEmail: row.contactEmail ?? normalizeAlertEmail(to),
         })
         .where(eq(shopArtworkInterest.id, row.interestId));

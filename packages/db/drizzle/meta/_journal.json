@@ -2752,6 +2752,13 @@
       "when": 1812888000000,
       "tag": "0401_enquiry_inbound_review",
       "breakpoints": true
+    },
+    {
+      "idx": 394,
+      "version": "7",
+      "when": 1812974400000,
+      "tag": "0402_notice_delivery_preferences",
+      "breakpoints": true
     }
   ]
 }

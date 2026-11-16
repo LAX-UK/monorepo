@@ -10,6 +10,7 @@ export type DigestItem = {
   detail: string | null;
   moments: readonly { label: string; at: string; zone: string }[];
   imageUrl: string | null;
+  imageAlt: string | null;
   path: string;
 };
 
@@ -44,6 +45,7 @@ function toItem(s: MatchSnapshot): DigestItem {
     detail: s.detail ?? null,
     moments: s.moments ?? [],
     imageUrl: s.imageUrl ?? null,
+    imageAlt: s.imageAlt ?? null,
     path: s.path,
   };
 }

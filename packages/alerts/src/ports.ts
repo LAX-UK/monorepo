@@ -174,6 +174,15 @@ export interface DigestNoticeWriter {
   write(input: DigestNoticeInput): Promise<void>;
 }
 
+/**
+ * The topics a signed-in person wants told in the app, whatever their email switch says. The app
+ * notice has its own preference, so a topic with email off still reaches the app while that
+ * preference is on.
+ */
+export interface InAppTopicLookup {
+  topicsOn(subjectId: string): Promise<readonly AlertTopic[]>;
+}
+
 /** Where each account holder's LAX Account says they are; visitors have none. */
 export interface SubscriberZoneLookup {
   /** The saved zone of the account, or null when it has none. */

@@ -58,6 +58,10 @@ export type NotificationPreference = {
   artistAlertsInApp: boolean;
   /** A notice in the app when new lots match a saved search. */
   searchAlertsInApp: boolean;
+  /** A notice in the app when an identity check is approved or declined. */
+  identityInApp: boolean;
+  /** A notice in the app when staff decide a registration to bid or change its limit. */
+  registrationInApp: boolean;
   outbidPush: boolean;
   wonPush: boolean;
   endingSoonPush: boolean;

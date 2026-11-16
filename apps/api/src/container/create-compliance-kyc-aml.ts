@@ -46,6 +46,7 @@ export function createComplianceKycAml(
     notificationsFor: notificationWriterFor,
     email: emailOutbox,
     factory: platform.notificationFactory,
+    preferences: repos.notificationPreferenceRepository,
     webOrigin: env.WEB_ORIGIN,
   });
   const kycService: IKycService = new VeriffKycService(

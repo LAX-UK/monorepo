@@ -1,6 +1,6 @@
 import type { EngineAlertState } from "@/lib/notifications/alert-matrix";
 
-/** Where one alert reaches the person: by email (and so in the app) or nowhere. */
+/** Where one alert reaches the person: by email, in the app, both, or nowhere. */
 export type TopicReach = { emailOn: boolean; appOn: boolean };
 
 /** Reach for the two alerts Watching edits; null when the engine's switches could not be read. */
@@ -9,8 +9,8 @@ export type WatchingAlertReach = { artists: TopicReach; searches: TopicReach } |
 type AppSwitches = { artistAlertsInApp: boolean; searchAlertsInApp: boolean };
 
 /**
- * What the person's switches mean for artist and search alerts. Matches are only recorded while
- * the topic's email is on, so an app notice follows the email switch and its own app switch.
+ * What the person's switches mean for artist and search alerts. Email and app are separate
+ * choices: the app notice needs the topic subscribed (email on or off) and its own app switch.
  */
 export function watchingAlertReach(
   engine: EngineAlertState | null,
@@ -19,7 +19,7 @@ export function watchingAlertReach(
   if (!engine || !app) return null;
   const topic = (name: string, appSwitch: boolean): TopicReach => {
     const emailOn = engine.email[name] === true;
-    return { emailOn, appOn: emailOn && appSwitch };
+    return { emailOn, appOn: engine.subscribed[name] === true && appSwitch };
   };
   return {
     artists: topic("bid.artists", app.artistAlertsInApp),
@@ -27,9 +27,9 @@ export function watchingAlertReach(
   };
 }
 
-/** "email and app", "email only" or "email off". */
+/** "email and app", "email only", "app only" or "email off". */
 export function reachLabel(reach: TopicReach): string {
-  if (!reach.emailOn) return "email off";
+  if (!reach.emailOn) return reach.appOn ? "app only" : "email off";
   return reach.appOn ? "email and app" : "email only";
 }
 

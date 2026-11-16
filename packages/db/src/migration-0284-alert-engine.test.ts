@@ -81,6 +81,8 @@ describe("migration 0284 alert engine", () => {
           "collection_changed",
           "collection_cancelled",
           "collection_reminder",
+          "sale_registration_decided",
+          "bidding_limit_changed",
         ].includes(t),
     );
     expect(typesIn(migration)).toEqual(asOf0284);

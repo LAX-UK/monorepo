@@ -418,6 +418,7 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
           artistName: input.artistName,
           artworkUrl: input.artworkUrl,
           unsubscribeUrl: input.unsubscribeUrl,
+          ...(input.manageUrl ? { manageUrl: input.manageUrl } : {}),
         },
       });
     },

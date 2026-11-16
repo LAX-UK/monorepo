@@ -1,3 +1,4 @@
+import type { BackInStockLinks } from "../../infrastructure/alerts/back-in-stock-links.js";
 import { isArtworkEligibleForNotifyMeSubscription } from "../artwork-notify-me-policy.js";
 import type { ArtworkInterestWriter } from "../ports/artwork-interest.writer.js";
 import type { EditionAlertRecipient, EditionAlertStore } from "../ports/edition-alert.store.js";
@@ -12,6 +13,8 @@ export type RegisterEditionAlertResult =
 export function createEditionAlertHandlers(deps: {
   artworks: Pick<ArtworkInterestWriter, "loadInterestContext">;
   alerts: EditionAlertStore;
+  /** The alert engine's links, to move an old edition alert link onto the engine. */
+  links?: Pick<BackInStockLinks, "existingStopToken">;
   now?: () => Date;
 }) {
   const now = deps.now ?? (() => new Date());
@@ -41,6 +44,23 @@ export function createEditionAlertHandlers(deps: {
     previewUnsubscribe: (token: string) => deps.alerts.previewUnsubscribe(token),
 
     unsubscribe: (token: string) => deps.alerts.unsubscribe(token, now()),
+
+    /**
+     * The engine stop token that replaces an old edition alert link, so a link from an email sent
+     * before back in stock moved onto the engine opens the shared stop page. Reads only: it is
+     * asked on GET, which mail scanners open, so it never creates an engine row or records
+     * consent. Null when the old link matches nothing, the alert has no address, or the person
+     * has no engine row yet; the old link's own confirm page serves those.
+     */
+    async engineStopToken(token: string): Promise<string | null> {
+      if (!deps.links) return null;
+      const owner = await deps.alerts.ownerOfToken(token);
+      if (!owner?.email) return null;
+      return deps.links.existingStopToken({
+        email: owner.email,
+        subjectId: owner.identitySubjectId,
+      });
+    },
   };
 }
 

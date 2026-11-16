@@ -80,6 +80,8 @@ export const NOTIFICATION_TYPES = [
   "collection_changed",
   "collection_cancelled",
   "collection_reminder",
+  "sale_registration_decided",
+  "bidding_limit_changed",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -116,6 +118,11 @@ export const notification = pgTable(
     legalEntityId: uuid("legal_entity_id").references(() => legalEntity.id, {
       onDelete: "set null",
     }),
+    /**
+     * Makes a repeat write of the same notice a no-op (a projector retrying an event, or a loop
+     * over members retried after one failed). Unique when set; most notices leave it null.
+     */
+    dedupeKey: text("dedupe_key"),
     read: boolean("read").notNull().default(false),
     archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -131,6 +138,9 @@ export const notification = pgTable(
       table.legalEntityId,
       table.createdAt,
     ),
+    uniqueIndex("notification_dedupe_key_uid")
+      .on(table.dedupeKey)
+      .where(sql`${table.dedupeKey} IS NOT NULL`),
     uniqueIndex("notification_alert_digest_type_uid")
       .on(table.alertDigestId, table.type)
       .where(sql`${table.alertDigestId} IS NOT NULL`),
