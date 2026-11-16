@@ -2,7 +2,7 @@ import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DateInput, DateTimeInput } from "./date-input.js";
+import { DateInput, DateTimeInput, dateInputExample } from "./date-input.js";
 import {
   isoToLondonWallTime,
   londonClockChange,
@@ -71,6 +71,29 @@ describe("DateInput", () => {
       </Field>,
     );
     expect(screen.getByLabelText("Starts on")).toHaveAttribute("placeholder", "e.g. 16 Nov 2026");
+  });
+
+  it("with no earliest day, gives today in London as its example, never a fixed past day", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2027-03-09T10:00:00Z"));
+      render(
+        <Field label="Due on">
+          <DateInput value={null} onValueChange={() => undefined} />
+        </Field>,
+      );
+      expect(screen.getByLabelText("Due on")).toHaveAttribute("placeholder", "e.g. 9 Mar 2027");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reads today in London, not UTC, and keeps the example within the latest day allowed", () => {
+    // 23:30 UTC on 30 Jun is 00:30 on 1 Jul in London (BST).
+    const lateJune = new Date("2027-06-30T23:30:00Z");
+    expect(dateInputExample(undefined, undefined, lateJune)).toBe("e.g. 1 Jul 2027");
+    expect(dateInputExample(undefined, "2027-05-31", lateJune)).toBe("e.g. 31 May 2027");
+    expect(dateInputExample("2027-08-02", undefined, lateJune)).toBe("e.g. 2 Aug 2027");
   });
 
   it("keeps the typed text while focused, hands over the day, and tidies it on blur", () => {

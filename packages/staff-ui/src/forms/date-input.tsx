@@ -1,6 +1,6 @@
 "use client";
 
-import { clockChangeNotice, shortZoneName } from "@auction/datetime";
+import { clockChangeNotice, dayKey, shortZoneName } from "@auction/datetime";
 import { Calendar } from "@auction/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { TextInput, type TextInputProps, useField } from "@auction/ui/lax";
@@ -66,9 +66,20 @@ export type DateInputProps = Omit<
   noCalendar?: boolean;
 };
 
-/** The example in an empty date field: the earliest day allowed, so it is never out of range. */
-const exampleDay = (min: string | undefined): string =>
-  `e.g. ${formatStaffDay(min ?? "2026-10-24")}`;
+/**
+ * The example in an empty date field: the earliest day allowed, so it is never out of range.
+ * With no earliest day it is today in London (or the latest day allowed, when that is sooner), so
+ * the example is a real, current date rather than a fixed one that falls into the past.
+ */
+export function dateInputExample(
+  min: string | undefined,
+  max: string | undefined,
+  now: Date = new Date(),
+): string {
+  const today = dayKey(now, STAFF_TIME_ZONE);
+  const day = min ?? (max && max < today ? max : today);
+  return `e.g. ${formatStaffDay(day)}`;
+}
 
 /**
  * A date typed as text, with a calendar to pick from. While focused, the text stays exactly as
@@ -106,7 +117,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
         type="text"
         autoComplete="off"
         spellCheck={false}
-        placeholder={placeholder ?? exampleDay(min)}
+        placeholder={placeholder ?? dateInputExample(min, max)}
         disabled={isDisabled}
         className="tabular-nums"
         value={text}
