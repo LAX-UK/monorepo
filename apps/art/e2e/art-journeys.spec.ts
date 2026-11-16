@@ -256,6 +256,22 @@ test.describe("lax.art journeys", () => {
     page.on("pageerror", (e) => log("pageerror", e.message.slice(0, 300)));
     page.on("request", (r) => log("req", r.method(), short(r.url()), r.headers().rsc ?? ""));
     page.on("response", (r) => log("res", r.status(), short(r.url())));
+    page.on("requestfinished", (r) => {
+      if (r.url().includes("_rsc=")) {
+        const t = r.timing();
+        log(
+          "finished",
+          short(r.url()),
+          JSON.stringify({ start: t.startTime, resStart: t.responseStart, resEnd: t.responseEnd }),
+        );
+        r.response()
+          .then((res) => res?.text())
+          .then((body) =>
+            log("body", short(r.url()), body?.length, JSON.stringify(body?.slice(0, 1200))),
+          )
+          .catch((e) => log("body err", String(e)));
+      }
+    });
     page.on("requestfailed", (r) => log("FAILED", short(r.url()), r.failure()?.errorText));
     page.on("framenavigated", (f) => f === page.mainFrame() && log("nav", short(f.url())));
     const follows = tabs.getByRole("link", { name: "Follows" });
@@ -298,6 +314,46 @@ test.describe("lax.art journeys", () => {
     await page.waitForTimeout(2_000);
     await snapshot("2s after tap");
     log("url", page.url());
+    log(
+      "resource timing",
+      JSON.stringify(
+        await page.evaluate(() =>
+          performance
+            .getEntriesByType("resource")
+            .filter((e) => e.name.includes("_rsc="))
+            .map((e) => {
+              const r = e as PerformanceResourceTiming;
+              return [
+                r.name.slice(21, 80),
+                Math.round(r.startTime),
+                Math.round(r.responseStart),
+                Math.round(r.responseEnd),
+              ];
+            }),
+        ),
+      ),
+    );
+    const direct = await page.evaluate(async () => {
+      const started = performance.now();
+      const res = await fetch("/account/favourites/follows?_rsc=diag", { headers: { RSC: "1" } });
+      const headersAt = performance.now() - started;
+      const reader = res.body!.getReader();
+      const chunks: number[] = [];
+      let text = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(Math.round(performance.now() - started));
+        text += new TextDecoder().decode(value);
+      }
+      return {
+        status: res.status,
+        headersAt: Math.round(headersAt),
+        chunks,
+        tail: text.slice(-600),
+      };
+    });
+    log("direct rsc", JSON.stringify(direct));
     await expect(page).toHaveURL(/\/account\/favourites\/follows$/);
   });
 
