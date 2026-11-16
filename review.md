@@ -86,7 +86,7 @@ The buyer work itself is sound. One item blocks: this branch does not merge with
 - Typecheck passes for domain, persistence, API and web. The web check passes once `apps/api` is built.
 - `biome check` on the 48 changed TS/TSX files is clean.
 - These pass: `lint:client-copy`, `lint:layers`, `lint:deps`, `lint:datetime`, `lint:web-guardrails`, `lint:bid-public-kit`, `lint:ui-guardrails`, `lint:web-barrel-imports`, `lint:z-schema-transform` and `lint:client-boundary`.
-- Mutation run: 9 breaks. 7 were caught (ST11 rates hidden, the overdue wording, the fee left out, the amount shown while charging is off, `extended` checked before `soon`, the badge tone, and the passed-notice wording). 2 survived: the UTC day in the API (finding 3) and the extension left out of the lead (finding 4).
+- Mutation run: 8 breaks. 6 were caught (ST11 rates hidden, the overdue wording, the fee left out, the amount shown while charging is off, `extended` checked before `soon`, and the badge tone). 2 survived: the UTC day in the API (finding 3) and the extension left out of the lead (finding 4).
 - CI on `5d989834` (REST check-runs, because GraphQL is blocked here): 37 runs, 35 passed, 2 skipped by path filters (`art-browser-gates`, `shop-v1-phase-smoke`), none failed. GitHub reports the PR as mergeable (`clean`) against main.
 - `git merge-tree` against main is clean. Against `origin/storage-terms-staff-tab` it conflicts (finding 1).
 - No full `next build` of `apps/web` was run, as instructed.
