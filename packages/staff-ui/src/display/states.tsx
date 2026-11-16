@@ -156,7 +156,9 @@ export { Skeleton };
 /**
  * A `Section` while it loads, drawn by the same header and rows so nothing moves when the content
  * arrives: the title, the description and the header action only where the real card has them,
- * then label-and-value rows (`facts`) or table rows (`table`).
+ * then label-and-value rows (`facts`), table rows (`table`) or one switch or checkbox row with
+ * its text (`choice`). `rows` is a count, or for `facts` and `choice` the lines each row's text
+ * takes (a value that wraps to two lines is `2`).
  */
 export function SectionSkeleton({
   rows,
@@ -165,12 +167,21 @@ export function SectionSkeleton({
   action = false,
   className,
 }: {
-  rows: number;
-  body?: "facts" | "table";
+  rows: number | readonly number[];
+  body?: "facts" | "table" | "choice";
   description?: boolean;
   action?: boolean;
   className?: string;
 }) {
+  const lines = typeof rows === "number" ? Array.from({ length: rows }, () => 1) : rows;
+  const text = (count: number) =>
+    Array.from({ length: count }, (_, line) => (
+      <Skeleton
+        // biome-ignore lint/suspicious/noArrayIndexKey: placeholder lines have no identity
+        key={line}
+        className={cn("h-3", line === count - 1 && count > 1 ? "w-2/3" : "w-full")}
+      />
+    ));
   return (
     <div
       aria-hidden
@@ -185,20 +196,28 @@ export function SectionSkeleton({
       </div>
       {body === "facts" ? (
         <div className="@container grid p-4">
-          {Array.from({ length: rows }, (_, index) => (
+          {lines.map((count, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
-            <div key={index} className={cn(KEY_VALUE_ROW, "items-center")}>
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-3 w-full" />
+            <div key={index} className={cn(KEY_VALUE_ROW, "items-start")}>
+              <Skeleton className="mt-1 h-3 w-24" />
+              <div className="flex flex-col gap-2 py-1">{text(count)}</div>
             </div>
           ))}
+        </div>
+      ) : body === "choice" ? (
+        <div className="flex gap-2.5 p-4 py-5.5">
+          <Skeleton className="h-5 w-8 shrink-0 rounded-full" />
+          <div className="flex max-w-prose flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-40" />
+            {text(lines.reduce((sum, count) => sum + count, 0))}
+          </div>
         </div>
       ) : (
         <div className="flex flex-col">
           <div className="flex h-9 items-center gap-6 border-b border-staff-line px-4">
             <Skeleton className="h-3 w-16" />
           </div>
-          {Array.from({ length: rows }, (_, index) => (
+          {lines.map((_, index) => (
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
               key={index}

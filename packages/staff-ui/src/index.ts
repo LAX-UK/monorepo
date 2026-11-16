@@ -26,6 +26,7 @@ export { Kbd, ShortcutKeys, TextArea, TextInput } from "@auction/ui/lax";
 export type { TextAreaProps, TextInputProps } from "@auction/ui/lax";
 export {
   ChoiceRow,
+  DisabledReason,
   StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,

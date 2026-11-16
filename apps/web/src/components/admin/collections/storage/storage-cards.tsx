@@ -12,6 +12,7 @@ import {
   ChoiceRow,
   type DataColumn,
   DataTable,
+  DisabledReason,
   KeyValueList,
   Section,
   StaffButton,
@@ -91,7 +92,7 @@ export function ScheduledCard({
       action={
         canChange ? (
           <>
-            <StaffButton size="sm" variant="ghost" onClick={onCancel}>
+            <StaffButton size="sm" variant="secondary" onClick={onCancel}>
               {C.scheduled.cancel}
             </StaffButton>
             <StaffButton size="sm" variant="secondary" onClick={onEdit}>
@@ -166,8 +167,8 @@ export function ChargingCard({
               },
             ]}
           />
-          <p className="text-staff-sm text-staff-muted">{C.charging.explanation}</p>
-          {blockedReason ? <p className="text-staff-sm text-staff-muted">{blockedReason}</p> : null}
+          <p className="max-w-prose text-staff-sm text-staff-muted">{C.charging.explanation}</p>
+          {blockedReason ? <DisabledReason>{blockedReason}</DisabledReason> : null}
         </div>
       )}
     </Section>

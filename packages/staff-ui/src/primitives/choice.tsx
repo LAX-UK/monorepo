@@ -130,6 +130,30 @@ export function StaffSwitch({ disabledReason, className, ...props }: StaffSwitch
 export const choiceReasonId = (htmlFor: string): string => `${htmlFor}-reason`;
 
 /**
+ * Why a control or setting cannot change now (PRM-2), on its own line after a lock: under a
+ * `ChoiceRow`'s text, or under a read-only setting so both views say it the same way.
+ */
+export function DisabledReason({
+  id,
+  children,
+  className,
+}: {
+  id?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      {...(id ? { id } : {})}
+      className={cn("flex items-start gap-1.5 text-staff-xs font-medium text-staff-fg", className)}
+    >
+      <Lock aria-hidden className="mt-0.5 size-3 shrink-0 text-staff-muted" />
+      <span>{children}</span>
+    </span>
+  );
+}
+
+/**
  * A checkbox, radio or switch with its label in one 32px row, label clickable. `disabledReason`
  * says on its own line, after a lock, why the control cannot change now (PRM-2); give the control
  * the same reason and `aria-describedby={choiceReasonId(htmlFor)}`.
@@ -155,7 +179,7 @@ export function ChoiceRow({
   return (
     <div className={cn("flex min-h-control-sm items-start gap-2.5 py-1.5", className)}>
       <span className="flex h-5 items-center">{control}</span>
-      <span className="flex min-w-0 flex-col gap-1">
+      <span className="flex min-w-0 max-w-prose flex-col gap-1">
         <label
           htmlFor={htmlFor}
           className={cn(
@@ -170,13 +194,7 @@ export function ChoiceRow({
           ) : null}
         </label>
         {disabledReason ? (
-          <span
-            id={choiceReasonId(htmlFor)}
-            className="flex items-start gap-1.5 text-staff-xs font-medium text-staff-fg"
-          >
-            <Lock aria-hidden className="mt-0.5 size-3 shrink-0 text-staff-muted" />
-            {disabledReason}
-          </span>
+          <DisabledReason id={choiceReasonId(htmlFor)}>{disabledReason}</DisabledReason>
         ) : null}
       </span>
     </div>
