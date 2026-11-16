@@ -1,11 +1,11 @@
 "use client";
 
+import { SalesFilterLinkRow } from "@/components/sections/sales/sales-filter-link-row";
 import { SalesPriceSlider } from "@/components/sections/sales/sales-price-slider";
 import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import type { SalesFilterSidebarGroupValue } from "@/lib/marketing/sales-filter-sidebar-catalog";
-import { MarketingFilterLinkRow } from "@auction/marketing-ui/marketing-filter-link-row";
 
 const MONTHS = [
   { n: 1, label: "January" },
@@ -49,29 +49,26 @@ function FilterCheckbox({
   active,
   onHref,
   offHref,
-  onLinkClick,
+  onClick,
 }: {
   label: string;
   count: number | undefined;
   active: boolean;
   onHref: string;
   offHref: string;
-  onLinkClick?: () => void;
+  onClick?: () => void;
 }) {
   return (
-    <MarketingFilterLinkRow
+    <SalesFilterLinkRow
       kind="checkbox"
       label={label}
       count={count}
       checked={active}
       href={active ? offHref : onHref}
-      dense
-      {...(onLinkClick ? { onClick: onLinkClick } : {})}
+      {...(onClick ? { onClick } : {})}
     />
   );
 }
-
-const link2 = (onLinkClick?: () => void) => (onLinkClick ? { onClick: onLinkClick } : {});
 
 /** AccordionContent `className` per group (layout scroll / spacing). */
 export const salesFilterAccordionContentClass: Record<SalesFilterSidebarGroupValue, string> = {
@@ -92,7 +89,8 @@ export function SalesFilterGroupContents({
   facets,
   onLinkClick,
 }: SalesFilterGroupContentsProps) {
-  const link = onLinkClick ? { onLinkClick } : {};
+  // Following any row's link also closes the sheet the rail is in.
+  const link = onLinkClick ? { onClick: onLinkClick } : {};
   const clear = { page: undefined } as const;
   switch (group) {
     case "delivery":
@@ -139,19 +137,19 @@ export function SalesFilterGroupContents({
       );
     case "sort":
       return (
-        <nav aria-label="Sort by date" className="flex flex-col">
+        <fieldset className="m-0 flex min-w-0 flex-col border-0 p-0">
+          <legend className="sr-only">Sort by date</legend>
           {SORTS.map(([value, label]) => (
-            <MarketingFilterLinkRow
+            <SalesFilterLinkRow
               key={value}
               kind="radio"
               label={label}
               checked={state.sort === value}
               href={calendarSalesHrefFromState(state, { sort: value, ...clear })}
-              dense
-              {...link2(onLinkClick)}
+              {...link}
             />
           ))}
-        </nav>
+        </fieldset>
       );
     case "price":
       return <SalesPriceSlider state={state} />;

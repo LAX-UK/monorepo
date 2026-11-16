@@ -34,7 +34,7 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    const row = screen.getByRole("checkbox", { name: "Brands , 4" });
+    const row = screen.getByRole("checkbox", { name: "Brands, 4" });
     expect(row.tagName).toBe("A");
     expect(row).toHaveAttribute("href", "/artists/kind/brands");
     expect(row).toHaveAttribute("aria-checked", "false");
@@ -52,7 +52,7 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    const row = screen.getByRole("checkbox", { name: "Brands , 4" });
+    const row = screen.getByRole("checkbox", { name: "Brands, 4" });
     expect(row).toHaveAttribute("aria-checked", "true");
     expect(row).toHaveAttribute("href", "/artists");
   });
@@ -72,13 +72,10 @@ describe("MarketingFilterLinkGroups", () => {
         ]}
       />,
     );
-    const empty = screen.getByRole("checkbox", { name: "Marques , 0" });
+    const empty = screen.getByRole("checkbox", { name: "Marques, 0" });
     expect(empty).not.toHaveAttribute("href");
     expect(empty).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("checkbox", { name: "Brands , 0" })).toHaveAttribute(
-      "href",
-      "/artists",
-    );
+    expect(screen.getByRole("checkbox", { name: "Brands, 0" })).toHaveAttribute("href", "/artists");
   });
 
   it("shows a choice of one as a group of plain links, the chosen one marked current", () => {
