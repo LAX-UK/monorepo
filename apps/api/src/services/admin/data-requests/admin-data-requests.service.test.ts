@@ -48,7 +48,7 @@ function setup(extra: { onNeedsStaff?: (reference: string, reason: "end_unknown"
     findByEmail: vi.fn(async (_email: string) => ({
       subjectId: "user-9",
       name: "Lena Fischer",
-      status: "active",
+      status: "active" as const,
     })),
   };
   const enquiryErasure = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShopStatusStateAction } from "@/components/shop-status-state";
+import { ShopStatusStateAction } from "@/components/shop-status-state-actions";
 import { useRouter } from "next/navigation";
 
 type ShopCatalogueStateRetryButtonProps = {

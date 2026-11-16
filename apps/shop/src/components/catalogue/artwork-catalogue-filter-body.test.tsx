@@ -3,6 +3,7 @@ import { ArtworkCatalogueFilterBody } from "@/components/catalogue/artwork-catal
 import type { CatalogueFilterRailVm } from "@/lib/catalogue/catalogue-filter-groups";
 import type { CatalogueSortVm } from "@/lib/catalogue/catalogue-sort";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/link", () => ({
@@ -109,5 +110,28 @@ describe("ArtworkCatalogueFilterBody", () => {
   it("leaves out the sort group where sort sits above the results", () => {
     renderRail();
     expect(screen.queryByRole("group", { name: "Sort" })).toBeNull();
+  });
+
+  it("renders every option with results as a real <a href> in the server HTML", () => {
+    const html = renderToStaticMarkup(
+      <ArtworkCatalogueFilterBody rail={rail} sort={sort} onNavigate={vi.fn()} />,
+    );
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const links = (selector: string) =>
+      [...doc.querySelectorAll<HTMLAnchorElement>(selector)].map((a) => [
+        a.getAttribute("aria-label") ?? a.textContent,
+        a.getAttribute("href"),
+      ]);
+    // One link per option that has results or is applied; only "Nobody Yet" (0, not applied) is not.
+    expect(links('a[role="checkbox"]')).toEqual([
+      ["Mara Ellison, 12", "/artworks?artist=mara"],
+      ["Flora Powers, 3", "/artworks"],
+      ["Late Arrival, 0", "/artworks"],
+    ]);
+    expect(doc.querySelectorAll('[role="checkbox"]:not(a)')).toHaveLength(1);
+    expect(links("fieldset a:not([role])")).toEqual([
+      ["Newest", "/artworks"],
+      ["Price low to high", "/artworks?sort=price_asc"],
+    ]);
   });
 });

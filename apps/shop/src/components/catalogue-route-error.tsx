@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  ShopStatusState,
-  ShopStatusStateAction,
-  ShopStatusStateLink,
-} from "@/components/shop-status-state";
+import { ShopRouteErrorState } from "@/components/shop-route-error-state";
+import { ShopStatusStateAction, ShopStatusStateLink } from "@/components/shop-status-state-actions";
 
 type CatalogueRouteErrorProps = {
   title?: string;
@@ -22,12 +19,9 @@ export function CatalogueRouteError({
   return (
     <div className="shop-home-shell">
       <main id="main-content" className="shop-home">
-        <ShopStatusState
-          variant="error"
+        <ShopRouteErrorState
           title={title}
-          titleAs="h1"
           description="We could not load this collection. Try again or continue browsing elsewhere in the shop."
-          className="shop-status-state--page"
           actions={
             <>
               <ShopStatusStateAction priority="primary" onClick={reset}>

@@ -36,7 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   findAccount.mockResolvedValue({
     ok: true,
-    data: { subjectId: "u1", name: "Margaret Osei", status: "active" },
+    data: { subjectId: "u1", name: "Margaret Osei", status: "active", statusLabel: "Active" },
   });
   log.mockResolvedValue({
     ok: true,
@@ -67,6 +67,20 @@ describe("LogDataRequestDialog", () => {
     await pickAccount();
     expect(findAccount).toHaveBeenCalledWith("margaret.osei@outlook.co.uk");
     expect(within(dialog()).getByRole("button", { name: "Change person" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["active", "Active"],
+    ["disabled", "Disabled"],
+  ])("shows the found account's %s state as %s, never the stored code", async (status, label) => {
+    findAccount.mockResolvedValue({
+      ok: true,
+      data: { subjectId: "u1", name: "Margaret Osei", status, statusLabel: label },
+    });
+    open();
+    await pickAccount();
+    expect(within(dialog()).getByText(new RegExp(` · ${label}$`))).toBeInTheDocument();
+    expect(within(dialog()).queryByText(new RegExp(` · ${status}$`))).toBeNull();
   });
 
   it("says when no account has that email address", async () => {

@@ -1,3 +1,4 @@
+import { LOT_STATUS } from "@/lib/admin/staff-kit-status.copy";
 import { lotOutcome } from "@/lib/lot/lot-outcome";
 import type { StatusBadgeVariant } from "@/lib/presenters/status-presentation";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
@@ -31,14 +32,7 @@ type CatalogueDomain =
  * closed outcome rather than a failure.
  */
 const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentation>> = {
-  lot: {
-    draft: { label: "Draft", tone: "neutral" },
-    scheduled: { label: "Scheduled", tone: "info" },
-    active: { label: "Live", tone: "live", live: true },
-    ended: { label: "Ended", tone: "neutral" },
-    cancelled: { label: "Withdrawn", tone: "danger" },
-    voided: { label: "Voided", tone: "danger" },
-  },
+  lot: LOT_STATUS,
   sale: {
     draft: { label: "Draft", tone: "neutral" },
     scheduled: { label: "Scheduled", tone: "info" },

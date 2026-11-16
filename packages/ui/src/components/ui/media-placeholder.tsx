@@ -33,12 +33,11 @@ const LINE_CLASS = {
   auto: "text-brand-100 dark:text-brand-400",
 } as const;
 
-/** The label follows the theme's secondary text colour, which keeps 4.5:1 on the hatched surface. */
-const LABEL_CLASS = {
-  light: "text-on-surface-variant",
-  dark: "text-on-surface-variant",
-  auto: "text-on-surface-variant",
-} as const;
+/**
+ * The label follows the theme's secondary text colour, which keeps 4.5:1 on the hatched surface
+ * in every tone.
+ */
+const LABEL_CLASS = "text-on-surface-variant";
 
 export function MediaPlaceholder({
   label,
@@ -66,7 +65,7 @@ export function MediaPlaceholder({
         shouldFill ? "absolute inset-0 h-full w-full" : "relative w-full",
         shape === "circle" && "rounded-full",
         normalizedMonogram && "[container-type:inline-size]",
-        loading && "animate-pulse",
+        loading && "lax-skeleton",
         SURFACE_CLASS[tone],
         className,
       )}
@@ -102,7 +101,7 @@ export function MediaPlaceholder({
           aria-hidden="true"
           className={cn(
             "absolute inset-0 flex items-center justify-center font-headline font-medium tracking-tight",
-            LABEL_CLASS[tone],
+            LABEL_CLASS,
           )}
           style={{ fontSize: "clamp(0.875rem, 24cqw, 2.25rem)" }}
         >
@@ -113,7 +112,7 @@ export function MediaPlaceholder({
         <span
           className={cn(
             "absolute inset-0 flex items-center justify-center px-2 text-center font-mono text-xs tracking-normal",
-            LABEL_CLASS[tone],
+            LABEL_CLASS,
           )}
         >
           {normalizedLabel}

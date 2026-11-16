@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin/collections/desk.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
+  ChoiceRow,
   DetailPanel,
   EnumSelect,
   Field,
@@ -219,21 +220,21 @@ function HandOverForm({ booking, onClose }: { booking: DeskBookingView; onClose:
           </Notice>
         ) : null}
         <div className="flex flex-col gap-2">
-          <div className="flex items-start gap-3">
-            <StaffCheckbox
-              id={ID_FIELD}
-              checked={idChecked}
-              onCheckedChange={(on) => {
-                setIdChecked(on === true);
-                setErrors((list) => list.filter((e) => e.fieldId !== ID_FIELD));
-              }}
-              aria-invalid={errors.some((e) => e.fieldId === ID_FIELD) || undefined}
-              className="mt-0.5"
-            />
-            <label htmlFor={ID_FIELD} className="text-staff-sm text-staff-fg">
-              I checked photo ID and the name matches {booking.collector.name}
-            </label>
-          </div>
+          <ChoiceRow
+            htmlFor={ID_FIELD}
+            label={`I checked photo ID and the name matches ${booking.collector.name}`}
+            control={
+              <StaffCheckbox
+                id={ID_FIELD}
+                checked={idChecked}
+                onCheckedChange={(on) => {
+                  setIdChecked(on === true);
+                  setErrors((list) => list.filter((e) => e.fieldId !== ID_FIELD));
+                }}
+                aria-invalid={errors.some((e) => e.fieldId === ID_FIELD) || undefined}
+              />
+            }
+          />
           {errors.find((e) => e.fieldId === ID_FIELD) ? (
             <FieldError>{errors.find((e) => e.fieldId === ID_FIELD)?.message}</FieldError>
           ) : null}

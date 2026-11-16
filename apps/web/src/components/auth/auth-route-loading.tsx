@@ -8,21 +8,21 @@ export function AuthRouteLoading() {
       <div className="mx-auto flex w-full max-w-[var(--auth-column,528px)] flex-col items-center gap-8 px-6">
         <div
           data-testid="auth-logo-skeleton"
-          className="h-[72px] w-[min(100%,320px)] animate-pulse rounded bg-surface-container-high sm:h-[98px] sm:w-[min(100%,512px)]"
+          className="h-[72px] w-[min(100%,320px)] lax-skeleton rounded bg-surface-container-high sm:h-[98px] sm:w-[min(100%,512px)]"
           aria-hidden
         />
         <div className="flex w-full flex-col gap-3">
           <div
-            className="mx-auto h-8 w-48 animate-pulse rounded bg-surface-container-high"
+            className="mx-auto h-8 w-48 lax-skeleton rounded bg-surface-container-high"
             aria-hidden
           />
           <div
-            className="mx-auto h-4 w-64 animate-pulse rounded bg-surface-container-high"
+            className="mx-auto h-4 w-64 lax-skeleton rounded bg-surface-container-high"
             aria-hidden
           />
         </div>
         <div
-          className="h-64 w-full animate-pulse rounded-md border border-border-hairline bg-surface-container-high"
+          className="h-64 w-full lax-skeleton rounded-md border border-border-hairline bg-surface-container-high"
           aria-hidden
         />
       </div>

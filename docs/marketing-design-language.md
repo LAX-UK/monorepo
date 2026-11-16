@@ -118,9 +118,9 @@ Use `@auction/marketing-ui` (`MarketingReveal`, `MarketingCardReveal`, `Marketin
 | `MarketingQueryToast` | Query-param toasts (`welcome`, `auth=required`) with `aria-live="polite"`. |
 | `CatalogByView` | Generic grid / list / card view dispatcher for catalog surfaces. |
 | `PolicyNotice` | `error` \| `primary` \| `warning` policy alerts (suspended, staff, own lot). |
-| `MarketingStatusState` | Cross-product gallery placard for empty, filtered, and error states (`inline` \| `page` \| `banner` layouts). Styles live in `@auction/marketing-ui/marketing-ui.css`; motif uses the shared 72px hatched `MediaPlaceholder` plate plus contextual icons. Static page loads default to `announcement="none"`; dynamic banners may use `assertive`. |
-| `MarketingStatusAction` | Primary/secondary CTA chrome for status states (`asChild` for links). |
-| `MarketingEmptyState` (Bid) | Thin wrapper mapping Bid `context` / illustrations onto `MarketingStatusState`. |
+| Empty and error states | The kit `EmptyState` (`@auction/ui/lax/empty-state`): a LAX drawing on a warm-paper plate beside the title, sentence and actions; `inline` for lists and sections, `page` for a page's own state (the page's h1 unless `headingLevel` is given, so a page that already owns its h1 passes h2). Shop and lax.art reach it through `ShopStatusState` / `ArtStatusState` (accent plate; older drawing names such as `gallery` and `bag` resolve through `resolveStatusIllustration` in `@auction/ui/lax/status-illustration`). The error variant always draws `askew`. Static page loads are silent; a client-side change may ask for `polite` or `assertive`. |
+| `MarketingStatusAction` | Primary/secondary CTA chrome for the Shop and lax.art status states (`asChild` for links); still for reduced motion, full width one per row on phones. |
+| `MarketingEmptyState` (Bid) | Thin wrapper mapping Bid `context` / illustrations onto the kit `EmptyState` (inline, h2/h3). |
 | `MarketingSectionHeader` | Section title + subtitle + trailing action (home rails). |
 | `MarketingHorizontalRail` | Home/marketing **card rails**: native horizontal scroll + snap, hidden scrollbar, right fade, single forward control from `sm` while overflow remains. Not for Embla media carousels or catalogue pagination. |
 | `MarketingStickyBidBar` | Mobile sticky bid / sale summary (`lg:hidden`); inner gutters match `MARKETING_PAGE_GUTTER_X`. |
