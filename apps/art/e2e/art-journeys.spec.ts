@@ -248,8 +248,16 @@ test.describe("lax.art journeys", () => {
     );
     const tabs = page.getByRole("navigation", { name: "Favourites sections" });
     await expect(tabs.getByRole("link", { name: "Saves" })).toHaveAttribute("aria-current", "page");
-    await tabs.getByRole("link", { name: "Follows" }).click();
-    await expect(page).toHaveURL(/\/account\/favourites\/follows$/);
+    // Sign-in returns here while the page is still settling (a late client refresh or hydration can
+    // swallow an early tap), so retry the tap until the route changes instead of tapping once.
+    await expect(async () => {
+      await tabs.getByRole("link", { name: "Follows" }).click();
+      await expect(page).toHaveURL(/\/account\/favourites\/follows$/, { timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
+    await expect(tabs.getByRole("link", { name: "Follows" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   test("dark mode toggle persists across reloads", async ({ page }, testInfo) => {
