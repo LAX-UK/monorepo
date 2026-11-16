@@ -12,12 +12,8 @@ import {
 import { type PublicRoute, resolvePublicRoutes } from "./public-routes";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
-const skipReason =
-  "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start the seeded stack.";
-const BASELINE_PATH = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "a11y-baseline.json",
-);
+const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start the seeded stack.";
+const BASELINE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), "a11y-baseline.json");
 const writeBaseline = process.env.A11Y_WRITE_BASELINE === "1";
 
 /** WCAG 2.2 AA. Best-practice results are advisory and do not run here. */
@@ -35,12 +31,8 @@ const routesChecked = new Set<string>();
 /** Every route, not-found ones included, sits inside the site shell and its single main landmark. */
 async function settle(page: Page) {
   // A canonical redirect can stack loading shells; wait until one finished main remains.
-  await expect(page.locator("#main-content")).toHaveCount(1, {
-    timeout: 15_000,
-  });
-  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, {
-    timeout: 15_000,
-  });
+  await expect(page.locator("#main-content")).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
   await expect(page.locator("#main-content")).toBeVisible();
   // Next streams a dynamic page's metadata after its first paint and moves the <title> into the
   // head when it arrives, so a scan taken right after the shell settles can see a document with no
@@ -52,18 +44,13 @@ async function settle(page: Page) {
 async function scan(page: Page, route: string, variant: string) {
   const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   for (const violation of results.violations) {
-    found.push({
-      route,
-      rule: violation.id,
-      impact: violation.impact ?? null,
-      variant,
-    });
+    found.push({ route, rule: violation.id, impact: violation.impact ?? null, variant });
   }
 }
 
 /** A 502/503/504 from test.lax.bid means the service was unreachable, so it must stay visible: one
  * retry of a single navigation is allowed (after a short pause), and any test that needed it still
- * FAILS with the route, status and time. A repeated 5xx fails at once. Other statuses are never retried. */
+ * FAILS with the route, status and time. Other statuses are never retried. */
 const RETRY_STATUSES = new Set([502, 503, 504]);
 const RETRY_DELAY_MS = 10_000;
 
@@ -72,17 +59,12 @@ async function navigate(page: Page, path: string) {
   const status = res?.status();
   if (status === undefined || !RETRY_STATUSES.has(status)) return res;
   const at = new Date().toISOString();
-  console.warn(
-    `[public-a11y] ${path} answered ${status} at ${at}; retrying once`,
-  );
+  console.warn(`[public-a11y] ${path} answered ${status} at ${at}; retrying once`);
   await page.waitForTimeout(RETRY_DELAY_MS);
   const retry = await page.goto(path, { waitUntil: "domcontentloaded" });
   // Soft: the scan still runs, but the run is red so a crashing or restarting service is seen.
   expect
-    .soft(
-      false,
-      `${path} answered ${status} at ${at} and needed a retry (retry answered ${retry?.status()})`,
-    )
+    .soft(false, `${path} answered ${status} at ${at} and needed a retry (retry answered ${retry?.status()})`)
     .toBeTruthy();
   return retry;
 }
@@ -92,13 +74,9 @@ async function open(page: Page, route: PublicRoute) {
   const status = res?.status();
   // An unknown address answers a real 404 on purpose. A lot, sale or artist that does not exist
   // streams its not-found page behind the loading shell, so its status is already 200.
-  if (route.name === "not-found")
-    expect(status, `${route.path} answered ${status}`).toBe(404);
+  if (route.name === "not-found") expect(status, `${route.path} answered ${status}`).toBe(404);
   else if (!route.name.includes("not-found"))
-    expect(
-      res?.ok(),
-      `${route.path} answered ${status}, expected 2xx`,
-    ).toBeTruthy();
+    expect(res?.ok(), `${route.path} answered ${status}, expected 2xx`).toBeTruthy();
   await settle(page);
 }
 
@@ -128,11 +106,7 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
           reducedMotion: "reduce",
         });
         await context.addCookies([
-          {
-            name: "lax_theme",
-            value: scheme,
-            url: baseURL ?? "http://localhost:3000",
-          },
+          { name: "lax_theme", value: scheme, url: baseURL ?? "http://localhost:3000" },
         ]);
         const page = await context.newPage();
         for (const route of routes) {
@@ -148,10 +122,7 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
   test("interaction states", async ({ browser, baseURL }) => {
     test.skip(!enabled, skipReason);
     const origin = baseURL ?? "http://localhost:3000";
-    const context = await browser.newContext({
-      baseURL: origin,
-      reducedMotion: "reduce",
-    });
+    const context = await browser.newContext({ baseURL: origin, reducedMotion: "reduce" });
     const page = await context.newPage();
 
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -161,10 +132,7 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
     await scan(page, "cookie-banner", "1440 light");
     routesChecked.add("cookie-banner");
     // The footer has a "Cookie settings" button too; open the settings from the banner.
-    const settings = banner.getByRole("button", {
-      name: "Cookie settings",
-      exact: true,
-    });
+    const settings = banner.getByRole("button", { name: "Cookie settings", exact: true });
     if (await settings.isVisible()) {
       await settings.click();
       await expect(page.getByRole("dialog")).toBeVisible();
@@ -209,12 +177,8 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
       writeFileSync(BASELINE_PATH, `${JSON.stringify(ordered, null, 2)}\n`);
       return;
     }
-    const baseline = JSON.parse(
-      readFileSync(BASELINE_PATH, "utf8"),
-    ) as A11yBaseline;
-    const problems = describeRatchet(
-      evaluateRatchet(found, baseline, [...routesChecked]),
-    );
+    const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8")) as A11yBaseline;
+    const problems = describeRatchet(evaluateRatchet(found, baseline, [...routesChecked]));
     expect(problems, problems.join("\n")).toEqual([]);
   });
 });
