@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP (needs owner route-JS waiver)
 
 # Review of PR #1498: Clerk console: survive deploys and never show stale state after recovery
 
@@ -322,3 +322,125 @@ Non-blocking observation:
 2. Correct the PR body:
    - Replace the route-JS table with figures that reproduce.
    - Update the test evidence to the current head, and mention the CI unhandled rejection on `f9dce231` and its fix.
+
+## Final recheck (round 3)
+
+Rechecked head `a848272d` against `main` `a811c33b` (the PR's base) on 2026-11-16. This is a review only. The PR branch was not changed.
+
+**Verdict: SHIP (needs owner route-JS waiver).** All behaviour from rounds 1 and 2 is intact, tests catch regressions in this round's changes, CI is green, and no budget, baseline, ratchet or allowance file changed. One route is reliably above `main`: the registrations tab. The PR body already records the waiver it needs. The clerk console did not come out higher in my builds. The waiver figures should be stated as ranges (see item 1).
+
+### (1) Route JS: the direction reproduces, the exact figures do not
+
+**Method.** This is the same as rounds 1 and 2:
+- `next build` in one worktree path (`/home/user/wt-measure`), with `.next` removed before each build.
+- Workspace packages built through turbo (`--filter='@auction/web^...'`), and the CI placeholder Sentry DSNs set.
+- `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` pinned.
+- Per page route, the start-up set from `scripts/route-js-startup-set.mjs`, with each file gzipped by Node's default `gzipSync` and the sizes summed, as `check-route-js-budget.mjs` does.
+
+**Builds:**
+- `main` twice and the head once, all with key 1.
+- An empty commit on `main` as the control, with key 1.
+- `main` and the head again with a second pinned key (key 2), to check whether the figures depend on the key.
+
+**Noise floor and control:**
+- `main` against `main` (key 1): 20 routes the same, 209 lower by 1–5 B.
+- `main` against the empty-commit control (key 1): every route lower by 4–9 B. The control confirms the round-2 finding that a new commit SHA alone moves every route by a few bytes, through `main-app`, `webpack` and `84583`.
+
+**Results.** Head against `main`, 229 routes:
+
+| Comparison | Lower | Same | Higher | Clerk console `saleroom/[saleId]` | Registrations | Typical other route |
+|---|---:|---:|---:|---:|---:|---:|
+| head vs `main` build 1 (key 1) | 228 | 0 | 1 | 519,373 → 519,286 (**−87**) | 758,172 → 758,327 (**+155**) | −16 to −21 |
+| head vs `main` build 2 (key 1) | 228 | 0 | 1 | −82 | **+160** | −16 |
+| head vs empty-commit control (key 1) | 228 | 0 | 1 | −78 | **+164** | **−12** on 182 routes |
+| head vs `main` (key 2) | 228 | 0 | 1 | 519,389 → 519,335 (**−54**) | 758,385 → 758,668 (**+283**) | −15 |
+| PR body (its key) | 227 | 0 | 2 | 518,961 → 519,315 (+354) | 758,217 → 758,363 (+146) | −12 |
+
+What reproduces:
+- **Registrations is higher, under every key and against every baseline.** It is the only route that is higher in any of my comparisons.
+- **The shared-runtime saving reproduces exactly.** Against the empty-commit control, which isolates the commit-SHA effect as the PR does, 182 routes are −12 B, as the body says. The sale-form, inbox and record-tab savings reproduce in direction and size, within a few bytes.
+- **No route other than these two grows.** The +2 to +9 B growth on 185 routes from round 2 is gone.
+
+What does not reproduce:
+- **The clerk console is lower in all four of my comparisons (−54 to −87 B), not +354 B.**
+  - The head's console page chunk is identical under both keys, with the same content hash and 30,402 B gzip. It has no server-action ids left. That matches the body's 30,401 B.
+  - The difference is on the `main` side. My `main` console page chunk is 30,296 B (key 1) and 30,269 B (key 2). The body's is 29,863 B.
+  - `main`'s chunk holds 15 key-salted `createServerReference` ids (random hex that compresses badly), so it changes with the key. I could not reproduce a key that gives 29,863 B. The body's `main` figure for this chunk may come from a different key or build.
+  - Either way, the console is at most +354 B and lower in every build I made.
+- **Registrations is +146 to +283 B depending on the key, not a fixed +146 B.**
+  - The head's registrations page still holds 3 server-action ids (`main` holds 5), so both sides move with the key.
+  - Its page chunk grows by +227 B (key 1) or +349 B (key 2). Before gzip it grows by 331 B (63,010 → 63,341). The two record-tab boundary chunks save 24–27 B, and the shared runtime saves 13–17 B.
+
+**Budget check:** `pnpm check:route-js-budget` passes on the head build (key 2). It prints only ratchet notices for routes below their ratchet.
+
+### (2) Are the remaining bytes needed for the safety behaviour? Yes. No cheap cut is left.
+
+- **Registrations.**
+  - `lib/admin/saleroom/check-in.client.ts` is already minimal: one same-origin `fetch`, no shared helpers, no copy of its own, and a single `send` for both calls.
+  - What remains is the BFF path, the JSON body, and the result/fallback mapping that the three callers (panel, "Mark present", expected guests) rely on.
+  - It replaces two server-action stubs. Those stubs are exactly what crashes door staff after a deploy, so the bytes buy the fix.
+  - I found no further reduction worth a fourth round. Any remaining cut would be tens of bytes and would not bring the route to `main` or below.
+- **Clerk console.** In my builds it is already below `main`, so nothing needs to come out.
+  - The page chunk's growth before gzip is about +1,006 B. That is the BFF transport, the unknown-outcome helper with its context, the lot check, the lot snapshot read with its stale-snapshot guard, and the remount refresh.
+  - Each of these maps to an acceptance item from rounds 1 and 2.
+  - This round's two cuts are behaviour-neutral and verified below: hammer and pass now get their recheck through the context, and the transport reads the API body inline.
+
+**Lazy-loading the rarely-hit recheck or unknown-outcome path, or the check-in client: correctly rejected, and it would add risk mid-sale.**
+- **The size cost is real.** Removing the one async chunk this round cut `webpack` by about 13 B on every route (−12 B net per route against the control). Adding a lazy chunk back would cost about the same on every route, which is more in total than the bytes it would move off the console.
+- **The timing is the worst case.** The unknown-outcome path runs right after a command failed or went unanswered, which is when a deploy is most likely to have just landed.
+  - A lazy chunk from the old build may then be gone. The `import()` throws a `ChunkLoadError` inside the hold button's async handler.
+  - The clerk would then get no "Outcome unknown, checking the room…" message and no recheck, and possibly an error boundary, in the middle of a hammer.
+  - That brings back the failure this PR exists to remove.
+  - `lib/socket-chunk-recovery.client.ts` exists because this already happens with the socket chunk.
+- **The same applies to door check-in.** The tab is open all sale, so the first search after a deploy would fetch a deleted chunk.
+- Handling the failed import, by catching it and falling back to a reload, would add bytes and a path that is hard to test, to save about 100–300 B.
+- **Recommendation:** keep everything in the start-up chunk and waive the bytes.
+
+### (3) Behaviour from rounds 1 and 2: intact
+
+- **Files unchanged since round 2.** Comparing the PR's diff against its base at `c55d8d28` and at `a848272d`, these are byte-identical:
+  - `apps/api`
+  - `packages/validators`
+  - the BFF route and `lib/bff`
+  - `lib/admin/saleroom`
+  - `components/admin/staff` (the tab boundary's reload)
+  - `clerk-room-recheck.ts`
+  - `saleroom-pending-form.tsx`
+  - the bid-entry hooks
+
+  So these are unchanged: `lot_not_on_block`, `requireSaleroomOperate` and `requireSalesAccess`, the lot-snapshot route, unknown-outcome on every command, and check-in through the BFF.
+- **This round's own commits** (`97916aa7`, `a848272d`; `dfa4363d` is the `main` merge) touch 8 files:
+  - **Hammer and pass recheck now comes from `ClerkRoomRecheckContext`.**
+    - The console's provider wraps the action bar (`saleroom-clerk-console.tsx:179-288`), and its `recheckRoom` is `router.refresh()` then `await resyncFromServer()`, the same as the removed inline closure.
+    - Outside the console the fallback is `router.refresh()`, as for every other command.
+  - **Transport body reading is equivalent to `readApiError`/`readApiErrorCode`.**
+    - The string `error` and `code` are read the same way. `res.json().catch(() => null)` matches the removed `readJson`.
+    - `errorCode: undefined` is now present as a key rather than omitted. No code in `apps/web/src` tests `"errorCode" in`.
+  - **Static import of `adminUpdateLotResultAction` in the sale lot editor.**
+    - It is the same action and call. It removes one lazily fetched chunk, which also removes one deploy-skew failure.
+- **Mutation runs:** each change was applied in a separate worktree, the suites run, then reverted.
+  - Hammer and pass ignoring the context, so they only refresh: `lot-outcome-controls.deploy-skew.test.tsx` fails (2).
+  - Console recheck without `router.refresh()`: `saleroom-clerk-console.test.tsx` fails (1), through the new "gives its command controls a recheck…" test.
+- **Tests:** no test or assertion was removed. The hammer/pass tests only lost the `resync` prop and now render inside the context. No `.skip`, `.todo`, `.fixme` or `dangerouslyIgnoreUnhandledErrors` appears in the PR diff.
+- **Suites on head:** web vitest for `features/saleroom`, `saleroom-pending-form`, `saleroom-check-in-panel`, `components/admin/staff`, `lib/admin/saleroom`, `app/api/bff`, `lib/bff` and `components/admin/sale-form`: 71 files, 359 passed, 0 failed.
+
+### (4) CI, budgets and PR body
+
+- **CI on `a848272d` is green:**
+  - CI: `ci-result`, `build` (with route budgets), all 8 web vitest shards, both api shards, the 4 shop-api shards, `static-checks` and `test`.
+  - Web PR browser gates and Account PR browser gates.
+  - Art browser gates and `shop-v1-phase-smoke` were skipped as not affected.
+- **No budget, baseline, ratchet or allowance changed.** `git diff a811c33b a848272d` touches nothing under `scripts/` or `.github/`, and no `route-js-*`, `budgets.json` or baseline file. The body says the 1 KB allowance is not used.
+- **PR body:**
+  - It has "Changes after review" for every round and a "Waiver needed" section that explains why the bytes remain and why the lazy chunk was rejected.
+  - It keeps the deploy note: reload every open clerk console and registrations tab once, before the next sale.
+  - There is no AI footer or "Generated with" line, and no commit in the PR carries a Claude trailer.
+- **E2E stabilization** last ran on `f9dce231`, as the body says. This round's app changes do not alter behaviour on the clerk path, and the unit and mutation coverage above pins them.
+
+### For the owner's waiver
+
+- **`/admin/(platform)/sales/[id]/(detail)/registrations`:** waive about **+150 to +290 B gzip**. The exact figure depends on the server-action key, because the page still holds 3 key-salted action ids. That is about 0.02–0.04 % of the route's 758 KB.
+- **`/admin/(platform)/saleroom/[saleId]` (clerk console):** my pinned builds put it 54–87 B below `main`. The body's +354 B did not reproduce. If the owner wants to be safe, waive "up to +354 B". Otherwise no waiver is needed for this route.
+- **Every other route is lower** in every comparison.
+
+Optional, not blocking: before merge, reword the body's route-JS figures as ranges ("registrations +146 to +283 B depending on the pinned key; clerk console between −87 and +354 B"), so that the waiver matches what a re-measure will show.
