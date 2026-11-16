@@ -38,8 +38,13 @@ const DELIVERY_BUDGET_MS = 3_000;
  * the test proves: the delivery latency is measured from the commit and held to the budget above.
  */
 const CI_DEADLINE_MS = 20_000;
-/** A sweep due within this long of now could run while a notice is in flight, so it is waited out. */
+/**
+ * A sweep due within this long of now could run while a notice is in flight, so it is waited out.
+ * Every check that no sweep ran (delivery and the signal's follow-up drain) ends inside this window.
+ */
 const SWEEP_CLEARANCE_MS = DELIVERY_BUDGET_MS + WAKE_SETTLE_DELAY_MS + 2_000;
+/** Longest wait for the sweep window to clear: one sweep interval, the clearance, and CI slack. */
+const CLEAR_OF_SWEEPS_TIMEOUT_MS = 60_000 + SWEEP_CLEARANCE_MS + CI_DEADLINE_MS;
 
 const isWakeJob = (jobId: string | undefined) =>
   jobId?.startsWith(`${NOTIFICATION_OUTBOX_WAKE_JOB_NAME}-`) ?? false;
@@ -93,22 +98,26 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
 
   /**
    * Wait until no minute sweep is running or due within {@link SWEEP_CLEARANCE_MS}, so whatever
-   * delivers a notice staged next can only be a drain the commit-time signal woke.
+   * delivers a notice staged next can only be a drain the commit-time signal woke. Returns the time
+   * of the check that passed: no sweep starts before that time plus {@link SWEEP_CLEARANCE_MS}.
    */
-  async function clearOfSweeps(): Promise<void> {
-    await vi.waitFor(
+  async function clearOfSweeps(): Promise<number> {
+    return vi.waitFor(
       async () => {
+        const checkedAt = Date.now();
         expect([...running].filter((id) => !isWakeJob(id))).toEqual([]);
+        // "active" too: a sweep Redis has started can be listed before its event reaches us.
         // A job removed while it is listed comes back undefined: wake jobs are removed on completion.
-        const pending = (await queue.getJobs(["wait", "delayed", "prioritized"])).filter(
+        const pending = (await queue.getJobs(["active", "wait", "delayed", "prioritized"])).filter(
           (j) => j !== undefined,
         );
         const dueSoon = pending.filter(
-          (j) => !isWakeJob(j.id) && j.timestamp + (j.delay ?? 0) < Date.now() + SWEEP_CLEARANCE_MS,
+          (j) => !isWakeJob(j.id) && j.timestamp + (j.delay ?? 0) < checkedAt + SWEEP_CLEARANCE_MS,
         );
         expect(dueSoon.map((j) => j.id)).toEqual([]);
+        return checkedAt;
       },
-      { timeout: 60_000 + SWEEP_CLEARANCE_MS + CI_DEADLINE_MS, interval: 100 },
+      { timeout: CLEAR_OF_SWEEPS_TIMEOUT_MS, interval: 100 },
     );
   }
 
@@ -188,10 +197,9 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
   it(
     "delivers a committed outbid notice within seconds, once, through the signal",
     async () => {
-      await clearOfSweeps();
+      const clearUntil = (await clearOfSweeps()) + SWEEP_CLEARANCE_MS;
       const key = `outbid:lot-${run}:bid-${run}:${userId}`;
       const eventsBefore = events.length;
-      const stagedAt = Date.now();
       const committedAt = await db.transaction(async (tx) => {
         await outbox.stage(
           { userId, payload: payload("outbid", `Outbid ${run}`), idempotencyKey: key },
@@ -216,18 +224,26 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
       expect(latencyMs).toBeLessThan(DELIVERY_BUDGET_MS);
 
       // The signal's follow-up drain runs after the delivery and must not write the notice again.
-      // Its job is in the bucket the follow-up was due in; the wake fired at or after `stagedAt`.
-      const followUpBucket = Math.floor((stagedAt + WAKE_SETTLE_DELAY_MS) / WAKE_BUCKET_MS);
+      // The scheduler files a wake's drains under the time bucket each is due in, both from the same
+      // clock reading, so the follow-up of the wake this commit raised (the first immediate drain
+      // after staging) is the settle job exactly WAKE_SETTLE_DELAY_MS later, in buckets.
+      expect(WAKE_SETTLE_DELAY_MS % WAKE_BUCKET_MS).toBe(0);
+      const signalDrain = events
+        .slice(eventsBefore)
+        .find((e) => e.kind === "active" && !Number.isNaN(wakeBucket(e.jobId, "now")));
+      expect(signalDrain).toBeDefined();
+      const followUpId = `${NOTIFICATION_OUTBOX_WAKE_JOB_NAME}-settle-${
+        wakeBucket(signalDrain?.jobId ?? "", "now") + WAKE_SETTLE_DELAY_MS / WAKE_BUCKET_MS
+      }`;
+      // Waited for only while the sweep window is still clear, so "no sweep ran" below covers it.
       await vi.waitFor(
         () =>
           expect(
             events
               .slice(eventsBefore)
-              .some(
-                (e) => e.kind === "completed" && wakeBucket(e.jobId, "settle") >= followUpBucket,
-              ),
+              .some((e) => e.kind === "completed" && e.jobId === followUpId),
           ).toBe(true),
-        { timeout: CI_DEADLINE_MS, interval: 50 },
+        { timeout: Math.max(0, clearUntil - Date.now()), interval: 50 },
       );
       const after = await db
         .select({ id: notification.id })
@@ -241,13 +257,14 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
         .where(eq(notificationOutbox.idempotencyKey, key));
       expect(row?.state).toBe("sent");
 
-      // Through the signal: from the commit until the follow-up finished, every job that ran on the
-      // outbox queue was a wake drain. No minute sweep ran (none was running or due at the commit).
+      // Through the signal: from the commit until its follow-up finished, every job that ran on the
+      // outbox queue was a wake drain. No minute sweep ran (none was running or due in the window).
       const ran = events.slice(eventsBefore).filter((e) => e.kind === "active");
       expect(ran.length).toBeGreaterThan(0);
       expect(ran.filter((e) => !isWakeJob(e.jobId))).toEqual([]);
     },
-    60_000 + SWEEP_CLEARANCE_MS + 3 * CI_DEADLINE_MS,
+    // Worst case: the sweep wait, the delivery poll, and the follow-up inside the clearance.
+    CLEAR_OF_SWEEPS_TIMEOUT_MS + CI_DEADLINE_MS + SWEEP_CLEARANCE_MS,
   );
 
   it("delivers outbid notices for one person in the order they were staged", async () => {
