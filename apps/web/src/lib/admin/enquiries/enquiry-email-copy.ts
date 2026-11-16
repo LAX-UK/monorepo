@@ -125,7 +125,8 @@ export const QUARANTINE_COPY = {
     confirmUnverified:
       "I have checked this email belongs on this enquiry even though its sender is not verified",
     reasonLabel: "Why are you attaching it?",
-    reasonHint: "Kept in the enquiry's history. For example: the client confirmed by phone.",
+    reasonHint:
+      "Kept in the enquiry's history. For example: the client confirmed by phone. Do not include the sender's name, email address or phone number.",
     reasonInvalid: "Give a reason of at least 3 characters.",
     reasonTooLong: "Keep the reason to 500 characters or fewer.",
     suspectLabel: (reference: string) => `${reference}, the enquiry its reply address named`,
@@ -146,7 +147,8 @@ export const QUARANTINE_COPY = {
     confirm: "Discard email",
     done: "Email discarded",
     reasonLabel: "Why are you discarding it?",
-    reasonHint: "Kept in the audit trail. For example: spam, or a newsletter.",
+    reasonHint:
+      "Kept in the audit trail. For example: spam, or a newsletter. Do not include the sender's name, email address or phone number.",
   },
   errors: {
     quarantine_not_found: "This email is no longer held, or you can't open it.",

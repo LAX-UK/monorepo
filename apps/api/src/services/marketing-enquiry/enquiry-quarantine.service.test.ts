@@ -95,6 +95,11 @@ async function setup(
   };
   const inserted: NewInboundMessage[] = [];
   const inbound = {
+    // Reads the enquiry as it stands now, the way the row lock does inside the transaction.
+    lockTargetInTransaction: vi.fn(async (_tx: unknown, id: string) => {
+      const row = enquiries.rows.find((r) => r.id === id);
+      return row ? { ...row } : null;
+    }),
     insertInboundMessageInTransaction: vi.fn(async (_tx: unknown, input: NewInboundMessage) => {
       inserted.push(input);
       return { id: "msg-1" };
@@ -362,6 +367,54 @@ describe("EnquiryQuarantineService attach: unverified senders and erased enquiri
     expect(t.quarantine.lockInTransaction).not.toHaveBeenCalled();
     expect(t.inserted).toHaveLength(0);
     expect(t.published).toHaveLength(0);
+  });
+  it("re-reads the enquiry under a lock and refuses when it was erased after the first check", async () => {
+    const t = await setup();
+    const findByRef = t.enquiries.findByRef.bind(t.enquiries);
+    // The erasure commits after the check made before the transaction, and before the lock.
+    vi.spyOn(t.enquiries, "findByRef").mockImplementation(async (ref) => {
+      const found = await findByRef(ref);
+      const row = t.enquiries.rows.find((r) => r.id === found?.id);
+      if (row) Object.assign(row, { name: ERASED_ENQUIRY.name, email: ERASED_ENQUIRY.email });
+      return found;
+    });
+    const result = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      ...CONFIRMED,
+    });
+    expect(result).toEqual({ ok: false, error: "enquiry_erased" });
+    expect(t.inbound.lockTargetInTransaction).toHaveBeenCalledWith({}, t.general.id);
+    // The enquiry is locked before the held mail, the order erasure takes them in.
+    expect(t.quarantine.lockInTransaction).not.toHaveBeenCalled();
+    expect(t.inserted).toHaveLength(0);
+    expect(t.inbound.markAwaitingReplyInTransaction).not.toHaveBeenCalled();
+    expect(t.quarantine.markReviewedInTransaction).not.toHaveBeenCalled();
+    expect(t.published).toHaveLength(0);
+    expect(t.held.status).toBe("pending");
+  });
+
+  it("refuses when the enquiry is gone by the time it is locked", async () => {
+    const t = await setup();
+    t.inbound.lockTargetInTransaction.mockResolvedValueOnce(null);
+    const result = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      ...CONFIRMED,
+    });
+    expect(result).toEqual({ ok: false, error: "enquiry_not_found" });
+    expect(t.inserted).toHaveLength(0);
+  });
+
+  it("locks the enquiry before the held mail on an attach that goes ahead", async () => {
+    const t = await setup();
+    const result = await t.service.attach(worker, HELD_ID, {
+      enquiryReference: t.general.reference,
+      ...CONFIRMED,
+    });
+    expect(result.ok).toBe(true);
+    const enquiryLock = t.inbound.lockTargetInTransaction.mock.invocationCallOrder[0] ?? 0;
+    const heldLock = vi.mocked(t.quarantine.lockInTransaction).mock.invocationCallOrder[0] ?? 0;
+    expect(enquiryLock).toBeGreaterThan(0);
+    expect(enquiryLock).toBeLessThan(heldLock);
   });
 });
 

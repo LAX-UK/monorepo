@@ -35,6 +35,16 @@ export class DrizzleEnquiryInboundRepository implements IEnquiryInboundRepositor
     return row ?? null;
   }
 
+  async lockTargetInTransaction(tx: Database, id: string): Promise<InboundEnquiryTarget | null> {
+    const [row] = await tx
+      .select(TARGET_COLUMNS)
+      .from(marketingEnquiry)
+      .where(eq(marketingEnquiry.id, id))
+      .limit(1)
+      .for("update");
+    return row ?? null;
+  }
+
   async findTargetByOutboundMessageIds(
     providerMessageIds: readonly string[],
   ): Promise<InboundEnquiryTarget | null> {

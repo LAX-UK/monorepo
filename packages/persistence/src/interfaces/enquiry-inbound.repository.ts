@@ -60,6 +60,12 @@ export interface IEnquiryInboundRepository {
   findTargetByOutboundMessageIds(
     providerMessageIds: readonly string[],
   ): Promise<InboundEnquiryTarget | null>;
+  /**
+   * Reads the enquiry again inside the transaction and locks its row (FOR UPDATE) until the
+   * transaction ends, so an erasure cannot commit between this check and what the caller files on
+   * the thread. Erasure locks the same rows first, so a caller sees an erasure that has committed.
+   */
+  lockTargetInTransaction(tx: Database, id: string): Promise<InboundEnquiryTarget | null>;
   /** Stores the sender's reply; null when this provider message id is already stored (a replay). */
   insertInboundMessageInTransaction(
     tx: Database,

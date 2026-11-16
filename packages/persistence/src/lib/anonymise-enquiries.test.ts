@@ -38,6 +38,8 @@ function fakeTx(input: {
   detached?: Row[];
   notes?: Row[];
   enquiries?: Row[];
+  /** Held mail rows each quarantine delete returns. */
+  heldMail?: Row[];
 }) {
   const sets: Row[] = [];
   const updateResults: Row[][] = [
@@ -51,8 +53,23 @@ function fakeTx(input: {
   /** Every delete, as the table it targets and the SQL of its condition. */
   const deletes: Array<{ table: string; sql: string; params: unknown[] }> = [];
   const dialect = new PgDialect();
-  const update = vi.fn(() => ({
+  /** Every change to the event log, as the SQL of its new payload and of its condition. */
+  const eventUpdates: Array<{ set: string; where: string; params: unknown[] }> = [];
+  const update = vi.fn((table: PgTable) => ({
     set: (values: Row) => {
+      if (getTableName(table) === "domain_events") {
+        return {
+          where: (condition: SQL) => {
+            const where = dialect.sqlToQuery(condition);
+            eventUpdates.push({
+              set: dialect.sqlToQuery(values.payload as SQL).sql,
+              where: where.sql,
+              params: where.params,
+            });
+            return Object.assign(Promise.resolve([]), { returning: () => Promise.resolve([]) });
+          },
+        };
+      }
       sets.push(values);
       const result = updateResults.shift() ?? [];
       const chain = {
@@ -66,8 +83,12 @@ function fakeTx(input: {
     where: (condition: SQL) => {
       const query = dialect.sqlToQuery(condition);
       deletes.push({ table: getTableName(table), sql: query.sql, params: query.params });
-      return Object.assign(Promise.resolve(deleteResult), {
-        returning: () => Promise.resolve(deleteResult),
+      const result =
+        getTableName(table) === "enquiry_inbound_quarantine"
+          ? (input.heldMail ?? [])
+          : deleteResult;
+      return Object.assign(Promise.resolve(result), {
+        returning: () => Promise.resolve(result),
       });
     },
   }));
@@ -88,9 +109,22 @@ function fakeTx(input: {
     input.decisions ?? [],
   ];
   const select = vi.fn(() => ({
-    from: () => ({ where: () => Promise.resolve(answers.shift() ?? []) }),
+    from: () => ({
+      where: () => {
+        const result = Promise.resolve(answers.shift() ?? []);
+        // The enquiries are read under a row lock.
+        return Object.assign(result, { for: () => result });
+      },
+    }),
   }));
-  return { tx: { select, update, delete: del } as never, sets, update, del, deletes };
+  return {
+    tx: { select, update, delete: del } as never,
+    sets,
+    update,
+    del,
+    deletes,
+    eventUpdates,
+  };
 }
 
 describe("anonymiseEnquiries", () => {
@@ -171,6 +205,54 @@ describe("anonymiseEnquiries", () => {
     const held = fakeTx({ matched: [{ id: "e1", status: "converted" }] });
     await anonymiseEnquiries(held.tx, { kind: "email", email: "ada@example.com" });
     expect(held.deletes.filter((d) => d.table === "enquiry_inbound_quarantine")).toHaveLength(1);
+  });
+
+  it("replaces the reason staff typed in the attach and discard events of the erased mail", async () => {
+    const { tx, eventUpdates } = fakeTx({
+      matched: [{ id: "e1", status: "new" }],
+      enquiries: [{ id: "e1" }],
+      heldMail: [{ id: "q1" }],
+    });
+    await anonymiseEnquiries(tx, { kind: "email", email: "ada@example.com" });
+    // Once for the held mail from the address, once for the erased enquiry and its suspected mail.
+    expect(eventUpdates).toHaveLength(2);
+    for (const change of eventUpdates) {
+      // Only the reason's value is replaced; the rest of the payload stays as it was.
+      expect(change.set).toBe(
+        `jsonb_set("domain_events"."payload", '{reviewReason}', to_jsonb($1::text))`,
+      );
+      expect(change.where).toContain('"domain_events"."event_type" = $');
+      // An event already scrubbed, or with no reason, is not rewritten.
+      expect(change.where).toContain(
+        `jsonb_typeof("domain_events"."payload"->'reviewReason') = 'string'`,
+      );
+      expect(change.where).toContain(`"domain_events"."payload"->>'reviewReason' <> $`);
+      expect(change.params).toContain(ERASED_ENQUIRY.note);
+    }
+    const [byAddress, byEnquiry] = eventUpdates;
+    expect(byAddress?.params).toEqual(
+      expect.arrayContaining([
+        "marketing_enquiry.inbound_attached",
+        "marketing_enquiry.inbound_discarded",
+        "enquiry_inbound_quarantine",
+        "q1",
+      ]),
+    );
+    expect(byAddress?.params).not.toContain("e1");
+    expect(byEnquiry?.params).toEqual(
+      expect.arrayContaining([
+        "marketing_enquiry.inbound_attached",
+        "marketing_enquiry",
+        "e1",
+        "q1",
+      ]),
+    );
+  });
+
+  it("leaves the event log alone when nothing was erased", async () => {
+    const { tx, eventUpdates } = fakeTx({ matched: [{ id: "e1", status: "converted" }] });
+    await anonymiseEnquiries(tx, { kind: "email", email: "ada@example.com" });
+    expect(eventUpdates).toEqual([]);
   });
 
   it("holds a converted enquiry: nothing is changed and it is counted", async () => {

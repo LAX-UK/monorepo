@@ -35,7 +35,9 @@ export type EnquiryQuarantineServiceDeps = {
   /** Files an attached message on its thread and marks the thread awaiting a reply. */
   inbound: Pick<
     IEnquiryInboundRepository,
-    "insertInboundMessageInTransaction" | "markAwaitingReplyInTransaction"
+    | "lockTargetInTransaction"
+    | "insertInboundMessageInTransaction"
+    | "markAwaitingReplyInTransaction"
   >;
   enquiries: Pick<IMarketingEnquiryRepository, "findByRef">;
   transactionRunner: ITransactionRunner;
@@ -145,14 +147,27 @@ export class EnquiryQuarantineService implements IEnquiryQuarantineDesk {
 
     type Outcome =
       | { ok: true; messageId: string }
-      | { ok: false; error: "already_reviewed" | "sender_confirmation_required" };
+      | {
+          ok: false;
+          error:
+            | "already_reviewed"
+            | "sender_confirmation_required"
+            | "enquiry_not_found"
+            | "enquiry_erased";
+        };
     const result = await this.deps.transactionRunner.runInTransaction(
       async (tx): Promise<Outcome> => {
+        // Read the enquiry again under a row lock, before the held mail (erasure takes the
+        // enquiry first too): an erasure that committed after the check above is seen here, and
+        // one that starts now waits for this transaction and then removes what it filed.
+        const enquiry = await this.deps.inbound.lockTargetInTransaction(tx, target.id);
+        if (!enquiry) return { ok: false, error: "enquiry_not_found" };
+        if (enquiry.email === ERASED_ENQUIRY.email) return { ok: false, error: "enquiry_erased" };
         const locked = await this.deps.quarantine.lockInTransaction(tx, id);
         if (!locked || quarantineReviewRefusal(locked.status))
           return { ok: false, error: "already_reviewed" };
         const fromMatchesEnquirer =
-          locked.fromAddress.trim().toLowerCase() === target.email.trim().toLowerCase();
+          locked.fromAddress.trim().toLowerCase() === enquiry.email.trim().toLowerCase();
         const senderVerified = isAttachedSenderVerified(locked, fromMatchesEnquirer);
         // A sender who is not verified as this enquiry's client is attached only on purpose.
         if (!senderVerified && !input.confirmSenderNotVerified) {

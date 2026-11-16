@@ -44,6 +44,7 @@ function setup(
       options.target === undefined ? (id === ID ? TARGET : null) : options.target,
     ),
     findTargetByOutboundMessageIds: vi.fn(async () => options.outboundTarget ?? null),
+    lockTargetInTransaction: vi.fn(async () => null),
     insertInboundMessageInTransaction: vi.fn(async (_tx, input: NewInboundMessage) => {
       if (inbound.has(input.providerMessageId)) return null;
       inbound.set(input.providerMessageId, input);
