@@ -80,16 +80,16 @@ export function buildSaleroomHeroStats(
 export const SALEROOM_HERO_LIVE_BADGE_LABEL = "Live now";
 
 /**
- * The hero's status badge. A sale whose saleroom is running is live whatever its scheduled start
- * says, so the badge follows the same session status as the "Saleroom live" strip rather than the
- * clock ("Opens Mon 16 Nov" while the floor is already open).
+ * Whether the hero badge reads "Live now". A sale whose saleroom is running is live whatever its
+ * scheduled start says, so the badge follows the same session status as the "Saleroom live" strip
+ * rather than the clock ("Opens Mon 16 Nov" while the floor is already open). A paused floor
+ * still reads "Live now": the sale is in session, and the live lot banner says it is paused.
  */
-export function resolveSaleroomHeroBadge(
+export function isSaleroomHeroLiveNow(
   status: SaleHeroVM["status"],
   liveSession: PublicSaleroomSessionStatus | null | undefined,
-): { status: SaleHeroVM["status"]; label?: string } {
-  if (status === "scheduled" && liveSession && isSaleroomSessionActive(liveSession.status)) {
-    return { status: "active", label: SALEROOM_HERO_LIVE_BADGE_LABEL };
-  }
-  return { status };
+): boolean {
+  return (
+    status === "scheduled" && liveSession != null && isSaleroomSessionActive(liveSession.status)
+  );
 }

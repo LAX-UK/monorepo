@@ -60,7 +60,7 @@ export function LotRealtimeProvider({
         // the id the event names, never this provider's own. The name is `LOT_ENDED_SIGNAL`
         // (`lib/realtime/lot-ended-signal.ts`), written out so the lot page loads no extra module;
         // `lot-realtime-provider.test.tsx` fails if the two drift apart.
-        window.dispatchEvent(new CustomEvent("lax:lot-ended", { detail: p.lotId }));
+        window.dispatchEvent(new CustomEvent("lax:lotEnded", { detail: p.lotId }));
         onLotEnded(p);
       },
       onLotEvent: relay("onLotEvent"),

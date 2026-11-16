@@ -1,6 +1,9 @@
 import { SaleFormatLine } from "@/components/marketing/sale-format-line";
 import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
-import { resolveSaleroomHeroBadge } from "@/components/sections/saleroom/hero/saleroom-hero-copy";
+import {
+  SALEROOM_HERO_LIVE_BADGE_LABEL,
+  isSaleroomHeroLiveNow,
+} from "@/components/sections/saleroom/hero/saleroom-hero-copy";
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
@@ -34,14 +37,18 @@ export function SaleroomHeroMetaRow({
   explainerContext,
 }: Props) {
   const showStatus = LIFECYCLE_STATUSES.includes(hero.status);
-  const badge = resolveSaleroomHeroBadge(hero.status, liveSession);
+  const liveNow = isSaleroomHeroLiveNow(hero.status, liveSession);
 
   return (
     // Raised above the title and image that follow, so the open time panel is not covered.
     <div className="fade-up relative z-10 flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {showStatus ? (
-          <SaleLifecycleBadge status={badge.status} opensAt={hero.startTime} label={badge.label} />
+          <SaleLifecycleBadge
+            status={liveNow ? "active" : hero.status}
+            opensAt={hero.startTime}
+            label={liveNow ? SALEROOM_HERO_LIVE_BADGE_LABEL : undefined}
+          />
         ) : null}
         {showOnlineBiddingGatedBadge ? (
           <StatusBadge tone="neutral">Online bidding opens when live</StatusBadge>

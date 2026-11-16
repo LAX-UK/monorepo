@@ -5,7 +5,7 @@
  * `LotRealtimeProvider` writes the name out rather than importing it, to keep the lot page's
  * scripts at their size; its test fails if the two differ.
  */
-export const LOT_ENDED_SIGNAL = "lax:lot-ended";
+export const LOT_ENDED_SIGNAL = "lax:lotEnded";
 
 export function announceLotEnded(lotId: string): void {
   window.dispatchEvent(new CustomEvent<string>(LOT_ENDED_SIGNAL, { detail: lotId }));

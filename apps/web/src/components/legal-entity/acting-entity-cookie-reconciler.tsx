@@ -35,10 +35,8 @@ export function ActingEntityCookieReconciler({ serverActingId }: Props) {
     const verbose = actingDebugRequested();
     // Before reading: a lingering shared copy would be reported as the cookie value.
     expireSharedActingCookie();
-    const drift = detectActingEntityCookieDrift(
-      serverActingId,
-      typeof document !== "undefined" ? document.cookie : null,
-    );
+    // Effects only run in the browser, so the cookie is always there to read.
+    const drift = detectActingEntityCookieDrift(serverActingId, document.cookie);
     if (!drift) return;
 
     if (!drift.shouldReconcile) {
