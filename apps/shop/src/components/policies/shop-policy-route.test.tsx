@@ -28,6 +28,7 @@ vi.mock("@/lib/policies/shop-policy-publication.server", () => ({
 }));
 vi.mock("@/lib/ecosystem/product-directory.server", () => ({
   loadShopArtBaseUrl: () => "https://lax.art",
+  loadShopBidBaseUrl: () => new URL("https://lax.bid"),
 }));
 vi.mock("@/lib/lax-account-url", () => ({ laxAccountUrl: () => "https://account.lax.art" }));
 
@@ -36,7 +37,7 @@ const apiRegions = {
   notDeliveredTo: [],
 };
 
-async function renderRoute(slug: "delivery" | "returns") {
+async function renderRoute(slug: "delivery" | "returns" | "help") {
   return render(await ShopPolicyRoute({ slug }));
 }
 
@@ -74,5 +75,20 @@ describe("ShopPolicyRoute", () => {
     await renderRoute("returns");
     expect(screen.queryByText("Delivery at a glance")).toBeNull();
     expect(regions.calls).toBe(0);
+  });
+
+  it("links the Help entry for delivery outside the UK from the delivery page, as a crawlable link", async () => {
+    regions.read = async () => apiRegions;
+    await renderRoute("delivery");
+    const link = screen.getByRole("link", { name: "How delivery outside the UK works" });
+    expect(link.getAttribute("href")).toBe("/help#delivery-outside-uk");
+  });
+
+  it("shows the entry on the Help page, with the terms pointing at lax.bid/shipping", async () => {
+    await renderRoute("help");
+    const heading = screen.getByRole("heading", { name: /^Delivery outside the UK/ });
+    expect(heading.closest("section")?.id).toBe("delivery-outside-uk");
+    const terms = screen.getByRole("link", { name: "shipping and logistics" });
+    expect(terms.getAttribute("href")).toBe("https://lax.bid/shipping");
   });
 });

@@ -1,6 +1,9 @@
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
-import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
+import {
+  isSaleroomSessionActive,
+  isSaleroomSessionLive,
+} from "@/lib/saleroom/public-session-status";
 import { toSaleCountdownEndIso } from "@auction/validators";
 
 export type SaleroomHeroLotRef = {
@@ -16,19 +19,14 @@ export function resolveSaleroomHeroLiveTrailing(
     catalogLotRefs: SaleroomHeroLotRef[];
   },
 ): string {
-  const onBlockLot =
-    opts.liveSession?.currentLotId != null
-      ? opts.catalogLotRefs.find((l) => l.id === opts.liveSession?.currentLotId)
-      : null;
-
-  if (
-    opts.liveSession &&
-    isSaleroomSessionLive(opts.liveSession.status) &&
-    onBlockLot &&
-    opts.catalogLotRefs.length > 0
-  ) {
+  const { liveSession, catalogLotRefs } = opts;
+  // The lot on the block, while the floor is live (a paused floor names none).
+  const onBlockId =
+    liveSession && isSaleroomSessionLive(liveSession.status) ? liveSession.currentLotId : null;
+  const onBlockLot = onBlockId == null ? undefined : catalogLotRefs.find((l) => l.id === onBlockId);
+  if (onBlockLot) {
     const lotNum = onBlockLot.lotNumber != null ? `Lot ${onBlockLot.lotNumber}` : onBlockLot.title;
-    return `· ${lotNum} on the block · ${opts.catalogLotRefs.length} lots`;
+    return `· ${lotNum} on the block · ${catalogLotRefs.length} lots`;
   }
 
   if (hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0) {
@@ -43,16 +41,8 @@ export function resolveHeroCountdownEnd(
   now = new Date(),
 ): string | null {
   if (hero.status === "active") {
-    return (
-      toSaleCountdownEndIso(
-        {
-          status: hero.status,
-          endTime: hero.endTime,
-          deliveryMode: hero.deliveryMode,
-        },
-        { now },
-      ) ?? null
-    );
+    // `hero` already has the fields the countdown reads; its status is narrowed to "active" here.
+    return toSaleCountdownEndIso(hero as typeof hero & { status: "active" }, { now }) ?? null;
   }
   if (hero.status === "scheduled") return hero.startTime;
   return null;
@@ -77,4 +67,21 @@ export function buildSaleroomHeroStats(
     ]);
   }
   return stats;
+}
+
+export const SALEROOM_HERO_LIVE_BADGE_LABEL = "Live now";
+
+/**
+ * Whether the hero badge reads "Live now". A sale whose saleroom is running is live whatever its
+ * scheduled start says, so the badge follows the same session status as the "Saleroom live" strip
+ * rather than the clock ("Opens Mon 16 Nov" while the floor is already open). A paused floor
+ * still reads "Live now": the sale is in session, and the live lot banner says it is paused.
+ */
+export function isSaleroomHeroLiveNow(
+  status: SaleHeroVM["status"],
+  liveSession: PublicSaleroomSessionStatus | null | undefined,
+): boolean {
+  return (
+    status === "scheduled" && liveSession != null && isSaleroomSessionActive(liveSession.status)
+  );
 }

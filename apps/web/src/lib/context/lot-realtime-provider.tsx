@@ -2,7 +2,7 @@
 
 import { useLotPorts } from "@/lib/context/lot-ports";
 import type { LotRealtimeCallbacks } from "@/lib/realtime/contracts";
-import type { BidUpdateEvent, LotEndedEvent } from "@auction/types";
+import type { LotEndedEvent } from "@auction/types";
 import {
   type ReactNode,
   createContext,
@@ -41,17 +41,30 @@ export function LotRealtimeProvider({
 
   useEffect(() => {
     if (!lotId) return;
-    const fanOut = (fn: (l: Listener) => void) => {
-      for (const l of listenersRef.current) {
-        fn(l);
-      }
-    };
+    // Each socket callback is relayed to every registered listener, in order. Every callback
+    // takes at most one argument.
+    const relay =
+      (key: keyof Listener) =>
+      (payload?: unknown): void => {
+        for (const listener of listenersRef.current) {
+          (listener[key] as ((payload?: unknown) => void) | undefined)?.(payload);
+        }
+      };
+    const onLotEnded = relay("onLotEnded");
     return realtime.subscribeToLot(lotId, {
-      onBidUpdate: (e: BidUpdateEvent) => fanOut((l) => l.onBidUpdate?.(e)),
-      onLotExtended: (p: unknown) => fanOut((l) => l.onLotExtended?.(p)),
-      onLotEnded: (p: LotEndedEvent) => fanOut((l) => l.onLotEnded?.(p)),
-      onLotEvent: (p: unknown) => fanOut((l) => l.onLotEvent?.(p)),
-      onReconnect: () => fanOut((l) => l.onReconnect?.()),
+      onBidUpdate: relay("onBidUpdate"),
+      onLotExtended: relay("onLotExtended"),
+      onLotEnded: (p: LotEndedEvent) => {
+        // Tells the header's outbid prompt (`lib/navigation/ended-lots.ts`) at once. The socket is
+        // shared by the tab and `lotEnded` is not scoped to a room, so the close is announced by
+        // the id the event names, never this provider's own. The name is `LOT_ENDED_SIGNAL`
+        // (`lib/realtime/lot-ended-signal.ts`), written out so the lot page loads no extra module;
+        // `lot-realtime-provider.test.tsx` fails if the two drift apart.
+        window.dispatchEvent(new CustomEvent("lax:lotEnded", { detail: p.lotId }));
+        onLotEnded(p);
+      },
+      onLotEvent: relay("onLotEvent"),
+      onReconnect: relay("onReconnect"),
     });
   }, [lotId, realtime]);
 

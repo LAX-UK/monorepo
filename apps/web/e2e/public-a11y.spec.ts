@@ -48,12 +48,38 @@ async function scan(page: Page, route: string, variant: string) {
   }
 }
 
+/** A 502/503/504 from test.lax.bid means the service was unreachable, so it must stay visible: one
+ * retry of a single navigation is allowed (after a short pause), and any test that needed it still
+ * FAILS with the route, status and time. Other statuses are never retried. */
+const RETRY_STATUSES = new Set([502, 503, 504]);
+const RETRY_DELAY_MS = 10_000;
+
+async function navigate(page: Page, path: string) {
+  const res = await page.goto(path, { waitUntil: "domcontentloaded" });
+  const status = res?.status();
+  if (status === undefined || !RETRY_STATUSES.has(status)) return res;
+  const at = new Date().toISOString();
+  console.warn(`[public-a11y] ${path} answered ${status} at ${at}; retrying once`);
+  await page.waitForTimeout(RETRY_DELAY_MS);
+  const retry = await page.goto(path, { waitUntil: "domcontentloaded" });
+  // Soft: the scan still runs, but the run is red so a crashing or restarting service is seen.
+  expect
+    .soft(
+      false,
+      `${path} answered ${status} at ${at} and needed a retry (retry answered ${retry?.status()})`,
+    )
+    .toBeTruthy();
+  return retry;
+}
+
 async function open(page: Page, route: PublicRoute) {
-  const res = await page.goto(route.path, { waitUntil: "domcontentloaded" });
+  const res = await navigate(page, route.path);
+  const status = res?.status();
   // An unknown address answers a real 404 on purpose. A lot, sale or artist that does not exist
   // streams its not-found page behind the loading shell, so its status is already 200.
-  if (route.name === "not-found") expect(res?.status(), route.path).toBe(404);
-  else if (!route.name.includes("not-found")) expect(res?.ok(), route.path).toBeTruthy();
+  if (route.name === "not-found") expect(status, `${route.path} answered ${status}`).toBe(404);
+  else if (!route.name.includes("not-found"))
+    expect(res?.ok(), `${route.path} answered ${status}, expected 2xx`).toBeTruthy();
   await settle(page);
 }
 

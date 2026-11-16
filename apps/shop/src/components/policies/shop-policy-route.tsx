@@ -11,7 +11,7 @@ import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
 import { buildDeliveryGlance } from "@/lib/delivery/delivery-glance";
 import { readDeliveryRegions } from "@/lib/delivery/delivery-regions.server";
-import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
+import { loadShopArtBaseUrl, loadShopBidBaseUrl } from "@/lib/ecosystem/product-directory.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import {
   loadLinkableShopPolicies,
@@ -28,6 +28,7 @@ function documentFor(slug: ShopPolicySlug) {
       ordersHref: SHOP_ORDERS_HREF,
       accountHref: laxAccountUrl(),
       artBaseUrl: loadShopArtBaseUrl(),
+      bidBaseUrl: loadShopBidBaseUrl(),
     });
   }
   return SHOP_POLICY_DOCUMENTS[slug];
