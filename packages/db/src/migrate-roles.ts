@@ -629,12 +629,12 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  * reached the CRM. shop_app reads them and never writes: the worker owns both.
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
+/** The Shop demo seed checks the database's mark (0398) before it writes anything. */
+export const SHOP_DEMO_SEED_TARGET_READ_TABLES = ["demo_seed_target"] as const;
 /**
  * "Download my data" for LAX Shop reads a person's suppression entry and newsletter sign-ups from
  * the shared mail tables. shop_app reads them and never writes: the worker and the Bid API own them.
  */
-/** The Shop demo seed checks the database's mark (0398) before it writes anything. */
-export const SHOP_DEMO_SEED_TARGET_READ_TABLES = ["demo_seed_target"] as const;
 export const SHOP_SUBJECT_EXPORT_READ_TABLES = [
   "email_suppression",
   "newsletter_signup_log",

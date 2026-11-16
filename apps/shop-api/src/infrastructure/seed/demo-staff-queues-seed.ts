@@ -12,13 +12,17 @@
  * - **Disputes** (`/disputes`): a dispute recorded by the Stripe dispute recorder (processed-event
  *   claim, dispute row, payout block, `shop.dispute.opened` event), with no ops alert.
  *
+ * The events the real handlers write here carry the producer `shop-api`, not `demo-seed`. No
+ * worker projector or fan-out consumes `shop.refund.requested` or `shop.dispute.opened` today; a
+ * consumer added later must skip these demo rows itself.
+ *
  * Insert-once: each item is created only if its fixed key is absent, and nothing it created is
  * changed on a later run, so work staff did on an item (a retried refund, a closed dispute) stays.
  * Test and local databases only: it refuses a database without the demo seed mark (0398).
  */
 import { type Database, assertDemoSeedDatabase } from "@auction/db";
 import { shopDispute, shopFulfilment, shopOrder, shopRefund } from "@auction/db/schema";
-import { and, asc, eq, inArray, like } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, like } from "drizzle-orm";
 import { createDrizzleShopUnitOfWork } from "../drizzle-shop-transaction-effects.js";
 import { createRequestRefundHandler } from "../handlers/admin/request-refund.handler.js";
 import { recordStripeDisputeForOrder } from "../handlers/webhooks/stripe-dispute.handler.js";
@@ -30,6 +34,8 @@ export const DEMO_QUEUES_ACTOR = "seed:demo-staff-queues";
 export const DEMO_REFUND_KEY = "seed:demo-staff-queues:refund:0001";
 export const DEMO_DISPUTE_ID = "dp_demo_example_shop_0001";
 export const DEMO_DISPUTE_EVENT_ID = "evt_demo_example_shop_dispute_0001";
+/** Invented payment intent of the demo dispute's order (Stripe-style, nothing real). */
+const DEMO_DISPUTE_PAYMENT_INTENT = "pi_demo_example_shop_0001";
 /** What the scheduler records when a refund's order has no payment intent (a terminal failure). */
 export const MISSING_INTENT_ERROR = "Order missing stripe_payment_intent_id";
 const PAID_STATUSES = ["paid", "partially_refunded"] as const;
@@ -72,13 +78,20 @@ export async function seedDemoStaffQueues(db: Database): Promise<DemoStaffQueueC
 
   if (refund) await seedFailedRefund(db, refund);
   if (dispute) {
+    // The dispute names the payment intent its order was paid with, as the webhook would match it.
+    // Only an order that has none yet is given one. The refund (requested above) already holds its
+    // failed outcome, so it is not retried because of this.
+    await db
+      .update(shopOrder)
+      .set({ stripePaymentIntentId: DEMO_DISPUTE_PAYMENT_INTENT })
+      .where(and(eq(shopOrder.id, dispute.id), isNull(shopOrder.stripePaymentIntentId)));
     await recordStripeDisputeForOrder(
       db,
       { orderId: dispute.id },
       {
         eventId: DEMO_DISPUTE_EVENT_ID,
         stripeDisputeId: DEMO_DISPUTE_ID,
-        paymentIntentId: "pi_demo_example_shop_0001",
+        paymentIntentId: DEMO_DISPUTE_PAYMENT_INTENT,
         amountPence: dispute.totalPence,
         status: "opened",
       },
