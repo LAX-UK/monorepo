@@ -236,11 +236,13 @@ export interface ICollectionStorageRepository {
   /**
    * Lots paid for and still waiting at the place (not handed over, ended or on their way by
    * courier, nor in a live booking), payment cleared earliest first, with what prices their
-   * storage. At most `limit`; `more` when there are others.
+   * storage. At most `limit`; `more` when there are others. With `lotId`, only that lot (empty
+   * when it is not waiting here), however many others are waiting.
    */
   waitingLotsAt(
     venueId: string,
     limit: number,
+    lotId?: string,
   ): Promise<{ lots: WaitingLotAtPlace[]; more: boolean }>;
 
   /** The audit of a place, newest first. */

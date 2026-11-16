@@ -65,8 +65,16 @@ export class CollectionStorageFollowUpService implements ICollectionStorageFollo
   }
 
   /** Every waiting lot at the place, priced on `today`. Lots the rules refuse are left out. */
-  private async priced(venueId: string, today: string): Promise<{ lots: Priced[]; more: boolean }> {
-    const { lots, more } = await this.deps.storage.waitingLotsAt(venueId, WAITING_LOTS_READ_LIMIT);
+  private async priced(
+    venueId: string,
+    today: string,
+    lotId?: string,
+  ): Promise<{ lots: Priced[]; more: boolean }> {
+    const { lots, more } = await this.deps.storage.waitingLotsAt(
+      venueId,
+      WAITING_LOTS_READ_LIMIT,
+      lotId,
+    );
     const priced: Priced[] = [];
     for (const lot of lots) {
       const { calendar } = lot.storage;
@@ -107,6 +115,7 @@ export class CollectionStorageFollowUpService implements ICollectionStorageFollo
       chargingOn: lots[0]?.lot.storage.chargingOn ?? (await this.chargingOn(venueId)),
       lots: over.slice(0, OVERDUE_LOTS_LIMIT),
       more: more || over.length > OVERDUE_LOTS_LIMIT,
+      total: over.length,
     };
   }
 
@@ -118,7 +127,8 @@ export class CollectionStorageFollowUpService implements ICollectionStorageFollo
   /** The waiting lot at the place, priced today, or `null` when it is not waiting there. */
   private async find(venueId: string, lotId: string): Promise<Priced | null> {
     const today = londonDateKey(this.deps.now());
-    const { lots } = await this.priced(venueId, today);
+    // The one lot is read directly, so a place with more than the list's limit still finds it.
+    const { lots } = await this.priced(venueId, today, lotId);
     return lots.find((entry) => entry.lot.lotId === lotId) ?? null;
   }
 

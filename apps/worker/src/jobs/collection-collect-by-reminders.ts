@@ -29,7 +29,7 @@ import {
  * one already booked or collected, is left out. Nothing is sold or disposed of (ST16).
  */
 export async function runCollectByRemindersJob(options: {
-  reader: Pick<ICollectByReader, "storedLotsWaiting" | "remindedLotIds">;
+  reader: Pick<ICollectByReader, "storedLotsWaiting" | "remindedLotIds" | "withAccountLock">;
   notices: Pick<ICollectionNoticeReader, "accountRecipients">;
   facts: ICollectionLotFactsReader;
   emailService: IEmailService;
@@ -53,26 +53,37 @@ export async function runCollectByRemindersJob(options: {
   let queued = 0;
   for (const group of groups) {
     try {
-      const records = await facts.read(group.lots.map((lot) => lot.lotId));
-      const lots = group.lots.filter((lot) => {
-        const record = records.get(lot.lotId);
-        return record !== undefined && collectionEligibility(record.facts).eligible;
-      });
-      if (lots.length === 0) continue;
-      const winners = lots.flatMap((lot) => (lot.winnerId ? [lot.winnerId] : []));
-      const people = await notices.accountRecipients(group.legalEntityId, winners);
-      for (const email of collectByEmailsFor({ ...group, lots }, people, { webOrigin, now: at })) {
-        const userId = email.userId as string;
-        const reminded = await reader.remindedLotIds({
-          keyPrefix: collectByKeyPrefix(group, userId),
-          userId,
-          today,
-          template: collectByTemplateOf(group),
+      // One sweep per account at a time: the check of the outbox and the queueing below are not
+      // atomic, and two sweeps that see different sets of lots would each send an email.
+      const locked = await reader.withAccountLock(group.legalEntityId, async () => {
+        let sent = 0;
+        const records = await facts.read(group.lots.map((lot) => lot.lotId));
+        const lots = group.lots.filter((lot) => {
+          const record = records.get(lot.lotId);
+          return record !== undefined && collectionEligibility(record.facts).eligible;
         });
-        if (email.vars.lotIds.every((id) => reminded.has(id))) continue;
-        await emailService.enqueue(email);
-        queued += 1;
-      }
+        if (lots.length === 0) return 0;
+        const winners = lots.flatMap((lot) => (lot.winnerId ? [lot.winnerId] : []));
+        const people = await notices.accountRecipients(group.legalEntityId, winners);
+        for (const email of collectByEmailsFor({ ...group, lots }, people, {
+          webOrigin,
+          now: at,
+        })) {
+          const userId = email.userId as string;
+          const reminded = await reader.remindedLotIds({
+            keyPrefix: collectByKeyPrefix(group, userId),
+            userId,
+            today,
+            template: collectByTemplateOf(group),
+          });
+          if (email.vars.lotIds.every((id) => reminded.has(id))) continue;
+          await emailService.enqueue(email);
+          sent += 1;
+        }
+        return sent;
+      });
+      if (locked.ran) queued += locked.value;
+      else log.info({ legalEntityId: group.legalEntityId }, "collection_collect_by_account_busy");
     } catch (err) {
       // One account that cannot be read must not stop the rest being reminded, and must not be
       // silent either: a missing grant fails every group the same way.

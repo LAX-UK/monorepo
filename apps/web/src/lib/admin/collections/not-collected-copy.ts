@@ -1,14 +1,20 @@
 /**
  * The words of the Not collected tab's lots past their collect-by day, and the two reason dialogs
  * that act on them (docs/design/storage-terms.md, "Not collected tab"). Money is formatted by the
- * domain storage formatter; this file holds only staff wording.
+ * domain storage formatter (`formatStoragePence`, in the view model); this file holds only staff
+ * wording, and its day counts come from the domain constants so they cannot drift.
  */
+import { MAX_STORAGE_EXTENSION_DAYS, STORAGE_FOLLOW_UP_DAYS } from "@auction/domain";
+
 export const NOT_COLLECTED_COPY = {
   section: {
     title: "Past collect-by",
     description:
       "Works still here after their collect-by day, longest over first. Storage counts from the day after.",
     count: (n: number) => `${n} ${n === 1 ? "lot" : "lots"} past collect-by`,
+    /** The title of the notice when the list is cut: the true total, then how many are shown. */
+    moreTitle: (total: number, shown: number) =>
+      `${total} lots past collect-by, showing the ${shown} longest over`,
     more: "Showing the longest over. More lots are past their day; they appear as these are collected.",
   },
   visitsTitle: "Missed visits",
@@ -33,7 +39,7 @@ export const NOT_COLLECTED_COPY = {
     bandLabel: "Band",
     band: { standard: "Standard", large: "Large" },
     followUp: "Follow up",
-    followUpHint: "60 days or more past collect-by. Contact the buyer in person.",
+    followUpHint: `${STORAGE_FOLLOW_UP_DAYS} days or more past collect-by. Contact the buyer in person.`,
     waived: "Charges waived",
     waivedBadge: "Waived",
     legacy: "Won before storage terms: nothing is charged.",
@@ -45,13 +51,14 @@ export const NOT_COLLECTED_COPY = {
   actions: {
     extend: "Extend free storage",
     waive: "Waive charges",
-    extendCapped: "This lot has had the most free days it can: 30.",
+    extendCapped: `This lot has had the most free days it can: ${MAX_STORAGE_EXTENSION_DAYS}.`,
   },
   extend: {
     title: "Extend free storage",
     description: (lot: string) => `${lot}. The buyer's page updates at once.`,
     daysLabel: "Days to add",
-    daysHint: (max: number) => `From 1 to ${max}. All extensions on a lot stop at 30 days.`,
+    daysHint: (max: number) =>
+      `From 1 to ${max}. All extensions on a lot stop at ${MAX_STORAGE_EXTENSION_DAYS} days.`,
     reasonLabel: "Reason",
     reasonHint: "Kept in the lot's storage history with your name.",
     effect: (days: number) =>
@@ -66,8 +73,10 @@ export const NOT_COLLECTED_COPY = {
     description: (lot: string) => `${lot}. The buyer's page updates at once.`,
     reasonLabel: "Reason",
     reasonHint: "Kept in the lot's storage history with your name.",
-    effect: (amount: string) =>
-      `${amount} so far will not be charged, and no more storage will build up on this lot. This can't be undone here.`,
+    effect: (amount: string, chargingOn: boolean) =>
+      chargingOn
+        ? `${amount} so far will not be charged, and no more storage will build up on this lot. This can't be undone here.`
+        : `${amount} so far is what would be due. Nothing is charged while charging is off; if it is switched on, this lot will not be charged, and no more storage will build up on it. This can't be undone here.`,
     submit: "Waive charges",
     cancel: "Cancel",
     dirtyLabel: "the waiver",

@@ -16,6 +16,7 @@ const copyOf = (vars: Vars) =>
     collectByLabel: vars.collectByLabel,
     placeName: vars.placeName,
     lotCount: vars.lots.length,
+    chargingOn: vars.chargingOn === true,
     withRates: (vars.lotRates ?? []).some((rate) => Boolean(rate)),
   });
 

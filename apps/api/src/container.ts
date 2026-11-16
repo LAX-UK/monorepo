@@ -547,6 +547,7 @@ export function createContainer(env: Env): Container {
     buyerAgentAuthorisations: buyerAgents.mine,
     log: createBaseLogger(env),
   });
+  const appLog = createAppLogger(env);
   const organisationTeam = createOrganisationTeamServices({
     db,
     events: platform.domainEventSink,
@@ -557,7 +558,7 @@ export function createContainer(env: Env): Container {
       env.APP_ENV === "development" && infra.stripeClientFactory.get() === null,
     members: repos.legalEntityMemberRepository,
     identity: identityIssuer,
-    log: createAppLogger(env),
+    log: appLog,
   });
 
   const collectionSettingsRepository = new DrizzleCollectionSettingsRepository(db);
@@ -574,12 +575,11 @@ export function createContainer(env: Env): Container {
     places: collectionSettingsRepository,
     now: () => new Date(),
   });
-  const storageLog = createAppLogger(env);
   const collectionStorageFollowUp = new CollectionStorageFollowUpService({
     storage: collectionStorageRepository,
     places: collectionSettingsRepository,
     now: () => new Date(),
-    log: (message, detail) => storageLog.error(detail, message),
+    log: (message, detail) => appLog.error(detail, message),
   });
 
   const collectionBookings = new DrizzleCollectionBookingRepository(db);
@@ -598,7 +598,7 @@ export function createContainer(env: Env): Container {
     repos.atgSaleSettingsWriter,
     infra.atgSyncQueue,
     env.ATG_WHITE_LABEL_BASE_URL ?? null,
-    createAppLogger(env),
+    appLog,
   );
 
   const inventoryMoves = createInventoryMoveServices({

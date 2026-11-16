@@ -189,6 +189,13 @@ describe("Extend free storage", () => {
   });
 });
 
+describe("a list cut short", () => {
+  it("titles the notice with the true total, not the number shown", () => {
+    render(<OverdueLots overdue={{ ...OVERDUE, more: true, total: 340 }} canExtend canWaive />);
+    expect(screen.getByText("340 lots past collect-by, showing the 2 longest over")).toBeTruthy();
+  });
+});
+
 describe("Waive charges", () => {
   const openWaive = () => {
     render(<OverdueLots overdue={OVERDUE} canExtend={false} canWaive />);
@@ -198,9 +205,19 @@ describe("Waive charges", () => {
     return screen.getByRole("dialog", { name: "Waive storage charges" });
   };
 
-  it("says what will not be charged, and asks only for the reason, inline", () => {
-    const dialog = openWaive();
+  it("with charging on, says what will not be charged", () => {
+    render(<OverdueLots overdue={{ ...OVERDUE, chargingOn: true }} canExtend={false} canWaive />);
+    fireEvent.click(
+      within(row("Lot 31 · Harbour at Dusk")).getByRole("button", { name: "Waive charges" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Waive storage charges" });
     expect(within(dialog).getByText(/^£396.00 so far will not be charged/)).toBeTruthy();
+  });
+
+  it("with charging off, does not say anything is charged, and asks only for the reason, inline", () => {
+    const dialog = openWaive();
+    expect(within(dialog).getByText(/^£396.00 so far is what would be due/)).toBeTruthy();
+    expect(within(dialog).queryByText(/so far will not be charged/)).toBeNull();
     fireEvent.click(within(dialog).getByRole("button", { name: "Waive charges" }));
     expect(within(dialog).queryByText(/things? to fix/)).toBeNull();
     expect(document.activeElement).toBe(within(dialog).getByRole("textbox", { name: /^Reason/ }));

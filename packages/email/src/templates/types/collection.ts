@@ -143,6 +143,8 @@ type CollectionTemplateVars = {
      * Absent on reminders queued before the rates were added.
      */
     lotRates?: (string | null)[] | null;
+    /** Raise storage invoices is on. Absent (a row queued earlier) reads as off. */
+    chargingOn?: boolean;
     /** The booking page for these lots. */
     bookUrl: string;
     /** The storage section of the shipping page. */

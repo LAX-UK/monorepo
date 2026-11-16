@@ -113,4 +113,6 @@ export type StaffOverdueLots = {
   lots: StaffOverdueLot[];
   /** More lots are over than the list shows. */
   more: boolean;
+  /** How many lots are past their collect-by day in all, of which `lots` lists the longest over. */
+  total: number;
 };

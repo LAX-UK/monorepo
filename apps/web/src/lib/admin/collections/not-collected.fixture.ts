@@ -40,5 +40,6 @@ export const OVERDUE: StaffOverdueLots = {
   today: STORAGE_TODAY,
   chargingOn: false,
   more: false,
+  total: 2,
   lots: [OVERDUE_FOLLOW_UP, OVERDUE_LOT],
 };

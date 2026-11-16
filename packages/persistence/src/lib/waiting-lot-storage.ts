@@ -5,7 +5,9 @@ import {
   type StorageCalendar,
   type StorageQuoteHold,
   addDaysToKey,
+  daysBetweenKeys,
   londonDateKey,
+  storageQuotePauses,
   storageTermsForLot,
 } from "@auction/domain";
 import { desc, inArray, sql } from "drizzle-orm";
@@ -40,8 +42,13 @@ export type WaitingLotStorage = {
  * reach further than calendar days, so twice the free period and the extension after it. The
  * buyer purchases read and this reader use the same reach.
  */
-export function storageCalendarReach(clearedOn: DateKey, pricing: LotStoragePricing): DateKey {
-  const reach = storageTermsForLot(pricing.terms).freeDays * 2 + pricing.extensionDays;
+export function storageCalendarReach(
+  clearedOn: DateKey,
+  pricing: LotStoragePricing,
+  /** Days the clock is paused for a shipping quote: they push the collect-by day later too. */
+  pausedDays = 0,
+): DateKey {
+  const reach = storageTermsForLot(pricing.terms).freeDays * 2 + pricing.extensionDays + pausedDays;
   return addDaysToKey(clearedOn, reach);
 }
 
@@ -89,10 +96,15 @@ export async function readWaitingLotStorage(
     quoteOf.set(q.lotId, { status: q.status, requestedAt: q.requestedAt, quotedAt: q.quotedAt });
   }
   const none: LotStoragePricing = { terms: null, large: false, extensionDays: 0, waived: false };
+  const today = londonDateKey(new Date());
   const counted = new Map<string, DateKey[]>();
   for (const l of lots) {
     const clearedOn = londonDateKey(l.clearedAt);
-    const reach = storageCalendarReach(clearedOn, pricing.get(l.lotId) ?? none);
+    const pausedDays = storageQuotePauses(quoteOf.get(l.lotId), today).reduce(
+      (total, { from, to }) => total + daysBetweenKeys(from, to) + 1,
+      0,
+    );
+    const reach = storageCalendarReach(clearedOn, pricing.get(l.lotId) ?? none, pausedDays);
     counted.set(l.venueId, [...(counted.get(l.venueId) ?? []), clearedOn, reach]);
   }
   const ranges = new Map(

@@ -69,6 +69,7 @@ export function OverdueLots({ overdue: initial, canExtend, canWaive }: Props) {
         lotId={open.lot.lotId}
         lotLine={C.row.lotLine(open.lot.lotNumber, open.lot.title)}
         amount={overdueRowView(open.lot, now).storage}
+        chargingOn={overdue.chargingOn}
         onClose={() => setOpen(null)}
         onSaved={(next) =>
           saved(next, C.waive.toast(C.row.lotLine(open.lot.lotNumber, open.lot.title)))
@@ -89,7 +90,7 @@ export function OverdueLots({ overdue: initial, canExtend, canWaive }: Props) {
             </Notice>
           )}
           {overdue.more ? (
-            <Notice tone="info" title={C.section.count(rows.length)}>
+            <Notice tone="info" title={C.section.moreTitle(overdue.total, rows.length)}>
               {C.section.more}
             </Notice>
           ) : null}

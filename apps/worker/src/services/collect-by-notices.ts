@@ -197,6 +197,7 @@ export function collectByEmailsFor(
         vars: {
           ...common,
           when: kind,
+          chargingOn: group.chargingOn,
           lotRates: own.lots.map(({ priced }) =>
             formatStorageRateAfter(priced.charge, priced.terms, priced.band, config.now),
           ),

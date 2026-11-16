@@ -1099,6 +1099,7 @@ export {
 } from "./collection-reference.js";
 export {
   addDaysToKey,
+  daysBetweenKeys,
   formatCollectionDay,
   formatCollectionVisit,
   formatCollectionWhen,

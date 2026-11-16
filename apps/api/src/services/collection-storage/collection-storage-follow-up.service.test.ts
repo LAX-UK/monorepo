@@ -49,6 +49,28 @@ function setup() {
   return { service, storage, log };
 }
 
+describe("a place with more waiting lots than the list reads", () => {
+  it("finds the one lot to extend or waive directly, and reports the true total when cut", async () => {
+    const { service, storage } = setup();
+    // 205 lots past their day, listed 200 at a time, and a waiting lot beyond the read limit.
+    const many = Array.from({ length: 205 }, (_, n) =>
+      waitingLot({
+        lotId: `e1000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+        clearedAt: new Date("2026-08-01T10:00:00Z"),
+      }),
+    );
+    storage.lots.set(VENUE, [...many, waitingLot({ lotId: OVER })]);
+    const list = (await service.overdue(VENUE))._unsafeUnwrap();
+    expect(list.lots).toHaveLength(200);
+    expect(list.more).toBe(true);
+    expect(list.total).toBe(206);
+    const asked = vi.spyOn(storage, "waitingLotsAt");
+    const waived = await service.waive(ACTOR, VENUE, OVER, { reason: "Agreed with the buyer" });
+    expect(waived.isOk()).toBe(true);
+    expect(asked).toHaveBeenCalledWith(VENUE, expect.any(Number), OVER);
+  });
+});
+
 describe("lots left past their collect-by day", () => {
   it("lists only lots past their day, longest over first, priced as the buyer's page prices them", async () => {
     const { service } = setup();
@@ -56,6 +78,7 @@ describe("lots left past their collect-by day", () => {
     expect(result.today).toBe("2026-11-16");
     expect(result.chargingOn).toBe(false);
     expect(result.more).toBe(false);
+    expect(result.total).toBe(3);
     expect(result.lots.map((l) => l.lotId)).toEqual([LONG_OVER, LEGACY, OVER]);
     expect(result.lots[0]).toMatchObject({
       collectBy: "2026-08-17",

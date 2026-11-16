@@ -38,6 +38,16 @@ export type CollectionLotEmailTemplate =
 /** What the storage reminders and the "you can book" emails read. */
 export interface ICollectByReader {
   /**
+   * Runs `work` while holding a lock on the account (a transaction-scoped advisory lock), so two
+   * sweeps cannot check the outbox and queue for the same account at once. `ran` is false, and
+   * `work` is not run, when another sweep holds it: that sweep is covering the account.
+   */
+  withAccountLock<T>(
+    legalEntityId: string,
+    work: () => Promise<T>,
+  ): Promise<{ ran: true; value: T } | { ran: false }>;
+
+  /**
    * Every lot still waiting at a place that takes online bookings (not handed over, ended or on its
    * way by courier, nor in a live booking) whose payment cleared on or before `today` (a London
    * day), with what prices its storage. The storage rules then decide which reminder, if any, each

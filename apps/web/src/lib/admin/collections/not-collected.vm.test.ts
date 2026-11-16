@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OVERDUE_FOLLOW_UP, OVERDUE_LOT } from "./not-collected.fixture";
 import {
-  formatPence,
   overdueRowView,
   parseExtensionDays,
   validateExtendDraft,
@@ -60,9 +59,9 @@ describe("a lot past its collect-by day, as a row", () => {
     expect(overdueRowView({ ...OVERDUE_LOT, lotNumber: null }, NOW).lotLine).toBe("Lowland Storm");
   });
 
-  it("shows pence always", () => {
-    expect(formatPence(0)).toBe("£0.00");
-    expect(formatPence(123_456)).toBe("£1,234.56");
+  it("shows pence always, through the domain formatter", () => {
+    expect(overdueRowView({ ...OVERDUE_LOT, amountPence: 123_456 }, NOW).storage).toBe("£1,234.56");
+    expect(overdueRowView({ ...OVERDUE_LOT, amountPence: 500 }, NOW).storage).toBe("£5.00");
   });
 });
 

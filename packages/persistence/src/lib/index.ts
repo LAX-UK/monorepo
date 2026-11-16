@@ -165,4 +165,5 @@ export {
   type WaitingLotRef,
   type WaitingLotStorage,
 } from "./waiting-lot-storage.js";
+export { lotAwaitsCollectionSql } from "./lot-awaits-collection.js";
 export type { LotStoragePricing } from "./purchase-storage-pricing.js";

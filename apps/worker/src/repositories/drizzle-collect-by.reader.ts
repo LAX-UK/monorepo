@@ -1,27 +1,7 @@
 import type { Database } from "@auction/db";
-import {
-  collectionBookingLot,
-  collectionPlace,
-  emailOutbox,
-  lot,
-  lotFulfilment,
-  sale,
-  venue,
-} from "@auction/db/schema";
-import { readWaitingLotStorage } from "@auction/persistence/lib";
-import {
-  type SQL,
-  and,
-  asc,
-  eq,
-  gte,
-  isNotNull,
-  isNull,
-  like,
-  notExists,
-  or,
-  sql,
-} from "drizzle-orm";
+import { collectionPlace, emailOutbox, lot, lotFulfilment, sale, venue } from "@auction/db/schema";
+import { lotAwaitsCollectionSql, readWaitingLotStorage } from "@auction/persistence/lib";
+import { type SQL, and, asc, eq, gte, isNotNull, like, or, sql } from "drizzle-orm";
 import type {
   CollectionLotEmailTemplate,
   ICollectByReader,
@@ -33,6 +13,24 @@ const LONDON = "Europe/London";
 /** Reads the purchased lots waiting at places that are set up for collection. */
 export class DrizzleCollectByReader implements ICollectByReader {
   constructor(private readonly db: Database) {}
+
+  async withAccountLock<T>(
+    legalEntityId: string,
+    work: () => Promise<T>,
+  ): Promise<{ ran: true; value: T } | { ran: false }> {
+    // The lock lives as long as this transaction, which only holds it: the work reads and queues
+    // on its own connections, and a crash frees the lock with the connection.
+    return this.db.transaction(async (tx) => {
+      const rows = await tx.execute<{ locked: boolean }>(
+        sql`select pg_try_advisory_xact_lock(hashtextextended(${`collect-by:${legalEntityId}`}, 0)) as locked`,
+      );
+      const first = (
+        Array.isArray(rows) ? rows : (rows as { rows: { locked: boolean }[] }).rows
+      )[0];
+      if (first?.locked !== true) return { ran: false as const };
+      return { ran: true as const, value: await work() };
+    });
+  }
 
   async storedLotsWaiting(query: { today: string }): Promise<StoredLot[]> {
     const lots = await this.waitingLots([
@@ -99,24 +97,9 @@ export class DrizzleCollectByReader implements ICollectByReader {
           ...when,
           isNotNull(lot.buyerLegalEntityId),
           eq(lot.status, "ended"),
-          isNull(lot.deletedAt),
-          // The exclusions from here to the booking check are the domain's `awaitsCollection`
-          // (with online booking above), which the purchase page's notice uses; the
-          // integration test checks the two agree case by case.
-          isNull(sale.deletedAt),
-          sql`${lotFulfilment.status} not in ('awaiting_payment', 'delivered', 'cancelled', 'in_transit')`,
-          or(
-            sql`${lotFulfilment.fulfilmentMethod} is null`,
-            sql`${lotFulfilment.fulfilmentMethod} <> 'shipping'`,
-          ),
-          notExists(
-            this.db
-              .select({ one: collectionBookingLot.lotId })
-              .from(collectionBookingLot)
-              .where(
-                and(eq(collectionBookingLot.lotId, lot.id), eq(collectionBookingLot.active, true)),
-              ),
-          ),
+          // The domain's `awaitsCollection` (with online booking above), shared with the staff
+          // Not collected tab; the integration test checks it against the domain case by case.
+          lotAwaitsCollectionSql(this.db),
         ),
       )
       .orderBy(asc(lotFulfilment.paymentClearedAt), asc(lot.id));

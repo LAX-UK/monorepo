@@ -1,7 +1,6 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
-  collectionBookingLot,
   collectionPlace,
   collectionStorageAudit,
   collectionStorageExtension,
@@ -13,20 +12,7 @@ import {
   sale,
   venue,
 } from "@auction/db/schema";
-import {
-  type SQL,
-  and,
-  asc,
-  desc,
-  eq,
-  gt,
-  isNotNull,
-  isNull,
-  lte,
-  notExists,
-  or,
-  sql,
-} from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, gt, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import { MAX_STORAGE_EXTENSION_DAYS_PER_LOT } from "../interfaces/collection-storage.repository.js";
 import type {
   AddStorageExtensionOutcome,
@@ -49,6 +35,7 @@ import type {
   StorageWaiverRecord,
   WaitingLotAtPlace,
 } from "../interfaces/collection-storage.repository.js";
+import { lotAwaitsCollectionSql } from "../lib/lot-awaits-collection.js";
 import { readWaitingLotStorage } from "../lib/waiting-lot-storage.js";
 import { lockCollectionPlace } from "./collection-place-lock.js";
 import { ensureCollectionPlace } from "./drizzle-collection-place-setup.js";
@@ -421,6 +408,7 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
   async waitingLotsAt(
     venueId: string,
     limit: number,
+    lotId?: string,
   ): Promise<{ lots: WaitingLotAtPlace[]; more: boolean }> {
     const rows = await this.db
       .select({
@@ -442,23 +430,8 @@ export class DrizzleCollectionStorageRepository implements ICollectionStorageRep
           eq(sale.venueId, venueId),
           isNotNull(lotFulfilment.paymentClearedAt),
           eq(lot.status, "ended"),
-          isNull(lot.deletedAt),
-          isNull(sale.deletedAt),
-          // The domain's `awaitsCollection`: not handed over, ended or on its way by courier, and
-          // not in a live booking (a booked lot is on the Upcoming tab).
-          sql`${lotFulfilment.status} not in ('awaiting_payment', 'delivered', 'cancelled', 'in_transit')`,
-          or(
-            sql`${lotFulfilment.fulfilmentMethod} is null`,
-            sql`${lotFulfilment.fulfilmentMethod} <> 'shipping'`,
-          ),
-          notExists(
-            this.db
-              .select({ one: collectionBookingLot.lotId })
-              .from(collectionBookingLot)
-              .where(
-                and(eq(collectionBookingLot.lotId, lot.id), eq(collectionBookingLot.active, true)),
-              ),
-          ),
+          lotAwaitsCollectionSql(this.db),
+          lotId ? eq(lot.id, lotId) : undefined,
         ),
       )
       .orderBy(asc(lotFulfilment.paymentClearedAt), asc(lot.id))

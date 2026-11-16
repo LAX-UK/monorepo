@@ -24,6 +24,8 @@ type Props = {
   lotLine: string;
   /** "£42.00": what has built up so far. */
   amount: string;
+  /** The place raises storage invoices; off, the amount is only what would be due. */
+  chargingOn: boolean;
   onClose: () => void;
   onSaved: (lots: StaffOverdueLots) => void;
 };
@@ -33,7 +35,15 @@ type Props = {
  * shows its inline error, with no summary (the storage terms design's exception to FRM-4). Finance
  * only; the API asks for a recent sign-in, and a stale one sends the person to sign in again.
  */
-export function WaiveStorageDialog({ venueId, lotId, lotLine, amount, onClose, onSaved }: Props) {
+export function WaiveStorageDialog({
+  venueId,
+  lotId,
+  lotLine,
+  amount,
+  chargingOn,
+  onClose,
+  onSaved,
+}: Props) {
   const ids = useId();
   const formId = `${ids}-form`;
   const reasonId = `${ids}-reason`;
@@ -107,7 +117,7 @@ export function WaiveStorageDialog({ venueId, lotId, lotLine, amount, onClose, o
             {failure.message}
           </Notice>
         ) : null}
-        <Notice tone="warning" quiet title={C.effect(amount)}>
+        <Notice tone="warning" quiet title={C.effect(amount, chargingOn)}>
           {null}
         </Notice>
         <Field

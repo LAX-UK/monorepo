@@ -56,10 +56,14 @@ function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFac
       ),
   );
   const accountRecipients = vi.fn().mockResolvedValue([maya, { ...agent, wonOnly: true }]);
+  const lockHeld = { value: false };
+  const withAccountLock = vi.fn(async (_id: string, work: () => Promise<unknown>) =>
+    lockHeld.value ? { ran: false as const } : { ran: true as const, value: await work() },
+  );
   const run = (now: string, due: StoredLot[] = lots) => {
     storedLotsWaiting.mockResolvedValue(due);
     return runCollectByRemindersJob({
-      reader: { storedLotsWaiting, remindedLotIds },
+      reader: { storedLotsWaiting, remindedLotIds, withAccountLock: withAccountLock as never },
       notices: { accountRecipients },
       facts: {
         lotIdsForBuyer: vi.fn(),
@@ -77,7 +81,17 @@ function setup(lots: StoredLot[], facts: Record<string, Partial<CollectionLotFac
       now: () => new Date(now),
     });
   };
-  return { run, enqueue, storedLotsWaiting, remindedLotIds, accountRecipients, outbox, facts };
+  return {
+    run,
+    lockHeld,
+    withAccountLock,
+    enqueue,
+    storedLotsWaiting,
+    remindedLotIds,
+    accountRecipients,
+    outbox,
+    facts,
+  };
 }
 
 describe("storage reminders", () => {
@@ -86,6 +100,17 @@ describe("storage reminders", () => {
     expect(await s.run("2026-12-02T08:59:00Z")).toEqual({ groups: 0, queued: 0 });
     expect(await s.run("2026-12-02T09:00:00Z")).toEqual({ groups: 1, queued: 2 });
     expect(s.enqueue.mock.calls[0]?.[0]).toMatchObject({ template: "collection-collect-by" });
+  });
+
+  it("works each account under its lock, and leaves one that another sweep holds", async () => {
+    const s = setup([stored()]);
+    expect(await s.run("2026-12-02T10:00:00Z")).toEqual({ groups: 1, queued: 2 });
+    expect(s.withAccountLock).toHaveBeenCalledWith("e-1", expect.any(Function));
+    s.enqueue.mockClear();
+    s.lockHeld.value = true;
+    expect(await s.run("2026-12-03T10:00:00Z")).toEqual({ groups: 1, queued: 0 });
+    expect(s.enqueue).not.toHaveBeenCalled();
+    expect(s.remindedLotIds).toHaveBeenCalledTimes(2);
   });
 
   it("asks the reader for the lots waiting on the London day", async () => {
@@ -191,7 +216,11 @@ describe("storage reminders", () => {
           .fn()
           .mockResolvedValue([stored(), stored({ lotId: "l-2", legalEntityId: "e-2" })]),
         remindedLotIds: vi.fn().mockResolvedValue(new Set()),
-      },
+        withAccountLock: async (_id: string, work: () => Promise<unknown>) => ({
+          ran: true as const,
+          value: await work(),
+        }),
+      } as never,
       notices: { accountRecipients },
       facts: {
         read: async (ids: readonly string[]) =>

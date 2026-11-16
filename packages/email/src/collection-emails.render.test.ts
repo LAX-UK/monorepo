@@ -214,6 +214,7 @@ describe("collect by email", () => {
 
 describe("collect by email with the rates (storage terms)", () => {
   const base = {
+    chargingOn: true,
     userName: "Maya",
     when: "lead" as const,
     collectByLabel: "Mon 23 Nov",
@@ -246,6 +247,27 @@ describe("collect by email with the rates (storage terms)", () => {
     expect(rendered.text).toContain(
       "From tomorrow, storage is charged at the daily rate shown below",
     );
+  });
+
+  it("while charging is off, lists the rates but keeps the 'may apply' wording, a week before and on the day", async () => {
+    for (const when of ["lead", "day"] as const) {
+      // `false`, and a row queued before the variable existed (no key) which reads as off.
+      const { chargingOn: _omitted, ...queued } = base;
+      for (const vars of [{ ...base, chargingOn: false }, queued]) {
+        const rendered = await renderEmail("collection-collect-by", { ...vars, when });
+        expect(rendered.text).toContain("Free until Mon 23 Nov, then £3 a day");
+        expect(rendered.text).toMatch(/storage charges may apply/i);
+        expect(rendered.text).not.toMatch(/storage is charged/i);
+      }
+    }
+    const lead = await renderEmail("collection-collect-by", { ...base, chargingOn: false });
+    expect(lead.text).toContain("After that, storage charges may apply under our storage policy.");
+    const day = await renderEmail("collection-collect-by", {
+      ...base,
+      when: "day",
+      chargingOn: false,
+    });
+    expect(day.text).toContain("Storage charges may apply from tomorrow under our storage policy.");
   });
 
   it("keeps the 'may apply' wording when no work is charged for", async () => {

@@ -6,7 +6,8 @@
  * are here, so a change to them is made in one place, and in the design document with it.
  *
  * Rules these emails keep:
- * - while a place raises no storage invoices, the email after the day says only the approved
+ * - while a place raises no storage invoices, no email before or on the day says storage "is
+ *   charged" (the rate may still be listed under each work), and the email after the day says only the approved
  *   "storage charges may apply" wording, and no running total is sent: nothing is billed;
  * - nothing is said about selling or disposing of a work (ST16).
  */
@@ -29,10 +30,16 @@ export function collectByReminderCopy(input: {
   collectByLabel: string;
   placeName: string;
   lotCount: number;
-  /** At least one of the works is charged for after the day: its rate is listed under it. */
+  /** At least one of the works has a rate after the day: its rate is listed under it. */
   withRates: boolean;
+  /**
+   * "Raise storage invoices" is on for the place. Only then do the sentences say storage "is
+   * charged"; while it is off, nothing is billed and the approved "may apply" wording stays.
+   */
+  chargingOn: boolean;
 }): StorageEmailCopy {
-  const { when, collectByLabel, placeName, lotCount, withRates } = input;
+  const { when, collectByLabel, placeName, lotCount, withRates, chargingOn } = input;
+  const charged = withRates && chargingOn;
   if (when === "day") {
     return {
       subject: "Your free storage ends today",
@@ -40,7 +47,7 @@ export function collectByReminderCopy(input: {
       title: "Your free storage ends today",
       paragraphs: [
         `Today is the last day of free storage for your ${lotWord(lotCount)} at ${placeName}. Book the next available time to come in. ${
-          withRates
+          charged
             ? "From tomorrow, storage is charged at the daily rate shown below, under our storage policy."
             : "Storage charges may apply from tomorrow under our storage policy."
         }`,
@@ -53,7 +60,7 @@ export function collectByReminderCopy(input: {
     title: `Please collect by ${collectByLabel}`,
     paragraphs: [
       `Your ${lotCount === 1 ? "lot stays" : "lots stay"} with us at ${placeName}. Please collect by ${collectByLabel}. ${
-        withRates
+        charged
           ? "After that, storage is charged at the daily rate shown below, under our storage policy."
           : "After that, storage charges may apply under our storage policy."
       }`,

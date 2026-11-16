@@ -272,6 +272,25 @@ describe("the storage emails under the terms a lot was sold under", () => {
     expect(only([charged()], "2026-11-23")).toMatchObject({ kind: "day" });
   });
 
+  it("tells the reminder emails whether charging is on, for the week before and the day", () => {
+    for (const chargingOn of [true, false]) {
+      for (const [day, kind] of [
+        ["2026-11-16", "lead"],
+        ["2026-11-23", "day"],
+      ] as const) {
+        const group = only([charged({ chargingOn })], day);
+        expect(group).toMatchObject({ kind, chargingOn });
+        const [email] = collectByEmailsFor(group, [maya], at(day));
+        expect(email).toMatchObject({ template: "collection-collect-by" });
+        // The rate stays listed with charging off, but the email is told not to say "is charged".
+        expect(email?.vars).toMatchObject({
+          chargingOn,
+          lotRates: ["Free until Mon 23 Nov, then £3 a day, plus VAT where it applies."],
+        });
+      }
+    }
+  });
+
   it("sends 'Storage charges have started' the day after, with the running total", () => {
     const group = only([charged()], "2026-11-24");
     expect(group).toMatchObject({ kind: "started", cycle: 0, chargingOn: true });

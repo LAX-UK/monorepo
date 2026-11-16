@@ -1,15 +1,10 @@
+import { formatStoragePence } from "@auction/domain";
 import { formatStaffDate } from "@auction/staff-ui";
 import type { StaffOverdueLot } from "@auction/types";
 import { NOT_COLLECTED_COPY as C } from "./not-collected-copy";
 
 /** A London day key as a date to format; noon keeps it on the same day in any zone. */
 const dayDate = (day: string): Date => new Date(`${day}T12:00:00Z`);
-
-/** "£42.00": whole pence as staff read them. */
-export function formatPence(pence: number): string {
-  const pounds = Math.floor(pence / 100).toLocaleString("en-GB");
-  return `£${pounds}.${String(pence % 100).padStart(2, "0")}`;
-}
 
 /** What one row of the list shows. */
 export type OverdueRowView = {
@@ -37,7 +32,7 @@ export function overdueRowView(lot: StaffOverdueLot, now: Date = new Date()): Ov
     : lot.legacyTerms
       ? C.row.legacy
       : lot.amountPence > 0
-        ? formatPence(lot.amountPence)
+        ? formatStoragePence(lot.amountPence)
         : C.row.nothingOwed;
   return {
     lotId: lot.lotId,
