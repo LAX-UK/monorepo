@@ -12,7 +12,7 @@ type Props = {
   serverActingId: string | null | undefined;
 };
 
-/** `?acting_debug=1` (or `true`) logs a snapshot even when the cookie already matches. */
+/** `?acting_debug=1` (or `true`) logs a reconciled cookie in production too. */
 function actingDebugRequested(): boolean {
   const debug = new URLSearchParams(window.location.search).get("acting_debug");
   return debug === "1" || debug === "true";
@@ -32,26 +32,15 @@ const LOG_PREFIX = "[lax:acting-entity]";
  * payload must not be replaced with a plain UUID). */
 export function ActingEntityCookieReconciler({ serverActingId }: Props) {
   useEffect(() => {
-    const verbose = actingDebugRequested();
     // Before reading: a lingering shared copy would be reported as the cookie value.
     expireSharedActingCookie();
     // Effects only run in the browser, so the cookie is always there to read.
     const drift = detectActingEntityCookieDrift(serverActingId, document.cookie);
-    if (!drift) return;
-
-    if (!drift.shouldReconcile) {
-      if (verbose) {
-        console.info(`${LOG_PREFIX} acting cookie aligned`, {
-          serverActingId: drift.serverActingId,
-          cookieActingId: drift.cookieActingId ?? "(absent)",
-          isImpersonation: drift.isImpersonation,
-        });
-      }
-      return;
-    }
+    // An aligned cookie needs nothing, and is not logged.
+    if (!drift?.shouldReconcile) return;
 
     setClientActingLegalEntityId(drift.serverActingId);
-    if (verbose || process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== "production" || actingDebugRequested()) {
       console.warn(`${LOG_PREFIX} reconciled stale acting cookie`, {
         from: drift.cookieActingId ?? "(absent)",
         to: drift.serverActingId,

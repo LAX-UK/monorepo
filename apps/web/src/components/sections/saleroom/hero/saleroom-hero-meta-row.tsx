@@ -18,7 +18,7 @@ type Props = {
   liveSession?: PublicSaleroomSessionStatus | null;
   deliveryMode: SaleDeliveryMode;
   showOnlineBiddingGatedBadge?: boolean;
-  explainerContext?: SaleFormatExplainerContext;
+  explainerContext?: SaleFormatExplainerContext | undefined;
 };
 
 const LIFECYCLE_STATUSES: ReadonlyArray<SaleHeroVM["status"]> = ["active", "scheduled", "ended"];
@@ -63,7 +63,7 @@ export function SaleroomHeroMetaRow({
         deliveryMode={deliveryMode}
         place={hero.placeLabel}
         withExplainer
-        {...(explainerContext ? { explainerContext } : {})}
+        explainerContext={explainerContext}
       />
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-body text-sm text-on-surface-variant">
         {hero.startTime ? (

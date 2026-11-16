@@ -63,7 +63,7 @@ export function SaleroomHeroEditorial({
           liveSession={liveSession}
           deliveryMode={deliveryMode}
           showOnlineBiddingGatedBadge={showOnlineBiddingGatedBadge}
-          {...(explainerContext ? { explainerContext } : {})}
+          explainerContext={explainerContext}
         />
 
         <div className="flex flex-col gap-3">
