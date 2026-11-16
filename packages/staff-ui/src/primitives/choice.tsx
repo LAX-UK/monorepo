@@ -12,10 +12,15 @@ import { cn } from "../lib/cn.js";
  * staff scale. 16px boxes (radius xs), ink when on, the control border (3:1 on any surface) when
  * off, and the same focus ring as every other control. Each sits in a 32px row with its label so
  * the hit area is generous.
+ *
+ * The box is drawn at 16px but answers a 24px square (CRF-6, WCAG 2.5.8): an invisible layer 4px
+ * past each edge takes the press, so a box with no label beside it (a table cell, a confirm row
+ * whose label wraps) is still easy to hit.
  */
 
 const boxBase = [
-  "size-4 shrink-0 border border-staff-control-border bg-staff-surface shadow-none",
+  // `staff-hit` (theme.css) is the 24px press target; it also keeps the box from shrinking.
+  "size-4 staff-hit border border-staff-control-border bg-staff-surface shadow-none",
   "hover:border-staff-control-border-hover",
   // The wrapped primitive turns the outline off on focus; turn the staff ring back on explicitly.
   "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",

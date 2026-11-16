@@ -7,16 +7,18 @@ import {
   type RecentActivitySlice,
   buildRecentActivitySlice,
 } from "@/lib/admin/dashboard/recent-activity.slice";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { LOTS_ACCESS } from "@auction/types";
 
-function mapRecentActivity(
+/** The ten most recent lots as activity rows; the status reads in staff words ("Live"). */
+export function mapRecentActivity(
   lots: Awaited<ReturnType<DashboardLoadContext["sources"]["getRecentLots"]>>,
 ): AdminActivityRow[] {
   return lots.slice(0, 10).map((lot) => ({
     id: lot.id,
     title: lot.title,
-    meta: `${lot.status} · ends ${formatDateTime(lot.endTime)}`,
+    meta: `${staffStatus("lot", lot.status, { lot: { winnerId: lot.winnerId ?? null } }).label} · ends ${formatDateTime(lot.endTime)}`,
     href: `/admin/lots/${lot.id}`,
     statusLabel: lot.status,
     winnerId: lot.winnerId ?? null,
