@@ -5,6 +5,7 @@ import {
   shopEditionEvent,
   shopFulfilment,
   shopOrder,
+  shopOrderLine,
   shopOriginalSale,
   shopRefund,
   shopReturn,
@@ -110,7 +111,12 @@ describe.skipIf(!hasShopIntegrationDb)("demo shop states seed (Shop)", () => {
     // Stops after the cancellation, with the return still requested.
     failAt.returnTo = "in_transit";
     await expect(seedDemoShopStates(db)).rejects.toThrow("simulated stop");
-    const [open] = await db.select().from(shopReturn);
+    const [open] = await db
+      .select({ status: shopReturn.status })
+      .from(shopReturn)
+      .innerJoin(shopOrderLine, eq(shopOrderLine.id, shopReturn.orderLineId))
+      .innerJoin(shopOrder, eq(shopOrder.id, shopOrderLine.orderId))
+      .where(eq(shopOrder.idempotencyKey, RETURNED_ORDER_KEY));
     expect(open?.status).toBe("requested");
 
     const counts = await seedDemoShopStates(db);
@@ -171,7 +177,9 @@ describe.skipIf(!hasShopIntegrationDb)("demo shop states seed (Shop)", () => {
       );
     expect(packAudit).toHaveLength(2);
     const packEvents = await ownerPool.query(
-      "select count(*)::int as n from domain_events where event_type = 'shop.print.pack_confirmed'",
+      `select count(*)::int as n from domain_events
+       where event_type = 'shop.print.pack_confirmed' and payload->>'orderId' = any($1)`,
+      [[idOf(DISPATCHED_ORDER_KEY), idOf(RETURNED_ORDER_KEY)]],
     );
     expect(packEvents.rows[0].n).toBe(2);
 
