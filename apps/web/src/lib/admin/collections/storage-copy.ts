@@ -8,13 +8,12 @@ export const STORAGE_COPY = {
     "How long bought works are stored free at each place, and what storage costs after that.",
   status: { on: "Charging on", off: "Charging off" },
   /**
-   * Until the buyer pages move to these terms (storage terms PR 4), buyers are not shown them, so
-   * the approved wording ("Buyers see the free period and the rates below…") would not be true
-   * yet. PR 4 restores it; see "Until the buyer pages move" in docs/design/storage-terms.md.
+   * The approved wording: buyers see the terms (storage terms PR 4) and the Not collected tab
+   * counts what would be due (PR 5), so both halves are now true.
    */
   offNotice: {
     title: "Charging is off",
-    body: "No storage invoice is raised. Buyers don't see these terms yet: their pages keep today's collect-by date until they move to the storage terms in a coming release. Finance can switch charging on once the VAT treatment is confirmed.",
+    body: "Buyers see the free period and the rates below, and the Not collected tab counts what would be due, but no storage invoice is raised. Finance can switch it on once the VAT treatment is confirmed.",
   },
   readOnly: "Only Finance and Admins can change storage terms.",
   empty: {
