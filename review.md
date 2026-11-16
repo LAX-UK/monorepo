@@ -1,59 +1,129 @@
 Verdict: FIX FIRST
 
-# Review of PR #1486 (motion-hover-press): motion system 4/8, hover and press
+# Final recheck of PR #1486 (motion-hover-press): motion system 4/8, hover and press
 
-Reviewed head `a3e90acf` against `docs/design/motion.md` (Build item 4, MO9, MO10, MO13, MO14, MO15, "What moves"), not against the PR description. The PR branch was not changed.
+This review covers head `5cb2c92f` ("Hover and press: fixes from review"). It checks the code against `docs/design/motion.md` on main (MO9, MO10, MO13, MO14 and Build item 4) and against the previous review on this branch (`a3e90acf`, Verdict: FIX FIRST). The PR branch was not changed.
 
-## Findings
+The design work is now right. Every finding from the previous review is fixed in code, and every motion check below passes. Two things still stop it shipping:
 
-1. **BLOCKING: the hang's hover shadow sticks on touch devices.** `packages/marketing-ui/src/marketing-ui.css:297`
-   `a:hover .marketing-hang-art::after { opacity: 1 }` is plain CSS with no `(hover: hover)` gate. The old rule was Tailwind v4 `group-hover:shadow-[…]`, which Tailwind wraps in `@media (hover: hover)`, so touch never saw it. Now a tap sets `:hover` on the link and the deeper shadow stays on. Chromium check (phone emulation: `hasTouch`, `isMobile`, `matchMedia("(hover: hover)")` false), tapping the link: the `::after` opacity is `1` after the tap (expected `0`). The brief requires "touch devices get no sticky hover", and MO9 makes hover mouse-only.
-   Fix: wrap the hover rule in `@media (hover: hover) and (pointer: fine)` like the kit's card hover. Add a touch case to `describe("hang hover shadow layer")` in `packages/ui/src/lax/hover-press-resolved.test.ts:325`. Today that block has no phone case, so the suite passes with this bug.
+- CI is red.
+- Route JS grows by 0.1 KB on two groups against main's own CI build.
 
-2. `lax-card-zoom` / `lax-card-media img` cancel an image's own load fade under a mouse. `packages/ui/src/lax/hover-press.css:37`
-   The kit rule `transition: scale …` is not in a layer, so it beats every Tailwind utility in `@layer utilities`. It replaces the whole transition list on the image, including `MediaImage`'s own `transition-opacity duration-300` load fade (`packages/marketing-ui/src/media/media-image.tsx:139`). Chromium check: an image with an opacity fade utility runs `["opacity"]` when it loads. The same image with `lax-card-zoom` runs nothing, so it pops in. Most converted cards already lost the fade on main, because their old `transition-transform` did the same. The onboarding recommendations page did not: it deliberately had `transition-[opacity,transform]`, so it regresses (`apps/web/src/app/(task)/onboarding/recommendations/page.tsx:106`). The PR's claim that the image "keeps its own load fade" is true only where the fade sits on a wrapper.
-   Fix (should fix): put the zoom on a wrapper or picture layer rather than on the `<img>` that fades, or add the image fade to the kit's transition list using a token. Add a resolved test either way.
+The PR body also contradicts the code in several places.
 
-3. Hand-written card hovers remain, although motion.md now says the kit "drives every card" (`docs/design/motion.md:36`) and DESIGN_SYSTEM says "Never write a card zoom or lift by hand" (`docs/DESIGN_SYSTEM.md:311`):
-   - `apps/web/src/components/sections/saleroom/day-gallery/day-media-thumbnail.tsx:91`: zoom 1.03 over a literal 500ms (MO9: 1.02 over `--lax-motion-media`, mouse only).
-   - `apps/web/src/components/onboarding/buyer-interests-form.tsx:117,141`: 2px lift and zoom 1.025 over a literal 500ms, plus an animated `box-shadow`.
-   - `apps/web/src/components/dashboard/auction-interests-settings-form.tsx:182`: 2px lift and animated `box-shadow`.
-   The PR description treats the interest pickers as form controls, not cards. That is a defensible call, but the 1.025 image zoom inside them is exactly the zoom this PR removed from the recommendations page. Either convert these three or narrow the doc wording. Non-blocking.
+## Blocking
 
-4. The PR rewrites the approved spec. MO9 said "frame lift 1px over 300ms". The PR edits `docs/design/motion.md:36` to say `--lax-motion-panel` (260ms). Using the nearest token instead of adding a 300ms token follows "tokens only", and the PR flags the choice. Still, the approved doc is being edited to match the code, so the design owner should confirm it. Non-blocking.
+1. **CI is red: `web vitest (6/8)` fails, and I reproduced the failure locally.**
+   - The failing test is `apps/web/src/components/layout/site-header.test.tsx:283`, which expects `motion-reduce:transition-none` in the header class string.
+   - `5cb2c92f` moved the header surface's transition out of the class string and into `.marketing-header-surface` (`packages/marketing-ui/src/header/use-header-chrome.ts:134`, `packages/marketing-ui/src/marketing-header.css:141-151`). It updated the marketing-ui test but not this Bid test.
+   - CI run 43809082828, job 133106746951: 1 failed of 1369. Locally, `vitest run src/components/layout/site-header.test.tsx` fails with the same assertion.
+   - The behaviour is fine (the CSS rule drops the transition under `prefers-reduced-motion`), so the fix is to assert the new contract: `marketing-header-surface` is present, and `transition` / `backdrop-filter` are absent from the class string.
 
-5. Minor: the hang's hovered shadow now stacks the hover layer on top of the resting shadow, so it is deeper than the old swap (acknowledged in the PR). The header still uses literal `duration-300 ease-out` for its colour and shadow transition (`packages/marketing-ui/src/header/use-header-chrome.ts:132`). That is not new in this PR, but it is the one header line the PR touches. Non-blocking.
+2. **Route JS grows on two groups against main's latest CI build.** Main here is the merge-group `build` job of run 43805181198, at main's tip `5569ca0e`. The PR is the `build` job of run 43809082828, which is the PR merged with current main. Values are largest / frame / page in KB.
 
-## Checked and fine
+   | group | main CI (`5569ca0e`) | PR CI (`5cb2c92f`) | change |
+   |---|---|---|---|
+   | apps/web checkout | 471.7 / 441.0 / 30.7 | **471.8** / 441.0 / **30.8** | **+0.1** (`/(client)/purchases/collect`) |
+   | apps/account account | 436.0 / 405.1 / 30.9 | **436.1** / 405.1 / **31.1** | **+0.1** (`/account/profile`); `/account/security/delete` 411.9 → **412.0** |
+   | apps/web account | 545.2 / 442.6 / 102.6 | 545.2 / 442.6 / 102.6 | equal |
+   | apps/web listing | 462.2 / 337.3 | 462.1 / 337.2 | lower |
+   | apps/web lot | 467.4 / 343.1 | 467.4 / 343.1 | equal |
+   | apps/web public | 394.5 / 337.2 | 394.4 / 337.2 | lower |
+   | apps/web sale | 478.9 / 341.4 | 478.7 / 341.4 | lower |
+   | Shop account / checkout / product / public | 520.4 / 551.8 / 552.8 / 520.4 | 520.3 / 551.8 / 552.8 / 520.4 | equal or lower (checkout page column 40.5 → 40.6) |
+   | lax.art account / product / public | 522.0 / 524.0 / 527.7 | 522.0 / 524.0 / 527.6 | equal or lower |
 
-- **One shared card hover in the kit**: `packages/ui/src/lax/hover-press.css`, mouse only under `@media (hover: hover) and (pointer: fine)`.
-  - Zoom is 1.02 over `--lax-motion-media`, lift is 1px (`translate`), and the title is underlined.
-  - Bid lot tile (1.05), lot queue (1.05), sale card (1.03) and recommendations (1.025) now go to 1.02, and the grid lot card's double zoom is gone.
-  - Shop's 4px print lift is now on `--lax-motion-panel` / `--lax-ease-out` and mouse only (`apps/shop/src/app/edition-card.css`, `home.css`).
-- **Press**: `lax-press` gives 0.98 over `--lax-motion-press` (100ms) on the public `Button` (filled, outlined, ghost) and the LAX system button (Account). There is no press on staff pages, on disabled or `aria-disabled` buttons, or on text-shaped variants. Staff rows now tint only (chevron nudges removed in staff-ui link-list, attention-list and attention-strip).
-- **`transition-all`**: every one is gone. Grepping `apps`, `packages` and `scripts` for `transition-all` / `transition: all` outside tests finds none. The allowlist loses 11 entries, and a test keeps it free of them.
-- **Header**: `backdrop-filter` is no longer transitioned. **Hang**: the shadow is no longer transitioned; it is an `::after` opacity layer over `--lax-motion-hover` (but see finding 1).
-- **Reduced motion**:
-  - Lift, zoom and press are off under the OS setting and under Bid's `force-reduce`, and `force-allow` keeps them on.
-  - Fades that remain are at most 150ms (colour 150ms, hang layer 150ms).
-  - Staff and Account get no press or lift.
-- **Compositor-only**: `pnpm lint:compositor` is green. Only `translate`, `scale` and `opacity` are animated, and every duration comes from a token.
-- **Lenis**: no Lenis file is in the diff.
-- **Route JS** (CI `build` table, largest / frame / duplicates): equal or lower than main's own CI builds.
-  - apps/web: compared with PR #1484's CI build, which is on the exact same main (`fb5055f1`) and changes only DB files. PR: account 545.2/442.7/133, checkout 471.7/441.1/94, listing 462.1/337.2/90, lot 467.4/343.1/93, public 394.4/337.2/79, sale 478.8/341.4/121. Main: 545.5/442.9/133, 471.9/441.3/94, 462.2/337.2/90, 467.4/343.1/93, 394.5/337.2/79, 478.9/341.4/121.
-  - Shop, lax.art and Account: compared with PR #1482's CI build, which was main's tip before `fb5055f1` and is a demo-seed change only. Every group is equal or lower on largest, frame and duplicates. Account is 436.0 against 436.1. The only +0.1 is lax.art public's page column (11.1 against 11.0), and that column is not one of the three gated ones.
-  - No change to budgets, ratchets or baselines, and no 1 KB tolerance used.
-- **At rest**: the Chromium suite shows the card, media and title untouched at rest for public, staff and Account, with every fact visible without hover. The kit classes only act under `:hover` / `:active`, and the diff adds or removes no text, `href` or element (class names only). I did not take real-app screenshots at 1440 and 375, because the brief rules out a full `next build` of apps/web. I am relying on the suite's at-rest probes, plus the PR's 16 of 16 pixel-identical pairs, which I did not re-run.
-- **Attribution**: none of the three commit messages or the PR body contains `Co-Authored-By`, `Claude-Session` or a "generated by" line.
+   - Duplicates are equal on every group.
+   - The tracked routes are equal or lower: Home 394.4, Sales list 442.8, Sale 478.7, Lot 467.4, About 344.9, Terms 341.8.
+   - MO14 allows no growth on any route and no noise allowance for motion PRs, so the two +0.1 KB rows block.
+   - The PR's own table measures against `bb60b42e` and a local build, not against main's current CI. Its checkout row already showed 471.4 → 471.6.
+   - The PR explains this as Next's per-build server-action key reshuffling chunks. That may well be true, but the rule does not accept it. Either make these two groups come out equal or lower in CI against current main, or show that `main` itself reproduces 471.8 and 436.1 in CI.
+   - Do not raise budgets or baselines. I checked: `git diff bb60b42e 5cb2c92f` touches no budget, ratchet or baseline file.
+
+3. **The PR body contradicts the code.** It is the record a merge leaves behind, so it has to match.
+   - It says "the lift runs over `--lax-motion-panel`" and, under "Lift timing", "uses `--lax-motion-panel` (260ms), the nearest token; no token was added. `motion.md` records this." The code does the opposite:
+     - `--lax-motion-lift: 300ms` is added (`packages/branding/public/lax-system.css:154`).
+     - The lift uses it (`packages/ui/src/lax/hover-press.css:37`).
+     - `motion.md` keeps "frame lift 1px over 300ms" and lists the token.
+   - It says the hang's hovered shadow is "slightly deeper than the old swap". The layer alphas are now chosen so that rest plus layer equals the old hover shadow (`packages/marketing-ui/src/marketing-ui.css:273-290`).
+   - It says the interest-picker tiles were "left alone... this PR doesn't change them". `f5c0fe6b` converts them to `lax-card` / `lax-card-lift` / `lax-card-zoom`:
+     - `apps/web/src/components/onboarding/buyer-interests-form.tsx:114-119,143`
+     - `apps/web/src/components/dashboard/auction-interests-settings-form.tsx:179-184`
+   - It does not mention the header-surface change (`marketing-header-surface`, shadow no longer transitioned, header leaves the compositor allowlist).
+   - It says "All pass" for the tests and "35 tests" for the Chromium suite. In fact CI fails (finding 1), and the suite now runs 50 tests.
+   - Its route JS tables are against stale `bb60b42e` (see finding 2).
+
+## Non-blocking
+
+4. The Lot quick-look thumbnail strip still has a hand-written hover scale with a literal duration, on a line this PR rewrote: `apps/web/src/components/marketing/lot-quick-look/quick-look-dialog-sections.tsx:133`.
+   - It has `transition-[scale,opacity,border-color] motion-safe:duration-200`, with `scale-95` → `hover:scale-100` and no `(hover: hover)` gate.
+   - It is a ghost `Button`, so it also gets `lax-press`. Pressing an inactive thumb animates its `scale` from 0.95 towards 0.98.
+   - This is a selection strip rather than a card, and the `transition-all` replacement was the brief here. Still, the duration should be `--lax-motion-hover` and the hover scale should be mouse-only, in this PR or a follow-up.
+
+5. The PR is based on `bb60b42e`. Main is now `5569ca0e`, three commits ahead. It merges cleanly (`git merge-tree`), but rebase it before re-measuring finding 2, so that the PR's own numbers and CI agree.
+
+## Previous findings: status
+
+| # | Previous finding | Status at `5cb2c92f` | Evidence |
+|---|---|---|---|
+| 1 (blocking) | Hang hover shadow sticks on touch | **Fixed** | `a:hover .marketing-hang-art::after` is now inside `@media (hover: hover) and (pointer: fine)` (`packages/marketing-ui/src/marketing-ui.css:304-308`). A phone case is in the Chromium suite, and mutation M2 below shows it is caught. |
+| 2 | Kit zoom cancels the image's own load fade | **Fixed** | `:is(.lax-card-zoom, .lax-card-media img).transition-opacity` adds `opacity` with the utility's `--tw-duration` / `--tw-ease` (`packages/ui/src/lax/hover-press.css:46-50`). Under reduced motion it uses `transition: revert-layer` (`:95`, `:112`). Chromium cases cover mouse, phone, reduced motion and staff, and mutation M3 is caught. |
+| 3 | Hand-written card hovers remain | **Fixed** | Day-gallery thumbnail and both interest pickers now use the kit classes. There is no literal 500ms or 1.025/1.03 zoom left in those files. |
+| 4 | Lift on 260ms instead of the approved 300ms | **Fixed** (but see finding 3) | New token `--lax-motion-lift: 300ms`, public only. The drift test pins it (`packages/branding/tests/lax-motion.test.ts`). `motion.md` keeps the approved wording. |
+| 5 | Header literal `duration-300 ease-out` | **Fixed** | `.marketing-header-surface` uses `--lax-motion-panel` / `--lax-ease-out` and fades only background and border. Shadow and blur switch at once. |
+
+## Verified
+
+- **Card lift (MO9):**
+  - 1px: `translate: 0 -1px` (`packages/ui/src/lax/hover-press.css:53`).
+  - Over `var(--lax-motion-lift) var(--lax-ease-out)` (`:37`).
+  - The design value is intact at `--lax-motion-lift: 300ms` (`packages/branding/public/lax-system.css:154`; `docs/design/motion.md` table and MO9 line).
+  - Chromium measures 300ms for public and Account. Mutation M1 below (token set to 260ms) fails 4 tests.
+- **Zoom (MO9):** `scale: 1.02` (`hover-press.css:57`) over `--lax-motion-media` (700ms) (`:43`). Mutation M4 (1.03) fails 6 tests.
+- **Mouse-only:** every lift, zoom and underline rule sits inside `@media (hover: hover) and (pointer: fine)` (`hover-press.css:35-63`), and so does the hang layer (`marketing-ui.css:304`). Shop's print lift is gated the same way. The phone cases pass.
+- **Reduced motion (MO13) and staff:**
+  - The OS setting, Bid's `force-reduce` and the staff scope (`:root:has([data-lax-density="staff"])`) each set `translate: none`, `scale: none` and `animation: none` on the press (`hover-press.css:70-117`). `force-allow` keeps motion.
+  - All of these are Chromium-tested for public, staff and Account.
+- **Press (MO10):**
+  - Press is 0.98 (`@keyframes lax-press`, `hover-press.css:29-33`) over `--lax-motion-press`, only while `:active` and not on disabled, `aria-disabled` or loading buttons (`:65-67`).
+  - It applies to the public `Button`: filled, outlined and ghost variants via `FILLED_STATES` / `OUTLINED_STATES` / ghost (`packages/ui/src/components/ui/button.tsx`). Text-shaped variants use `TEXT_STATES` and do not press.
+  - It also applies to the LAX system button, i.e. Account (`packages/ui/src/lax/button-variants.ts:18`).
+  - Staff pages get no press.
+- **`transition-all`:** none left. Grepping `apps`, `packages` and `scripts` outside tests finds no `transition-all` or `transition: all`, and `scripts/compositor-rule.test.mjs` keeps it so.
+- **Header blur:** not animated. Only `background-color` and `border-color` transition (`marketing-header.css:141-144`).
+- **Hang shadow:** an `::after` layer fading `opacity` over `--lax-motion-hover`. No `box-shadow` transition (`marketing-ui.css:292-302`).
+- **Compositor lint:** `pnpm lint:compositor` passes (17 pass). The allowlist diff against the base has only `-` lines (−70; `5cb2c92f` removes 5 more) and no `+` line, so it was only shrunk.
+- **Tokens are the single source:**
+  - Every duration and easing the PR adds in kit CSS, Shop CSS and components is a `--lax-motion-*` / `--lax-ease-*` token.
+  - The interest-picker colour transitions use `duration-[var(--lax-motion-hover)] ease-[var(--lax-ease-out)]`.
+  - The one remaining literal on a touched line is finding 4. Shop's untouched `--motion-duration-sm ease` lines are aliases from before this PR.
+- **Lenis:** no Lenis file is in the diff.
+- **`blocking=render` / Speculation Rules:** neither appears anywhere in `apps` or `packages` at the PR head.
+- **Attribution:** none of the five commits or the PR body carries `Co-Authored-By`, `Claude-Session` or a "generated by" line.
 
 ## What I ran
 
-- Setup: `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`. All succeeded.
-- `@auction/ui` motion suites: `hover-press-resolved`, `motion-resolved` and `hover-press` tests, 88 of 88 passed in Chromium.
-- Mutation 1 (the `(hover: hover) and (pointer: fine)` gate replaced by `@media all`) was caught: "a phone (touch, no hover, coarse pointer) gets no lift, zoom or underline" failed.
-- Mutation 2 (the staff `.lax-press:active { animation: none }` override removed) was caught: "button press > staff, none" and "staff, force-allow-os-reduce" failed. Both files were restored afterwards.
-- A probe of my own: hang link tap on a phone shows `::after` opacity `1` (finding 1). A second probe: an image's load fade is removed by `lax-card-zoom` (finding 2).
-- Lint and static checks all green: `lint:compositor`, `lint:client-copy`, `lint:ui-guardrails`, `lint:web-guardrails`, `lint:bid-public-kit`, `lint:brand-name`, `lint:route-js-budget`, `lint:staff-legacy-shell`, `lint:deps`, and Biome on the changed files.
-- Affected tests (`--maxWorkers=2`): all passed. `@auction/ui`, `@auction/branding` and `@auction/staff-ui` ran in full; `@auction/marketing-ui` 710 of 710 passed; apps/web passed for the sale card, lot card, saleroom and lot tile tests; `scripts/compositor-rule.test.mjs` passed. On the first run, marketing-ui failed 3 tests and the apps/web typecheck failed. Both came from my setup, not the PR: the package build had started before I checked out the PR branch, so it built main's branding, and `@auction/api` had not been built. After rebuilding both, they pass.
-- Typecheck: `@auction/ui`, `@auction/marketing-ui`, `@auction/branding`, `@auction/staff-ui`, `@auction/web`, `@auction/shop`, `@auction/art` and `@auction/account` all pass.
-- CI on `a3e90acf` (REST check-runs; GraphQL is blocked here): every check passed, including `ui-chromium`, `static-checks`, `build`, `test`, all web vitest shards and the account and art browser gates. The exception is `browser-gates`, which was still running when I wrote this.
+- Setup: a worktree of `origin/motion-hover-press` at `5cb2c92f`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`. All succeeded.
+- Chromium behavioural suites with `LAX_REQUIRE_CHROMIUM=1`: `hover-press-resolved`, `motion-resolved` and `hover-press` tests, 103 of 103 passed.
+- Mutation checks. Each was run against `hover-press-resolved.test.ts` and reverted afterwards (`git status` clean). All were caught:
+  - M1: `--lax-motion-lift` 300ms → 260ms. 4 failed (public and Account, none and force-allow).
+  - M2: the hang layer's `(hover: hover) and (pointer: fine)` gate removed. 1 failed (the phone tap case).
+  - M3: the `.transition-opacity` load-fade rule removed. 5 failed (the load-fade cases).
+  - M4: zoom 1.02 → 1.03. 6 failed.
+- Package unit suites:
+  - `@auction/ui`: 676 of 676 (with Chromium).
+  - `@auction/marketing-ui`: 709 of 709.
+  - `@auction/branding`: 350 of 350.
+  - `@auction/staff-ui`: 662 of 662.
+  - `scripts/compositor-rule.test.mjs`: 17 of 17.
+- App unit suites:
+  - `apps/shop`: 702 of 702.
+  - `apps/art`: 798 of 798.
+  - `apps/account`: 1071 of 1071.
+  - `apps/shop-admin`: 1687 of 1687.
+  - `apps/web`: in CI, shards 1–5, 7 and 8 pass and shard 6 fails 1 of 1369 (finding 1). Locally, shard 6/8 gives the same result: 1 failed (`site-header.test.tsx`) and 1371 passed of 1372.
+  - The backend apps (`api`, `shop-api`, workers) are untouched by this diff. They pass in CI on this head (`api vitest` 1–2, `shop-api vitest` 1–4).
+- CI on `5cb2c92f`:
+  - Passing: `ui-chromium`, `static-checks`, `build`, the art and account browser gates, and every vitest shard except web 6/8.
+  - Still running when I wrote this: `test`, `browser-gates` and `shop-v1-phase-smoke (admin-routes)`.
+- Route JS: compared the CI `build` job tables of run 43809082828 (PR) and run 43805181198 (main `5569ca0e`) row by row (finding 2).
