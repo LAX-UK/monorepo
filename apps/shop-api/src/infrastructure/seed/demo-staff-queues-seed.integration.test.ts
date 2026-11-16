@@ -103,6 +103,13 @@ describe.skipIf(!hasShopIntegrationDb)("demo staff queues seed (Shop)", () => {
       );
     expect(requested).toHaveLength(1);
 
+    // No demo order is given an invented Stripe payment intent, and the dispute is not on the
+    // refund's order.
+    const intents = await ownerPool.query(
+      "select count(*)::int as n from shop_order where idempotency_key like 'seed:edition-order:%' and stripe_payment_intent_id is not null",
+    );
+    expect(intents.rows[0].n).toBe(0);
+
     const [dispute] = await db
       .select()
       .from(shopDispute)

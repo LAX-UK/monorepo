@@ -57,7 +57,7 @@ export async function handleStripeDisputeWebhook(
 export async function recordStripeDisputeForOrder(
   db: Database,
   order: { orderId: string },
-  input: StripeDisputeWebhookInput,
+  input: Omit<StripeDisputeWebhookInput, "paymentIntentId"> & { paymentIntentId?: string },
   options: {
     domainEventMode: ShopDomainEventPublisherMode;
     notifications?: ShopNotificationPublisher;
@@ -184,9 +184,9 @@ export async function recordStripeDisputeForOrder(
         opsEmail,
         alertKind: "Shop Stripe dispute",
         orderId: order.orderId,
-        detail: `Dispute ${input.stripeDisputeId} on payment intent ${input.paymentIntentId}${
-          input.outcome === "lost" ? " (lost — clawback review)" : ""
-        }`,
+        detail: `Dispute ${input.stripeDisputeId}${
+          input.paymentIntentId ? ` on payment intent ${input.paymentIntentId}` : ""
+        }${input.outcome === "lost" ? " (lost — clawback review)" : ""}`,
       });
     }
 

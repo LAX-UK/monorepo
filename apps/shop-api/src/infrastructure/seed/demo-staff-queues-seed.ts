@@ -5,11 +5,12 @@
  *   runs (`seedEditionOrders`), which pay through the real checkout handler.
  * - **Failed refunds** (the "Failed refunds" tile, `/orders?refund=failed`): a refund requested
  *   through the staff request-refund handler (audit entry and `shop.refund.requested` event). The
- *   demo orders were paid without Stripe, so they have no payment intent and a refund of them can
+ *   demo orders were paid without Stripe, so they have no payment intent (none is invented, so
+ *   LAX Admin offers no Stripe link and a staff retry never reaches Stripe) and a refund of them can
  *   never be sent. The scheduler would find that out on its first run and report it to Sentry and
  *   the ops inbox; the seed records the same outcome itself, in the same transaction as the
  *   request, so the refund is never pending and the scheduler never picks it up.
- * - **Disputes** (`/disputes`): a dispute recorded by the Stripe dispute recorder (processed-event
+ * - **Disputes** (`/disputes`): a dispute, on a different order from the refund, recorded by the Stripe dispute recorder (processed-event
  *   claim, dispute row, payout block, `shop.dispute.opened` event), with no ops alert.
  *
  * The events the real handlers write here carry the producer `shop-api`, not `demo-seed`. No
@@ -22,7 +23,7 @@
  */
 import { type Database, assertDemoSeedDatabase } from "@auction/db";
 import { shopDispute, shopFulfilment, shopOrder, shopRefund } from "@auction/db/schema";
-import { and, asc, eq, inArray, isNull, like } from "drizzle-orm";
+import { and, asc, eq, inArray, like } from "drizzle-orm";
 import { createDrizzleShopUnitOfWork } from "../drizzle-shop-transaction-effects.js";
 import { createRequestRefundHandler } from "../handlers/admin/request-refund.handler.js";
 import { recordStripeDisputeForOrder } from "../handlers/webhooks/stripe-dispute.handler.js";
@@ -34,8 +35,6 @@ export const DEMO_QUEUES_ACTOR = "seed:demo-staff-queues";
 export const DEMO_REFUND_KEY = "seed:demo-staff-queues:refund:0001";
 export const DEMO_DISPUTE_ID = "dp_demo_example_shop_0001";
 export const DEMO_DISPUTE_EVENT_ID = "evt_demo_example_shop_dispute_0001";
-/** Invented payment intent of the demo dispute's order (Stripe-style, nothing real). */
-const DEMO_DISPUTE_PAYMENT_INTENT = "pi_demo_example_shop_0001";
 /** What the scheduler records when a refund's order has no payment intent (a terminal failure). */
 export const MISSING_INTENT_ERROR = "Order missing stripe_payment_intent_id";
 const PAID_STATUSES = ["paid", "partially_refunded"] as const;
@@ -48,12 +47,15 @@ export type DemoStaffQueueCounts = {
   openDisputes: number;
 };
 
-/** Which paid order carries which item. With one paid order, it carries both. */
+/**
+ * Which paid order carries which item. The refund and the dispute are never on the same order:
+ * with one paid order only the refund is seeded and there is no dispute.
+ */
 export function assignOrders<T>(orders: readonly T[]): {
   refund: T | undefined;
   dispute: T | undefined;
 } {
-  return { refund: orders[0], dispute: orders[1] ?? orders[0] };
+  return { refund: orders[0], dispute: orders[1] };
 }
 
 /** A goodwill part refund: a quarter of the order, so it never takes the whole order or a frame. */
@@ -78,20 +80,14 @@ export async function seedDemoStaffQueues(db: Database): Promise<DemoStaffQueueC
 
   if (refund) await seedFailedRefund(db, refund);
   if (dispute) {
-    // The dispute names the payment intent its order was paid with, as the webhook would match it.
-    // Only an order that has none yet is given one. The refund (requested above) already holds its
-    // failed outcome, so it is not retried because of this.
-    await db
-      .update(shopOrder)
-      .set({ stripePaymentIntentId: DEMO_DISPUTE_PAYMENT_INTENT })
-      .where(and(eq(shopOrder.id, dispute.id), isNull(shopOrder.stripePaymentIntentId)));
+    // The order has no payment intent (it was paid without Stripe) and none is invented for it, so
+    // LAX Admin never links to a Stripe page that does not exist and no staff action calls Stripe.
     await recordStripeDisputeForOrder(
       db,
       { orderId: dispute.id },
       {
         eventId: DEMO_DISPUTE_EVENT_ID,
         stripeDisputeId: DEMO_DISPUTE_ID,
-        paymentIntentId: DEMO_DISPUTE_PAYMENT_INTENT,
         amountPence: dispute.totalPence,
         status: "opened",
       },
