@@ -7,9 +7,14 @@ export const STORAGE_COPY = {
   pageDescription:
     "How long bought works are stored free at each place, and what storage costs after that.",
   status: { on: "Charging on", off: "Charging off" },
+  /**
+   * Until the buyer pages move to these terms (storage terms PR 4), buyers are not shown them, so
+   * the approved wording ("Buyers see the free period and the rates below…") would not be true
+   * yet. PR 4 restores it; see "Until the buyer pages move" in docs/design/storage-terms.md.
+   */
   offNotice: {
     title: "Charging is off",
-    body: "Buyers see the free period and the rates below, and the Not collected tab counts what would be due, but no storage invoice is raised. Finance can switch it on once the VAT treatment is confirmed.",
+    body: "No storage invoice is raised. Buyers don't see these terms yet: their pages keep today's collect-by date until they move to the storage terms in a coming release. Finance can switch charging on once the VAT treatment is confirmed.",
   },
   readOnly: "Only Finance and Admins can change storage terms.",
   empty: {
@@ -26,7 +31,7 @@ export const STORAGE_COPY = {
     title: "In force",
     since: (day: string) => `Since ${day}`,
     action: "Schedule a change",
-    actionBlocked: "A change is already scheduled. Edit it below.",
+    actionBlocked: "A change is already scheduled. Edit or cancel it first.",
   },
   scheduled: {
     title: "Scheduled",
@@ -35,9 +40,9 @@ export const STORAGE_COPY = {
     before: "In force now",
     after: (day: string) => `From ${day}`,
     beforeNone: "No terms",
-    reason: "Reason",
     edit: "Edit",
     cancel: "Cancel change",
+    reasonLine: (reason: string) => `Reason: ${reason}`,
     confirm: {
       title: (day: string) => `Cancel the change from ${day}?`,
       body: "The terms in force stay as they are. The cancelled change stays in History.",
@@ -47,6 +52,13 @@ export const STORAGE_COPY = {
       reasonHint: "Shown in History.",
       reasonMissing: "Enter why you're cancelling the change.",
     },
+  },
+  /** The Scheduled card's table: short labels, so they stay on one line on a phone. */
+  changeLabels: {
+    freeStorage: "Free storage",
+    standard: "Standard",
+    large: "Large",
+    handling: "Handling",
   },
   labels: {
     startsOn: "Starts on",
@@ -72,10 +84,12 @@ export const STORAGE_COPY = {
   charging: {
     title: "Charging",
     switchLabel: "Raise storage invoices",
+    /** What read-only staff see beside "Raise storage invoices". */
+    value: { on: "On", off: "Off" },
     explanation:
       "When on, a buyer who collects after their free period is sent a storage invoice, priced up to the day they collect or we dispatch.",
     noVat:
-      "This can be switched on once a VAT treatment is chosen for storage charges. Finance chooses it with the accountant.",
+      "Can be switched on once Finance chooses a VAT treatment for storage charges with the accountant.",
     on: {
       title: "Raise storage invoices?",
       body: "From now on, a buyer who collects after their free period is sent a storage invoice.",
@@ -108,9 +122,9 @@ export const STORAGE_COPY = {
       daily: "Daily charge after that",
       handling: "Handling fee",
     },
-    startsOnHint: "From tomorrow.",
+    startsOnHint: (latest: string) => `From tomorrow, up to ${latest}.`,
     reasonLabel: "Reason",
-    reasonHint: "Shown in history.",
+    reasonHint: "Shown in History.",
     freeDaysLabel: "Free days",
     freeDaysHint: "0 to 90, counted from the day payment clears.",
     countLabel: "Count in",
@@ -120,8 +134,8 @@ export const STORAGE_COPY = {
     workingHint: "Only the days the place is open.",
     standardLabel: "Standard",
     dailyHint: "Per lot per day, before VAT. Up to £500.00.",
-    largeToggle: "Charge more for large works",
-    largeToggleHint: "Large means any side over 150 cm.",
+    largeToggle: "Large band",
+    largeToggleHint: "Charge more for large works. Large means any side over 150 cm.",
     largeLabel: "Large",
     handlingLabel: "Handling fee",
     handlingHint: "Once per lot when charges start, before VAT. Up to £500.00.",
@@ -134,6 +148,7 @@ export const STORAGE_COPY = {
   },
   errors: {
     startsOn: "Choose a date from tomorrow",
+    startsTooLate: (latest: string) => `Choose a date up to ${latest}`,
     freeDays: "Enter a number of days from 0 to 90",
     large: "Enter a daily rate, or turn off the large band",
     amount: "Enter an amount up to £500.00",

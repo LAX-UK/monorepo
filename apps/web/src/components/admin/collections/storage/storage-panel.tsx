@@ -39,6 +39,12 @@ export function StoragePanel({ storage: initial, canChange }: Props) {
   const change = useStorageChange();
   const { inForce, scheduled, charging, history, today, venueId } = storage;
 
+  /** A change went through: show the tab as it now stands, and drop any earlier failure. */
+  const saved = (next: StaffStorageSettings) => {
+    setStorage(next);
+    setFailure(null);
+  };
+
   const openSheet = (editing: StaffStorageTerms | null) =>
     setSheet((current) => ({ key: (current?.key ?? 0) + 1, editing }));
 
@@ -48,7 +54,7 @@ export function StoragePanel({ storage: initial, canChange }: Props) {
       cancelStorageTermsAction(venueId, scheduled.id, { reason }),
     );
     if (outcome.ok) {
-      setStorage(outcome.settings);
+      saved(outcome.settings);
       setCancelling(false);
       notify.success(C.toasts.cancelled);
     } else if (outcome.failure) {
@@ -63,7 +69,7 @@ export function StoragePanel({ storage: initial, canChange }: Props) {
     );
     setSwitchTo(null);
     if (outcome.ok) {
-      setStorage(outcome.settings);
+      saved(outcome.settings);
       notify.success(raiseInvoices ? C.toasts.chargingOn : C.toasts.chargingOff);
     } else if (outcome.failure) {
       setFailure(outcome.failure.message);
@@ -79,9 +85,8 @@ export function StoragePanel({ storage: initial, canChange }: Props) {
       inForce={inForce}
       editing={sheet.editing}
       onSaved={(next) => {
-        setStorage(next);
+        saved(next);
         setSheet(null);
-        setFailure(null);
         notify.success(sheet.editing ? C.toasts.edited : C.toasts.scheduled);
       }}
     />
@@ -143,6 +148,9 @@ export function StoragePanel({ storage: initial, canChange }: Props) {
           charging={charging}
           canChange={canChange}
           busy={change.busy}
+          // In force and Scheduled share a row; Charging then takes the full width below them,
+          // so no card sits alone beside an empty half.
+          {...(inForce && scheduled ? { className: "lg:col-span-2" } : {})}
           onSwitch={(on) => setSwitchTo(on)}
         />
       </div>

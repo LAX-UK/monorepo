@@ -44,11 +44,11 @@ const renderPanel = (storage: StaffStorageSettings, canChange = true) =>
 const section = (name: string) => screen.getByRole("region", { name });
 
 describe("Storage tab, charging off", () => {
-  it("says charging is off in the design's words", () => {
+  it("says charging is off, and does not claim buyers see the terms before they do", () => {
     renderPanel(STORAGE);
     const notice = screen.getByRole("status");
     expect(notice.textContent).toBe(
-      "Charging is offBuyers see the free period and the rates below, and the Not collected tab counts what would be due, but no storage invoice is raised. Finance can switch it on once the VAT treatment is confirmed.",
+      "Charging is offNo storage invoice is raised. Buyers don't see these terms yet: their pages keep today's collect-by date until they move to the storage terms in a coming release. Finance can switch charging on once the VAT treatment is confirmed.",
     );
   });
 
@@ -67,13 +67,30 @@ describe("Storage tab, charging off", () => {
     expect(within(card).getByRole("button", { name: "Schedule a change" })).toBeTruthy();
   });
 
-  it("keeps the switch off and disabled, with the reason, until a VAT treatment is chosen", () => {
+  it("blocks the switch until a VAT treatment is chosen, keeping it focusable with the reason", () => {
     renderPanel(STORAGE);
     const card = section("Charging");
     const toggle = within(card).getByRole("switch", { name: /Raise storage invoices/ });
     expect(toggle.getAttribute("aria-checked")).toBe("false");
-    expect(toggle.hasAttribute("disabled")).toBe(true);
-    expect(card.textContent).toContain("once a VAT treatment is chosen for storage charges");
+    expect(toggle.hasAttribute("disabled")).toBe(false);
+    expect(toggle.getAttribute("aria-disabled")).toBe("true");
+    toggle.focus();
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAccessibleDescription(
+      "Can be switched on once Finance chooses a VAT treatment for storage charges with the accountant.",
+    );
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("gives the reason its own line, apart from the explanation", () => {
+    renderPanel(STORAGE);
+    const card = section("Charging");
+    const reason = within(card).getByText(
+      "Can be switched on once Finance chooses a VAT treatment for storage charges with the accountant.",
+    );
+    expect(reason.textContent).not.toContain("When on, a buyer");
   });
 
   it("lists the history: when, who, and the change as a plain sentence", () => {
@@ -131,7 +148,7 @@ describe("Storage tab, a change scheduled", () => {
     const card = section("Scheduled");
     expect(within(card).getAllByText("From Tue 1 Dec")[0]?.tagName).toBe("P");
     const table = within(card).getByRole("table", { name: "What changes" });
-    const standard = within(table).getByRole("row", { name: /Standard works/ });
+    const standard = within(table).getByRole("row", { name: /Standard/ });
     expect(standard.getAttribute("data-changes")).toBe("true");
     expect(standard.textContent).toContain("£3.00");
     expect(standard.textContent).toContain("£3.50");
@@ -140,7 +157,19 @@ describe("Storage tab, a change scheduled", () => {
         .getByRole("row", { name: /Free storage/ })
         .getAttribute("data-changes"),
     ).toBe("false");
-    expect(within(card).getByText("Rates for 2027, agreed with the gallery")).toBeTruthy();
+    expect(within(card).getByText("Reason: Rates for 2027, agreed with the gallery")).toBeTruthy();
+    // The start is the card's heading, not a row that always reads as changed.
+    expect(within(table).queryByRole("row", { name: /Starts on/ })).toBeNull();
+  });
+
+  it("puts Charging across the full width below In force and Scheduled", () => {
+    renderPanel(STORAGE_WITH_CHANGE);
+    expect(section("Charging").className).toContain("lg:col-span-2");
+  });
+
+  it("puts Charging beside In force when nothing is scheduled", () => {
+    renderPanel(STORAGE);
+    expect(section("Charging").className).not.toContain("lg:col-span-2");
   });
 
   it("says why another change cannot be scheduled while one waits", () => {
@@ -217,6 +246,82 @@ describe("Storage tab, read-only (Fulfilment)", () => {
     expect(screen.queryByRole("switch")).toBeNull();
     const card = section("Charging");
     expect(within(card).getByText("Raise storage invoices")).toBeTruthy();
-    expect(within(card).getByText("Charging off")).toBeTruthy();
+    expect(within(card).getByText("Off")).toBeTruthy();
+  });
+});
+
+describe("Storage tab, switching charging on", () => {
+  const ready = { raiseInvoices: false, vatTreatment: "standard_rated" as const };
+
+  it("asks for a reason in the page, then switches on", async () => {
+    mocks.charging.mockResolvedValue(
+      ok({ ...STORAGE, charging: { ...ready, raiseInvoices: true } }),
+    );
+    renderPanel({ ...STORAGE, charging: ready });
+    const toggle = within(section("Charging")).getByRole("switch");
+    expect(toggle.hasAttribute("aria-disabled")).toBe(false);
+    fireEvent.click(toggle);
+    const dialog = await screen.findByRole("dialog", { name: "Raise storage invoices?" });
+    expect(dialog.textContent).toContain("is sent a storage invoice");
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "VAT agreed" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Switch on" }));
+    await waitFor(() =>
+      expect(mocks.charging).toHaveBeenCalledWith(STORAGE_VENUE, {
+        raiseInvoices: true,
+        reason: "VAT agreed",
+      }),
+    );
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Storage invoices switched on"));
+    expect(screen.queryByText("Charging is off")).toBeNull();
+    expect(within(section("Charging")).getByRole("switch").getAttribute("aria-checked")).toBe(
+      "true",
+    );
+  });
+});
+
+describe("Storage tab, when a change fails", () => {
+  const refused = (error: string) => ({ ok: false, error, errorCode: "not_scheduled" });
+
+  it("says a cancel was not saved, and keeps the change", async () => {
+    mocks.cancel.mockResolvedValue(refused("This change has already started or was cancelled."));
+    renderPanel(STORAGE_WITH_CHANGE);
+    fireEvent.click(within(section("Scheduled")).getByRole("button", { name: "Cancel change" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "Wrong date" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel change" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("The change wasn't saved");
+    expect(alert.textContent).toContain("This change has already started or was cancelled.");
+    expect(section("Scheduled")).toBeTruthy();
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("says a switch was not saved", async () => {
+    mocks.charging.mockResolvedValue(refused("Storage invoices can be switched on once…"));
+    renderPanel({ ...STORAGE, charging: { raiseInvoices: true, vatTreatment: "exempt" } });
+    fireEvent.click(within(section("Charging")).getByRole("switch"));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "Pause" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Switch off" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("The change wasn't saved");
+  });
+
+  it("drops the old failure once a later change goes through", async () => {
+    mocks.cancel.mockResolvedValueOnce(refused("Try again."));
+    mocks.cancel.mockResolvedValueOnce(ok(STORAGE));
+    renderPanel(STORAGE_WITH_CHANGE);
+    const cancelOnce = async () => {
+      fireEvent.click(within(section("Scheduled")).getByRole("button", { name: "Cancel change" }));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.change(within(dialog).getByRole("textbox"), { target: { value: "Wrong date" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel change" }));
+    };
+    await cancelOnce();
+    expect((await screen.findByRole("alert")).textContent).toContain("Try again.");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await cancelOnce();
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Scheduled change cancelled"));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText("The change wasn't saved")).toBeNull();
   });
 });

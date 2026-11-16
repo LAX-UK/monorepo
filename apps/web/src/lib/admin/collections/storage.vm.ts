@@ -4,6 +4,7 @@ import {
   MAX_STORAGE_FREE_DAYS,
   type StorageTerms,
   formatStorageTerms,
+  latestStorageTermsStart,
 } from "@auction/domain";
 import { type ChangesRow, formatGbp, formatStaffCalendarDay } from "@auction/staff-ui";
 import type {
@@ -107,16 +108,26 @@ const inRange = (pence: number | null): pence is number =>
 const handlingOf = (handling: AmountDraft): number | null =>
   handling.empty ? 0 : inRange(handling.pence) ? handling.pence : null;
 
+/** A large band that is on charges at least 1p: "or £0.00 for large works" is never shown. */
+const largeInRange = (pence: number | null): pence is number => inRange(pence) && pence > 0;
+
+/** The latest start a change made on `today` may have, as staff read it: "Wed 15 Nov 2028". */
+export const latestStartDay = (today: string): string =>
+  storageDay(latestStorageTermsStart(today), today);
+
 /** Each field's problem, in the words the design gives. `today` is the London day. */
 export function validateStorageDraft(draft: StorageDraft, today: string): StorageErrors {
   const errors: StorageErrors = {};
-  if (!draft.effectiveFrom || draft.effectiveFrom <= today)
+  if (!draft.effectiveFrom || draft.effectiveFrom <= today) {
     errors.effectiveFrom = C.errors.startsOn;
+  } else if (draft.effectiveFrom > latestStorageTermsStart(today)) {
+    errors.effectiveFrom = C.errors.startsTooLate(latestStartDay(today));
+  }
   if (draft.reason.trim() === "") errors.reason = C.errors.reason;
   if (freeDaysOf(draft.freeDays) === null) errors.freeDays = C.errors.freeDays;
   if (!inRange(draft.standard.pence)) errors.standard = C.errors.amount;
-  if (draft.largeOn && !inRange(draft.large.pence)) {
-    errors.large = draft.large.empty ? C.errors.large : C.errors.amount;
+  if (draft.largeOn && !largeInRange(draft.large.pence)) {
+    errors.large = draft.large.empty || draft.large.pence === 0 ? C.errors.large : C.errors.amount;
   }
   if (handlingOf(draft.handling) === null) errors.handling = C.errors.amount;
   return errors;
@@ -127,7 +138,7 @@ export function termsFromDraft(draft: StorageDraft): StorageTerms | null {
   const freeDays = freeDaysOf(draft.freeDays);
   const handling = handlingOf(draft.handling);
   if (freeDays === null || !inRange(draft.standard.pence) || handling === null) return null;
-  if (draft.largeOn && !inRange(draft.large.pence)) return null;
+  if (draft.largeOn && !largeInRange(draft.large.pence)) return null;
   return {
     freeDays,
     countMode: draft.countMode,
@@ -201,7 +212,6 @@ const freeText = (terms: TermsValues) =>
 export function scheduledChanges(
   inForce: TermsValues | null,
   scheduled: TermsValues,
-  today: string,
 ): ChangesRow[] {
   const row = (id: string, label: string, after: string, before: string | null): ChangesRow => ({
     id,
@@ -214,22 +224,19 @@ export function scheduledChanges(
     t.largeDailyPence === null ? C.values.largeOff : money(t.largeDailyPence);
   const handling = (t: TermsValues) =>
     t.handlingFeePence === 0 ? C.values.handlingNone : money(t.handlingFeePence);
+  // The start date is the card's own heading ("From Tue 1 Dec"), so it is not a row: it would
+  // always read as changed.
+  const L = C.changeLabels;
   return [
-    row(
-      "effectiveFrom",
-      C.labels.startsOn,
-      storageDay(scheduled.effectiveFrom, today),
-      inForce ? storageDay(inForce.effectiveFrom, today) : null,
-    ),
-    row("free", C.labels.freeStorage, freeText(scheduled), inForce ? freeText(inForce) : null),
+    row("free", L.freeStorage, freeText(scheduled), inForce ? freeText(inForce) : null),
     row(
       "standard",
-      C.labels.standard,
+      L.standard,
       money(scheduled.standardDailyPence),
       inForce ? money(inForce.standardDailyPence) : null,
     ),
-    row("large", C.labels.large, large(scheduled), inForce ? large(inForce) : null),
-    row("handling", C.labels.handling, handling(scheduled), inForce ? handling(inForce) : null),
+    row("large", L.large, large(scheduled), inForce ? large(inForce) : null),
+    row("handling", L.handling, handling(scheduled), inForce ? handling(inForce) : null),
   ];
 }
 

@@ -131,6 +131,20 @@ describe("validating the change", () => {
     });
   });
 
+  it("refuses a large band of £0.00: it is turned off instead", () => {
+    expect(validateStorageDraft(valid({ large: { pence: 0, empty: false } }), TODAY)).toEqual({
+      large: "Enter a daily rate, or turn off the large band",
+    });
+    expect(buyerPreview(valid({ large: { pence: 0, empty: false } }))).toBeNull();
+  });
+
+  it("refuses a start more than 2 years ahead, naming the latest day", () => {
+    expect(validateStorageDraft(valid({ effectiveFrom: "2028-11-16" }), TODAY)).toEqual({
+      effectiveFrom: "Choose a date up to Wed 15 Nov 2028",
+    });
+    expect(validateStorageDraft(valid({ effectiveFrom: "2028-11-15" }), TODAY)).toEqual({});
+  });
+
   it("does not ask for a large rate while the band is off", () => {
     expect(
       validateStorageDraft(valid({ largeOn: false, large: { pence: null, empty: true } }), TODAY),
@@ -194,22 +208,21 @@ describe("the cards", () => {
   });
 
   it("puts the scheduled change beside the terms in force, marking what changes", () => {
-    const rows = scheduledChanges(
-      IN_FORCE,
-      { ...IN_FORCE, effectiveFrom: "2026-12-01", standardDailyPence: 350 },
-      TODAY,
-    );
+    const rows = scheduledChanges(IN_FORCE, {
+      ...IN_FORCE,
+      effectiveFrom: "2026-12-01",
+      standardDailyPence: 350,
+    });
     expect(rows.map((row) => [row.label, row.before, row.after, row.changes])).toEqual([
-      ["Starts on", "Sun 1 Nov", "Tue 1 Dec", true],
       ["Free storage", "14 calendar days free", "14 calendar days free", false],
-      ["Standard works", "£3.00", "£3.50", true],
-      ["Large works", "£6.00", "£6.00", false],
-      ["Handling fee", "None", "None", false],
+      ["Standard", "£3.00", "£3.50", true],
+      ["Large", "£6.00", "£6.00", false],
+      ["Handling", "None", "None", false],
     ]);
   });
 
   it("shows every value as new for a place's first terms", () => {
-    expect(scheduledChanges(null, IN_FORCE, TODAY).every((row) => row.changes)).toBe(true);
+    expect(scheduledChanges(null, IN_FORCE).every((row) => row.changes)).toBe(true);
   });
 });
 

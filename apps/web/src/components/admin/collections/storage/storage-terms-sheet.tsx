@@ -1,5 +1,6 @@
 "use client";
 
+import { useSettledValue } from "@/hooks/use-settled-value";
 import {
   editStorageTermsAction,
   scheduleStorageTermsAction,
@@ -14,15 +15,16 @@ import {
   buyerPreview,
   draftFromTerms,
   isStorageDraftDirty,
+  latestStartDay,
   validateStorageDraft,
 } from "@/lib/admin/collections/storage.vm";
+import { latestStorageTermsStart } from "@auction/domain";
 import {
   ChoiceFieldset,
   ChoiceRow,
   DateInput,
   DetailPanel,
   Field,
-  FieldRow,
   FormErrorSummary,
   FormSection,
   MoneyInput,
@@ -42,6 +44,9 @@ import { useId, useMemo, useState } from "react";
 import { type StorageFailure, useStorageChange } from "./use-storage-change";
 
 const C = STORAGE_COPY.sheet;
+
+/** How long typing must pause before a screen reader hears the new "Buyers will read". */
+const PREVIEW_SETTLE_MS = 800;
 
 type Props = {
   /** Closes the sheet; the parent mounts it again (fresh) for the next change. */
@@ -80,16 +85,23 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
   const dirty = isStorageDraftDirty(draft, initial);
   const clientErrors = useMemo(() => validateStorageDraft(draft, today), [draft, today]);
   const errors: StorageErrors = attempted ? { ...clientErrors } : {};
-  for (const issue of failure?.issues ?? []) {
-    if (issue.field === "effectiveFrom" && !errors.effectiveFrom) {
-      errors.effectiveFrom = STORAGE_COPY.errors.startsOn;
-    }
+  // The API re-checks the start date against the London day; say it in the form's words.
+  const startIssue = failure?.issues.find((issue) => issue.field === "effectiveFrom");
+  if (startIssue && !errors.effectiveFrom) {
+    errors.effectiveFrom =
+      failure?.code === "start_too_late"
+        ? STORAGE_COPY.errors.startsTooLate(latestStartDay(today))
+        : failure?.code === "start_not_in_future"
+          ? STORAGE_COPY.errors.startsOn
+          : startIssue.message;
   }
   const summary = STORAGE_FIELDS.flatMap((field) => {
     const message = errors[field];
     return message ? [{ fieldId: fieldId(field), message }] : [];
   });
-  const preview = buyerPreview(draft);
+  const preview = buyerPreview(draft) ?? C.previewPending;
+  // Shown at once, spoken once typing pauses: not the whole sentence on every keystroke.
+  const spokenPreview = useSettledValue(preview, PREVIEW_SETTLE_MS);
   const locked = change.busy;
 
   const set = <K extends keyof StorageDraft>(key: K, value: StorageDraft[K]) => {
@@ -179,13 +191,14 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
           <Field
             id={fieldId("effectiveFrom")}
             label={STORAGE_COPY.labels.startsOn}
-            description={C.startsOnHint}
+            description={C.startsOnHint(latestStartDay(today))}
             error={errors.effectiveFrom}
             disabled={locked}
           >
             <DateInput
               value={draft.effectiveFrom}
               min={shiftDay(today, 1)}
+              max={latestStorageTermsStart(today)}
               onValueChange={(day) => set("effectiveFrom", day)}
             />
           </Field>
@@ -273,22 +286,20 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
             }
           />
           {draft.largeOn ? (
-            <FieldRow>
-              <Field
-                id={fieldId("large")}
-                label={C.largeLabel}
-                description={C.dailyHint}
-                error={errors.large}
-                disabled={locked}
-              >
-                <MoneyInput
-                  value={draft.large.pence}
-                  onValueChange={(pence, parsed) =>
-                    set("large", { pence, empty: !parsed.ok && parsed.reason === "empty" })
-                  }
-                />
-              </Field>
-            </FieldRow>
+            <Field
+              id={fieldId("large")}
+              label={C.largeLabel}
+              description={C.dailyHint}
+              error={errors.large}
+              disabled={locked}
+            >
+              <MoneyInput
+                value={draft.large.pence}
+                onValueChange={(pence, parsed) =>
+                  set("large", { pence, empty: !parsed.ok && parsed.reason === "empty" })
+                }
+              />
+            </Field>
           ) : null}
         </FormSection>
 
@@ -310,9 +321,12 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
           </Field>
         </FormSection>
 
-        <Notice tone="info" title={C.previewTitle} aria-live="polite">
-          {preview ?? C.previewPending}
+        <Notice tone="info" title={C.previewTitle} quiet>
+          {preview}
         </Notice>
+        <output className="sr-only" data-testid="storage-preview-announcer">
+          {`${C.previewTitle}: ${spokenPreview}`}
+        </output>
       </form>
     </DetailPanel>
   );

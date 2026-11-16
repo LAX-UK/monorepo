@@ -91,7 +91,11 @@ test.describe("collections storage terms @journey", () => {
       await sheet.getByRole("textbox", { name: /^Free days/ }).fill("14");
       await sheet.getByRole("textbox", { name: /^Standard/ }).fill("3.50");
       await sheet.getByRole("textbox", { name: /^Large/ }).fill("7.00");
-      await expect(sheet.getByText(/After that it is £3\.50 a day for each work/)).toBeVisible();
+      await expect(
+        sheet
+          .getByRole("note", { name: "Buyers will read" })
+          .getByText(/After that it is £3\.50 a day for each work/),
+      ).toBeVisible();
       await shootAll(page, testInfo, "3-sheet-preview");
       await sheet.getByRole("button", { name: "Schedule change" }).click();
       await expect(sheet).toHaveCount(0);

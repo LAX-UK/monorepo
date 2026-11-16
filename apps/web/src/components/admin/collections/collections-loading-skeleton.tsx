@@ -9,7 +9,7 @@ import { STORAGE_COPY } from "@/lib/admin/collections/storage-copy";
 import { FormPage, Skeleton, TabNav } from "@auction/staff-ui";
 import Link from "next/link";
 import { ROW_COLUMNS } from "./desk-row-columns";
-import { StorageSkeleton } from "./storage/storage-skeleton";
+import { StorageSkeleton, StorageStatusSkeleton } from "./storage/storage-skeleton";
 
 const ROWS = 4;
 
@@ -49,6 +49,7 @@ export function CollectionsLoadingSkeleton({
       {...(DESK_TABS.includes(tab)
         ? { primaryAction: <Skeleton className="h-control-sm w-36 rounded-staff-sm" /> }
         : {})}
+      {...(tab === "storage" ? { status: <StorageStatusSkeleton /> } : {})}
     >
       {tab === "storage" ? (
         <StorageSkeleton />

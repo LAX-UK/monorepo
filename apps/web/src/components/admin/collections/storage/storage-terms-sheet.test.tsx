@@ -5,7 +5,7 @@ import {
   STORAGE_VENUE,
   STORAGE_WITH_CHANGE,
 } from "@/lib/admin/collections/storage.fixture";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -95,7 +95,7 @@ describe("Schedule a change", () => {
 
   it("drops the large rate when the large band is turned off", () => {
     const { sheet } = open();
-    fireEvent.click(within(sheet).getByRole("checkbox", { name: /Charge more for large works/ }));
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: /Large band/ }));
     expect(within(sheet).queryByLabelText("Large")).toBeNull();
     expect(sheet.textContent).toContain(
       "After that it is £3 a day for each work, plus VAT where it applies.",
@@ -124,6 +124,62 @@ describe("Schedule a change", () => {
       expect.stringContaining("Enter a number of days from 0 to 90"),
     );
     expect(mocks.schedule).not.toHaveBeenCalled();
+  });
+
+  it("refuses a large band of £0.00, asking for a rate or to turn the band off", async () => {
+    const { sheet } = open();
+    setStart(sheet, "1 Dec 2026");
+    type(sheet, "Reason", "Rates");
+    type(sheet, "Large", "0");
+    expect(
+      within(sheet).getByText("Fill in the free days and rates to see what buyers will read."),
+    ).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Schedule change" }));
+    expect(
+      await within(sheet).findByText("Enter a daily rate, or turn off the large band"),
+    ).toBeTruthy();
+    expect(mocks.schedule).not.toHaveBeenCalled();
+  });
+
+  it("says how far ahead a change may start, and refuses a later date", async () => {
+    const { sheet } = open();
+    const start = within(sheet).getByLabelText("Starts on");
+    expect(start).toHaveAccessibleDescription(
+      expect.stringContaining("From tomorrow, up to Wed 15 Nov 2028."),
+    );
+    expect(start.getAttribute("placeholder")).toBe("e.g. 16 Nov 2026");
+    setStart(sheet, "1 Dec 2062");
+    type(sheet, "Reason", "Rates");
+    fireEvent.click(within(sheet).getByRole("button", { name: "Schedule change" }));
+    expect(await within(sheet).findByText("Choose a date up to Wed 15 Nov 2028")).toBeTruthy();
+    expect(mocks.schedule).not.toHaveBeenCalled();
+  });
+
+  it("gives the Standard and Large rates the same width: neither sits in a half-width row", () => {
+    const { sheet } = open();
+    for (const label of ["Standard", "Large"]) {
+      expect(within(sheet).getByLabelText(label).closest(".sm\\:grid-cols-2")).toBeNull();
+    }
+  });
+
+  it("speaks the preview once typing pauses, not on every keystroke", () => {
+    vi.useFakeTimers();
+    try {
+      const { sheet } = open();
+      const announcer = within(sheet).getByTestId("storage-preview-announcer");
+      // An <output> is a polite status region.
+      expect(announcer.tagName).toBe("OUTPUT");
+      const first = announcer.textContent;
+      type(sheet, "Standard", "3.5");
+      type(sheet, "Standard", "3.50");
+      expect(announcer.textContent).toBe(first);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(announcer.textContent).toContain("£3.50 a day for each work");
+      // The visible preview itself is not a live region.
+      expect(within(sheet).getByRole("note", { name: "Buyers will read" })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("goes straight to the field with one problem, without a summary", async () => {
@@ -194,7 +250,24 @@ describe("Schedule a change", () => {
     await waitFor(() =>
       expect(within(sheet).getByLabelText("Starts on").getAttribute("aria-invalid")).toBe("true"),
     );
+    expect(within(sheet).getByText("Choose a date from tomorrow")).toBeTruthy();
     expect(props.onSaved).not.toHaveBeenCalled();
+  });
+
+  it("shows the API's refusal of a date too far ahead in the form's words", async () => {
+    mocks.schedule.mockResolvedValue({
+      ok: false,
+      error: "Choose a date within the next 2 years.",
+      errorCode: "start_too_late",
+      meta: {
+        issues: [{ field: "effectiveFrom", message: "Choose a date within the next 2 years." }],
+      },
+    });
+    const { sheet } = open();
+    setStart(sheet, "1 Dec 2026");
+    type(sheet, "Reason", "Rates");
+    fireEvent.click(within(sheet).getByRole("button", { name: "Schedule change" }));
+    expect(await within(sheet).findByText("Choose a date up to Wed 15 Nov 2028")).toBeTruthy();
   });
 
   it("says why any other refusal happened, and keeps what was typed", async () => {

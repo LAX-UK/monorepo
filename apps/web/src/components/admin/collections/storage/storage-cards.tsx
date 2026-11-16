@@ -16,6 +16,7 @@ import {
   Section,
   StaffButton,
   StaffSwitch,
+  choiceReasonId,
   formatStaffDateTime,
 } from "@auction/staff-ui";
 import type {
@@ -105,9 +106,9 @@ export function ScheduledCard({
           label={C.scheduled.tableLabel}
           beforeHeading={C.scheduled.before}
           afterHeading={C.scheduled.after(from)}
-          rows={scheduledChanges(inForce, scheduled, today)}
+          rows={scheduledChanges(inForce, scheduled)}
         />
-        <KeyValueList items={[{ label: C.scheduled.reason, value: scheduled.reason }]} />
+        <p className="text-staff-sm text-staff-muted">{C.scheduled.reasonLine(scheduled.reason)}</p>
       </div>
     </Section>
   );
@@ -115,38 +116,42 @@ export function ScheduledCard({
 
 /**
  * "Raise storage invoices": a switch that takes effect at once, after an in-page confirmation.
- * Disabled, with the reason beside it, until a VAT treatment is chosen. Read-only staff see the
- * setting as text.
+ * Until a VAT treatment is chosen it is blocked (PRM-2): still focusable, with the reason on its
+ * own line under the explanation. Read-only staff see the setting as text.
  */
 export function ChargingCard({
   charging,
   canChange,
   busy,
+  className,
   onSwitch,
 }: {
   charging: StaffStorageCharging;
   canChange: boolean;
   busy: boolean;
+  className?: string;
   onSwitch: (on: boolean) => void;
 }) {
   const id = useId();
-  const blocked = charging.vatTreatment === null && !charging.raiseInvoices;
-  const description = blocked
-    ? `${C.charging.explanation} ${C.charging.noVat}`
-    : C.charging.explanation;
+  const blockedReason =
+    charging.vatTreatment === null && !charging.raiseInvoices ? C.charging.noVat : null;
   return (
-    <Section id="storage-charging" title={C.charging.title}>
+    <Section id="storage-charging" title={C.charging.title} {...(className ? { className } : {})}>
       {canChange ? (
         <ChoiceRow
           htmlFor={id}
           label={C.charging.switchLabel}
-          description={description}
-          disabled={blocked || busy}
+          description={C.charging.explanation}
+          disabled={busy}
+          {...(blockedReason ? { disabledReason: blockedReason } : {})}
           control={
             <StaffSwitch
               id={id}
               checked={charging.raiseInvoices}
-              disabled={blocked || busy}
+              disabled={busy}
+              {...(blockedReason
+                ? { disabledReason: blockedReason, "aria-describedby": choiceReasonId(id) }
+                : {})}
               onCheckedChange={(next) => onSwitch(next)}
             />
           }
@@ -157,11 +162,12 @@ export function ChargingCard({
             items={[
               {
                 label: C.charging.switchLabel,
-                value: charging.raiseInvoices ? C.status.on : C.status.off,
+                value: charging.raiseInvoices ? C.charging.value.on : C.charging.value.off,
               },
             ]}
           />
-          <p className="text-staff-sm text-staff-muted">{description}</p>
+          <p className="text-staff-sm text-staff-muted">{C.charging.explanation}</p>
+          {blockedReason ? <p className="text-staff-sm text-staff-muted">{blockedReason}</p> : null}
         </div>
       )}
     </Section>
@@ -198,7 +204,7 @@ export function StorageHistory({
       id: "change",
       header: C.history.columns.change,
       cell: (row) => (
-        <span className="flex flex-col gap-0.5 whitespace-normal">
+        <span className="flex flex-col gap-0.5 py-2 whitespace-normal">
           <span>{historySentence(row, today)}</span>
           {row.reason ? (
             <span className="text-staff-xs text-staff-muted">{C.history.reason(row.reason)}</span>
