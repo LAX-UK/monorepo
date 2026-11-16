@@ -4,6 +4,7 @@ import {
   APPROVED_PROXY_METHODS,
   UNSAFE_PROXY_METHODS,
   isApprovedProxyPath,
+  isPublicSaleReadPath,
   sanitizedProxyRequestHeaders,
   sanitizedProxyResponseHeaders,
   scopesForProxyMethod,
@@ -50,10 +51,10 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   const forwardedAddress = isServerTime
     ? visitorIpHeadersFor(resolveVisitorIp(request.headers))
     : {};
-  try {
+  const send = (asSessionId: string | null) =>
     // The body is buffered above, so the one retry on a replaceable token sends the same bytes.
-    const { response: upstream } = await fetchBidApiAsSession({
-      sessionId,
+    fetchBidApiAsSession({
+      sessionId: asSessionId,
       scopes: scopesForProxyMethod(method),
       input: target,
       init: (bearer) => ({
@@ -67,6 +68,19 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
         cache: "no-store",
       }),
     });
+  try {
+    let result: Awaited<ReturnType<typeof send>>;
+    try {
+      result = await send(sessionId);
+    } catch (error) {
+      // Public sale pages read saleroom status and lots without signing in.
+      const signedOut =
+        error instanceof TokenExchangeFailedError &&
+        error.cause instanceof BidBffSessionRequiredError;
+      if (!signedOut || !isPublicSaleReadPath(method, path)) throw error;
+      result = await send(null);
+    }
+    const { response: upstream } = result;
     return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,

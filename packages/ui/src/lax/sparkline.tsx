@@ -99,7 +99,7 @@ export function Sparkline({
   );
 }
 
-/** The sparkline's placeholder while numbers load: the same box, a gentle wave in skeleton grey. */
+/** The sparkline's placeholder while numbers load: the same box, a wave on the shared skeleton. */
 export function SparklineSkeleton({
   width = 80,
   height = 24,
@@ -121,7 +121,7 @@ export function SparklineSkeleton({
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      className={cn("block shrink-0 animate-pulse text-lax-neutral-bg", className)}
+      className={cn("lax-skeleton lax-wave", className)}
     >
       <path
         d={wave}

@@ -405,8 +405,10 @@ export {
   remainingRefundablePence,
   sumRefundedOrPendingPence,
   cancelledLineIds,
+  SHOP_REFUND_SOURCES,
   type OrderLineAmount,
   type RefundLineInput,
+  type ShopRefundSource,
 } from "./refundable-balance.js";
 export {
   SHOP_RETURN_DISPOSITIONS,

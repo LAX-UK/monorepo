@@ -7,7 +7,7 @@ import { toSaleCountdownEndIso } from "@auction/validators";
 export type ActiveSaleCountdownInput = {
   status: string;
   endTime: Date | string;
-  deliveryMode?: SaleDeliveryMode;
+  deliveryMode?: SaleDeliveryMode | null | undefined;
   /** Server-rendered ISO for SSR-stable first paint. */
   initialEndIso?: string;
 };

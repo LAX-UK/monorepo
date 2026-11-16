@@ -59,6 +59,7 @@ function renderList(patch: Partial<EnquiriesListProps> = {}) {
     chips: [],
     assignees: ASSIGNEES,
     routing: null,
+    departmentNames: { paintings: "Paintings" },
     abilities,
     pagination: { summary: "3 enquiries", prevHref: null, nextHref: null },
     loadError: null,

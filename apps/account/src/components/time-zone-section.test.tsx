@@ -51,7 +51,7 @@ describe("TimeZoneSection", () => {
       );
       expect(textOf(html)).toContain("Time zone for emails and dates");
       expect(textOf(html)).not.toContain("Checking this device");
-      expect(html).toContain("animate-");
+      expect(html).toContain("lax-skeleton");
       expect(textOf(html)).not.toContain("Automatic");
     });
   });

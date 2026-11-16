@@ -6,8 +6,20 @@ type ShopPageSkeletonProps = {
 
 const SKELETON_CARD_PLACEHOLDERS = ["a", "b", "c", "d", "e", "f"] as const;
 
+/** A bar of the shared skeleton (`.lax-skeleton`): appears after 150ms, then pulses its opacity. */
 function ShopSkeletonBar({ className }: { className?: string }) {
-  return <span className={["shop-skeleton__bar", className].filter(Boolean).join(" ")} />;
+  return (
+    <span className={["lax-skeleton shop-skeleton__bar", className].filter(Boolean).join(" ")} />
+  );
+}
+
+/** A work's place: the still paper mat, with the pulsing shape of a print inside it. */
+function ShopSkeletonMedia({ className }: { className: string }) {
+  return (
+    <span className={className}>
+      <span className="lax-skeleton shop-skeleton__print" />
+    </span>
+  );
 }
 
 function CatalogueSkeleton() {
@@ -23,7 +35,7 @@ function CatalogueSkeleton() {
       <ul className="shop-skeleton__grid">
         {SKELETON_CARD_PLACEHOLDERS.map((key) => (
           <li key={key} className="shop-skeleton__card">
-            <span className="shop-skeleton__media" />
+            <ShopSkeletonMedia className="shop-skeleton__media" />
             <ShopSkeletonBar className="shop-skeleton__bar--card-title" />
             <ShopSkeletonBar className="shop-skeleton__bar--card-meta" />
           </li>
@@ -38,7 +50,7 @@ function DetailSkeleton() {
     <div className="shop-skeleton shop-skeleton--detail" aria-busy="true" aria-live="polite">
       <ShopSkeletonBar className="shop-skeleton__bar--back" />
       <div className="shop-skeleton__detail">
-        <span className="shop-skeleton__detail-media" />
+        <ShopSkeletonMedia className="shop-skeleton__detail-media" />
         <div className="shop-skeleton__detail-copy">
           <ShopSkeletonBar className="shop-skeleton__bar--eyebrow" />
           <ShopSkeletonBar className="shop-skeleton__bar--detail-title" />

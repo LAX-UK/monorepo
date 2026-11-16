@@ -297,6 +297,19 @@ jobs:
         run: node scripts/ci/run-platform-onboarding-conformance.mjs
       - name: Prepare auth sessions and run PR browser gates
         run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
+      - name: Seed Shop catalogue
+        run: pnpm --filter @auction/shop-api seed:catalogue
+      # Each public loading screen against the seeded stack (docs/design/motion.md, MO12): no
+      # shift while the skeleton shows, opacity-only motion, and the swap to the page within 0.1.
+      - name: Run Bid loading screens
+        env:
+          PLAYWRIGHT_LOADING_CHECK: "1"
+        run: pnpm --filter @auction/web exec playwright test e2e/loading-screens.spec.ts --no-deps --workers=1
+      - name: Run Shop loading screens
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3020
+          PLAYWRIGHT_LOADING_CHECK: "1"
+        run: pnpm --filter @auction/shop exec playwright test e2e/loading-screens.spec.ts --project=chromium-desktop --workers=1
       - name: Run Shop buyer flow gate
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3020
@@ -304,7 +317,6 @@ jobs:
           SHOP_OIDC_TEST_EMAIL: ${{ env.PLAYWRIGHT_STAFF_EMAIL }}
           SHOP_OIDC_TEST_PASSWORD: ${{ env.PLAYWRIGHT_STAFF_PASSWORD }}
         run: |
-          pnpm --filter @auction/shop-api seed:catalogue
           pnpm --filter @auction/shop exec playwright test e2e/buyer-flow.spec.ts \
             --grep-invert "reaches Stripe hosted checkout"
       - name: Run Shop V1 phase 1 portal smoke

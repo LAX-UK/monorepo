@@ -15,6 +15,8 @@ import type {
   DATA_REQUEST_TOLD_VIA,
 } from "@auction/identity-contracts/data-requests";
 import { formatStaffNumber } from "@auction/staff-ui";
+import type { FoundAccountStatus } from "@auction/types";
+import { FOUND_ACCOUNT_STATUS_LABELS } from "./data-request-forms.copy";
 
 /**
  * The checks each dialog makes on submit, kept out of the components. Each returns one message
@@ -30,7 +32,13 @@ const OLD_RECEIVED_DAYS = 31;
 
 // Log a manual request -----------------------------------------------------------------------
 
-export type FoundAccount = { subjectId: string; name: string; status: string };
+/** A found account; `statusLabel` is resolved on the server so the dialog ships no label map. */
+export type FoundAccount = { subjectId: string; name: string; status: string; statusLabel: string };
+
+/** A found account's state as staff read it; a state the app does not know yet stays neutral. */
+export function foundAccountStatusLabel(status: string): string {
+  return FOUND_ACCOUNT_STATUS_LABELS[status as FoundAccountStatus] ?? "Account status unknown";
+}
 
 export type LogRequestDraft = {
   personMode: "account" | "contact";

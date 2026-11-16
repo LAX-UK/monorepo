@@ -16,8 +16,8 @@ export function SettingsChromeLayout({ children, spaceY = 6 }: Props) {
   const outerSpace = spaceY === 8 ? "space-y-8" : "space-y-6";
   const mobileFallbackClass =
     spaceY === 8
-      ? "h-12 animate-pulse rounded-xl bg-surface-container-high/50 lg:hidden"
-      : "h-48 animate-pulse rounded-xl bg-surface-container-high/50 lg:hidden";
+      ? "h-12 lax-skeleton rounded-xl bg-surface-container-high/50 lg:hidden"
+      : "h-48 lax-skeleton rounded-xl bg-surface-container-high/50 lg:hidden";
 
   return (
     <div className={`screen w-full ${outerSpace}`}>
@@ -30,7 +30,7 @@ export function SettingsChromeLayout({ children, spaceY = 6 }: Props) {
             <Suspense
               fallback={
                 <div
-                  className="h-40 animate-pulse rounded-lg bg-surface-container-high/50"
+                  className="h-40 lax-skeleton rounded-lg bg-surface-container-high/50"
                   aria-hidden
                 />
               }

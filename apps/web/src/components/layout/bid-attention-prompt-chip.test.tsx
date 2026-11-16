@@ -1,8 +1,10 @@
 import { BidAttentionPromptChip } from "@/components/layout/bid-attention-prompt-chip";
 import type { BidAttention } from "@/hooks/use-bid-attention";
-import type { AttentionChip } from "@/lib/navigation/client-attention";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { type AttentionChip, NO_ATTENTION, attentionChip } from "@/lib/navigation/client-attention";
+import { resetEndedLots } from "@/lib/navigation/ended-lots";
+import { announceLotEnded } from "@/lib/realtime/lot-ended-signal";
+import { act, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let state: BidAttention;
 vi.mock("@/hooks/use-bid-attention", () => ({ useBidAttention: () => state }));
@@ -61,5 +63,53 @@ describe("BidAttentionPromptChip", () => {
     expect(new Set(links.map((link) => link.getAttribute("href")))).toEqual(
       new Set(["/purchases"]),
     );
+  });
+});
+
+describe("BidAttentionPromptChip when the outbid lot closes", () => {
+  const outbidOn = (lotId: string): BidAttention => {
+    const attention = {
+      ...NO_ATTENTION,
+      outbidLots: ["3"],
+      outbidLotIds: [lotId],
+      groups: [
+        {
+          kind: "outbid" as const,
+          count: 1,
+          url: "/bids?tab=active",
+          items: [
+            { kind: "outbid" as const, lotId, title: "Harbour at Dawn", url: `/lots/${lotId}` },
+          ],
+        },
+      ],
+    };
+    return {
+      signedIn: true,
+      viewer: { displayName: "Jordan Hale", email: "jordan@example.com" },
+      pending: false,
+      attention,
+      chip: attentionChip(attention),
+    };
+  };
+
+  beforeEach(() => resetEndedLots());
+
+  it("clears the outbid prompt as soon as the lot page announces the close", () => {
+    state = outbidOn("lot-1");
+    const { container } = render(<BidAttentionPromptChip placement="strip" />);
+    expect(screen.getByTestId("attention-strip")).toHaveTextContent("Outbid on Harbour at Dawn");
+
+    act(() => announceLotEnded("lot-1"));
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("keeps the prompt when a different lot closes", () => {
+    state = outbidOn("lot-1");
+    render(<BidAttentionPromptChip placement="strip" />);
+
+    act(() => announceLotEnded("lot-2"));
+
+    expect(screen.getByTestId("attention-strip")).toHaveTextContent("Outbid on Harbour at Dawn");
   });
 });

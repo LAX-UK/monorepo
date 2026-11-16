@@ -106,13 +106,13 @@ export function BuyerOnboardingLoadingSkeleton({ variant }: Props) {
       <BuyerOnboardingShell
         title={
           <span
-            className="block h-8 w-[min(68vw,520px)] animate-pulse rounded bg-surface-container-high sm:h-10"
+            className="block h-8 w-[min(68vw,520px)] lax-skeleton rounded bg-surface-container-high sm:h-10"
             aria-hidden
           />
         }
         description={
           <span
-            className="block h-5 w-[min(76vw,600px)] animate-pulse rounded bg-surface-container-high"
+            className="block h-5 w-[min(76vw,600px)] lax-skeleton rounded bg-surface-container-high"
             aria-hidden
           />
         }

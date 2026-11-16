@@ -29,7 +29,9 @@ describe("migration 0402 notice delivery preferences", () => {
     const previous = journal.entries.find((e) => e.tag === "0401_enquiry_inbound_review");
     expect(entry?.idx).toBe((previous?.idx ?? Number.NaN) + 1);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    expect(journal.entries.at(-1)?.tag).toBe(TAG);
+    for (const [i, e] of journal.entries.entries()) {
+      if (i > 0) expect(e.when).toBeGreaterThan(journal.entries[i - 1]?.when ?? 0);
+    }
   });
 
   it("adds the two switches on by default, under a lock timeout", () => {

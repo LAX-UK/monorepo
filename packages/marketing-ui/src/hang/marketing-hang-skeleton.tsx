@@ -7,7 +7,8 @@ type MarketingHangSkeletonProps = {
   className?: string;
 };
 
-const BLOCK = "bg-surface-container-low motion-safe:animate-pulse";
+/** The shared skeleton (packages/ui skeleton.css): appears after 150ms, then pulses its opacity. */
+const BLOCK = "lax-skeleton bg-surface-container-low";
 /** Heights that suggest works of different sizes on one centre line. */
 const WORK_HEIGHT_SHARE = [1, 0.62, 0.8, 0.5, 0.9] as const;
 

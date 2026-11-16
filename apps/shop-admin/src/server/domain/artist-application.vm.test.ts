@@ -1,7 +1,9 @@
 import type { AdminArtistApplicationEvent } from "@auction/shop-contracts";
+import { ARTIST_APPLICATION_ACTIONS } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import {
   ARTIST_SLUG_PATTERN,
+  EVENT_PRESENTATION,
   applicationTitle,
   artistApplicationsList,
   historyEvents,
@@ -129,5 +131,20 @@ describe("history", () => {
       ["Application sent", "Ada Moreno"],
     ]);
     expect(events[0]).toMatchObject({ detail: "Frame sizes?", tone: "warning" });
+  });
+
+  it.each(ARTIST_APPLICATION_ACTIONS)("titles %s as a sentence, not the stored code", (action) => {
+    expect(Object.keys(EVENT_PRESENTATION)).toContain(action);
+    const [one] = historyEvents({ artistName: "Ada Moreno", events: [event({ action })] });
+    expect(one?.title).toMatch(/^[A-Z]/);
+    expect(one?.title).not.toContain("_");
+  });
+
+  it("reads an action it does not know in sentence case", () => {
+    const [one] = historyEvents({
+      artistName: null,
+      events: [event({ action: "put_on_hold" })],
+    });
+    expect(one?.title).toBe("Put on hold");
   });
 });
