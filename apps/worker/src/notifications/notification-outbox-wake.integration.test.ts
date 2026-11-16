@@ -12,7 +12,7 @@ import {
   DrizzleNotificationWriteRepository,
 } from "@auction/persistence/repositories";
 import { PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME } from "@auction/queues";
-import { Queue } from "bullmq";
+import { Queue, QueueEvents } from "bullmq";
 import { and, eq, inArray } from "drizzle-orm";
 import { Redis } from "ioredis";
 import pg from "pg";
@@ -22,6 +22,11 @@ import { WorkerNotificationOutboxDrain } from "../finance/worker-notification-ou
 import { runProcessNotificationOutboxWakeJob } from "../jobs/payment-ops-cron.js";
 import { registerNotificationOutboxWorkers } from "../workers/register-notification-outbox-workers.js";
 import type { WorkerBootstrapDeps } from "../workers/types.js";
+import {
+  NOTIFICATION_OUTBOX_WAKE_JOB_NAME,
+  WAKE_BUCKET_MS,
+  WAKE_SETTLE_DELAY_MS,
+} from "./notification-outbox-wake-scheduler.js";
 
 const databaseUrl = process.env.MIGRATION_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const redisUrl = process.env.REDIS_URL;
@@ -29,14 +34,19 @@ const redisUrl = process.env.REDIS_URL;
 /** The bar the live sale needs: an outbid notice on screen within a few seconds of the bid. */
 const DELIVERY_BUDGET_MS = 3_000;
 /**
- * The listener wakes once when it connects (a signal sent while nobody listened is not replayed),
- * and that wake's follow-up drain runs about 1.5 s later. A row staged inside that window would be
- * delivered by it with no signal at all, so the latency test waits this long after the listener is
- * up: only the commit-time signal can then deliver the row inside the budget.
+ * How long the test polls for things to happen on a slow CI runner. Waiting this long is not what
+ * the test proves: the delivery latency is measured from the commit and held to the budget above.
  */
-const CONNECT_WAKE_QUIET_MS = 2_500;
+const CI_DEADLINE_MS = 20_000;
+/** A sweep due within this long of now could run while a notice is in flight, so it is waited out. */
+const SWEEP_CLEARANCE_MS = DELIVERY_BUDGET_MS + WAKE_SETTLE_DELAY_MS + 2_000;
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const isWakeJob = (jobId: string | undefined) =>
+  jobId?.startsWith(`${NOTIFICATION_OUTBOX_WAKE_JOB_NAME}-`) ?? false;
+const wakeBucket = (jobId: string, kind: "now" | "settle") => {
+  const prefix = `${NOTIFICATION_OUTBOX_WAKE_JOB_NAME}-${kind}-`;
+  return jobId.startsWith(prefix) ? Number(jobId.slice(prefix.length)) : Number.NaN;
+};
 
 function payload(type: string, title: string): NotificationPayload {
   return { type, title, message: `${title} (integration)`, legalEntityId: null };
@@ -60,7 +70,47 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
   const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
   const prefix = `outbox-wake-${run}`;
   const queue = new Queue(PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME, { connection: redis, prefix });
-  let listeningAt = 0;
+  // biome-ignore lint/style/noNonNullAssertion: gated above
+  const eventsRedis = new Redis(redisUrl!, { maxRetriesPerRequest: null });
+  const queueEvents = new QueueEvents(PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME, {
+    connection: eventsRedis,
+    prefix,
+  });
+  /** Every job start and finish on the outbox queue, in the order Redis recorded them. */
+  const events: Array<{ kind: "active" | "completed" | "failed"; jobId: string }> = [];
+  /** Jobs started and not yet finished. */
+  const running = new Set<string>();
+  queueEvents.on("active", ({ jobId }) => {
+    events.push({ kind: "active", jobId });
+    running.add(jobId);
+  });
+  const finished = (kind: "completed" | "failed", jobId: string) => {
+    events.push({ kind, jobId });
+    running.delete(jobId);
+  };
+  queueEvents.on("completed", ({ jobId }) => finished("completed", jobId));
+  queueEvents.on("failed", ({ jobId }) => finished("failed", jobId));
+
+  /**
+   * Wait until no minute sweep is running or due within {@link SWEEP_CLEARANCE_MS}, so whatever
+   * delivers a notice staged next can only be a drain the commit-time signal woke.
+   */
+  async function clearOfSweeps(): Promise<void> {
+    await vi.waitFor(
+      async () => {
+        expect([...running].filter((id) => !isWakeJob(id))).toEqual([]);
+        // A job removed while it is listed comes back undefined: wake jobs are removed on completion.
+        const pending = (await queue.getJobs(["wait", "delayed", "prioritized"])).filter(
+          (j) => j !== undefined,
+        );
+        const dueSoon = pending.filter(
+          (j) => !isWakeJob(j.id) && j.timestamp + (j.delay ?? 0) < Date.now() + SWEEP_CLEARANCE_MS,
+        );
+        expect(dueSoon.map((j) => j.id)).toEqual([]);
+      },
+      { timeout: 60_000 + SWEEP_CLEARANCE_MS + CI_DEADLINE_MS, interval: 100 },
+    );
+  }
 
   beforeAll(async () => {
     await db.insert(user).values({
@@ -71,6 +121,8 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+    // Subscribed before the worker exists, so no job event is missed.
+    await queueEvents.waitUntilReady();
 
     const drain = new WorkerNotificationOutboxDrain({
       outbox,
@@ -104,77 +156,99 @@ describe.skipIf(!databaseUrl || !redisUrl)("critical notification wake (integrat
       errorHandlers: [],
       closables,
     });
+    // Ready means: the listener is on LISTEN, the worker is taking jobs under the queue's global
+    // concurrency limit, and the wake the listener raises on connect has run its follow-up drain,
+    // so that wake cannot be what delivers a row staged by a test.
     await vi.waitFor(
-      () =>
+      () => {
         expect(log.info).toHaveBeenCalledWith(
           expect.anything(),
           "notification_outbox_wake_listening",
-        ),
-      { timeout: 10_000 },
+        );
+        expect(
+          events.some(
+            (e) => e.kind === "completed" && !Number.isNaN(wakeBucket(e.jobId, "settle")),
+          ),
+        ).toBe(true);
+      },
+      { timeout: CI_DEADLINE_MS, interval: 50 },
     );
-    listeningAt = Date.now();
-  }, 20_000);
+  }, CI_DEADLINE_MS + 10_000);
 
   afterAll(async () => {
     for (const c of closables.reverse()) await c.close().catch(() => {});
     await queue.close();
+    await queueEvents.close();
+    await eventsRedis.quit();
     await db.delete(user).where(eq(user.id, userId));
     await redis.quit();
     await closeDb(db);
   });
 
-  it("delivers a committed outbid notice within seconds, once, through the signal", async () => {
-    // Past the connect wake and its follow-up, so neither can deliver this row.
-    await sleep(Math.max(0, listeningAt + CONNECT_WAKE_QUIET_MS - Date.now()));
-    const key = `outbid:lot-${run}:bid-${run}:${userId}`;
-    const committedAt = await db.transaction(async (tx) => {
-      await outbox.stage(
-        { userId, payload: payload("outbid", `Outbid ${run}`), idempotencyKey: key },
-        tx as never,
+  it(
+    "delivers a committed outbid notice within seconds, once, through the signal",
+    async () => {
+      await clearOfSweeps();
+      const key = `outbid:lot-${run}:bid-${run}:${userId}`;
+      const eventsBefore = events.length;
+      const stagedAt = Date.now();
+      const committedAt = await db.transaction(async (tx) => {
+        await outbox.stage(
+          { userId, payload: payload("outbid", `Outbid ${run}`), idempotencyKey: key },
+          tx as never,
+        );
+        return Date.now();
+      });
+
+      const delivered = await vi.waitFor(
+        async () => {
+          const rows = await db
+            .select({ createdAt: notification.createdAt })
+            .from(notification)
+            .where(eq(notification.userId, userId));
+          expect(rows).toHaveLength(1);
+          return rows[0];
+        },
+        { timeout: CI_DEADLINE_MS, interval: 50 },
       );
-      return Date.now();
-    });
+      const latencyMs = (delivered?.createdAt.getTime() ?? 0) - committedAt;
+      console.info(`outbid notice delivered ${latencyMs}ms after commit`);
+      expect(latencyMs).toBeLessThan(DELIVERY_BUDGET_MS);
 
-    const delivered = await vi.waitFor(
-      async () => {
-        const rows = await db
-          .select({ createdAt: notification.createdAt })
-          .from(notification)
-          .where(eq(notification.userId, userId));
-        expect(rows).toHaveLength(1);
-        return rows[0];
-      },
-      { timeout: DELIVERY_BUDGET_MS + 2_000, interval: 50 },
-    );
-    const latencyMs = (delivered?.createdAt.getTime() ?? 0) - committedAt;
-    console.info(`outbid notice delivered ${latencyMs}ms after commit`);
-    expect(latencyMs).toBeLessThan(DELIVERY_BUDGET_MS);
+      // The signal's follow-up drain runs after the delivery and must not write the notice again.
+      // Its job is in the bucket the follow-up was due in; the wake fired at or after `stagedAt`.
+      const followUpBucket = Math.floor((stagedAt + WAKE_SETTLE_DELAY_MS) / WAKE_BUCKET_MS);
+      await vi.waitFor(
+        () =>
+          expect(
+            events
+              .slice(eventsBefore)
+              .some(
+                (e) => e.kind === "completed" && wakeBucket(e.jobId, "settle") >= followUpBucket,
+              ),
+          ).toBe(true),
+        { timeout: CI_DEADLINE_MS, interval: 50 },
+      );
+      const after = await db
+        .select({ id: notification.id })
+        .from(notification)
+        .where(eq(notification.userId, userId));
+      expect(after).toHaveLength(1);
 
-    // Nor did the minute sweep: no sweep run started between the commit and the delivery, so the
-    // drain that delivered it was woken by the commit-time signal.
-    const sweeps = await queue.getJobs(["active", "completed", "failed"]);
-    const sweepsInWindow = sweeps.filter(
-      (j) =>
-        j.name === PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME &&
-        (j.processedOn ?? 0) >= committedAt &&
-        (j.processedOn ?? 0) <= (delivered?.createdAt.getTime() ?? 0),
-    );
-    expect(sweepsInWindow).toHaveLength(0);
+      const [row] = await db
+        .select({ state: notificationOutbox.state })
+        .from(notificationOutbox)
+        .where(eq(notificationOutbox.idempotencyKey, key));
+      expect(row?.state).toBe("sent");
 
-    const [row] = await db
-      .select({ state: notificationOutbox.state })
-      .from(notificationOutbox)
-      .where(eq(notificationOutbox.idempotencyKey, key));
-    expect(row?.state).toBe("sent");
-
-    // The follow-up drain runs after this and must not write the notice again.
-    await sleep(2_000);
-    const after = await db
-      .select({ id: notification.id })
-      .from(notification)
-      .where(eq(notification.userId, userId));
-    expect(after).toHaveLength(1);
-  }, 15_000);
+      // Through the signal: from the commit until the follow-up finished, every job that ran on the
+      // outbox queue was a wake drain. No minute sweep ran (none was running or due at the commit).
+      const ran = events.slice(eventsBefore).filter((e) => e.kind === "active");
+      expect(ran.length).toBeGreaterThan(0);
+      expect(ran.filter((e) => !isWakeJob(e.jobId))).toEqual([]);
+    },
+    60_000 + SWEEP_CLEARANCE_MS + 3 * CI_DEADLINE_MS,
+  );
 
   it("delivers outbid notices for one person in the order they were staged", async () => {
     const keys = [1, 2, 3].map((n) => `outbid:lot-${run}:order-${n}:${userId}`);
