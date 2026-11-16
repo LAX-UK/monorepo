@@ -80,3 +80,83 @@ The CSS work is clean. It uses tokens only, sets opacity only, keeps shared beha
   - `tsc --noEmit` passes for `packages/ui`, `packages/staff-ui`, `apps/web` and `apps/shop-admin`.
 - **CI.** Every check on head `5e48aee1` is green (`ci-result`, `browser-gates`, `ui-chromium`, `static-checks`, web vitest 1–8, and the rest), apart from one skipped smoke job.
 - **PR body.** It has MO14 sections for route JS, screenshots, tests and reduced motion, and no AI footer. It does not include recordings or an INP/e2e spec (see B2).
+
+## Final recheck
+
+Head `c508f5de` (10 commits, base `03f90056`), rechecked on 2026-11-16. The PR branch was not changed. Short version: every blocking and non-blocking item from the review is fixed and verified. One gate is still open: the Art browser gate on this head was cancelled, not passed, so CI is not fully green.
+
+### Blocking items
+
+**B1. Fade on dead code: fixed.**
+- **The fade is on the live panel.** It is the Bid admin cover slot panel, `apps/web/src/components/admin/sale-cover/sale-cover-tab.tsx:113-120`. The panel has `key={selected}`, `role="tabpanel"`, `data-lax-motion="tabpanel"` and `data-state="active"`. The key moved here from `CoverSlotPanel`, so the marked element itself remounts on every switch.
+- **No other in-place staff panels exist.** `grep -rnE 'role="(tabpanel|tablist)"|role=\{?"tab"'` over `apps/web/src`, `apps/shop-admin/src` and `packages/staff-ui/src` finds only `cover-slot-tabs.tsx:34,42` and `sale-cover-tab.tsx:115`.
+  - Kit `<Tabs>` / `TabsContent` has one non-test importer: the public `home-live-now-section.tsx:42`.
+  - In LAX Admin, `SegmentedControl` appears in `artwork-editor.client.tsx:1240` and `link-lax-art-report.client.tsx:280`. These are a form field and a URL filter, not tab panels.
+  - The PR body's "LAX Admin has no in-place tab panels" holds.
+- **`AdminDetailTabs` is deleted**, along with its test and `admin-sticky-layout.ts`. `grep -rn "admin-detail-tabs\|AdminDetailTab\|admin-sticky-layout" apps packages` returns nothing.
+- **Kit public `Tabs` timing is unchanged.** `packages/ui/src/lax/tab-panels.tsx` and `tabs.tsx` have no diff. The public case in `motion-resolved.test.ts` stays at 200ms, and 120ms under OS reduce.
+- **Route tabs are documented as taking the step 2 cross-fade.** See the PR body ("Route tabs take the step 2 staff cross-fade"), `docs/DESIGN_SYSTEM.md:316` and `docs/design/staff-design-standard.md:1293`.
+- **The live screens are captured.** The `bid-admin-tabs-*` jsdom shots are replaced by `bid-admin-cover-*` real renders.
+
+**B2. MO14 proof: fixed.**
+- **Specs.** There are two opt-in specs:
+  - `apps/web/e2e/tab-motion-bid-admin.spec.ts` covers the cover slot switch. It checks:
+    - the panel resolves to `lax-fade-in 0.15s`;
+    - the tab's `transitionProperty` is `none`;
+    - INP at 4x CPU (`throttleCpu`, `medianInteractionToPaint`) is within budget;
+    - `layoutShiftScore` is within budget;
+    - under reduced motion, `movingAnimations(…, { includeFades: true })` returns `[]`.
+  - `apps/shop-admin/e2e/panel-motion.spec.ts` covers the LAX Admin audit `DetailPanel`. It checks the same things, with the panel at `lax-fade-in 0.2s`.
+- **Wiring.** Both are wired into `test:e2e:motion` (`apps/web/package.json:21` and `apps/shop-admin/package.json:18`). The web spec sets `test.use({ storageState: roleAuthState.staff })` at file level, so it does not repeat #1476's missing-session problem. I did not run them: they need the seeded stack.
+- **Recordings.** These are committed in `docs/design/screenshots/motion-7/` and named in the README and the PR body.
+  - `bid-admin-cover-slot-switch-realtime.webm` runs 5.1s, and `…-slowed-10x.gif` runs 9.3s.
+  - `lax-admin-record-panel-realtime.webm` runs 5.5s, and `…-slowed-10x.gif` runs 7.0s.
+  - A frame grid of the cover GIF shows the selected border switching at once while the new panel comes in faded.
+- **Screenshots.** There are 12 main/head pairs: 3 screens at 1440x900 and 375x812, light and dark.
+  - They are real staff-shell renders: the Bid admin sidebar and top bar, and the LAX Admin `DetailPanel`.
+  - Ten pairs are byte-identical.
+  - `lax-admin-audit-list-375-{dark,light}` differ in 4 and 8 pixels, with a maximum RGB delta of 3. That is under `screenshotDiffRatio`'s 24 threshold (`apps/web/e2e/helpers/motion-check.ts:272`), so its 0.00000 is correct.
+
+### Non-blocking items
+
+1. **The underline is instant: fixed.**
+   - The rule is `[data-staff-ui] [role="tab"] { transition: none; }` (`packages/staff-ui/src/theme.css:272-276`). It uses no token, no literal, and no Tailwind default duration.
+   - `theme.css` is imported unlayered (`apps/web/src/app/globals.css:10`), so it beats the layered `transition-colors` utility.
+   - `data-staff-ui` is set by `StaffShell` (`packages/staff-ui/src/shell/staff-shell.tsx:125`), which Bid admin (`app/admin/layout.tsx`) and LAX Admin use.
+   - The web e2e checks the computed `transitionProperty` is `none`.
+2. **The guard is split per package and catches Tailwind literals: fixed.**
+   - The guards are `packages/staff-ui/src/motion-staff.test.ts` and `apps/shop-admin/src/motion-staff.test.ts`, so no package reads app source any more.
+   - `LITERAL` now matches `\bduration-\d+\b`. Existing offenders sit in a list that only shrinks.
+3. **The reduced-motion matrix is widened: fixed.** `motion-resolved.test.ts:412-451` now has 12 cases, including `force-reduce` and `force-allow-os-reduce`. I ran it: 12 of 12 pass in Chromium.
+4. **The dormant capture tests are gone: fixed.** No `*.capture.test.tsx` remains.
+5. **The mock-data shots are gone: fixed.** They are replaced by real renders.
+6. **The Radix note is in place: fixed.** The comment is at `packages/ui/src/lax/motion.css:155-162`. The body says, accurately, that the hand-rolled cover panel also fades on first render.
+
+### Rules
+
+- **Tokens only, compositor only.** The new rules are `motion.css:163-169` (`lax-fade-in var(--lax-motion-enter) var(--lax-ease-out)`, opacity) and `theme.css` `transition: none`. The diff adds no literal duration, no `transition-all`, and no transform or layout property.
+- **Lenis, budgets and allowances.** Lenis is untouched. No budget, baseline, ratchet or allowlist file is in the diff (`git diff --stat | grep -iE "lenis|budget|baseline|ratchet|allowlist"` is empty). The 1 KB allowance is not used.
+- **Route JS.** The only source JS changes are `sale-cover-tab.tsx` and `cover-slot-tabs.tsx`. They are imported only by `app/admin/(platform)/sales/[id]/(detail)/cover/page.tsx`, apart from the deleted module, which had no importers. LAX Admin has test-only changes.
+  - I built `apps/web` for production from main and from head, with the CI budget DSNs.
+  - The cover page chunk (the only chunk containing "Cover pictures") is 100373 → 100329 bytes raw (-44). Its start-up total is 720751 → 720283 gzip.
+  - Two head builds of the same commit differed by about 200 bytes on unrelated account routes (63 of 120 non-admin routes differed at 0.1 KB precision). So a per-route byte diff of single local builds is noise. The PR's own table (0 higher, 229 lower, 51 equal) is consistent with this, and the code that changed only got smaller.
+  - The budget check in CI's `build` job passed.
+- **Tests fail without the change.** Each mutation below was reverted afterwards.
+  - Restoring `sale-cover-tab.tsx` from main fails `admin-motion.test.ts` and `sale-cover-tab.test.tsx` (2 failures).
+  - Dropping the `[role="tab"]` rule fails `motion-staff.test.ts`.
+  - Dropping the `tabpanel` active rule from `motion.css` fails 7 of 12 Chromium cases.
+  - With the change in place, these suites pass: web 30/30, staff-ui 4/4, shop-admin 2/2, ui tab matrix 12/12.
+- **PR body.**
+  - "Changes after review" covers B1, B2 and N1–N6 accurately.
+  - It discloses the cover panel's first-render fade.
+  - It flags two #1476 spec problems that also reproduce on main, left for a separate fix.
+  - It has no AI footer. No commit has a Co-Authored-By or generated-by trailer.
+- **CI.** The CI workflow on `c508f5de` is green: `ci-result`, `build`, `static-checks`, `ui-chromium`, `browser-gates`, `account-browser-gates`, web vitest 1–8, shop-api vitest 1–4 (1/4 sat at checkout for an hour, then passed), and the rest. One smoke job was skipped.
+  - **Art PR browser gates did not pass.** The job `art-browser-gates` (run 43904364751) was **cancelled** after the `art loading screens @optin` cases at 375 (`art-hub`, `collector-hub`, `visit`, `how-to-buy`) each timed out at 1.5 min, through retries.
+  - This is very likely not caused by the PR. The only shared change Art loads is a rule that matches `data-lax-motion="tabpanel"`, which no Art page uses. The same gate also failed on main's merge-queue run for `dd81f7f2` (run 43897500023) and passed on other branches since.
+  - It is still a red gate on this head.
+
+### What is left
+
+- Re-run Art PR browser gates on `c508f5de` until it passes, with no code change. If it fails the same way, show that it fails on main too and get it waived.
+- Once that gate is green, this is ready to ship. Nothing else is open.
