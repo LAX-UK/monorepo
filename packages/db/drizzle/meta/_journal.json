@@ -2731,6 +2731,20 @@
       "when": 1812628800000,
       "tag": "0398_demo_seed_target",
       "breakpoints": true
+    },
+    {
+      "idx": 391,
+      "version": "7",
+      "when": 1812715200000,
+      "tag": "0399_domain_events_event_type_aggregate_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 392,
+      "version": "7",
+      "when": 1812801600000,
+      "tag": "0400_unapplied_money_shop_payment_idx",
+      "breakpoints": true
     }
   ]
 }
