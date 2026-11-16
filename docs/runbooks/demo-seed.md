@@ -15,8 +15,9 @@ The seeds refuse a database unless both are true:
    that names this database. Production never has a row. A copy restored under another name is
    refused, because its row names the database it was written in.
 
-The Bid seed (`db:seed:demo-full`), the Shop seed (`seed:demo-full`) and the staff queue seeders
-check the mark before they write anything.
+The Bid seed (`db:seed:demo-full`), the Shop seed (`seed:demo-full`, which also fills the Shop
+staff queues and the dispatched, returned and reserved states) and the staff queue seeders check
+the mark before they write anything.
 
 ## Mark the test database (once)
 
@@ -68,9 +69,36 @@ If 0398 is rolled back the mark goes with it; insert it again after the migratio
 | LAX Admin: Fulfilment, "To fulfil" | The paid demo print orders |
 | LAX Admin: "Failed refunds", `/orders?refund=failed` | A goodwill part refund that cannot be sent (the demo orders have no Stripe payment, so a retry fails again without calling Stripe) |
 | LAX Admin: Disputes | An open dispute on a demo print order, a different order from the refund; it has no Stripe payment, so there is no "Open in Stripe" link |
+| LAX Admin: Orders, Fulfilment (in transit) | A demo print order dispatched with carrier "Demo Carrier" and tracking number `DEMO-TRACK-0001` (a different order from the refund, dispute and return) |
+| LAX Admin: Orders (order page, returns) | A demo print order delivered, then cancelled after possession: a return received back on sale, and a cancellation refund recorded as failed (no Stripe payment exists, so it can never be sent) |
+| LAX Admin: Original sales (reserved) | "Quiet Orchard" (lax.art original) reserved for an invented buyer ("Demo Original Buyer") at £1,450.00, with no expiry and no invoice |
+
+### What the demo cannot show, and why
+
+- **Money that really moved.** The demo orders and the reserved original have no Stripe payment,
+  invoice, Payment Link or Books invoice, and no invented provider id is written for them. The
+  refund of the returned order is recorded as failed ("Order missing stripe_payment_intent_id"),
+  not sent. Anything that needs a real Stripe or Zoho Books object (a paid or invoiced original, a
+  sent refund, "Open in Stripe" links) needs live provider data: create it with Stripe test mode
+  and the Shop's own test flow.
+- **A return still in transit.** The seeded return is received (the "returned" state). Staff can
+  open another by cancelling a delivered demo order after possession in LAX Admin.
+- **Packing of the dispatched orders** is confirmed by the seed itself (confirming actor
+  `seed:demo-shop-states`), because the packing screen's label step needs a printer.
 
 Events the seeds write carry the producer `demo-seed`; the notification fan-out and the collection
 notices skip them, so no one is emailed about demo data.
+
+## Run it
+
+```sh
+DATABASE_URL_SHOP=<test shop address> pnpm --filter @auction/shop-api seed:demo-full
+```
+
+It is the Shop half of **Worker task (test)** `demo-full`. Run it again at any time: a step runs
+only while its row is still in the state the seed leaves it before that step, so work staff did on
+an item is kept and nothing outside the seed's own rows is touched. The returned order and the
+reservation are written once; if staff cancel the reservation it is not made again.
 
 ## Items that go stale (clock-bound)
 
