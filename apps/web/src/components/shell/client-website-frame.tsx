@@ -45,7 +45,7 @@ export function ClientWebsiteFrame({ user, navScope, account, acting, banner, ch
         <AccountChromeProvider account={account}>
           <ShellConfigProvider config={config}>
             <ShellChromeProvider>
-              <TooltipProvider delayDuration={200}>
+              <TooltipProvider delayDuration={400}>
                 {/* The public header is fixed; the page starts below it. */}
                 <div aria-hidden className="h-[var(--header-height)]" />
                 <AccountArea

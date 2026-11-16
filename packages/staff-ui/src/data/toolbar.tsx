@@ -389,10 +389,14 @@ export function DataViews({
   };
 
   return (
-    <div className="flex items-center gap-1">
-      <OverflowTabs tabs={tabs} currentId={currentId} Link={Link} label="Views" />
+    <div className="flex min-w-0 items-center gap-1">
+      {/* The tabs take only the room the controls leave (`min-w-0`) and give way into "More"; the
+          controls never shrink and never overlay a tab, at any width. */}
+      <div data-staff-views-tabs className="min-w-0 flex-1">
+        <OverflowTabs tabs={tabs} currentId={currentId} Link={Link} label="Views" />
+      </div>
       {team.length > 0 || saved ? (
-        <div className="flex shrink-0 items-center gap-1">
+        <div data-staff-views-controls className="flex shrink-0 items-center gap-1">
           {saved && query && !matched ? (
             <StaffButton
               variant="ghost"

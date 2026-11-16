@@ -42,7 +42,6 @@ function saveBody(
     closeOnSaleDays: s.closeOnSaleDays,
     undoHandOverMinutes: s.undoHandOverMinutes,
     maxActiveVisits: s.maxActiveVisits,
-    freeStorageDays: s.freeStorageDays,
     bookingEmail: s.bookingEmail,
     hours: store.hours.map((h) => ({ ...h })),
     ...over,
@@ -153,15 +152,17 @@ describe("saving", () => {
     expect(JSON.stringify(events.events[0]?.payload)).not.toContain("collections@lax.example");
   });
 
-  it("records a free storage change", async () => {
+  it("ignores free storage days from an older page: they are set on the Storage tab now", async () => {
     const { service, store, events } = setup();
+    const before = store.settings.freeStorageDays;
     const saved = await service.save(
       STAFF,
       SETTINGS_VENUE,
       saveBody(store, { freeStorageDays: 30 }),
     );
     expect(saved.isOk()).toBe(true);
-    expect(events.events[0]?.payload).toMatchObject({ changed: ["free_storage_days"] });
+    expect(store.settings.freeStorageDays).toBe(before);
+    expect(events.events[0]?.payload).toMatchObject({ changed: [] });
   });
 
   it("changes nothing and records a save that changes nothing as no change", async () => {

@@ -141,6 +141,7 @@ const nextConfig: NextConfig = {
       addShellRoutesChunk(config);
       addToShellRoutesChunk(config, "shellSession", SHELL_SESSION_MODULES);
       addToShellRoutesChunk(config, "routeError", ROUTE_ERROR_MODULES);
+      addToShellRoutesChunk(config, "kitPrimitives", KIT_PRIMITIVE_MODULES);
     }
     return config;
   },
@@ -209,6 +210,20 @@ const ROUTE_ERROR_MODULES = [
   /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/](?:illustrations[\\/]empty-state-illustrations|ui[\\/]typography|marketing[\\/]marketing-section-subheading)\.tsx$/,
   /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/](?:auth[\\/]session-lookup-error|observability[\\/]use-report-route-error|ui[\\/]empty-state-copy)\.ts$/,
   /[\\/]packages[\\/]ui[\\/]dist[\\/]components[\\/](?:typography|ui[\\/]lax-illustration)\.js$/,
+];
+
+/**
+ * The kit primitives the root layout renders on every page: the LAX button and its variants, both
+ * tooltips, the density context, the shared LAX class strings and `cn`. The account frame and the
+ * account error boundaries render them too, and they shared one chunk with those only while the
+ * rest of that chunk kept it over the 20 KB split threshold. When the overlay motion took dead
+ * animation classes out of the kit, the chunks regrouped and these modules were copied into the
+ * account frame and each error boundary again (3 to 9 KB more on account pages). The forced shell
+ * chunk ships them once.
+ */
+const KIT_PRIMITIVE_MODULES = [
+  /[\\/]packages[\\/]ui[\\/]dist[\\/]lax[\\/](?:button|button-variants|density|styles|tooltip)\.js$/,
+  /[\\/]packages[\\/]ui[\\/]dist[\\/](?:components[\\/]ui[\\/]tooltip|lib[\\/]utils)\.js$/,
 ];
 
 /**

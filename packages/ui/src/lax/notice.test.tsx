@@ -14,6 +14,16 @@ describe("Notice", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Failed");
   });
 
+  it("is a note, not a live region, when quiet", () => {
+    render(
+      <Notice title="Buyers will read" quiet>
+        Storage is free for 14 days.
+      </Notice>,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("note", { name: "Buyers will read" })).toBeTruthy();
+  });
+
   it("renders a success tone with the success tokens", () => {
     render(
       <Notice tone="success" title="Checked in">

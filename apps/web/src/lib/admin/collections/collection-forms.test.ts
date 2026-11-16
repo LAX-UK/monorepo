@@ -14,25 +14,25 @@ describe("the settings form", () => {
   it("starts from what is saved, and is not dirty until something changes", () => {
     const draft = draftFromSettings(SETTINGS);
     expect(draft.visitMinutes).toBe("30");
-    expect(draft.freeStorageDays).toBe("");
+    expect(draft).not.toHaveProperty("freeStorageDays");
     expect(draft.hours).toHaveLength(5);
     expect(isDirty(draft, SETTINGS)).toBe(false);
     expect(isDirty({ ...draft, visitMinutes: "45" }, SETTINGS)).toBe(true);
     expect(isDirty({ ...draft, hours: draft.hours.slice(1) }, SETTINGS)).toBe(true);
   });
 
-  it("sends numbers as numbers, empty storage as no limit, and the version it was loaded at", () => {
+  it("sends numbers as numbers and the version it was loaded at, and no free storage days", () => {
     const body = bodyFromDraft(
-      { ...draftFromSettings(SETTINGS), freeStorageDays: " 14 ", bookingEmail: "  " },
+      { ...draftFromSettings(SETTINGS), bookingEmail: "  " },
       SETTINGS.version,
     );
     expect(body).toMatchObject({
       version: SETTINGS.version,
       visitMinutes: 30,
-      freeStorageDays: 14,
       bookingEmail: null,
     });
-    expect(bodyFromDraft(draftFromSettings(SETTINGS), "v").freeStorageDays).toBeNull();
+    // Free storage is set on the Storage tab now.
+    expect(body).not.toHaveProperty("freeStorageDays");
   });
 
   it("accepts the settings as they stand", () => {
@@ -47,13 +47,11 @@ describe("the settings form", () => {
       noticeCutoffLocal: "4pm",
       windowDays: "3",
       maxActiveVisits: "0",
-      freeStorageDays: "400",
       bookingEmail: "not an email",
     };
     const { rules, count } = validateSettingsDraft(draft);
     expect(Object.keys(rules).sort()).toEqual([
       "booking_email",
-      "free_storage_days",
       "max_active_visits",
       "notice_cutoff",
       "places_per_slot",
@@ -61,7 +59,7 @@ describe("the settings form", () => {
       "window_days",
     ]);
     expect(rules.visit_minutes).toBe("Choose one of the visit lengths.");
-    expect(count).toBe(7);
+    expect(count).toBe(6);
   });
 
   it("marks the opening-hours row at fault, not the day", () => {

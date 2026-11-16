@@ -6,9 +6,10 @@ import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import type { ChromeSurface } from "@/lib/layout/chrome-surface";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
+import { revealThemeFromToggle } from "@auction/marketing-ui/motion/theme-view-transition";
 import { cn } from "@auction/ui/lib/utils";
 import { Moon, Sun } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useState } from "react";
 
 function readDomDark(): boolean {
   return document.documentElement.classList.contains("dark");
@@ -16,23 +17,19 @@ function readDomDark(): boolean {
 
 type ThemeToggleProps = {
   headerTone?: SiteHeaderTone;
-  /** @deprecated Use `surface` instead. */
-  variant?: ChromeSurface;
   surface?: ChromeSurface;
 };
 
-/** uses the View Transitions API to perform a circular reveal from the
- * toggle's center when the theme switches. Falls back to instant toggle in
- * browsers without support, or when reduced-motion is preferred.
+/** The LAX theme switch: the shared circular reveal from the pressed toggle
+ * (`revealThemeFromToggle` in `@auction/marketing-ui`, the same code as LAX Shop and lax.art). It
+ * marks `<html data-view-transition="theme">` while it runs and switches instantly without support
+ * or under reduced motion (the in-app switch wins over the OS preference).
+ *
+ * It does not import the page-change helper (`view-transition-runtime.ts`): the toggle ships in
+ * every layout, and that helper also lives in the page chunks that navigate.
  */
-export function ThemeToggle({
-  headerTone = "on-light",
-  variant,
-  surface: surfaceProp,
-}: ThemeToggleProps) {
-  const surface = surfaceProp ?? variant ?? "marketing";
+export function ThemeToggle({ headerTone = "on-light", surface = "marketing" }: ThemeToggleProps) {
   const [isDark, setIsDark] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setIsDark(readDomDark());
@@ -42,7 +39,7 @@ export function ThemeToggle({
     return () => obs.disconnect();
   }, []);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     const next = !readDomDark();
     const mode = next ? "dark" : "light";
     const apply = () => {
@@ -51,51 +48,8 @@ export function ThemeToggle({
       void syncUiThemeFromClientAction({ theme: mode });
     };
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const supportsViewTransitions =
-      typeof document !== "undefined" &&
-      typeof (document as Document & { startViewTransition?: unknown }).startViewTransition ===
-        "function";
-
-    if (reduced || !supportsViewTransitions) {
-      apply();
-      return;
-    }
-
-    const btn = buttonRef.current;
-    const rect = btn?.getBoundingClientRect();
-    const cx = rect ? rect.left + rect.width / 2 : window.innerWidth - 32;
-    const cy = rect ? rect.top + rect.height / 2 : 32;
-    const radius = Math.hypot(
-      Math.max(cx, window.innerWidth - cx),
-      Math.max(cy, window.innerHeight - cy),
-    );
-
-    document.documentElement.style.setProperty("--theme-toggle-x", `${cx}px`);
-    document.documentElement.style.setProperty("--theme-toggle-y", `${cy}px`);
-    document.documentElement.style.setProperty("--theme-toggle-radius", `${radius}px`);
-
-    const cleanup = () => {
-      document.documentElement.style.removeProperty("--theme-toggle-x");
-      document.documentElement.style.removeProperty("--theme-toggle-y");
-      document.documentElement.style.removeProperty("--theme-toggle-radius");
-    };
-
-    try {
-      const transition = (
-        document as Document & {
-          startViewTransition: (cb: () => void) => { finished: Promise<void> };
-        }
-      ).startViewTransition(() => {
-        apply();
-      });
-      void transition.finished.finally(cleanup).catch(() => {
-        /* Duplicate view-transition-name or aborted transition — theme already applied */
-      });
-    } catch {
-      apply();
-      cleanup();
-    }
+    // A keyboard press clicks the same button, so the wipe grows from the pressed button.
+    revealThemeFromToggle(event.currentTarget, apply);
   }, []);
 
   const label = isDark ? "Switch to light theme" : "Switch to dark theme";
@@ -108,7 +62,6 @@ export function ThemeToggle({
   if (surface === "shell") {
     return (
       <ShellChromeIconButton
-        ref={buttonRef}
         label={label}
         onClick={toggle}
         aria-pressed={isDark}
@@ -121,13 +74,7 @@ export function ThemeToggle({
   }
 
   return (
-    <ChromeIconButton
-      ref={buttonRef}
-      label={label}
-      onClick={toggle}
-      aria-pressed={isDark}
-      className={className}
-    >
+    <ChromeIconButton label={label} onClick={toggle} aria-pressed={isDark} className={className}>
       {icon}
     </ChromeIconButton>
   );

@@ -71,3 +71,11 @@ describe("PaymentQuickView links", () => {
     expect(screen.queryByRole("link", { name: "Seller profile" })).not.toBeInTheDocument();
   });
 });
+
+describe("PaymentQuickView record header", () => {
+  it("shows the payment ID in the header with a copy button", () => {
+    renderPanel({ canOpenLot: true, canOpenClient: true });
+    expect(screen.getByText("pay_1")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Copy payment ID" })).toHaveLength(1);
+  });
+});

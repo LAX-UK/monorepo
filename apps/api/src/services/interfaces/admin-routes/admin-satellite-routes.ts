@@ -25,6 +25,7 @@ import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { ICollectionDeskService } from "../collection-desk-service.js";
 import type { ICollectionSettingsAdminService } from "../collection-settings-service.js";
+import type { ICollectionStorageAdminService } from "../collection-storage-service.js";
 import type { IEnquiryQuarantineDesk } from "../enquiry-quarantine.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquiry-service.js";
@@ -141,6 +142,8 @@ export type AdminIntegrationRouteServices = {
   inventoryMoves: InventoryMoveServices;
   /** A place's collection hours, rules and closures. */
   collectionSettings: ICollectionSettingsAdminService;
+  /** A place's storage terms and its "Raise storage invoices" switch. */
+  collectionStorage: ICollectionStorageAdminService;
   /** The day's visits, hand-over, missed visits and booking for a client. */
   collectionDesk: ICollectionDeskService;
 };

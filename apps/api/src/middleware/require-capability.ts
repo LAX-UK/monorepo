@@ -13,7 +13,10 @@ import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
+  COLLECTIONS_PAGE_ACCESS,
   COLLECTIONS_READ_ACCESS,
+  COLLECTION_STORAGE_ACCESS,
+  COLLECTION_STORAGE_READ_ACCESS,
   CONDITION_REPORTS_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
@@ -153,6 +156,11 @@ export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_M
 export const requireEnquiryWork = createRequireAccess(ENQUIRY_ASSIGN_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireCollectionsRead = createRequireAccess(COLLECTIONS_READ_ACCESS);
+/** The Collections page's list of places: everyone with a tab on it, Finance included. */
+export const requireCollectionsPage = createRequireAccess(COLLECTIONS_PAGE_ACCESS);
+export const requireCollectionStorageRead = createRequireAccess(COLLECTION_STORAGE_READ_ACCESS);
+/** Storage terms and the charging switch: Finance and Administrators. */
+export const requireCollectionStorage = createRequireAccess(COLLECTION_STORAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);
 /** Opens the Failed jobs screen: reading at least one source. The service narrows it per source. */

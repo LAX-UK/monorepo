@@ -43,7 +43,6 @@ export type StaffCollectionSettings = {
   closeOnSaleDays: boolean;
   undoHandOverMinutes: number;
   maxActiveVisits: number;
-  freeStorageDays: number | null;
   hours: StaffCollectionHours[];
   /** Closures and extra openings from today on, earliest first. */
   exceptions: StaffCollectionException[];

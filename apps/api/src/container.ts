@@ -12,6 +12,7 @@ import {
   DrizzleCollectionLotFactsReader,
   DrizzleCollectionPlaceRepository,
   DrizzleCollectionSettingsRepository,
+  DrizzleCollectionStorageRepository,
   DrizzleConsignmentInboxReader,
   DrizzleConsignmentMessageRepository,
   DrizzleConsignmentSavedReplyRepository,
@@ -108,6 +109,7 @@ import {
 import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import { CollectionDeskService } from "./services/collection-desk/collection-desk.service.js";
 import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
+import { CollectionStorageAdminService } from "./services/collection-storage/collection-storage.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
 import { EmailPurchaseProblemNotices } from "./services/purchase-problems/purchase-problem-notices.js";
@@ -557,10 +559,17 @@ export function createContainer(env: Env): Container {
     log: createAppLogger(env),
   });
 
+  const collectionSettingsRepository = new DrizzleCollectionSettingsRepository(db);
   const collectionSettings = new CollectionSettingsAdminService({
-    settings: new DrizzleCollectionSettingsRepository(db),
+    settings: collectionSettingsRepository,
     bookings: new DrizzleCollectionBookingRepository(db),
     events: platform.domainEventSink,
+    now: () => new Date(),
+  });
+
+  const collectionStorage = new CollectionStorageAdminService({
+    storage: new DrizzleCollectionStorageRepository(db),
+    places: collectionSettingsRepository,
     now: () => new Date(),
   });
 
@@ -856,6 +865,7 @@ export function createContainer(env: Env): Container {
       ...admin.admin,
       inventoryMoves,
       collectionSettings,
+      collectionStorage,
       collectionDesk,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,

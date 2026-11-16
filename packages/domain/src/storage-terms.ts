@@ -7,11 +7,40 @@ import {
   londonDateKey,
 } from "./collection-time.js";
 
-/** How a place counts its free storage days. */
-export type StorageDayCount = "calendar" | "working";
+/**
+ * How a place counts its free storage days: every calendar day, or only the days it is open. The
+ * one name for this choice, from the domain to the stored version (`count_mode`).
+ */
+export type StorageCountMode = "calendar" | "working";
+
+export const STORAGE_COUNT_MODES: readonly StorageCountMode[] = ["calendar", "working"];
 
 /** A work is large when any side is over this, frame or crate included. Staff mark it on the lot. */
 export const LARGE_WORK_SIDE_CM = 150;
+
+/** The longest free period a version of the terms may give, in days. */
+export const MAX_STORAGE_FREE_DAYS = 90;
+
+/** The most a daily rate or the handling fee may be, in pence: £500.00. */
+export const MAX_STORAGE_AMOUNT_PENCE = 50_000;
+
+/** How far ahead a change to the terms may start, in years: a mistyped year is refused. */
+export const MAX_STORAGE_TERMS_LEAD_YEARS = 2;
+
+/**
+ * The latest day a change scheduled on `today` may start: the same day
+ * `MAX_STORAGE_TERMS_LEAD_YEARS` on (29 Feb becomes 28 Feb). Days are `YYYY-MM-DD`.
+ */
+export function latestStorageTermsStart(today: string): string {
+  const [year, month, day] = today.split("-").map(Number) as [number, number, number];
+  const target = year + MAX_STORAGE_TERMS_LEAD_YEARS;
+  const lastOfMonth = new Date(Date.UTC(target, month, 0)).getUTCDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${target}-${pad(month)}-${pad(Math.min(day, lastOfMonth))}`;
+}
+
+/** Free days a lot won before its place had any terms keeps (ST9). */
+export const LEGACY_FREE_STORAGE_DAYS = 30;
 
 /**
  * What a collection place charges to store a bought work after the free period. Money is integer
@@ -21,7 +50,7 @@ export const LARGE_WORK_SIDE_CM = 150;
 export type StorageTerms = {
   /** Days the work is stored free, counted from the London day payment cleared. */
   freeDays: number;
-  dayCount: StorageDayCount;
+  countMode: StorageCountMode;
   /** Per lot per calendar day after the free period. */
   standardDailyPence: number;
   /** The same for a large work; `null` when the large band is off and standard applies. */
@@ -31,6 +60,59 @@ export type StorageTerms = {
   /** The first London day the terms apply to. */
   effectiveFrom: DateKey;
 };
+
+/**
+ * The terms of a lot whose sale closed before its place had any storage terms (its
+ * `storage_terms_id` is null): 30 calendar days free and nothing charged after that (ST9). Such a
+ * lot goes through `calculateStorageCharge` like any other, so its collect-by day follows the same
+ * rules and its amount is always £0.00.
+ */
+export const LEGACY_STORAGE_TERMS: Readonly<StorageTerms> = Object.freeze({
+  freeDays: LEGACY_FREE_STORAGE_DAYS,
+  countMode: "calendar",
+  standardDailyPence: 0,
+  largeDailyPence: null,
+  handlingFeePence: 0,
+  effectiveFrom: "1970-01-01",
+});
+
+/** The terms a lot is held under: the version recorded when its sale closed, else the legacy terms. */
+export function storageTermsForLot(recorded: StorageTerms | null): StorageTerms {
+  return recorded ?? LEGACY_STORAGE_TERMS;
+}
+
+/** A whole, non-negative number of pence no larger than `max`. */
+export function isStoragePence(value: unknown, max = MAX_STORAGE_AMOUNT_PENCE): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
+}
+
+/** A whole, non-negative number of days. */
+const isWholeDays = (value: unknown): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0;
+
+/**
+ * Refuses terms the rules cannot price: negative or fractional pence or days, or a free period
+ * over the limit. Values are checked at the API edge; this keeps a bad value from ever turning into
+ * a wrong amount.
+ */
+export function assertStorageTerms(terms: StorageTerms): void {
+  const { freeDays, countMode, standardDailyPence, largeDailyPence, handlingFeePence } = terms;
+  if (!isWholeDays(freeDays) || freeDays > MAX_STORAGE_FREE_DAYS) {
+    throw new RangeError(
+      `Storage free days must be a whole number from 0 to ${MAX_STORAGE_FREE_DAYS}`,
+    );
+  }
+  if (!STORAGE_COUNT_MODES.includes(countMode)) {
+    throw new RangeError("Storage days are counted in calendar or working days");
+  }
+  for (const pence of [standardDailyPence, largeDailyPence ?? 0, handlingFeePence]) {
+    if (!isStoragePence(pence)) {
+      throw new RangeError(
+        `Storage amounts must be whole pence from 0 to ${MAX_STORAGE_AMOUNT_PENCE}`,
+      );
+    }
+  }
+}
 
 export type StorageBand = "standard" | "large";
 
@@ -104,7 +186,7 @@ function collectByDay(input: StorageChargeInput): DateKey {
   const { terms, clearedOn, extensionDays, pausedRanges, calendar } = input;
   const notPaused = (day: DateKey) => !isPaused(pausedRanges, day);
   const freeThrough = walkDays(clearedOn, terms.freeDays, (day) =>
-    terms.dayCount === "working" ? notPaused(day) && calendar.isWorkingDay(day) : notPaused(day),
+    terms.countMode === "working" ? notPaused(day) && calendar.isWorkingDay(day) : notPaused(day),
   );
   return nextOpenDay(calendar, walkDays(freeThrough, extensionDays, notPaused));
 }
@@ -130,6 +212,10 @@ function stateOf(input: StorageChargeInput, collectBy: DateKey): StorageState {
  */
 export function calculateStorageCharge(input: StorageChargeInput): StorageCharge {
   const { terms, pausedRanges, asOf } = input;
+  assertStorageTerms(terms);
+  if (!isWholeDays(input.extensionDays)) {
+    throw new RangeError("Storage extension days must be a whole number of 0 or more");
+  }
   const collectBy = collectByDay(input);
   const chargingFrom = addDaysToKey(collectBy, 1);
   let chargeableDays = 0;
@@ -153,8 +239,11 @@ export function calculateStorageCharge(input: StorageChargeInput): StorageCharge
 
 const pounds = (pence: number): string => Math.floor(pence / 100).toLocaleString("en-GB");
 
-/** "£3" for whole pounds, "£3.50" otherwise; `fixed` always shows pence. */
+/** "£3" for whole pounds, "£3.50" otherwise; `fixed` always shows pence. Whole pence only. */
 function money(pence: number, fixed = false): string {
+  if (!Number.isInteger(pence) || pence < 0) {
+    throw new RangeError("Storage amounts are whole pence of 0 or more");
+  }
   const rest = pence % 100;
   return fixed || rest !== 0
     ? `£${pounds(pence)}.${String(rest).padStart(2, "0")}`
@@ -171,11 +260,11 @@ const dayLabel = (day: DateKey, now: Date): string =>
  * period, the rates (pence shown on both when either has them), VAT and any handling fee.
  */
 export function formatStorageTerms(terms: StorageTerms): string {
-  const { freeDays, dayCount, standardDailyPence, largeDailyPence, handlingFeePence } = terms;
+  const { freeDays, countMode, standardDailyPence, largeDailyPence, handlingFeePence } = terms;
   const free =
     freeDays === 0
       ? null
-      : `Storage is free for ${plural(freeDays, dayCount === "working" ? "working day" : "day")} after your payment clears.`;
+      : `Storage is free for ${plural(freeDays, countMode === "working" ? "working day" : "day")} after your payment clears.`;
   const charged = standardDailyPence > 0 || (largeDailyPence ?? 0) > 0;
   const fixed = standardDailyPence % 100 !== 0 || (largeDailyPence ?? 0) % 100 !== 0;
   const rates = `${money(standardDailyPence, fixed)} a day for each work${

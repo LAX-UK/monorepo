@@ -7,16 +7,50 @@ import type {
 
 export const COLLECTIONS_PATH = "/admin/collections";
 
-export const COLLECTION_TABS = ["day", "upcoming", "not_collected", "hours", "closures"] as const;
+export const COLLECTION_TABS = [
+  "day",
+  "upcoming",
+  "not_collected",
+  "hours",
+  "storage",
+  "closures",
+] as const;
 export type CollectionTab = (typeof COLLECTION_TABS)[number];
 
 /** The desk tabs show visits; the others set the place up. */
 export const DESK_TABS: readonly CollectionTab[] = ["day", "upcoming", "not_collected"];
 
-/** The day is the page's first screen: who is coming to collect, and when. */
-export function parseCollectionTab(value: string | string[] | undefined): CollectionTab {
+export const COLLECTION_TAB_LABELS: Record<CollectionTab, string> = {
+  day: "Day",
+  upcoming: "Upcoming",
+  not_collected: "Not collected",
+  hours: "Hours and rules",
+  storage: "Storage",
+  closures: "Closures",
+};
+
+/** Which parts of the page the person may see: the visits and settings, and the storage terms. */
+export type CollectionsAccess = { settings: boolean; storage: boolean };
+
+/**
+ * The tabs a person sees, in order. Finance sees only Storage: the visits, hours and closures are
+ * the Fulfilment team's (PRM-1, hide what the role can never use).
+ */
+export function collectionTabsFor(access: CollectionsAccess): CollectionTab[] {
+  return COLLECTION_TABS.filter((tab) => (tab === "storage" ? access.storage : access.settings));
+}
+
+/**
+ * The tab asked for, when the person may see it; else the page's first screen (the day, or
+ * Storage for someone who sees only that).
+ */
+export function parseCollectionTab(
+  value: string | string[] | undefined,
+  access: CollectionsAccess = { settings: true, storage: true },
+): CollectionTab {
   const wanted = Array.isArray(value) ? value[0] : value;
-  return COLLECTION_TABS.find((tab) => tab === wanted) ?? "day";
+  const allowed = collectionTabsFor(access);
+  return allowed.find((tab) => tab === wanted) ?? allowed[0] ?? "day";
 }
 
 export function collectionsHref(

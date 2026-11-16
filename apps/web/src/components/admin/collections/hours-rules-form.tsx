@@ -310,41 +310,23 @@ export function HoursRulesForm({ settings, canChange }: Props) {
       </FormSection>
 
       <FormSection
-        title="Storage and hand-over"
-        description="How long a purchased work is stored for free, and how long a hand-over can be undone."
+        title="Hand-over"
+        description="How long a recorded hand-over can be undone. Free storage and charges are on the Storage tab."
       >
-        <FieldRow>
-          <Field
-            label="Free storage"
-            description="Days after payment clears"
-            id={field("free_storage_days")}
-            error={shown.rules.free_storage_days}
-            optional
-            disabled={locked}
-          >
-            <TextInput
-              inputMode="numeric"
-              value={draft.freeStorageDays}
-              placeholder="30"
-              maxLength={3}
-              onChange={(event) => set("freeStorageDays", event.target.value)}
-            />
-          </Field>
-          <Field
-            label="Hand-over can be undone for"
-            description="Minutes after it is recorded"
-            id={field("undo_hand_over_minutes")}
-            error={shown.rules.undo_hand_over_minutes}
-            disabled={locked}
-          >
-            <TextInput
-              inputMode="numeric"
-              value={draft.undoHandOverMinutes}
-              maxLength={2}
-              onChange={(event) => set("undoHandOverMinutes", event.target.value)}
-            />
-          </Field>
-        </FieldRow>
+        <Field
+          label="Hand-over can be undone for"
+          description="Minutes after it is recorded"
+          id={field("undo_hand_over_minutes")}
+          error={shown.rules.undo_hand_over_minutes}
+          disabled={locked}
+        >
+          <TextInput
+            inputMode="numeric"
+            value={draft.undoHandOverMinutes}
+            maxLength={2}
+            onChange={(event) => set("undoHandOverMinutes", event.target.value)}
+          />
+        </Field>
       </FormSection>
 
       {canChange ? (

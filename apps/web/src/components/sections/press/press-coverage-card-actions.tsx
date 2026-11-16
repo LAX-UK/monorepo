@@ -35,7 +35,7 @@ export function PressCoverageCardActions({
   const externalLabel = buildExternalArticleLabel(outletName);
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={400}>
       <div className="flex items-center gap-1.5">
         <ShareActions
           url={url}

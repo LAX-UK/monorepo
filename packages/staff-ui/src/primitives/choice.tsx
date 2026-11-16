@@ -3,7 +3,7 @@
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { Switch, useReadOnlyView } from "@auction/ui/lax";
-import { Check } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 
@@ -93,16 +93,78 @@ export function StaffRadio({
   );
 }
 
-/** The LAX system switch (`@auction/ui/lax`): 32×20 at the staff density. */
-export const StaffSwitch = Switch;
+export type StaffSwitchProps = React.ComponentPropsWithoutRef<typeof Switch> & {
+  /**
+   * Blocked by the record's state (PRM-2): the switch keeps focus, is `aria-disabled`, drawn
+   * disabled, and a press changes nothing. Point `aria-describedby` at the visible reason (a
+   * `ChoiceRow` with the same `disabledReason` draws it as `choiceReasonId(htmlFor)`).
+   */
+  disabledReason?: string;
+};
 
-/** A checkbox, radio or switch with its label in one 32px row, label clickable. */
+/**
+ * The LAX system switch (`@auction/ui/lax`): 32×20 at the staff density. With `disabledReason`
+ * it stays focusable and inert, unlike native `disabled`, so keyboard and screen-reader users
+ * reach the reason.
+ */
+export function StaffSwitch({ disabledReason, className, ...props }: StaffSwitchProps) {
+  if (!disabledReason) return <Switch className={className} {...props} />;
+  const { onCheckedChange: _ignored, disabled: _disabled, ...rest } = props;
+  return (
+    <Switch
+      {...rest}
+      aria-disabled
+      onClick={(event) => event.preventDefault()}
+      className={cn(
+        "cursor-not-allowed",
+        "data-[state=checked]:bg-lax-line-hover data-[state=unchecked]:bg-lax-line",
+        "hover:data-[state=checked]:bg-lax-line-hover hover:data-[state=unchecked]:bg-lax-line",
+        "data-[state=unchecked]:[&>span]:bg-lax-disabled-fg",
+        className,
+      )}
+    />
+  );
+}
+
+/** The id of a `ChoiceRow`'s disabled reason, for its control's `aria-describedby`. */
+export const choiceReasonId = (htmlFor: string): string => `${htmlFor}-reason`;
+
+/**
+ * Why a control or setting cannot change now (PRM-2), on its own line after a lock: under a
+ * `ChoiceRow`'s text, or under a read-only setting so both views say it the same way.
+ */
+export function DisabledReason({
+  id,
+  children,
+  className,
+}: {
+  id?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      {...(id ? { id } : {})}
+      className={cn("flex items-start gap-1.5 text-staff-xs font-medium text-staff-fg", className)}
+    >
+      <Lock aria-hidden className="mt-0.5 size-3 shrink-0 text-staff-muted" />
+      <span>{children}</span>
+    </span>
+  );
+}
+
+/**
+ * A checkbox, radio or switch with its label in one 32px row, label clickable. `disabledReason`
+ * says on its own line, after a lock, why the control cannot change now (PRM-2); give the control
+ * the same reason and `aria-describedby={choiceReasonId(htmlFor)}`.
+ */
 export function ChoiceRow({
   control,
   label,
   description,
   htmlFor,
   disabled = false,
+  disabledReason,
   className,
 }: {
   control: React.ReactNode;
@@ -110,21 +172,31 @@ export function ChoiceRow({
   description?: React.ReactNode;
   htmlFor: string;
   disabled?: boolean;
+  disabledReason?: string;
   className?: string;
 }) {
+  const blocked = disabled || Boolean(disabledReason);
   return (
     <div className={cn("flex min-h-control-sm items-start gap-2.5 py-1.5", className)}>
       <span className="flex h-5 items-center">{control}</span>
-      <label
-        htmlFor={htmlFor}
-        className={cn(
-          "flex flex-col text-staff-sm text-staff-fg",
-          disabled ? "cursor-not-allowed text-staff-disabled" : "cursor-pointer",
-        )}
-      >
-        <span className="font-medium">{label}</span>
-        {description ? <span className="text-staff-xs text-staff-muted">{description}</span> : null}
-      </label>
+      <span className="flex min-w-0 max-w-prose flex-col gap-1">
+        <label
+          htmlFor={htmlFor}
+          className={cn(
+            "flex flex-col text-staff-sm text-staff-fg",
+            blocked ? "cursor-not-allowed" : "cursor-pointer",
+            disabled && "text-staff-disabled",
+          )}
+        >
+          <span className="font-medium">{label}</span>
+          {description ? (
+            <span className="text-staff-xs text-staff-muted">{description}</span>
+          ) : null}
+        </label>
+        {disabledReason ? (
+          <DisabledReason id={choiceReasonId(htmlFor)}>{disabledReason}</DisabledReason>
+        ) : null}
+      </span>
     </div>
   );
 }

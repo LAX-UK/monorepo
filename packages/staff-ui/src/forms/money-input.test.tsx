@@ -14,7 +14,7 @@ describe("MoneyInput in a Field", () => {
     const input = screen.getByRole("textbox", { name: "Amount" });
     expect(input).toHaveAccessibleDescription("Up to £20.00");
     fireEvent.change(input, { target: { value: "12.5" } });
-    expect(onValueChange).toHaveBeenLastCalledWith(1250);
+    expect(onValueChange).toHaveBeenLastCalledWith(1250, { ok: true, pence: 1250 });
     fireEvent.blur(input);
     expect(input).toHaveValue("12.50");
   });
@@ -29,7 +29,21 @@ describe("MoneyInput in a Field", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Amount" }), {
       target: { value: "12.345" },
     });
-    expect(onValueChange).toHaveBeenLastCalledWith(null);
+    expect(onValueChange).toHaveBeenLastCalledWith(null, { ok: false, reason: "too_precise" });
+  });
+
+  it("tells an empty field from one that is not an amount", () => {
+    const onValueChange = vi.fn();
+    render(
+      <Field label="Amount">
+        <MoneyInput value={1250} onValueChange={onValueChange} />
+      </Field>,
+    );
+    const input = screen.getByRole("textbox", { name: "Amount" });
+    fireEvent.change(input, { target: { value: "" } });
+    expect(onValueChange).toHaveBeenLastCalledWith(null, { ok: false, reason: "empty" });
+    fireEvent.change(input, { target: { value: "-3" } });
+    expect(onValueChange).toHaveBeenLastCalledWith(null, { ok: false, reason: "invalid" });
   });
 
   it("marks the control invalid and announces the error", () => {
