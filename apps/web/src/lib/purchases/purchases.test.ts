@@ -475,7 +475,7 @@ describe("buildPurchasesVm", () => {
     const vm = buildPurchasesVm(sources({}, "source_of_funds_required"));
     expect(vm.payNow).toMatchObject({
       kind: "review",
-      title: "Your account is in review",
+      title: "Payment on hold",
       documentsAction: { label: "Provide documents" },
     });
     // Rows only say where the purchase stands: the one action is in the banner.
@@ -578,7 +578,7 @@ describe("buildPurchasesVm", () => {
 
     it("keeps a person's own account in review wording", () => {
       expect(buildPurchasesVm(sources({}, "aml_hold")).payNow).toMatchObject({
-        title: "Your account is in review",
+        title: "Payment on hold",
       });
     });
   });

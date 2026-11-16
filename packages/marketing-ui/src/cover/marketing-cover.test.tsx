@@ -144,7 +144,7 @@ describe("pinned sales", () => {
 });
 
 describe("loading and motion", () => {
-  it("fades a still-downloading picture in over its preview", () => {
+  it("fades a still-downloading lazy picture in over its preview", () => {
     const complete = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "complete");
     Object.defineProperty(HTMLImageElement.prototype, "complete", {
       configurable: true,
@@ -153,12 +153,34 @@ describe("loading and motion", () => {
     try {
       const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
       const img = container.querySelector("img") as HTMLImageElement;
-      expect(img.className).toContain("opacity-0");
-      expect(img.className).toContain("duration-[240ms]");
-      expect(img.className).toContain("motion-reduce:transition-none");
+      expect(img.getAttribute("loading")).toBe("lazy");
+      // The kit fade (image-fade.css) holds a lazy picture back until `opacity-100` marks it drawn.
+      expect(img.classList).toContain("lax-image-fade");
+      expect(img.classList).not.toContain("opacity-100");
       expect(container.querySelector("[data-cover-blur]")).not.toBeNull();
       fireEvent.load(img);
-      expect(img.className).toContain("opacity-100");
+      expect(img.classList).toContain("opacity-100");
+    } finally {
+      if (complete) Object.defineProperty(HTMLImageElement.prototype, "complete", complete);
+    }
+  });
+
+  it("never hides the first screen's picture, even while it is still downloading", () => {
+    const complete = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "complete");
+    Object.defineProperty(HTMLImageElement.prototype, "complete", {
+      configurable: true,
+      get: () => false,
+    });
+    try {
+      const item = fixture(BID_COVER_FIXTURES, "live");
+      const { container } = render(
+        <MarketingCover slides={item.slides} label="Featured sales" priority />,
+      );
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img.getAttribute("loading")).toBe("eager");
+      // No utility hides it, and the kit fade only ever holds back `loading="lazy"`.
+      expect(img.className).not.toMatch(/(^|\s)opacity-0(\s|$)/);
+      expect(img.className).not.toContain("transition-opacity");
     } finally {
       if (complete) Object.defineProperty(HTMLImageElement.prototype, "complete", complete);
     }

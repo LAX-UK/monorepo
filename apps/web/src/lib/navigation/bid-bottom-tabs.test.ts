@@ -49,7 +49,7 @@ describe("Bid tab badges", () => {
     expect(accountBadge(NO_ATTENTION)).toBeNull();
     expect(accountBadge({ ...NO_ATTENTION, outbidLots: ["1"] })).toBeNull();
     expect(accountBadge({ ...NO_ATTENTION, paymentsDue: 2 })).toEqual({ kind: "dot" });
-    expect(accountBadge({ ...NO_ATTENTION, paymentsDue: 1, paymentsInReview: true })).toEqual({
+    expect(accountBadge({ ...NO_ATTENTION, paymentsDue: 1, paymentsHold: "review" })).toEqual({
       kind: "dot",
     });
     expect(accountBadge({ ...NO_ATTENTION, unreadNotifications: 1 })).toEqual({ kind: "dot" });

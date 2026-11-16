@@ -477,7 +477,7 @@ describe("lots left out of the payment", () => {
     );
     expect(vm.notices[0]?.title).toBe("3 lots in this link aren't in this payment");
     expect(vm.notices[0]?.detail).toBe(
-      "1 is in review and can be paid once we have checked it. 2 are already paid. The rest are below.",
+      "1 is on hold and can be paid once our checks are done. 2 are already paid. The rest are below.",
     );
   });
 });

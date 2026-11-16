@@ -135,8 +135,7 @@ export function MediaImage({
           onClick={onClick}
           className={cn(
             "object-cover",
-            !useBlurPlaceholder &&
-              "opacity-0 transition-opacity duration-300 motion-reduce:transition-none",
+            !useBlurPlaceholder && "lax-image-fade",
             !useBlurPlaceholder && status === "loaded" && "opacity-100",
             onClick && "cursor-pointer",
             imgClassName,

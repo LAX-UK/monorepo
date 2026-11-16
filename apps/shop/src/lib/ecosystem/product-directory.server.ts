@@ -65,6 +65,12 @@ export function loadShopArtBaseUrl(): URL | null {
   return art ? new URL(art.href) : null;
 }
 
+/** The lax.bid base URL, or null when it is not configured for this environment. */
+export function loadShopBidBaseUrl(): URL | null {
+  const bid = loadShopCrossProductFooterLinks().find((link) => link.id === "bid");
+  return bid ? new URL(bid.href) : null;
+}
+
 export function loadShopStorefrontBaseUrl(): URL {
   const isNextProductionBuild = process.env.NEXT_PHASE === "phase-production-build";
   const raw =

@@ -1,5 +1,5 @@
 import { Field } from "@auction/ui/lax";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DateInput, DateTimeInput, dateInputExample } from "./date-input.js";
@@ -86,6 +86,36 @@ describe("DateInput", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("uses the injected clock, and reads the clock once so a re-render never changes the example", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2027-03-09T10:00:00Z"));
+      const ui = (
+        <Field label="Due on">
+          <DateInput value={null} onValueChange={() => undefined} />
+        </Field>
+      );
+      const { rerender } = render(ui);
+      expect(screen.getByLabelText("Due on")).toHaveAttribute("placeholder", "e.g. 9 Mar 2027");
+      vi.setSystemTime(new Date("2027-03-10T10:00:00Z"));
+      rerender(ui);
+      expect(screen.getByLabelText("Due on")).toHaveAttribute("placeholder", "e.g. 9 Mar 2027");
+    } finally {
+      vi.useRealTimers();
+    }
+    cleanup();
+    render(
+      <Field label="Due on">
+        <DateInput
+          value={null}
+          now={new Date("2030-01-02T10:00:00Z")}
+          onValueChange={() => undefined}
+        />
+      </Field>,
+    );
+    expect(screen.getByLabelText("Due on")).toHaveAttribute("placeholder", "e.g. 2 Jan 2030");
   });
 
   it("reads today in London, not UTC, and keeps the example within the latest day allowed", () => {

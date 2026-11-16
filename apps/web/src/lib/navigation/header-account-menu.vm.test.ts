@@ -84,7 +84,6 @@ describe("buildHeaderAccountMenu", () => {
       attention: {
         outbidLots: ["14"],
         paymentsDue: 1,
-        paymentsInReview: false,
         stillToSend: { count: 0, pence: 0, lotIds: [] },
         unreadNotifications: 3,
         groups: [],

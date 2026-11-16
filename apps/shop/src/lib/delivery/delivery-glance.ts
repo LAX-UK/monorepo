@@ -1,3 +1,4 @@
+import { OUTSIDE_UK_HELP_HREF } from "@/content/policies/outside-uk-help-href";
 import { type WorkingDayWindow, workingDaysLabel } from "@/lib/checkout/checkout-delivery";
 import { GALLERY_CONTACT } from "@auction/branding";
 import type { DeliveryRegionView, PublicDeliveryRegions } from "@auction/shop-contracts";
@@ -149,7 +150,7 @@ export function buildDeliveryGlance(input: DeliveryGlanceInput): GlanceSection {
       { type: "subheading", text: "Outside the UK" },
       {
         type: "paragraph",
-        text: "Ask for a quote at checkout. We reply by email within one working day with one price for packing, insured delivery and export paperwork. You pay for your order and delivery together once you accept it.",
+        text: `Ask for a quote at checkout. We reply by email within one working day with one price for packing, insured delivery and export paperwork. You pay for your order and delivery together once you accept it. [How delivery outside the UK works](${OUTSIDE_UK_HELP_HREF})`,
       },
       ...(regions
         ? [
