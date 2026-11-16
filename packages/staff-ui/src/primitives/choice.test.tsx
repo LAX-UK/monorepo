@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -63,7 +64,7 @@ describe("checkbox and radio hit area (CRF-6)", () => {
   const hitArea = (el: HTMLElement) => el.className.split(/\s+/);
 
   it("defines the target in theme.css: 4px past each edge, never shrinking", () => {
-    const css = readFileSync(new URL("../theme.css", import.meta.url), "utf8");
+    const css = readFileSync(join(process.cwd(), "src/theme.css"), "utf8");
     const rule = css.slice(css.indexOf("@utility staff-hit"));
     expect(rule).toContain("position: relative");
     expect(rule).toContain("flex-shrink: 0");
