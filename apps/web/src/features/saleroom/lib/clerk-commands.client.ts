@@ -1,6 +1,7 @@
+import { CLERK_COMMAND_COPY } from "@/features/saleroom/lib/clerk-command-copy";
 import { readApiError, readApiErrorCode } from "@/lib/actions/_utils";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
-import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
+import type { ActionResult } from "@/lib/forms/form-result";
 
 /**
  * The clerk console's saleroom commands, sent from the browser to the API through the same-origin
@@ -13,12 +14,14 @@ import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/for
  * working. The API still checks the clerk's capability on every command.
  *
  * Nothing here retries. A command whose response was lost is not sent again, so a lot can never
- * be hammered twice; the console re-reads the room from the server instead.
+ * be hammered twice; the console re-reads the room from the server instead. Hammer and pass name
+ * the lot the clerk saw, and the API refuses them (`lot_not_on_block`) once the room has moved on.
  */
 
-export const CLERK_COMMAND_UNREACHABLE =
-  "The saleroom could not be reached. Check the connection, then try again.";
-export const CLERK_COMMAND_SESSION_EXPIRED = "Your session has ended. Sign in again to continue.";
+export const CLERK_COMMAND_UNREACHABLE = CLERK_COMMAND_COPY.unreachable;
+export const CLERK_COMMAND_SESSION_EXPIRED = CLERK_COMMAND_COPY.sessionExpired;
+/** The API's answer to a hammer or pass for a lot that is no longer on the block. */
+export const LOT_NOT_ON_BLOCK = "lot_not_on_block";
 
 export type ClerkCommandFetch = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -47,7 +50,7 @@ async function readJson(res: Response): Promise<unknown> {
 
 async function sendClerkCommand<T = void>(
   path: string,
-  init: { method?: "POST" | "DELETE"; body?: Record<string, unknown> },
+  init: { method?: "GET" | "POST" | "DELETE"; body?: Record<string, unknown> },
   fallback: string,
   readData?: (body: unknown) => T | undefined,
 ): Promise<ActionResult<T>> {
@@ -60,17 +63,26 @@ async function sendClerkCommand<T = void>(
       ...(init.body ? { body: JSON.stringify(init.body) } : {}),
     });
   } catch {
-    return actionFailure(CLERK_COMMAND_UNREACHABLE);
+    return { ok: false, error: CLERK_COMMAND_UNREACHABLE };
   }
   const body = await readJson(res);
   if (!res.ok) {
+    // Built here rather than with `actionFailure`: the form-result helpers would then ship in two
+    // page chunks and stop being inlined into either.
     const code = readApiErrorCode(body);
-    if (res.status === 401 || code === "session_required") {
-      return actionFailure(CLERK_COMMAND_SESSION_EXPIRED, undefined, res.status, code);
-    }
-    return actionFailure(readApiError(body, fallback), undefined, res.status, code);
+    const error =
+      res.status === 401 || code === "session_required"
+        ? CLERK_COMMAND_SESSION_EXPIRED
+        : readApiError(body, fallback);
+    return {
+      ok: false,
+      error,
+      status: res.status,
+      ...(code !== undefined ? { errorCode: code } : {}),
+    };
   }
-  return actionSuccess(readData?.(body));
+  const data = readData?.(body);
+  return data === undefined ? { ok: true } : { ok: true, data };
 }
 
 function readCreatedId(body: unknown): { bidId: string } | undefined {
@@ -98,12 +110,28 @@ export function clerkAdvance({ saleId, lotId }: { saleId: string; lotId: string 
   return sendClerkCommand(saleroomPath(saleId, "advance"), { body: { lotId } }, "Advance failed");
 }
 
-export function clerkHammer({ saleId }: { saleId: string }) {
-  return sendClerkCommand(saleroomPath(saleId, "hammer"), {}, "Hammer failed");
+export function clerkHammer({ saleId, lotId }: { saleId: string; lotId: string }) {
+  return sendClerkCommand(saleroomPath(saleId, "hammer"), { body: { lotId } }, "Hammer failed");
 }
 
-export function clerkNoSale({ saleId }: { saleId: string }) {
-  return sendClerkCommand(saleroomPath(saleId, "no-sale"), {}, "No sale failed");
+export function clerkNoSale({ saleId, lotId }: { saleId: string; lotId: string }) {
+  return sendClerkCommand(saleroomPath(saleId, "no-sale"), { body: { lotId } }, "No sale failed");
+}
+
+export type ClerkLotSnapshot = {
+  lotId: string;
+  currentPrice: string;
+  reservePrice: string | null;
+};
+
+/** The lot's price and reserve as the server holds them now. */
+export function clerkLotSnapshot({ saleId, lotId }: { saleId: string; lotId: string }) {
+  return sendClerkCommand(
+    saleroomPath(saleId, `lots/${encodeURIComponent(lotId)}`),
+    { method: "GET" },
+    "Lot did not load",
+    (body) => (body as { data?: ClerkLotSnapshot } | null)?.data,
+  );
 }
 
 export function clerkDisplayApprove({ saleId, userCode }: { saleId: string; userCode: string }) {

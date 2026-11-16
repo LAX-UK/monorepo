@@ -1,6 +1,7 @@
 import type {
   ISaleroomSessionReadService,
   PublicSaleroomSessionStatus,
+  SaleroomLotSnapshot,
   SaleroomSessionSnapshot,
   SaleroomSessionStatusRow,
 } from "../interfaces/saleroom-service.js";
@@ -59,5 +60,16 @@ export class SaleroomSessionReadService implements ISaleroomSessionReadService {
     }
     const events = await this.ctx.sessionRepo.listRecentEvents(session.id);
     return { session, events };
+  }
+
+  async getLotSnapshot(saleId: string, lotId: string): Promise<SaleroomLotSnapshot | null> {
+    const lot = await this.ctx.lotRepo.findById(lotId);
+    if (!lot || lot.saleId !== saleId) return null;
+    return {
+      lotId: lot.id,
+      status: lot.status,
+      currentPrice: lot.currentPrice,
+      reservePrice: lot.reservePrice ?? null,
+    };
   }
 }

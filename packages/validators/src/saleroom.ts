@@ -12,6 +12,17 @@ export const saleroomAdvanceLotBodySchema = z.object({
 
 export type SaleroomAdvanceLotBody = z.infer<typeof saleroomAdvanceLotBodySchema>;
 
+/** Hammer and no sale: the lot the clerk saw on the block. Optional for older consoles. */
+export const saleroomLotOutcomeBodySchema = z.object({
+  lotId: z.string().uuid().optional(),
+});
+
+export const saleroomLotParamSchema = adminSaleroomSaleIdParamSchema.extend({
+  lotId: z.string().uuid(),
+});
+
+export type SaleroomLotOutcomeBody = z.infer<typeof saleroomLotOutcomeBodySchema>;
+
 export const displayPairPollBodySchema = z.object({
   deviceCode: z.string().min(16).max(128),
 });

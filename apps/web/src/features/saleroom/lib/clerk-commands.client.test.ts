@@ -6,6 +6,8 @@ import {
   clerkDisplayClearOverlay,
   clerkDisplayOverlay,
   clerkHammer,
+  clerkLotSnapshot,
+  clerkNoSale,
   clerkPlacePaddleBid,
   clerkPlaceTelephoneBid,
   clerkTelephoneLine,
@@ -40,7 +42,7 @@ describe("clerk saleroom commands", () => {
   it("sends Hammer to the API through the BFF, never to the page as a server action", async () => {
     const fetch = stubFetch(json(200, { data: {} }));
 
-    await expect(clerkHammer({ saleId: SALE })).resolves.toEqual({ ok: true });
+    await expect(clerkHammer({ saleId: SALE, lotId: LOT })).resolves.toEqual({ ok: true });
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const [url, init] = fetch.mock.calls[0] ?? [];
@@ -48,12 +50,34 @@ describe("clerk saleroom commands", () => {
     expect(init?.method).toBe("POST");
     // A server action is a POST to the page with a `Next-Action` header; this is not one.
     expect(new Headers(init?.headers).has("next-action")).toBe(false);
+    // It names the lot the clerk saw, so it can never end a lot that came up since.
+    expect(init?.body).toBe(JSON.stringify({ lotId: LOT }));
+  });
+
+  it("reads the lot's price and reserve as the server holds them now", async () => {
+    const snapshot = {
+      lotId: LOT,
+      status: "active",
+      currentPrice: "950.00",
+      reservePrice: "900.00",
+    };
+    const fetch = stubFetch(json(200, { data: snapshot }));
+
+    await expect(clerkLotSnapshot({ saleId: SALE, lotId: LOT })).resolves.toEqual({
+      ok: true,
+      data: snapshot,
+    });
+    const [url, init] = fetch.mock.calls[0] ?? [];
+    expect(url).toBe(`/api/bff/admin/sales/${SALE}/saleroom/lots/${LOT}`);
+    expect(init?.method).toBe("GET");
+    expect(init?.body).toBeUndefined();
   });
 
   it("sends each command to its API path with its body", async () => {
     const fetch = stubFetch(json(200, { data: {} }));
 
     await clerkAdvance({ saleId: SALE, lotId: LOT });
+    await clerkNoSale({ saleId: SALE, lotId: LOT });
     await clerkDisplayApprove({ saleId: SALE, userCode: " ab12cd " });
     await clerkDisplayOverlay({
       saleId: SALE,
@@ -66,6 +90,7 @@ describe("clerk saleroom commands", () => {
     const calls = fetch.mock.calls.map(([url, init]) => [url, init.method, init.body ?? null]);
     expect(calls).toEqual([
       [`/api/bff/admin/sales/${SALE}/saleroom/advance`, "POST", JSON.stringify({ lotId: LOT })],
+      [`/api/bff/admin/sales/${SALE}/saleroom/no-sale`, "POST", JSON.stringify({ lotId: LOT })],
       [
         `/api/bff/admin/sales/${SALE}/saleroom/display/approve`,
         "POST",
@@ -109,7 +134,7 @@ describe("clerk saleroom commands", () => {
   it("returns the API's refusal as a result instead of throwing", async () => {
     stubFetch(json(409, { error: "No lot on the block", code: "no_current_lot" }));
 
-    await expect(clerkHammer({ saleId: SALE })).resolves.toEqual({
+    await expect(clerkHammer({ saleId: SALE, lotId: LOT })).resolves.toEqual({
       ok: false,
       error: "No lot on the block",
       status: 409,
@@ -120,7 +145,7 @@ describe("clerk saleroom commands", () => {
   it("turns a 404 with no JSON body into a result with the fallback message", async () => {
     stubFetch(new Response("<html>Not found</html>", { status: 404 }));
 
-    await expect(clerkHammer({ saleId: SALE })).resolves.toEqual({
+    await expect(clerkHammer({ saleId: SALE, lotId: LOT })).resolves.toEqual({
       ok: false,
       error: "Hammer failed",
       status: 404,
@@ -130,14 +155,14 @@ describe("clerk saleroom commands", () => {
   it("says the session ended when the BFF has no session", async () => {
     stubFetch(json(401, { error: "session_required" }));
 
-    const result = await clerkHammer({ saleId: SALE });
+    const result = await clerkHammer({ saleId: SALE, lotId: LOT });
     expect(result).toMatchObject({ ok: false, error: CLERK_COMMAND_SESSION_EXPIRED, status: 401 });
   });
 
   it("never sends Hammer twice when the network fails: it reports and leaves the retry to the clerk", async () => {
     const fetch = stubFetch(new TypeError("Failed to fetch"));
 
-    await expect(clerkHammer({ saleId: SALE })).resolves.toEqual({
+    await expect(clerkHammer({ saleId: SALE, lotId: LOT })).resolves.toEqual({
       ok: false,
       error: CLERK_COMMAND_UNREACHABLE,
     });

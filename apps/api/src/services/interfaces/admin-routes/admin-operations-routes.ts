@@ -170,6 +170,7 @@ export interface IAdminSaleroomApplicationService {
   closeSession: ISaleroomSessionControlService["closeSession"];
   getSessionStatuses: ISaleroomSessionReadService["getSessionStatuses"];
   getSessionWithRecentEvents: ISaleroomSessionReadService["getSessionWithRecentEvents"];
+  getLotSnapshot: ISaleroomSessionReadService["getLotSnapshot"];
   publishClerkPaddleBidSummary: ISaleroomDisplayControlService["publishClerkPaddleBidSummary"];
   getOperationsSnapshot: AdminSaleOperationsSnapshotService["getSnapshot"];
   listOperationsRadar: AdminSaleOperationsSnapshotService["listOperationsRadar"];

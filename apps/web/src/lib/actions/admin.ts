@@ -175,13 +175,6 @@ export const adminLotFulfilmentCollectedResultAction = _adminLotFulfilmentCollec
 import { adminRefundGroupDeliveryResultAction as _adminRefundGroupDeliveryResultAction } from "./admin/admin-group-delivery-refund";
 export const adminRefundGroupDeliveryResultAction = _adminRefundGroupDeliveryResultAction;
 
-import { adminSaleroomCheckInCandidatesResultAction as _adminSaleroomCheckInCandidatesResultAction } from "./admin/admin-paddle";
-export const adminSaleroomCheckInCandidatesResultAction =
-  _adminSaleroomCheckInCandidatesResultAction;
-
-import { adminSaleroomCheckInResultAction as _adminSaleroomCheckInResultAction } from "./admin/admin-paddle";
-export const adminSaleroomCheckInResultAction = _adminSaleroomCheckInResultAction;
-
 import { adminAssignPaddleResultAction as _adminAssignPaddleResultAction } from "./admin/admin-paddle";
 export const adminAssignPaddleResultAction = _adminAssignPaddleResultAction;
 

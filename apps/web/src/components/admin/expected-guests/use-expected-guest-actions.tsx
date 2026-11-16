@@ -1,11 +1,8 @@
 "use client";
 
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
-import {
-  adminAssignPaddleResultAction,
-  adminClearPaddleResultAction,
-  adminSaleroomCheckInResultAction,
-} from "@/lib/actions/admin";
+import { adminAssignPaddleResultAction, adminClearPaddleResultAction } from "@/lib/actions/admin";
+import { checkInBidder } from "@/lib/admin/saleroom/check-in.client";
 import type { AdminExpectedGuestRow } from "@/lib/data/http/admin-expected-guests.server";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";
@@ -86,7 +83,7 @@ function GuestStepDialog({
     setFailure(null);
     startTransition(async () => {
       if (step.kind === "check-in") {
-        const result = await adminSaleroomCheckInResultAction({
+        const result = await checkInBidder({
           saleId,
           userId: step.guest.userId,
           buyerLegalEntityId: entityId,

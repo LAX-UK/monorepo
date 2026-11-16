@@ -7,9 +7,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
-vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/ui/notify", () => ({
+  notify: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
+}));
 
 const SALE = "11111111-1111-4111-8111-111111111111";
+const LOT = "22222222-2222-4222-8222-222222222222";
+const resync = vi.fn(async () => true);
 const PAGE = `/admin/saleroom/${SALE}`;
 
 /**
@@ -57,11 +61,12 @@ describe("LotOutcomeControls across a deploy", () => {
     setClerkCommandFetchForTests(server);
     vi.useFakeTimers();
 
-    render(<LotOutcomeControls saleId={SALE} canHammer />);
+    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
     await holdHammer();
 
     expect(server).toHaveBeenCalledTimes(1);
     expect(server.mock.calls[0]?.[0]).toBe(`/api/bff/admin/sales/${SALE}/saleroom/hammer`);
+    expect(JSON.parse(String(server.mock.calls[0]?.[1].body))).toEqual({ lotId: LOT });
     expect(notify.success).toHaveBeenCalledWith("Lot hammered");
     expect(notify.error).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalledTimes(1);
@@ -72,11 +77,71 @@ describe("LotOutcomeControls across a deploy", () => {
     setClerkCommandFetchForTests(server);
     vi.useFakeTimers();
 
-    render(<LotOutcomeControls saleId={SALE} canHammer />);
+    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
     await holdHammer();
 
     expect(server).toHaveBeenCalledTimes(1);
-    expect(notify.error).toHaveBeenCalledWith("Hammer failed");
+    expect(notify.error).toHaveBeenCalledWith("Hammer failed", { id: "clerk-lot-outcome" });
     expect(screen.getByRole("button", { name: "Hold to hammer" })).toBeInTheDocument();
+  });
+
+  it("says the outcome is unknown and re-reads the room when the hammer's response is lost", async () => {
+    const server = vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    setClerkCommandFetchForTests(server);
+    let answerResync: (value: boolean) => void = () => {};
+    resync.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          answerResync = resolve;
+        }),
+    );
+    vi.useFakeTimers();
+
+    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
+    await holdHammer();
+
+    // Never resent: the hammer may have landed.
+    expect(server).toHaveBeenCalledTimes(1);
+    expect(notify.loading).toHaveBeenCalledWith("Outcome unknown, checking the room…", {
+      id: "clerk-lot-outcome",
+    });
+    expect(resync).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(notify.error).not.toHaveBeenCalled();
+
+    await act(async () => {
+      answerResync(true);
+    });
+    expect(notify.error).toHaveBeenCalledWith(
+      "The saleroom could not be reached. Check the connection, then try again.",
+      { id: "clerk-lot-outcome" },
+    );
+    expect(notify.success).not.toHaveBeenCalled();
+  });
+
+  it("tells the clerk the lot moved on, and resyncs, when the API refuses a hammer for another lot", async () => {
+    const server = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ error: "This lot is no longer on the block", code: "lot_not_on_block" }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        ),
+    );
+    setClerkCommandFetchForTests(server);
+    vi.useFakeTimers();
+
+    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
+    await holdHammer();
+
+    expect(server).toHaveBeenCalledTimes(1);
+    expect(notify.error).toHaveBeenCalledTimes(1);
+    expect(notify.error).toHaveBeenCalledWith("This lot is no longer on the block", {
+      id: "clerk-lot-outcome",
+    });
+    expect(notify.loading).not.toHaveBeenCalled();
+    expect(resync).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

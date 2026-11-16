@@ -1,8 +1,7 @@
 "use server";
 
-import { readApiActionErrorMeta, readApiError } from "@/lib/actions/_utils";
+import { readApiError } from "@/lib/actions/_utils";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
-import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
   type ActionResult,
@@ -10,81 +9,9 @@ import {
   actionSuccess,
   firstZodErrorMessage,
 } from "@/lib/forms/form-result";
-import { SALEROOM_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { SALEROOM_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { z } from "zod";
-
-const saleroomCheckInCandidatesForm = z.object({
-  saleId: z.string().uuid(),
-  q: z.string().trim().min(2).max(200),
-});
-
-const saleroomCheckInForm = z.object({
-  saleId: z.string().uuid(),
-  userId: z.string().min(1).max(191),
-  buyerLegalEntityId: z.string().uuid(),
-  assignPaddle: z.boolean().default(true),
-  bidLimit: z.coerce.number().finite().positive().max(1e12).optional(),
-  paddleNumber: z.coerce.number().int().min(100).optional(),
-});
-
-export async function adminSaleroomCheckInCandidatesResultAction(
-  input: unknown,
-): Promise<ActionResult<{ items: AdminCheckInCandidate[] }>> {
-  return instrumentServerAction("adminSaleroomCheckInCandidatesResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
-    if (denied) return denied;
-
-    const parsed = saleroomCheckInCandidatesForm.safeParse(input);
-    if (!parsed.success) {
-      return actionFailure(firstZodErrorMessage(parsed.error));
-    }
-
-    const { saleId, q } = parsed.data;
-    const res = await getWriteContainer().adminPaddle.checkInCandidates(saleId, q);
-    if (!res.ok) {
-      return actionFailure(
-        readApiError(res.body, "Could not search clients"),
-        undefined,
-        res.status,
-        res.code,
-      );
-    }
-    return actionSuccess({ items: res.data.items });
-  });
-}
-
-export async function adminSaleroomCheckInResultAction(input: unknown): Promise<
-  ActionResult<{
-    registrationId: string;
-    paddleNumber: number | null;
-    checkedInAt: string;
-    bidLimit?: string;
-  }>
-> {
-  return instrumentServerAction("adminSaleroomCheckInResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
-    if (denied) return denied;
-
-    const parsed = saleroomCheckInForm.safeParse(input);
-    if (!parsed.success) {
-      return actionFailure(firstZodErrorMessage(parsed.error));
-    }
-
-    const res = await getWriteContainer().adminPaddle.checkIn(parsed.data);
-    if (!res.ok) {
-      const meta = readApiActionErrorMeta(res.body);
-      return actionFailure(
-        readApiError(res.body, "Check-in failed"),
-        undefined,
-        res.status,
-        res.code,
-        meta,
-      );
-    }
-    return actionSuccess(res.data);
-  });
-}
 
 const paddleRegistrationActionForm = z.object({
   saleId: z.string().uuid(),

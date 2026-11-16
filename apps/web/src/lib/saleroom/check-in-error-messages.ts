@@ -16,3 +16,9 @@ export function saleroomCheckInErrorMessage(code: string | undefined, fallback: 
   if (!code) return fallback;
   return SALEROOM_CHECK_IN_ERROR_MESSAGES[code] ?? fallback;
 }
+
+/** When the check-in request itself does not go through. */
+export const SALEROOM_CHECK_IN_TRANSPORT_COPY = {
+  unreachable: "The saleroom could not be reached. Check the connection, then try again.",
+  sessionExpired: "Your session has ended. Sign in again to continue.",
+} as const;

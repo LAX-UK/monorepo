@@ -95,12 +95,15 @@ vi.mock("@/hooks/use-clerk-lot-live-price", () => ({
     placeBid: vi.fn(),
   }),
 }));
-const { replace } = vi.hoisted(() => ({
-  replace: vi.fn(),
-}));
+const { replace, refresh, router } = vi.hoisted(() => {
+  const replace = vi.fn();
+  const refresh = vi.fn();
+  // One router for the life of the page, as Next.js gives.
+  return { replace, refresh, router: { replace, refresh } };
+});
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => router,
 }));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { error: vi.fn(), success: vi.fn() },
@@ -219,7 +222,7 @@ describe("SaleroomClerkConsole phase layout", () => {
     });
   });
 
-  it("re-reads the room from the API when it mounts, so stale page props never stick", async () => {
+  it("re-reads the room from the API when it mounts, and refetches the page when it remounts", async () => {
     resyncFromServer.mockClear();
 
     const { unmount } = render(
@@ -232,8 +235,9 @@ describe("SaleroomClerkConsole phase layout", () => {
     );
 
     await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(1));
+    refresh.mockClear();
 
-    // The error boundary's Try again remounts the console: it reads the room again.
+    // The error boundary's Try again remounts the console: it reads the room and the page again.
     unmount();
     render(
       <SaleroomClerkConsole
@@ -244,5 +248,6 @@ describe("SaleroomClerkConsole phase layout", () => {
       />,
     );
     await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(2));
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 });

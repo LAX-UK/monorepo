@@ -16,6 +16,7 @@ import { SaleroomLiveShell } from "@/features/saleroom/components/saleroom-live-
 import { useClerkConsoleModel } from "@/features/saleroom/hooks/use-clerk-console-model";
 import { useClerkLotRosterSync } from "@/features/saleroom/hooks/use-clerk-lot-roster-sync";
 import { useClerkPaddleRoster } from "@/features/saleroom/hooks/use-clerk-paddle-roster";
+import { clerkLotSnapshot } from "@/features/saleroom/lib/clerk-commands.client";
 import { useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
 import type {
   AdminPaddleRosterEntry,
@@ -27,6 +28,9 @@ import { notify } from "@/lib/ui/notify";
 import type { Lot, SaleDeliveryMode, SaleroomDisplayOverlay } from "@auction/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
+
+/** Set once the console has mounted in this document; a later mount is a remount. */
+let consoleMounted = false;
 
 type Props = {
   saleId: string;
@@ -79,7 +83,11 @@ function ClerkConsoleInner({
   initialDisplayOverlay?: SaleroomDisplayOverlay | null;
 }) {
   const router = useRouter();
-  const { lots: syncedLots, hammeredLotIds } = useClerkLotRosterSync({ initialLots, liveFeed });
+  const {
+    lots: syncedLots,
+    hammeredLotIds,
+    applyLotSnapshot,
+  } = useClerkLotRosterSync({ initialLots, liveFeed });
   const { roster: paddleRoster, refreshRoster } = useClerkPaddleRoster({
     saleId,
     initialRoster: initialPaddleRoster,
@@ -95,17 +103,34 @@ function ClerkConsoleInner({
 
   // The props are what the server rendered, which can be older than the room: after Try again on
   // the error boundary, or a page restored from the browser's cache. Read the session again from
-  // the API on mount so the console never acts on a stale lot or status.
+  // the API on mount so the console never acts on a stale lot or status. A remount (Try again)
+  // also refetches the page, so the lots, bookings and roster are current too.
   useEffect(() => {
     void resyncFromServer();
-  }, [resyncFromServer]);
+    if (consoleMounted) router.refresh();
+    consoleMounted = true;
+  }, [resyncFromServer, router]);
+
+  const currentLotId = session.currentLotId;
+  // Price and reserve of the lot on the block, read from the API whenever it changes (and on
+  // mount), so a console reset or restored from cache never shows the price it was loaded with.
+  // A later server render (a refresh) replaces it.
+  useEffect(() => {
+    if (!currentLotId) return;
+    let current = true;
+    void clerkLotSnapshot({ saleId, lotId: currentLotId }).then((result) => {
+      if (current && result.ok && result.data) applyLotSnapshot(result.data);
+    });
+    return () => {
+      current = false;
+    };
+  }, [applyLotSnapshot, currentLotId, saleId]);
 
   useEffect(() => {
     if (!actionError) return;
     notify.error(actionError);
   }, [actionError]);
 
-  const currentLotId = session.currentLotId;
   const currentLotForBid = syncedLots.find((lot) => lot.id === currentLotId) ?? null;
 
   const liveBid = useClerkLotLiveBidState(
@@ -194,6 +219,8 @@ function ClerkConsoleInner({
             renderDock={({ hammerPrimary }) => (
               <ClerkLiveActionBar
                 saleId={saleId}
+                currentLotId={model.lot.currentLotId}
+                resync={resyncFromServer}
                 canHammer={model.action.canHammer}
                 sessionLive={model.action.sessionLive}
                 nextLot={model.lot.nextLot}
