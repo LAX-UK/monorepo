@@ -20,7 +20,7 @@ function setup(
     announced?: boolean;
     first?: boolean;
     sendNotices?: boolean;
-    coverUrl?: (key: string) => string | null;
+    coverUrl?: (key: string) => Promise<string | null>;
   } = {},
 ) {
   const announce = vi.fn().mockResolvedValue({
@@ -43,22 +43,22 @@ describe("BidSaleAnnouncer", () => {
   it("puts the sale's cover and its alt text in the snapshot", async () => {
     const { announcer, announce } = setup({
       sale: { ...sale, cover: { key: "sales/spring.jpg", alt: "A bronze horse on a plinth" } },
-      coverUrl: (key) => `https://lax.bid/_next/image?url=${key}&w=640`,
+      coverUrl: async (key) => `https://media.lax.bid/${key.replace(/\.jpg$/, "")}.email-640.jpg`,
     });
     await announcer.handle({ saleId: sale.id, announce: true, lotCount: 3 });
     expect(announce.mock.calls[0]?.[0].snapshot).toMatchObject({
-      imageUrl: "https://lax.bid/_next/image?url=sales/spring.jpg&w=640",
+      imageUrl: "https://media.lax.bid/sales/spring.email-640.jpg",
       imageAlt: "A bronze horse on a plinth",
     });
   });
 
   it("leaves the picture out when the sale has none or its address cannot be placed", async () => {
-    const none = setup({ coverUrl: () => "https://x" });
+    const none = setup({ coverUrl: async () => "https://x" });
     await none.announcer.handle({ saleId: sale.id, announce: true, lotCount: 3 });
     expect(none.announce.mock.calls[0]?.[0].snapshot).not.toHaveProperty("imageUrl");
     const unplaced = setup({
       sale: { ...sale, cover: { key: "k", alt: "a" } },
-      coverUrl: () => null,
+      coverUrl: async () => null,
     });
     await unplaced.announcer.handle({ saleId: sale.id, announce: true, lotCount: 3 });
     expect(unplaced.announce.mock.calls[0]?.[0].snapshot).not.toHaveProperty("imageUrl");

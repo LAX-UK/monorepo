@@ -21,6 +21,13 @@ import type {
 import { stopLinks } from "./confirmation-links.js";
 
 /** `off` does nothing, `dry_run` assembles and logs digests without sending, `on` sends. */
+/** What one person wants told: by email, in the app, and either. */
+type WantedTopics = {
+  email: ReadonlySet<AlertTopic>;
+  inApp: ReadonlySet<AlertTopic>;
+  all: ReadonlySet<AlertTopic>;
+};
+
 export type SendMode = "off" | "dry_run" | "on";
 
 export type DigestRunStats = {
@@ -179,7 +186,15 @@ export class DigestRun {
       stats.capped += 1;
       return;
     }
-    const emailed = await this.deliver(record, claim.digestId, live, localDate, idempotencyKey);
+    // The topics read above are passed on, so a digest reads the person's switches once.
+    const emailed = await this.deliver(
+      record,
+      claim.digestId,
+      live,
+      localDate,
+      idempotencyKey,
+      wanted,
+    );
     await digests.markSent(claim.digestId, clock.now());
     if (emailed) stats.sent += 1;
     else stats.noticeOnly += 1;
@@ -195,8 +210,10 @@ export class DigestRun {
     matches: readonly PendingMatch[],
     localDate: string,
     idempotencyKey: string,
+    /** The topics already read for this digest; a resumed digest reads them now. */
+    known?: WantedTopics,
   ): Promise<boolean> {
-    const wanted = await this.wantedTopics(record);
+    const wanted = known ?? (await this.wantedTopics(record));
     const noticeVm = assembleDigest(matches.filter((m) => wanted.inApp.has(m.topic)));
     if (noticeVm) await this.notify(record, digestId, noticeVm, localDate);
     const emailVm = assembleDigest(matches.filter((m) => wanted.email.has(m.topic)));
@@ -206,7 +223,7 @@ export class DigestRun {
   }
 
   /** The topics told by email, the topics told in the app, and both together. */
-  private async wantedTopics(record: SubscriberRecord) {
+  private async wantedTopics(record: SubscriberRecord): Promise<WantedTopics> {
     const email = new Set(await this.activeTopics(record.id));
     // Without a lookup the app tells what the email tells, as it did before the app had its own switch.
     const inApp = new Set<AlertTopic>(

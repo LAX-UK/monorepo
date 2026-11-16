@@ -74,7 +74,14 @@ export function createEngineHarness(
   const addresses: VerifiedAddressLookup = { find: async (id) => accounts.get(id) ?? null };
   /** The topics each account keeps on in the app, by subject; absent means none. */
   const inAppTopics = new Map<string, AlertTopic[]>();
-  const inApp: InAppTopicLookup = { topicsOn: async (id) => inAppTopics.get(id) ?? [] };
+  /** How many times the digest asked for a person's app switches. */
+  const inAppReads = { count: 0 };
+  const inApp: InAppTopicLookup = {
+    topicsOn: async (id) => {
+      inAppReads.count += 1;
+      return inAppTopics.get(id) ?? [];
+    },
+  };
   const validator: MatchValidator = {
     staleMatches: async (matches) =>
       new Map(
@@ -101,6 +108,7 @@ export function createEngineHarness(
     accounts,
     stale,
     inAppTopics,
+    inAppReads,
     subscribe,
     confirm: new ConfirmService({
       ...common,

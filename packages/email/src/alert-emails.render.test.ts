@@ -242,8 +242,7 @@ describe("alert emails", () => {
 });
 
 describe("digest cover pictures", () => {
-  const cover =
-    "https://lax.bid/_next/image?url=https%3A%2F%2Fmedia.lax.bid%2Fspring.jpg&w=640&q=75";
+  const cover = "https://media.lax.bid/uploads/pending/sales/u1/spring.email-640.jpg";
   const withCover = (over: Partial<DigestMessage> = {}) => {
     const vm = assembleDigest([
       {
@@ -272,7 +271,9 @@ describe("digest cover pictures", () => {
     expect(rendered.html).toContain('width="532"');
     expect(rendered.html).toContain("max-width:100%");
     expect(rendered.html).toContain("height:auto");
-    expect(rendered.html).toContain("w=640");
+    // The media host's own 640 pixel JPEG copy, never the site's image optimiser.
+    expect(rendered.html).toContain(`src="${cover}"`);
+    expect(rendered.html).not.toContain("/_next/image");
     // The picture is a link to the sale, so the whole card opens it.
     expect(rendered.html).toMatch(/<a [^>]*href="https:\/\/lax\.bid\/sales\/1"[^>]*><img /);
   });
@@ -306,7 +307,7 @@ describe("digest cover pictures", () => {
     const img =
       rendered.html.match(/<a href="https:\/\/lax\.bid\/sales\/1"[^>]*><img [^>]*>/)?.[0] ?? "";
     expect(img).toMatchInlineSnapshot(
-      `"<a href="https://lax.bid/sales/1" style="color:#067df7;text-decoration-line:none;display:block;margin:0 0 10px;text-decoration:none" target="_blank"><img alt="A bronze horse on a stone plinth" src="https://lax.bid/_next/image?url=https%3A%2F%2Fmedia.lax.bid%2Fspring.jpg&amp;w=640&amp;q=75" style="display:block;outline:none;border:1px solid #e6e8eb;text-decoration:none;background-color:#f2f1df;border-radius:4px;color:#525252;font-family:&quot;Outfit&quot;, Helvetica, Arial, &quot;Helvetica Neue&quot;, sans-serif;font-size:13px;height:auto;max-width:100%;width:532px" width="532"/>"`,
+      `"<a href="https://lax.bid/sales/1" style="color:#067df7;text-decoration-line:none;display:block;margin:0 0 10px;text-decoration:none" target="_blank"><img alt="A bronze horse on a stone plinth" src="https://media.lax.bid/uploads/pending/sales/u1/spring.email-640.jpg" style="display:block;outline:none;border:1px solid #e6e8eb;text-decoration:none;background-color:#f2f1df;border-radius:4px;color:#525252;font-family:&quot;Outfit&quot;, Helvetica, Arial, &quot;Helvetica Neue&quot;, sans-serif;font-size:13px;height:auto;max-width:100%;width:532px" width="532"/>"`,
     );
   });
 

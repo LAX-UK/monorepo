@@ -758,6 +758,17 @@ describe("announcing and the daily digest", () => {
       expect(notices.written).toHaveLength(0);
     });
 
+    it("reads the person's switches once per digest", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      h.inAppTopics.set("u1", ["bid.new_sales"]);
+      await h.digestRun("bid", notices).run("on");
+      expect(h.mailer.digests).toHaveLength(1);
+      expect(notices.written).toHaveLength(1);
+      expect(h.inAppReads.count).toBe(1);
+    });
+
     it("emails only the email topics while the app also tells another topic", async () => {
       const h = createEngineHarness();
       const notices = new RecordingNotices();
