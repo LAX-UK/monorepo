@@ -71,7 +71,6 @@ export function EmptyState({
 }: EmptyStateProps) {
   const isPage = layout === "page";
   const compact = size === "compact" && !isPage;
-  const inline = !isPage && !compact;
   const Heading = headingLevel ?? (isPage ? "h1" : "h2");
   const drawing = variant === "error" ? "askew" : illustration;
 
@@ -79,7 +78,7 @@ export function EmptyState({
     <div
       data-empty-state={drawing}
       data-layout={layout}
-      {...(variant === "error" ? { role: "alert" } : {})}
+      role={variant === "error" ? "alert" : undefined}
       className={cn("@container", className)}
     >
       <div
@@ -87,7 +86,9 @@ export function EmptyState({
           "grid grid-cols-1 items-center text-left",
           isPage && "gap-8 px-5 py-10 @3xl:grid-cols-12 @3xl:gap-12 @3xl:px-10 @3xl:py-20",
           compact && "gap-4 px-4 py-4 @xl:grid-cols-[auto_minmax(0,1fr)] @xl:gap-6",
-          inline && "gap-6 px-5 py-6 @2xl:grid-cols-[auto_minmax(0,1fr)] @2xl:gap-10 @2xl:p-10",
+          !isPage &&
+            !compact &&
+            "gap-6 px-5 py-6 @2xl:grid-cols-[auto_minmax(0,1fr)] @2xl:gap-10 @2xl:p-10",
         )}
       >
         <div
@@ -97,30 +98,29 @@ export function EmptyState({
             !plate && "bg-lax-paper",
             isPage && "aspect-[4/3] @3xl:col-span-5",
             compact && "h-24 @xl:w-32",
-            inline && "h-40 @2xl:h-42 @2xl:w-56",
+            !isPage && !compact && "h-40 @2xl:h-42 @2xl:w-56",
           )}
         >
           {plate ?? (
             <LaxIllustration
               name={drawing}
-              size={compact ? "compact" : isPage ? "page" : "panel"}
               className={cn(
                 "text-current",
                 isPage && "w-44 @3xl:w-56",
                 compact && "w-20",
-                inline && "w-36 @2xl:w-40",
+                !isPage && !compact && "w-36 @2xl:w-40",
               )}
             />
           )}
         </div>
         <div className={cn("min-w-0", isPage && "@3xl:col-span-7")}>
-          {eyebrow && <p className="mb-2 text-lax-13 font-medium text-lax-muted">{eyebrow}</p>}
+          {eyebrow && <p className="mb-2 text-lax-13 text-lax-muted">{eyebrow}</p>}
           <Heading
             className={cn(
               "font-lax-display font-semibold text-balance text-lax-fg",
               isPage && "text-lax-28",
               compact && "text-lax-16",
-              inline && "text-lax-20",
+              !isPage && !compact && "text-lax-20",
             )}
           >
             {title}
