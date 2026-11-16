@@ -178,6 +178,8 @@
 
 :root {
   --color-cta-bg: var(--color-brand-obsidian);
+  /* The kit empty-state drawing (`text-lax-plate-ink`) in the product accent, both themes. */
+  --lax-plate-ink: var(--color-product-accent);
   --color-cta-on: var(--color-brand-light-cream);
   /* Section spacing rhythm — parity with Bid marketing (docs/marketing-design-language.md). */
   --section-spacing: 5rem;

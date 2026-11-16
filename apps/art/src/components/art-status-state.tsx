@@ -1,7 +1,7 @@
 import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
 import { MarketingStatusAction } from "@auction/marketing-ui";
-import { EmptyState, type EmptyStateProps } from "@auction/ui/lax/empty-state";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import {
   type StatusIllustration,
   resolveStatusIllustration,
@@ -27,7 +27,8 @@ type ArtStatusStateProps = {
   titleAs?: "h1" | "h2" | "p";
   /** `page` for full-route states, `open` (default) for grids and sections, `compact` for short lists. */
   layout?: "open" | "page" | "compact";
-  announcement?: EmptyStateProps["announcement"];
+  /** Errors are announced politely, empties not at all, unless this says otherwise. */
+  announcement?: "none" | "polite" | "assertive";
   className?: string;
 };
 
@@ -44,23 +45,26 @@ export function ArtStatusState({
 }: ArtStatusStateProps) {
   const isPage = layout === "page";
   const headingLevel = titleAs ?? (isPage ? undefined : "p");
-
-  return (
+  const live = announcement ?? (variant === "error" ? "polite" : "none");
+  const role = live === "none" ? undefined : LIVE_ROLES[live];
+  // The kit's error variant always announces itself assertively; lax.art errors are polite, so
+  // an error is drawn askew and the wrapper owns the live region.
+  const state = (
     <EmptyState
-      accent
-      variant={variant}
       layout={isPage ? "page" : "inline"}
       size={layout === "compact" ? "compact" : "default"}
-      illustration={resolveStatusIllustration(icon ?? "gallery")}
+      illustration={variant === "error" ? "askew" : resolveStatusIllustration(icon ?? "gallery")}
       title={title}
       description={description}
       actions={actions}
       {...(headingLevel ? { headingLevel } : {})}
-      announcement={announcement ?? (variant === "error" ? "polite" : "none")}
       {...(className ? { className } : {})}
     />
   );
+  return role ? <div role={role}>{state}</div> : state;
 }
+
+const LIVE_ROLES = { polite: "status", assertive: "alert" } as const;
 
 type ArtStatusStateLinkProps = {
   href: string;

@@ -93,31 +93,15 @@ describe("EmptyState", () => {
 });
 
 describe("EmptyState product options", () => {
-  it("draws the plate in the product accent when asked, and in the foreground otherwise", () => {
-    const { container, rerender } = render(
-      <EmptyState accent illustration="frame" title="t" description="d" />,
-    );
-    expect(container.innerHTML).toContain("--color-product-accent");
-    rerender(<EmptyState illustration="frame" title="t" description="d" />);
-    expect(container.innerHTML).not.toContain("--color-product-accent");
+  it("draws the plate in the plate ink, which a product may point at its accent", () => {
+    const { container } = render(<EmptyState illustration="frame" title="t" description="d" />);
+    expect(container.querySelector("[aria-hidden]")?.className).toContain("text-lax-plate-ink");
   });
 
-  it("announces politely or not at all as asked, and renders a paragraph title", () => {
-    const { container, rerender } = render(
-      <EmptyState announcement="polite" illustration="frame" title="t" description="d" />,
+  it("renders a paragraph title when the page already has its headings", () => {
+    const { container } = render(
+      <EmptyState illustration="frame" title="t" description="d" headingLevel="p" />,
     );
-    expect(screen.getByRole("status")).toBeInTheDocument();
-    rerender(
-      <EmptyState
-        variant="error"
-        announcement="none"
-        illustration="frame"
-        title="t"
-        description="d"
-        headingLevel="p"
-      />,
-    );
-    expect(screen.queryByRole("alert")).toBeNull();
     expect(container.querySelector("p")?.textContent).toBe("t");
     expect(screen.queryByRole("heading")).toBeNull();
   });

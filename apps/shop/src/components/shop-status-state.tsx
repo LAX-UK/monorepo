@@ -1,4 +1,4 @@
-import { EmptyState, type EmptyStateProps } from "@auction/ui/lax/empty-state";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import {
   type StatusIllustration,
   resolveStatusIllustration,
@@ -31,10 +31,15 @@ type ShopStatusStateProps = {
    */
   titleAs?: "h1" | "h2" | "p";
   layout?: ShopStatusStateLayout;
-  /** Shop states are silent on first paint; client-side transitions ask for polite or assertive. */
-  announcement?: EmptyStateProps["announcement"];
+  /**
+   * Shop states, errors included, are silent on first paint; a state that replaces content after
+   * a client-side change asks for polite or assertive and is wrapped in that live region.
+   */
+  announcement?: StatusStateAnnouncement;
   className?: string;
 };
+
+export type StatusStateAnnouncement = "none" | "polite" | "assertive";
 
 export function ShopStatusState({
   variant,
@@ -51,25 +56,27 @@ export function ShopStatusState({
 }: ShopStatusStateProps) {
   const isPage = layout === "page";
   const headingLevel = titleAs ?? (isPage ? undefined : "p");
-
-  return (
+  const role = announcement === "none" ? undefined : LIVE_ROLES[announcement];
+  // The kit's error variant always announces itself; Shop errors are silent unless asked, so an
+  // error is drawn askew and announced by the wrapper only when the caller wants it.
+  const state = (
     <EmptyState
-      accent
-      variant={variant}
       layout={isPage ? "page" : "inline"}
       size={layout === "compact" ? "compact" : "default"}
-      illustration={resolveStatusIllustration(icon ?? "gallery")}
+      illustration={variant === "error" ? "askew" : resolveStatusIllustration(icon ?? "gallery")}
       {...(motifSlot ? { plate: motifSlot } : {})}
       title={title}
       description={description}
       control={control}
       actions={actions}
       {...(headingLevel ? { headingLevel } : {})}
-      announcement={announcement}
       {...(className ? { className } : {})}
     />
   );
+  return role ? <div role={role}>{state}</div> : state;
 }
+
+const LIVE_ROLES = { polite: "status", assertive: "alert" } as const;
 
 export {
   ShopStatusStateAction,

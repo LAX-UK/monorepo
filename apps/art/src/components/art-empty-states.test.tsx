@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ArtAccountListStateView } from "@/components/account/art-account-list-state";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -10,7 +12,7 @@ describe("ArtStatusState is the shared EmptyState", () => {
     const out = html(<ArtStatusState variant="empty" title="No works" description="Check back." />);
     expect(out).toContain('data-empty-state="frame"');
     expect(out).toContain("bg-lax-paper");
-    expect(out).toContain("--color-product-accent");
+    expect(out).toContain("text-lax-plate-ink");
     expect(out).toContain("No works");
     expect(out).toContain("Check back.");
     expect(out).not.toContain("marketing-status-state__title");
@@ -87,5 +89,12 @@ describe("lax.art empty states", () => {
     expect(out).toContain("Works you save appear here.");
     expect(out).toContain("Browse works");
     expect(out).toContain('data-empty-state="frame"');
+  });
+});
+
+describe("the plate ink", () => {
+  it("is the product accent, so the drawing is in the accent in both themes", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/base.css"), "utf8");
+    expect(css).toMatch(/--lax-plate-ink: var\(--color-product-accent\);/);
   });
 });

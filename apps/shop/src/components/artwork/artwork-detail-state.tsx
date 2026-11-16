@@ -30,7 +30,6 @@ export function ArtworkDetailState({
         ← Back to Collect
       </Link>
       <EmptyState
-        accent
         layout="page"
         illustration={illustration}
         eyebrow={eyebrow}

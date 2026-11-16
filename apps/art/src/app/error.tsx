@@ -9,7 +9,6 @@ export default function ArtRouteError({ reset }: { error: Error; reset: () => vo
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
       <EmptyState
-        accent
         variant="error"
         layout="page"
         illustration="askew"

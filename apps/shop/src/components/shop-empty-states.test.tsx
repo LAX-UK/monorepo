@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ArtworkDetailState } from "@/components/artwork/artwork-detail-state";
 import { CatalogueEmpty, CatalogueNoMatch } from "@/components/catalogue/catalogue-states";
 import { ShopCatalogueEmpty } from "@/components/catalogue/shop-catalogue-empty";
@@ -19,7 +21,7 @@ describe("ShopStatusState is the shared EmptyState", () => {
     );
     expect(out).toContain('data-empty-state="frame"');
     expect(out).toContain("bg-lax-paper");
-    expect(out).toContain("--color-product-accent");
+    expect(out).toContain("text-lax-plate-ink");
     expect(out).toContain("Nothing here yet");
     expect(out).toContain("Come back soon.");
     expect(out).not.toContain("marketing-status-state__title");
@@ -196,5 +198,12 @@ describe("Shop empty states", () => {
     );
     // Related content comes after the whole state.
     expect(out.indexOf('data-testid="related"')).toBeGreaterThan(out.indexOf("New editions"));
+  });
+});
+
+describe("the plate ink", () => {
+  it("is the product accent, so the drawing is in the accent in both themes", () => {
+    const css = readFileSync(join(process.cwd(), "src/app/base.css"), "utf8");
+    expect(css).toMatch(/--lax-plate-ink: var\(--color-product-accent\);/);
   });
 });
