@@ -179,3 +179,11 @@ describe("the documented commands", () => {
     expect(typo.stderr).not.toContain("Set DATABASE_URL.");
   }, 60_000);
 });
+
+describe("parseBackfillArgs empty values", () => {
+  it("rejects a value flag with nothing after the =", () => {
+    for (const arg of ["--batch-size=", "--lock-timeout=", "--resume-after="]) {
+      expect(() => parseBackfillArgs([arg]), arg).toThrow(/needs a value/);
+    }
+  });
+});

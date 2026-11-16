@@ -3,7 +3,6 @@
 import type { SlotSummary } from "@/lib/admin/sale-cover/slot-summary";
 import { StaffButton, cn } from "@auction/staff-ui";
 import { SALE_COVER_SLOT_NAMES, type SaleCoverSlotName } from "@auction/types";
-import { useRef } from "react";
 
 type Props = {
   summaries: Record<SaleCoverSlotName, SlotSummary>;
@@ -15,10 +14,11 @@ type Props = {
 
 export const slotTabId = (panelId: string, name: SaleCoverSlotName) => `${panelId}-tab-${name}`;
 
+/** Arrow keys move to the next or previous slot, as in any tab list. */
+const ARROW_STEP: Partial<Record<string, number>> = { ArrowRight: 1, ArrowLeft: -1 };
+
 /** The three slots as cards. Arrow keys move between them, as in any tab list. */
 export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props) {
-  const refs = useRef(new Map<SaleCoverSlotName, HTMLButtonElement>());
-
   const move = (from: number, step: number) => {
     const next =
       SALE_COVER_SLOT_NAMES[
@@ -26,7 +26,8 @@ export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props)
       ];
     if (!next) return;
     onSelect(next);
-    refs.current.get(next)?.focus();
+    // Each tab already has its id, so focus follows it there without keeping refs.
+    document.getElementById(slotTabId(panelId, next))?.focus();
   };
 
   return (
@@ -37,10 +38,6 @@ export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props)
         return (
           <StaffButton
             key={name}
-            ref={(node) => {
-              if (node) refs.current.set(name, node);
-              else refs.current.delete(name);
-            }}
             variant="ghost"
             role="tab"
             id={slotTabId(panelId, name)}
@@ -49,12 +46,10 @@ export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props)
             tabIndex={active ? 0 : -1}
             onClick={() => onSelect(name)}
             onKeyDown={(event) => {
-              if (event.key === "ArrowRight") {
+              const step = ARROW_STEP[event.key];
+              if (step) {
                 event.preventDefault();
-                move(index, 1);
-              } else if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                move(index, -1);
+                move(index, step);
               }
             }}
             className={cn(
