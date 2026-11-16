@@ -1,7 +1,9 @@
 import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
+import { Skeleton } from "@auction/ui/lax";
 import { Eye } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { KEY_VALUE_ROW } from "./key-value-row.js";
 
 type StateProps = {
   title: string;
@@ -145,12 +147,74 @@ export function ViewOnlyBadge({ role }: { role?: string }) {
 }
 
 /** A block placeholder with the exact geometry of what will load, so nothing shifts. */
-export { Skeleton } from "@auction/ui/lax";
+export { Skeleton };
 
 /**
  * A titled block on a record page: hairline card, 16px header row with an optional action, then
  * content. The default container for detail pages and panels.
  */
+/**
+ * A `Section` while it loads, drawn by the same header and rows so nothing moves when the content
+ * arrives: the title, the description and the header action only where the real card has them,
+ * then label-and-value rows (`facts`) or table rows (`table`).
+ */
+export function SectionSkeleton({
+  rows,
+  body = "facts",
+  description = false,
+  action = false,
+  className,
+}: {
+  rows: number;
+  body?: "facts" | "table";
+  description?: boolean;
+  action?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      aria-hidden
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
+    >
+      <div className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2.5">
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-4 w-24" />
+          {description ? <Skeleton className="h-3 w-32" /> : null}
+        </div>
+        {action ? <Skeleton className="h-control-sm w-32 rounded-staff-sm" /> : null}
+      </div>
+      {body === "facts" ? (
+        <div className="@container grid p-4">
+          {Array.from({ length: rows }, (_, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
+            <div key={index} className={cn(KEY_VALUE_ROW, "items-center")}>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col">
+          <div className="flex h-9 items-center gap-6 border-b border-staff-line px-4">
+            <Skeleton className="h-3 w-16" />
+          </div>
+          {Array.from({ length: rows }, (_, index) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
+              key={index}
+              className="flex h-11 items-center gap-6 border-b border-staff-line-subtle px-4 last:border-b-0"
+            >
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 flex-1" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Section({
   title,
   status,

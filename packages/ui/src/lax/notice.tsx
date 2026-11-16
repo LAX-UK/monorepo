@@ -35,7 +35,8 @@ export type NoticeTone = keyof typeof toneClass;
 /**
  * A short message about the page or record, above the work it concerns: why something cannot be
  * done yet, or that the record changed elsewhere. One line of title, an optional line of detail
- * and at most one or two actions on the right. `role="status"` unless `alert` is set. A 12px
+ * and at most one or two actions on the right. `role="status"` unless `alert` is set, or
+ * `role="note"` with `quiet` for text that changes as the person types. A 12px
  * block, like a card: dense for staff, 16px of padding and a 600 title for clients.
  */
 export function Notice({
@@ -44,6 +45,7 @@ export function Notice({
   children,
   actions,
   alert = false,
+  quiet = false,
   className,
   ...rest
 }: Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "role" | "children"> & {
@@ -53,6 +55,11 @@ export function Notice({
   actions?: React.ReactNode;
   /** Announce immediately (a failure the person must act on). */
   alert?: boolean;
+  /**
+   * Not a live region: for text that follows what the person types (a live preview), which
+   * would otherwise be read out on every keystroke. Announce it separately once typing settles.
+   */
+  quiet?: boolean;
   className?: string;
 }) {
   const { box, icon, Icon } = toneClass[tone];
@@ -60,7 +67,7 @@ export function Notice({
   return (
     <div
       {...rest}
-      role={alert ? "alert" : "status"}
+      role={alert ? "alert" : quiet ? "note" : "status"}
       aria-labelledby={titleId}
       data-tone={tone}
       className={cn(

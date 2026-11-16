@@ -66,6 +66,10 @@ export type DateInputProps = Omit<
   noCalendar?: boolean;
 };
 
+/** The example in an empty date field: the earliest day allowed, so it is never out of range. */
+const exampleDay = (min: string | undefined): string =>
+  `e.g. ${formatStaffDay(min ?? "2026-10-24")}`;
+
 /**
  * A date typed as text, with a calendar to pick from. While focused, the text stays exactly as
  * typed; on blur it is tidied to "24 Oct 2026" when it reads as a real date.
@@ -102,7 +106,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
         type="text"
         autoComplete="off"
         spellCheck={false}
-        placeholder={placeholder ?? "e.g. 24 Oct 2026"}
+        placeholder={placeholder ?? exampleDay(min)}
         disabled={isDisabled}
         className="tabular-nums"
         value={text}

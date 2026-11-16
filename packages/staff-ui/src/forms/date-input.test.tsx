@@ -64,6 +64,15 @@ describe("London wall time", () => {
 });
 
 describe("DateInput", () => {
+  it("gives the earliest allowed day as its example, so the example is never out of range", () => {
+    render(
+      <Field label="Starts on">
+        <DateInput value={null} min="2026-11-16" onValueChange={() => undefined} />
+      </Field>,
+    );
+    expect(screen.getByLabelText("Starts on")).toHaveAttribute("placeholder", "e.g. 16 Nov 2026");
+  });
+
   it("keeps the typed text while focused, hands over the day, and tidies it on blur", () => {
     const onValueChange = vi.fn();
     function Harness() {
