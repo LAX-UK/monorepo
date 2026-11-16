@@ -15,7 +15,7 @@ import {
 import { FOUND_ACCOUNT_STATUS_LABELS } from "./data-request-forms.copy";
 
 const TODAY = "2026-11-02";
-const ACCOUNT = { subjectId: "u1", name: "Margaret Osei", status: "active" };
+const ACCOUNT = { subjectId: "u1", name: "Margaret Osei", status: "active", statusLabel: "Active" };
 
 describe("log a manual request", () => {
   it("is valid for a found account with the defaults", () => {
