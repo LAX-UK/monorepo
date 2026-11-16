@@ -4,7 +4,7 @@
  * One small set of keyframes, driven by the attributes the components already set: Radix puts
  * `data-state` (open / closed) and `data-side` on every menu, popover, select, tooltip and hover
  * card, and on dialogs and sheets `data-state` alone. Each kit component marks its layer with
- * `data-lax-motion="float | tip | scrim | dialog | sheet"`; this file is the only place that says
+ * `data-lax-motion="float | tip | scrim | dialog | sheet | tabpanel"`; this file is the only place that says
  * what each kind does. Durations and easings are the `--lax-motion-*` / `--lax-ease-*` tokens,
  * never literals, and only transform and opacity move.
  *
@@ -150,6 +150,17 @@
 :root:has([data-lax-density="staff"]) :is([data-lax-motion="dialog"], [data-lax-motion="sheet"]) {
   --lax-anim-in: lax-fade-in var(--lax-motion-panel) var(--lax-ease-out);
   --lax-anim-out: lax-fade-out var(--lax-motion-panel-exit) var(--lax-ease-in) forwards;
+}
+
+/* Tab content: the panel that becomes active fades in. The tab's underline moves at once and the
+   panel never lifts or slides, so staff and public share the one fade; it runs on the enter token
+   (staff 150ms) and goes instant for staff under reduced motion like every other layer. */
+[data-lax-motion="tabpanel"] {
+  --lax-anim-in: lax-fade-in var(--lax-motion-enter) var(--lax-ease-out);
+}
+
+[data-lax-motion="tabpanel"][data-state="active"] {
+  animation: var(--lax-anim-in, none);
 }
 
 /* Run them. A tooltip that opens straight after another one (`instant-open`) does not animate. */

@@ -1288,6 +1288,7 @@ on `:focus-visible` only.**
 | Panels and dialogs | `--lax-motion-panel` (200ms), `--lax-motion-panel-exit` (150ms), `--lax-ease-emphasize` |
 | Press | `--lax-motion-press` (0ms): colour only, no scale |
 | Rows and cards | tint only: no lift, zoom or nudge (the kit's card hover and press scale are off on staff pages) |
+| Tab content | fades in on `--lax-motion-enter` (150ms) through `data-lax-motion="tabpanel"`; the underline moves instantly; no slide. Table rows never animate in on load, sort or filter |
 
 - **Rule:**
   - Never animate layout in tables.

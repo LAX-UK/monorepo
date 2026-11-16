@@ -408,3 +408,35 @@ describe("toasts resolved in Chromium (with Sonner's own stylesheet)", () => {
     }
   });
 });
+
+describe("tab content resolved in Chromium (docs/design/motion.md, MO13)", () => {
+  const cases: { who: Who; mode: Mode; name: string; duration: number }[] = [
+    { who: "staff", mode: "none", name: "lax-fade-in", duration: 150 },
+    { who: "public", mode: "none", name: "lax-fade-in", duration: 200 },
+    { who: "staff", mode: "os-reduce", name: "none", duration: 0 },
+    { who: "account", mode: "os-reduce", name: "none", duration: 0 },
+    { who: "public", mode: "os-reduce", name: "lax-fade-in", duration: 120 },
+  ];
+  for (const c of cases) {
+    it(`${c.who}, motion preference ${c.mode}: the active panel runs ${c.name} ${c.duration}ms`, async () => {
+      const page = await pageWith(browser, {
+        css: CSS,
+        body: `${shell(c.who)}<div data-probe="active" data-lax-motion="tabpanel" data-state="active"></div><div data-probe="idle" data-lax-motion="tabpanel" data-state="inactive"></div>`,
+        htmlAttributes: htmlAttributes(c.who, c.mode),
+        reducedMotion: c.mode === "os-reduce" ? "reduce" : "no-preference",
+      });
+      try {
+        const active = await resolveAnimation(page, "active");
+        expect({ name: active.name, duration: active.duration }).toEqual({
+          name: c.name,
+          duration: c.duration,
+        });
+        // Only opacity: a tab panel never lifts, scales or slides.
+        expect(active.moves).toBe(false);
+        expect((await resolveAnimation(page, "idle")).name).toBe("none");
+      } finally {
+        await page.close();
+      }
+    }, 30_000);
+  }
+});

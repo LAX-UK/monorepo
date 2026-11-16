@@ -130,7 +130,8 @@ function AdminDetailTabsInner({
         <TabsContent
           key={tab.value}
           value={tab.value}
-          className="admin-tab-crossfade mt-6 focus-visible:outline-none"
+          data-lax-motion="tabpanel"
+          className="mt-6 focus-visible:outline-none"
         >
           <Suspense fallback={<TabContentFallback />}>{tab.content}</Suspense>
         </TabsContent>
