@@ -332,6 +332,80 @@ An app without a build is skipped. CI runs the check in the `build` job straight
 it reuses that output. The `Web PR browser gates` workflow does not run it: its build has no
 placeholder DSNs and would not match what the budgets measure.
 
+## Base vs head
+
+Every pull request's `build` job also prints a **Route JS: base vs head** table in its job summary:
+the exact gzip start-up JavaScript of each page route in the PR against the same route at its base,
+both built in that job with the same settings. It is how a reviewer tells real growth from noise.
+
+### Size builds are deterministic
+
+Before, two builds of one commit could differ by a few tenths of a KB on a route, so a PR's table
+compared with main's showed +0.1 to +0.3 KB that nobody had written. The causes, and how CI's size
+builds pin them (the `build` job's `env`):
+
+| Source | Why it moved sizes | Pinned by |
+| --- | --- | --- |
+| Server action ids | Next salts every server action id inlined in client chunks with the server actions encryption key, which it generates at random for each build when none is set. Different random ids compress differently, and a changed chunk changes its hash, which changes the webpack runtime that lists it. | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, a fixed all-zero placeholder (not a key anyone uses) |
+| Sentry release | The Sentry plugin inlines the release name in the client bundle and defaults it to the commit SHA (`GITHUB_SHA`, else `git rev-parse HEAD`), so a PR and its base always differ. | `ROUTE_JS_SIZE_BUILD=1`, which each app's `next.config.ts` turns into the fixed release name `route-js-size-build` |
+
+Both variables are in the `build` task's `env` in `turbo.json`, so they reach `next build` and size
+builds never share a turbo cache entry with any other build. Deploy builds set neither: their
+release stays the commit SHA and Next generates their key as before. Nothing else in the client
+output depends on the build: the build id, timestamps and chunk ids do not appear in the start-up
+scripts or are derived from content. Two clean builds of one commit with these settings give
+byte-identical client scripts in `apps/web`, `apps/shop`, `apps/art`, `apps/account` and
+`apps/shop-admin` (each app's `clientDigest` in the report is equal).
+
+### What CI does
+
+1. **Build** builds the affected apps with the size settings, and the budget check runs as before.
+2. `scripts/route-js-size-report.mjs` writes the head report: per app, every page route the budget
+   check measures (same start-up set, same ignored routes; Shop Admin has no budget and is reported
+   only) in exact gzip and raw bytes, plus a digest of all client scripts.
+3. The **base** is the main commit GitHub merged the PR onto for the run (the first parent of the
+   test merge commit CI checks out), so the table shows the PR's change and nothing from main.
+   The job builds the same apps at the base in a git worktree with the same settings. Workspace
+   packages replay from the job's turbo cache and apps from the remote cache when main's merge-queue
+   build already made them; the base report is kept in the actions cache for re-runs and later
+   pushes onto the same base.
+4. `scripts/route-js-size-compare.mjs` prints the table.
+
+### Reading the table
+
+- One block per app built on both sides: `N of M routes changed`, and whether the client scripts
+  are byte-identical. A route that did not change has no row. **Any number in the table is a real
+  change made by the PR**: there is no noise to discount and no tolerance.
+- Columns are base and head KB (1024 bytes, two decimals), the delta in KB, and the delta in bytes.
+  Rows are sorted by growth, largest first. `new` and `removed` mark routes on one side only.
+- "client scripts differ" with no changed rows means code changed outside the start-up sets (for
+  example a chunk loaded on demand).
+- Apps built on one side only are listed and not compared.
+
+### What fails
+
+- **Motion and performance PRs** (a label, or a word in the title, matching `motion`, `perf` or
+  `performance`) fail the step when any existing route grows by even one byte: they promise no route
+  JavaScript growth (`docs/design/motion.md`). The step reads the PR's current title and labels, so
+  after adding a label, re-run the `build` job. If the base cannot be built, such a PR fails too,
+  since the proof is missing; re-run the job.
+- **Every other PR**: the table only reports (a notice per grown route). Pass or fail is decided by
+  the budget and ratchet rules above, unchanged.
+
+The table adds no allowance anywhere and changes no budget, ratchet, baseline or tolerance. The
+ratchet's `toleranceKb` still applies to the ratchet check as before.
+
+To reproduce locally, build an app twice with the CI settings and compare:
+
+```sh
+export ROUTE_JS_SIZE_BUILD=1 NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+  NEXT_PUBLIC_SENTRY_DSN_WEB=https://local@sentry.invalid/1 NODE_OPTIONS=--max-old-space-size=6144
+pnpm --filter @auction/web build && node scripts/route-js-size-report.mjs --app apps/web --out /tmp/a.json
+rm -rf apps/web/.next
+pnpm --filter @auction/web build && node scripts/route-js-size-report.mjs --app apps/web --out /tmp/b.json
+node scripts/route-js-size-compare.mjs --base /tmp/a.json --head /tmp/b.json   # 0 routes changed
+```
+
 ## Where the bytes come from
 
 The bundle analyser is already wired into `apps/web`. `ANALYZE=true ANALYZE_MODE=json` on the build

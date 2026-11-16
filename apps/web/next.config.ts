@@ -267,6 +267,10 @@ const sentryBuildOptions = {
     // areas keep browser tracing (see `src/lib/observability/sentry-client-options.ts`).
     treeshake: { removeDebugLogging: true },
   },
+  // CI size-measurement builds (ROUTE_JS_SIZE_BUILD=1, see docs/engineering/route-js-budgets.md)
+  // get one fixed release name instead of the commit SHA, so the release string inlined in the
+  // client bundle is the same for a PR and its base. Deploy builds never set the flag.
+  ...(process.env.ROUTE_JS_SIZE_BUILD === "1" ? { release: { name: "route-js-size-build" } } : {}),
   ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
 };
 
