@@ -351,11 +351,24 @@ builds pin them (the `build` job's `env`):
 
 Both variables are in the `build` task's `env` in `turbo.json`, so they reach `next build` and size
 builds never share a turbo cache entry with any other build. Deploy builds set neither: their
-release stays the commit SHA and Next generates their key as before. Nothing else in the client
-output depends on the build: the build id, timestamps and chunk ids do not appear in the start-up
-scripts or are derived from content. Two clean builds of one commit with these settings give
-byte-identical client scripts in `apps/web`, `apps/shop`, `apps/art`, `apps/account` and
-`apps/shop-admin` (each app's `clientDigest` in the report is equal).
+release stays the commit SHA and Next generates their key as before.
+
+Checked on 2026-11-16 with pairs of clean builds of one commit:
+
+- Without the pins, and with the same environment for both builds (even the same `GITHUB_SHA`),
+  every app moved: Bid 113 of 114 routes (from -0.30 to +0.16 KB), Shop 11 of
+  39, lax.art 43 of 43, Account 19 of 20, Shop Admin 37 of 51.
+- With them, and with different `GITHUB_SHA` values (as a PR and its base have), **0 routes
+  changed in all five apps**, and the client scripts of Shop, lax.art,
+  Account and Shop Admin are byte-identical.
+- The build id is random per build but only names the directory of `_buildManifest.js`; it is in
+  no script, so the report's digest replaces it with a placeholder. Timestamps appear in no client
+  script, and chunk ids and file hashes are derived from content.
+- One difference is left in Bid: two staff admin page chunks
+  (`admin/(platform)/sales/[id]/(detail)/registrations` and `.../telephone-bookings`) list a
+  different shared chunk between builds, a webpack split-chunk choice. The admin area is not
+  measured, so no route changes; the Bid block then reads "client scripts differ" with 0 routes
+  changed.
 
 ### What CI does
 
@@ -379,7 +392,8 @@ byte-identical client scripts in `apps/web`, `apps/shop`, `apps/art`, `apps/acco
 - Columns are base and head KB (1024 bytes, two decimals), the delta in KB, and the delta in bytes.
   Rows are sorted by growth, largest first. `new` and `removed` mark routes on one side only.
 - "client scripts differ" with no changed rows means code changed outside the start-up sets (for
-  example a chunk loaded on demand).
+  example a chunk loaded on demand, or a staff admin page, which is not measured). For Bid it can
+  also be the admin split-chunk difference described above.
 - Apps built on one side only are listed and not compared.
 
 ### What fails
@@ -403,7 +417,7 @@ export ROUTE_JS_SIZE_BUILD=1 NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=AAAAAAAAAAAAAAAA
 pnpm --filter @auction/web build && node scripts/route-js-size-report.mjs --app apps/web --out /tmp/a.json
 rm -rf apps/web/.next
 pnpm --filter @auction/web build && node scripts/route-js-size-report.mjs --app apps/web --out /tmp/b.json
-node scripts/route-js-size-compare.mjs --base /tmp/a.json --head /tmp/b.json   # 0 routes changed
+node scripts/route-js-size-compare.mjs --base /tmp/a.json --head /tmp/b.json   # 0 of N routes changed
 ```
 
 ## Where the bytes come from

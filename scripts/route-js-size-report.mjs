@@ -107,22 +107,28 @@ export function appReport({ nextDir, appConfig }) {
     };
   }
   // Every client script, not only start-up ones: two builds of one commit should match exactly.
+  // The build id is random per build and only names the directory of `_buildManifest.js`; it is
+  // not inside any script, so the digest replaces it with a placeholder.
   const staticDir = path.join(nextDir, "static");
+  const buildIdPath = path.join(nextDir, "BUILD_ID");
+  const buildId = existsSync(buildIdPath) ? readFileSync(buildIdPath, "utf8").trim() : null;
+  const scripts = existsSync(staticDir)
+    ? listFiles(staticDir)
+        .filter((rel) => rel.endsWith(".js"))
+        .map((rel) => ({
+          name:
+            buildId && rel.startsWith(`${buildId}/`)
+              ? `<build-id>${rel.slice(buildId.length)}`
+              : rel,
+          hash: createHash("sha256")
+            .update(readFileSync(path.join(staticDir, rel)))
+            .digest("hex"),
+        }))
+        .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    : [];
   const digest = createHash("sha256");
-  let scripts = 0;
-  if (existsSync(staticDir)) {
-    for (const rel of listFiles(staticDir)) {
-      if (!rel.endsWith(".js")) continue;
-      scripts += 1;
-      digest.update(`${rel}\0`);
-      digest.update(
-        createHash("sha256")
-          .update(readFileSync(path.join(staticDir, rel)))
-          .digest(),
-      );
-    }
-  }
-  return { routes, clientScripts: scripts, clientDigest: digest.digest("hex") };
+  for (const { name, hash } of scripts) digest.update(`${name}\0${hash}\n`);
+  return { routes, clientScripts: scripts.length, clientDigest: digest.digest("hex") };
 }
 
 /** The whole report: one entry per app that has a build. */
