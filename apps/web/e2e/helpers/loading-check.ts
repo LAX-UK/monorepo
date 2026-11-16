@@ -159,7 +159,7 @@ export async function checkLoadingScreen(
     to: string;
     holdMs?: number;
     settleMs?: number;
-    whileLoading?: () => Promise<void>;
+    whileLoading?: (() => Promise<void>) | undefined;
   },
 ): Promise<LoadingCheck> {
   const pathname = new URL(options.to, "http://lax.invalid").pathname;
