@@ -70,6 +70,35 @@ describe("SaleCoverTab", () => {
     upload.size = { width: 3600, height: 2400 };
   });
 
+  describe("slot tabs", () => {
+    it("moves selection and focus with the arrow keys, wrapping at the ends", () => {
+      render_();
+      const tab = (name: RegExp) => screen.getByRole("tab", { name });
+      fireEvent.keyDown(tab(/^Default/), { key: "ArrowLeft" });
+      expect(tab(/^Phone/)).toHaveAttribute("aria-selected", "true");
+      expect(tab(/^Phone/)).toHaveFocus();
+      fireEvent.keyDown(tab(/^Phone/), { key: "ArrowRight" });
+      expect(tab(/^Default/)).toHaveAttribute("aria-selected", "true");
+      expect(tab(/^Default/)).toHaveFocus();
+      fireEvent.keyDown(tab(/^Default/), { key: "ArrowDown" });
+      expect(tab(/^Default/)).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("remounts the panel on each switch, marked for the kit's tab fade", () => {
+      render_();
+      const before = screen.getByRole("tabpanel");
+      expect(before).toHaveAttribute("data-lax-motion", "tabpanel");
+      expect(before).toHaveAttribute("data-state", "active");
+      fireEvent.click(screen.getByRole("tab", { name: /^Wide/ }));
+      const after = screen.getByRole("tabpanel");
+      expect(after).not.toBe(before);
+      expect(after).toHaveAttribute(
+        "aria-labelledby",
+        screen.getByRole("tab", { name: /^Wide/ }).id,
+      );
+    });
+  });
+
   describe("empty", () => {
     it("says each slot is empty and offers the first picture", () => {
       render_();

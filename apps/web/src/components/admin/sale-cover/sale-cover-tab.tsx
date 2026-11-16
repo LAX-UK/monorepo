@@ -108,14 +108,18 @@ export function SaleCoverTab({ saleId, saleTitle, saleStatus, view, lots, canEdi
                 onSelect={setSelected}
                 panelId={panelId}
               />
+              {/* Keyed on the slot so each switch remounts the panel and the kit fades it in
+                  (docs/design/motion.md, step 7): opacity only, on the staff enter token. */}
               <div
+                key={selected}
                 role="tabpanel"
                 id={panelId}
                 aria-labelledby={slotTabId(panelId, selected)}
                 tabIndex={-1}
+                data-lax-motion="tabpanel"
+                data-state="active"
               >
                 <CoverSlotPanel
-                  key={selected}
                   name={selected}
                   draft={draft.slots[selected]}
                   saved={view.slots[selected]}

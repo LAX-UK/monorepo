@@ -39,52 +39,6 @@
   outline-offset: 2px;
 }
 
-/* Admin list row enter stagger (Wave JJ) */
-@media (prefers-reduced-motion: no-preference) {
-  .admin-data-table-stagger tbody tr {
-    animation: admin-row-enter 0.28s ease-out both;
-  }
-  .admin-data-table-stagger tbody tr:nth-child(1) {
-    animation-delay: 0ms;
-  }
-  .admin-data-table-stagger tbody tr:nth-child(2) {
-    animation-delay: 30ms;
-  }
-  .admin-data-table-stagger tbody tr:nth-child(3) {
-    animation-delay: 60ms;
-  }
-  .admin-data-table-stagger tbody tr:nth-child(4) {
-    animation-delay: 90ms;
-  }
-  .admin-data-table-stagger tbody tr:nth-child(n + 5) {
-    animation-delay: 120ms;
-  }
-}
-
-@keyframes admin-row-enter {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.admin-tab-crossfade[data-state="active"] {
-  animation: admin-tab-fade 0.18s ease-out;
-}
-
-@keyframes admin-tab-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .masonry-layout {
   columns: 1;
   column-gap: 2rem;
