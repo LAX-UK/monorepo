@@ -1,5 +1,4 @@
 import { CLERK_COMMAND_COPY } from "@/features/saleroom/lib/clerk-command-copy";
-import { readApiError, readApiErrorCode } from "@/lib/actions/_utils";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
 import type { ActionResult } from "@/lib/forms/form-result";
 
@@ -40,19 +39,14 @@ function telephoneBookingPath(saleId: string, bookingId: string, suffix: string)
   return `/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings/${encodeURIComponent(bookingId)}/${suffix}`;
 }
 
-async function readJson(res: Response): Promise<unknown> {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+/** What the API answers: `{ data }` on success, `{ error, code }` on a refusal. */
+type ApiBody = { data?: unknown; error?: unknown; code?: unknown } | null;
 
 async function sendClerkCommand<T = void>(
   path: string,
   init: { method?: "GET" | "POST" | "DELETE"; body?: Record<string, unknown> },
   fallback: string,
-  readData?: (body: unknown) => T | undefined,
+  readData?: (body: ApiBody) => T | undefined,
 ): Promise<ActionResult<T>> {
   let res: Response;
   try {
@@ -65,29 +59,32 @@ async function sendClerkCommand<T = void>(
   } catch {
     return { ok: false, error: CLERK_COMMAND_UNREACHABLE };
   }
-  const body = await readJson(res);
+  // A body that is not JSON (an HTML error page) reads as none.
+  const body: ApiBody = await res.json().catch(() => null);
   if (!res.ok) {
-    // Built here rather than with `actionFailure`: the form-result helpers would then ship in two
-    // page chunks and stop being inlined into either.
-    const code = readApiErrorCode(body);
-    const error =
-      res.status === 401 || code === "session_required"
-        ? CLERK_COMMAND_SESSION_EXPIRED
-        : readApiError(body, fallback);
+    // Built here rather than with `actionFailure` or `readApiError`: the shared helpers would then
+    // ship in two page chunks and stop being inlined into either.
+    const code = typeof body?.code === "string" ? body.code : undefined;
+    // An absent code stays `undefined` rather than being spread out: fewer bytes, same reading.
     return {
       ok: false,
-      error,
+      error:
+        res.status === 401 || code === "session_required"
+          ? CLERK_COMMAND_SESSION_EXPIRED
+          : typeof body?.error === "string"
+            ? body.error
+            : fallback,
       status: res.status,
-      ...(code !== undefined ? { errorCode: code } : {}),
-    };
+      errorCode: code,
+    } as ActionResult<T>;
   }
   const data = readData?.(body);
   return data === undefined ? { ok: true } : { ok: true, data };
 }
 
-function readCreatedId(body: unknown): { bidId: string } | undefined {
-  const data = (body as { data?: { id?: unknown } } | null)?.data;
-  return typeof data?.id === "string" ? { bidId: data.id } : undefined;
+function readCreatedId(body: ApiBody): { bidId: string } | undefined {
+  const id = (body?.data as { id?: unknown } | undefined)?.id;
+  return typeof id === "string" ? { bidId: id } : undefined;
 }
 
 export function clerkGoLive({ saleId }: { saleId: string }) {
@@ -130,7 +127,7 @@ export function clerkLotSnapshot({ saleId, lotId }: { saleId: string; lotId: str
     saleroomPath(saleId, `lots/${encodeURIComponent(lotId)}`),
     { method: "GET" },
     "Lot did not load",
-    (body) => (body as { data?: ClerkLotSnapshot } | null)?.data,
+    (body) => body?.data as ClerkLotSnapshot | undefined,
   );
 }
 

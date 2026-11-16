@@ -7,19 +7,20 @@ import {
   clerkHammer,
   clerkNoSale,
 } from "@/features/saleroom/lib/clerk-commands.client";
-import { settleUnknownOutcome } from "@/features/saleroom/lib/clerk-room-recheck";
+import {
+  ClerkRoomRecheckContext,
+  settleUnknownOutcome,
+} from "@/features/saleroom/lib/clerk-room-recheck";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { HoldButton, cn } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useTransition } from "react";
+import { type ReactNode, useContext, useTransition } from "react";
 
 type Props = {
   saleId: string;
   /** The lot the clerk sees on the block: hammer and pass name it, so they never end another. */
   lotId: string | null;
-  /** Re-reads the room from the server; run when a hammer or pass did not answer cleanly. */
-  resync: () => Promise<unknown>;
   canHammer: boolean;
   className?: string;
   compact?: boolean;
@@ -37,7 +38,6 @@ function OutcomeHold({
   disabled,
   done,
   run,
-  resync,
 }: {
   children: ReactNode;
   hint: string;
@@ -45,10 +45,11 @@ function OutcomeHold({
   disabled: boolean;
   done: string;
   run: () => Promise<ActionResult<unknown>>;
-  resync: () => Promise<unknown>;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // The console's recheck: refetch the page and read the session again from the API.
+  const recheck = useContext(ClerkRoomRecheckContext) ?? (async () => router.refresh());
   return (
     <HoldButton
       variant={variant}
@@ -62,10 +63,6 @@ function OutcomeHold({
           if (!result.ok) {
             // The lot may have ended anyway (a lost response) or the room moved on. Never guess:
             // read the room again, and say the outcome is unknown until it answers.
-            const recheck = async () => {
-              router.refresh();
-              await resync();
-            };
             if (result.errorCode !== LOT_NOT_ON_BLOCK) {
               await settleUnknownOutcome(recheck, result.error, OUTCOME_TOAST);
               return;
@@ -91,7 +88,6 @@ function OutcomeHold({
 export function LotOutcomeControls({
   saleId,
   lotId,
-  resync,
   canHammer,
   className,
   compact = false,
@@ -104,7 +100,6 @@ export function LotOutcomeControls({
         <OutcomeHold
           variant={hammerVariant}
           disabled={!canHammer}
-          resync={resync}
           hint="Press and hold to sell the lot at the current bid. Release early to cancel."
           done="Lot hammered"
           run={() => clerkHammer({ saleId, lotId: lotId ?? "" })}
@@ -114,7 +109,6 @@ export function LotOutcomeControls({
         <OutcomeHold
           variant="secondary"
           disabled={!canHammer}
-          resync={resync}
           hint="Press and hold to close the lot with no sale. Release early to cancel."
           done="Lot passed with no sale"
           run={() => clerkNoSale({ saleId, lotId: lotId ?? "" })}

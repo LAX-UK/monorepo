@@ -237,7 +237,6 @@ function ClerkConsoleInner({
                 <ClerkLiveActionBar
                   saleId={saleId}
                   currentLotId={model.lot.currentLotId}
-                  resync={resyncFromServer}
                   canHammer={model.action.canHammer}
                   sessionLive={model.action.sessionLive}
                   nextLot={model.lot.nextLot}

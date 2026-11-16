@@ -34,21 +34,27 @@ async function send<T>(
   fallback: string,
   body?: object,
 ): Promise<ActionResult<T>> {
-  const res = await fetch(
-    `/api/bff/admin/sales/${encodeURIComponent(saleId)}/registrations/${path}`,
-    body && {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  ).catch(() => null);
-  const json = await res?.json().catch(() => null);
+  let ok = false;
+  // What the API answers: `{ data }`, or `{ error, code }` on a refusal.
+  let json: { data?: T; error?: string; code?: string } = {};
+  try {
+    const res = await fetch(
+      `/api/bff/admin/sales/${encodeURIComponent(saleId)}/registrations/${path}`,
+      body && {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    ok = res.ok;
+    json = (await res.json()) || json;
+  } catch {
+    // Never landed, or answered with no JSON: read as an answer with no body.
+  }
   // An absent code stays `undefined` rather than being spread out: fewer bytes, same reading.
   // No caller reads the HTTP status, so it is not returned.
   return (
-    res?.ok
-      ? { ok: true, data: json?.data }
-      : { ok: false, error: json?.error ?? fallback, errorCode: json?.code }
+    ok ? { ok, data: json.data } : { ok, error: json.error || fallback, errorCode: json.code }
   ) as ActionResult<T>;
 }
 

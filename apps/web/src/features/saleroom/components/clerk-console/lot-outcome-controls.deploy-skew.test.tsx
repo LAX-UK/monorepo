@@ -1,5 +1,6 @@
 import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
 import { setClerkCommandFetchForTests } from "@/features/saleroom/lib/clerk-commands.client";
+import { ClerkRoomRecheckContext } from "@/features/saleroom/lib/clerk-room-recheck";
 import { notify } from "@/lib/ui/notify";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -15,6 +16,19 @@ const SALE = "11111111-1111-4111-8111-111111111111";
 const LOT = "22222222-2222-4222-8222-222222222222";
 const resync = vi.fn(async () => true);
 const PAGE = `/admin/saleroom/${SALE}`;
+
+/** The controls inside the console, which rechecks the room as it does: refresh, then resync. */
+function renderControls() {
+  const recheckRoom = async () => {
+    refresh();
+    await resync();
+  };
+  return render(
+    <ClerkRoomRecheckContext.Provider value={recheckRoom}>
+      <LotOutcomeControls saleId={SALE} lotId={LOT} canHammer />
+    </ClerkRoomRecheckContext.Provider>,
+  );
+}
 
 /**
  * The server after a deploy: the page no longer knows the server action ids the open console was
@@ -61,7 +75,7 @@ describe("LotOutcomeControls across a deploy", () => {
     setClerkCommandFetchForTests(server);
     vi.useFakeTimers();
 
-    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
+    renderControls();
     await holdHammer();
 
     expect(server).toHaveBeenCalledTimes(1);
@@ -77,7 +91,7 @@ describe("LotOutcomeControls across a deploy", () => {
     setClerkCommandFetchForTests(server);
     vi.useFakeTimers();
 
-    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
+    renderControls();
     await holdHammer();
 
     expect(server).toHaveBeenCalledTimes(1);
@@ -99,7 +113,7 @@ describe("LotOutcomeControls across a deploy", () => {
     );
     vi.useFakeTimers();
 
-    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
+    renderControls();
     await holdHammer();
 
     // Never resent: the hammer may have landed.
@@ -132,7 +146,7 @@ describe("LotOutcomeControls across a deploy", () => {
     setClerkCommandFetchForTests(server);
     vi.useFakeTimers();
 
-    render(<LotOutcomeControls saleId={SALE} lotId={LOT} resync={resync} canHammer />);
+    renderControls();
     await holdHammer();
 
     expect(server).toHaveBeenCalledTimes(1);

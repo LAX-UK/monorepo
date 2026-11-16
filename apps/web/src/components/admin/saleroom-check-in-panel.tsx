@@ -175,17 +175,10 @@ export function SaleroomCheckInPanel({
     setSubmitError(null);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when a check-in succeeds; the reset only calls state setters.
   useEffect(() => {
     if (!success) return;
-    const timer = window.setTimeout(() => {
-      setSuccess(null);
-      setQuery("");
-      setCandidates([]);
-      setSelectedUserId(null);
-      setBidLimit("");
-      setPaddleNumber("");
-      setSubmitError(null);
-    }, 3_000);
+    const timer = window.setTimeout(resetForAnother, 3_000);
     return () => window.clearTimeout(timer);
   }, [success]);
 

@@ -11,7 +11,6 @@ type Props = {
   saleId: string;
   /** The lot on the block, which hammer and pass name. */
   currentLotId: string | null;
-  resync: () => Promise<unknown>;
   canHammer: boolean;
   sessionLive: boolean;
   nextLot: Lot | null;
@@ -32,7 +31,6 @@ type DockProps = Props & {
 export function ClerkLiveActionBar({
   saleId,
   currentLotId,
-  resync,
   canHammer,
   sessionLive,
   nextLot,
@@ -62,7 +60,6 @@ export function ClerkLiveActionBar({
         <LotOutcomeControls
           saleId={saleId}
           lotId={currentLotId}
-          resync={resync}
           canHammer={canHammer}
           compact
           hammerVariant={hammerPrimary ? "primary" : "secondary"}

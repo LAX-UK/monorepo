@@ -71,9 +71,18 @@ vi.mock("@/features/saleroom/components/clerk-console/clerk-session-bar", () => 
 vi.mock("@/features/saleroom/components/clerk-console/display-control-panel", () => ({
   DisplayControlPanel: () => <div data-testid="display-control-panel" />,
 }));
-vi.mock("@/features/saleroom/components/clerk-console/lot-on-block-panel", () => ({
-  LotOnBlockPanel: () => <div data-testid="lot-on-block-panel" />,
-}));
+/** The recheck the console hands its command controls (hammer, pass, advance, bids …). */
+const provided = vi.hoisted(() => ({ recheck: null as null | (() => Promise<unknown>) }));
+vi.mock("@/features/saleroom/components/clerk-console/lot-on-block-panel", async () => {
+  const { useContext } = await import("react");
+  const { ClerkRoomRecheckContext } = await import("@/features/saleroom/lib/clerk-room-recheck");
+  return {
+    LotOnBlockPanel: () => {
+      provided.recheck = useContext(ClerkRoomRecheckContext);
+      return <div data-testid="lot-on-block-panel" />;
+    },
+  };
+});
 vi.mock("@/features/saleroom/components/clerk-console/lot-runway-panel", () => ({
   LotRunwayPanel: () => <div data-testid="lot-runway-panel" />,
 }));
@@ -249,5 +258,27 @@ describe("SaleroomClerkConsole phase layout", () => {
     );
     await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(2));
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives its command controls a recheck that refetches the page and re-reads the session", async () => {
+    provided.recheck = null;
+    render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+    await waitFor(() => expect(resyncFromServer).toHaveBeenCalled());
+    resyncFromServer.mockClear();
+    refresh.mockClear();
+
+    const recheck = provided.recheck as (() => Promise<unknown>) | null;
+    expect(recheck).toBeTypeOf("function");
+    await recheck?.();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(resyncFromServer).toHaveBeenCalledTimes(1);
   });
 });
