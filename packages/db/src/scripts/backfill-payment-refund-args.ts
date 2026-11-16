@@ -33,12 +33,15 @@ const VALUE_FLAGS = ["batch-size", "lock-timeout", "resume-after"] as const;
 
 /**
  * Splits argv into the `--apply` switch and `--name=value` flags. Unknown or repeated
- * flags throw, so a typo can never silently fall back to a default.
+ * flags throw, so a typo can never silently fall back to a default. A bare `--` is skipped:
+ * pnpm passes the separator in `pnpm --filter @auction/db db:backfill-payment-refund -- --apply`
+ * through to the script, and that is the form the runbook and the resume line use.
  */
 function collectFlags(argv: readonly string[]): { apply: boolean; values: Map<string, string> } {
   let apply = false;
   const values = new Map<string, string>();
   for (const arg of argv) {
+    if (arg === "--") continue;
     if (arg === "--apply") {
       if (apply) throw new Error("--apply was given more than once");
       apply = true;
@@ -86,4 +89,20 @@ export function parseBackfillArgs(argv: readonly string[]): BackfillArgs {
   }
 
   return { apply, batchSize, lockTimeoutMs, resumeAfter: resumeFlag ?? null };
+}
+
+/** The command the runbook gives for a run with `--apply`, from the repository root. */
+export const APPLY_COMMAND = "pnpm --filter @auction/db db:backfill-payment-refund -- --apply";
+
+/**
+ * The command printed after a lock timeout: the runbook's `--apply` command with the batch size
+ * and lock timeout in effect, and the cursor when a batch was committed. It parses back to the
+ * same arguments (see the test).
+ */
+export function resumeCommand(
+  args: Pick<BackfillArgs, "batchSize" | "lockTimeoutMs">,
+  resumeAfter: string | null,
+): string {
+  const cursor = resumeAfter ? ` --resume-after=${resumeAfter}` : "";
+  return `${APPLY_COMMAND} --batch-size=${args.batchSize} --lock-timeout=${args.lockTimeoutMs}ms${cursor}`;
 }
