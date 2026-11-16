@@ -53,7 +53,7 @@ afterEach(() => {
 
 describe("SaleroomCheckInPanel", () => {
   it("searches and checks in through the BFF client, not a server action", async () => {
-    vi.mocked(searchCheckInCandidates).mockResolvedValue({ ok: true, data: [jane] });
+    vi.mocked(searchCheckInCandidates).mockResolvedValue({ ok: true, data: { items: [jane] } });
     vi.mocked(checkInBidder).mockResolvedValue({
       ok: true,
       data: { registrationId: "reg-1", paddleNumber: 104, checkedInAt: "2026-11-16T10:00:00Z" },
@@ -79,7 +79,7 @@ describe("SaleroomCheckInPanel", () => {
   });
 
   it("shows a refused check-in on the panel instead of throwing into the error boundary", async () => {
-    vi.mocked(searchCheckInCandidates).mockResolvedValue({ ok: true, data: [jane] });
+    vi.mocked(searchCheckInCandidates).mockResolvedValue({ ok: true, data: { items: [jane] } });
     vi.mocked(checkInBidder).mockResolvedValue({
       ok: false,
       error: "Paddle taken",

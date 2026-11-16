@@ -40,7 +40,7 @@ describe("door check-in commands", () => {
 
     await expect(searchCheckInCandidates({ saleId: SALE, q: "jane d" })).resolves.toEqual({
       ok: true,
-      data: [candidate],
+      data: { items: [candidate] },
     });
     const [url, init] = fetch.mock.calls[0] ?? [];
     expect(url).toBe(`/api/bff/admin/sales/${SALE}/registrations/check-in-candidates?q=jane+d`);
@@ -85,7 +85,7 @@ describe("door check-in commands", () => {
 
     await expect(
       checkInBidder({ saleId: SALE, userId: "u", buyerLegalEntityId: ENTITY, assignPaddle: true }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       ok: false,
       error: "Paddle taken",
       status: 409,
@@ -93,7 +93,7 @@ describe("door check-in commands", () => {
     });
   });
 
-  it("says the saleroom could not be reached when the request never lands", async () => {
+  it("reports the caller's fallback, never success, when the request never lands", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -101,9 +101,20 @@ describe("door check-in commands", () => {
       }),
     );
 
-    await expect(searchCheckInCandidates({ saleId: SALE, q: "jane" })).resolves.toEqual({
+    await expect(searchCheckInCandidates({ saleId: SALE, q: "jane" })).resolves.toMatchObject({
       ok: false,
-      error: "The saleroom could not be reached. Check the connection, then try again.",
+      error: "Could not search clients",
     });
+    await expect(
+      checkInBidder({ saleId: SALE, userId: "u", buyerLegalEntityId: ENTITY, assignPaddle: true }),
+    ).resolves.toMatchObject({ ok: false, error: "Check-in failed" });
+  });
+
+  it("reports the fallback when a refusal has no readable body", async () => {
+    stubFetch(new Response("Bad gateway", { status: 502 }));
+
+    await expect(
+      checkInBidder({ saleId: SALE, userId: "u", buyerLegalEntityId: ENTITY, assignPaddle: true }),
+    ).resolves.toMatchObject({ ok: false, error: "Check-in failed", status: 502 });
   });
 });

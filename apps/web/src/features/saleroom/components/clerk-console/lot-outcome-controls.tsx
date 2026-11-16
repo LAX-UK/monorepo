@@ -7,6 +7,7 @@ import {
   clerkHammer,
   clerkNoSale,
 } from "@/features/saleroom/lib/clerk-commands.client";
+import { settleUnknownOutcome } from "@/features/saleroom/lib/clerk-room-recheck";
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { HoldButton, cn } from "@auction/staff-ui";
@@ -61,12 +62,16 @@ function OutcomeHold({
           if (!result.ok) {
             // The lot may have ended anyway (a lost response) or the room moved on. Never guess:
             // read the room again, and say the outcome is unknown until it answers.
-            const moved = result.errorCode === LOT_NOT_ON_BLOCK;
-            if (moved) notify.error(CLERK_COMMAND_COPY.lotNotOnBlock, { id: OUTCOME_TOAST });
-            else notify.loading(CLERK_COMMAND_COPY.outcomeUnknown, { id: OUTCOME_TOAST });
-            router.refresh();
-            await resync();
-            if (!moved) notify.error(result.error, { id: OUTCOME_TOAST });
+            const recheck = async () => {
+              router.refresh();
+              await resync();
+            };
+            if (result.errorCode !== LOT_NOT_ON_BLOCK) {
+              await settleUnknownOutcome(recheck, result.error, OUTCOME_TOAST);
+              return;
+            }
+            notify.error(CLERK_COMMAND_COPY.lotNotOnBlock, { id: OUTCOME_TOAST });
+            await recheck();
             return;
           }
           notify.success(done);
