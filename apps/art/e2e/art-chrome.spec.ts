@@ -1,5 +1,5 @@
-import { expect, testWithoutSignOut as test } from "./helpers/test";
 import { artE2eEnabled, artE2eSkipReason, firstArtworkHref } from "./helpers/art-e2e";
+import { expect, testWithoutSignOut as test } from "./helpers/test";
 
 /**
  * The shared header chrome on lax.art: the bottom tab bar is a phone-only dock, and the phone

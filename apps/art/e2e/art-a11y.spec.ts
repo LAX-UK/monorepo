@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, testWithoutSignOut as test } from "./helpers/test";
 import { artE2eEnabled, artE2eSkipReason, firstArtworkHref } from "./helpers/art-e2e";
+import { expect, testWithoutSignOut as test } from "./helpers/test";
 
 const BLOCKING_IMPACTS = ["critical", "serious", "moderate"];
 

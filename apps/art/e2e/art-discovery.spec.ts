@@ -1,5 +1,5 @@
-import { expect, testWithoutSignOut as test } from "./helpers/test";
 import { artE2eEnabled, artE2eSkipReason } from "./helpers/art-e2e";
+import { expect, testWithoutSignOut as test } from "./helpers/test";
 
 /** Mirrors `ART_EDITORIAL_ENABLED` on the Art server; CI seeds the editorial showcase. */
 const editorialEnabled = process.env.ART_EDITORIAL_ENABLED === "true";
