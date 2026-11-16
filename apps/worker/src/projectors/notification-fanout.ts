@@ -1,4 +1,4 @@
-import type { UnappliedMoneyPayload } from "@auction/domain";
+import { type UnappliedMoneyPayload, isDemoSeedEvent } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
@@ -68,6 +68,15 @@ export async function processNotificationFanout(options: {
 
   let maxId = cursor;
   for (const row of rows) {
+    // Invented demo data (the demo seeds' producer): nobody is told about it.
+    if (isDemoSeedEvent(row)) {
+      log.info(
+        { eventId: row.id, eventType: row.eventType },
+        "notification_fanout_skipped_demo_seed",
+      );
+      maxId = row.id;
+      continue;
+    }
     try {
       if (row.eventType === "payout.transfer_blocked") {
         await fanoutPayoutTransferBlocked({

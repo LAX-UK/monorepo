@@ -1,13 +1,28 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import {
+  GIT_LISTING_MAX_BUFFER,
   findRetiredVendorMatches,
   isRetiredVendorScanSurface,
 } from "./verify-identity-boundary.mjs";
 
 const root = resolve(import.meta.dirname, "../..");
+
+test("the repository file listing fits the buffer the guard reads it into", () => {
+  const listing = spawnSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+    { cwd: root, encoding: "utf8", maxBuffer: GIT_LISTING_MAX_BUFFER },
+  );
+  assert.equal(listing.error, undefined);
+  assert.equal(listing.status, 0);
+  // Keep at least 4x headroom so growth does not quietly bring back ENOBUFS.
+  assert.ok(Buffer.byteLength(listing.stdout) * 4 < GIT_LISTING_MAX_BUFFER);
+  assert.ok(GIT_LISTING_MAX_BUFFER > 1024 * 1024);
+});
 
 test("retired vendor guard scans integration surfaces only", () => {
   assert.equal(isRetiredVendorScanSurface("apps/shop/src/page.tsx"), true);

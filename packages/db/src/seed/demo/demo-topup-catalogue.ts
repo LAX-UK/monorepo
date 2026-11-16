@@ -17,7 +17,7 @@ const DAY = 24 * HOUR;
 const unsplash = (photo: string) => `https://images.unsplash.com/photo-${photo}?w=1200&q=80`;
 
 /** Artwork photographs used for lots and consignments. */
-const ART = [
+export const ART = [
   unsplash("1578301978693-85fa9c0320b9"),
   unsplash("1578926375605-eaf7559b1458"),
   unsplash("1536924940846-227afb31e2a5"),

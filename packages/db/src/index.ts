@@ -25,4 +25,9 @@ export {
   type DemoImageEntry,
   type DemoImageKind,
 } from "./seed/demo/demo-images.js";
+export {
+  assertDemoSeedDatabase,
+  demoSeedRefusal,
+  MARK_DEMO_SEED_TARGET_SQL,
+} from "./seed/shared/demo-seed-target.js";
 export { liftZohoCampaignsOptOut } from "./services/lift-zoho-campaigns-opt-out.js";
