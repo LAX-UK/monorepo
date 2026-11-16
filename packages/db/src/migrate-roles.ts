@@ -1130,8 +1130,11 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   /** The enquiry rule replaces the sender's details and removes what they wrote. */
   ["marketing_enquiry", ["name", "email", "phone", "message", "version"]],
   ["marketing_enquiry_note", ["body"]],
-  /** The sender's emailed replies: the rule removes their text and the metadata of their files. */
-  ["marketing_enquiry_message", ["subject", "body", "attachments"]],
+  /**
+   * The sender's emailed replies: the rule removes their text and the metadata of their files,
+   * and the reason staff gave for attaching held mail (it can name the sender).
+   */
+  ["marketing_enquiry_message", ["subject", "body", "attachments", "review_reason"]],
   /** Older identity-check notices quote the provider's decline reason in the message. */
   ["notification", ["message"]],
   ["private_sale_enquiry_detail", ["location_town", "location_country", "looking_for"]],

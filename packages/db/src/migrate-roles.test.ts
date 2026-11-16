@@ -49,6 +49,7 @@ import {
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_ANONYMISATION_DELETE_TABLES,
+  WORKER_ANONYMISATION_SCRUB_COLUMNS,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
@@ -732,6 +733,20 @@ describe("migrate-roles invariants", () => {
     for (const table of Object.keys(columns)) {
       expect([...WORKER_DENY_TABLES]).toContain(table);
     }
+  });
+
+  it("lets the worker scrub every column enquiry erasure writes on the emailed replies", () => {
+    // anonymiseEnquiries sets these four on marketing_enquiry_message. Postgres checks UPDATE on
+    // every column in the SET list, so one missing here fails the whole scheduled erasure.
+    const columns = Object.fromEntries(
+      WORKER_ANONYMISATION_SCRUB_COLUMNS.map(([table, cols]) => [table, [...cols]]),
+    );
+    expect(columns.marketing_enquiry_message?.sort()).toEqual([
+      "attachments",
+      "body",
+      "review_reason",
+      "subject",
+    ]);
   });
 
   it("lets the worker erase email-only alert subscribers, and only those, on purge", () => {
