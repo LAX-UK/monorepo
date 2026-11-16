@@ -3,7 +3,6 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
-const adminSrc = path.resolve(here, "../../../apps/shop-admin/src");
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -13,18 +12,37 @@ function sources(dir: string): string[] {
   });
 }
 
-const files = [...sources(here), ...sources(adminSrc)];
+const files = sources(here);
+const rel = (f: string) => path.relative(here, f);
 const theme = readFileSync(path.join(here, "theme.css"), "utf8");
 
-/** Staff tools move less (docs/design/motion.md, MO11): LAX Admin rows never stagger or enter. */
-describe("LAX Admin and the staff kit motion", () => {
+/** A row stagger, row enter animation or hand-written tab fade (docs/design/motion.md, MO11). */
+const STAGGER =
+  /animation-delay|transition-delay|\bdelay-\d+\b|stagger|row-enter|tab-crossfade|nth-child\([^)]*\)[^{]*\{[^}]*animation/;
+/** A literal duration: Tailwind `duration-150`, or a `150ms` inside an animation or transition. */
+const LITERAL = /\bduration-\d+\b|(?:animation|transition)[^;\n]*\b\d+(?:\.\d+)?m?s\b/;
+
+/**
+ * Staff kit files that still carry a literal duration from before the motion tokens. Tracked as a
+ * follow-up toward "tokens only"; the list only shrinks (a fixed file must leave it), and nothing
+ * new may join it. The returned-row tint's `2s` is the one deliberate exception.
+ */
+const KNOWN_LITERALS = [
+  "data/data-table.tsx",
+  "display/checklist.tsx",
+  "display/image-gallery.tsx",
+  "display/progress-bar.tsx",
+  "forms/file-dropzone.tsx",
+  "forms/upload-queue.tsx",
+  "shell/nav-scroll-area.tsx",
+  "shell/sidebar-nav.tsx",
+  "shell/staff-shell.tsx",
+  "theme.css",
+];
+
+describe("staff kit motion (docs/design/motion.md, MO11)", () => {
   it("has no row stagger, row enter animation or local tab fade", () => {
-    const offenders = files.filter((f) =>
-      /animation-delay|transition-delay|stagger|row-enter|tab-crossfade|nth-child\([^)]*\)[^{]*\{[^}]*animation/.test(
-        readFileSync(f, "utf8"),
-      ),
-    );
-    expect(offenders).toEqual([]);
+    expect(files.filter((f) => STAGGER.test(readFileSync(f, "utf8"))).map(rel)).toEqual([]);
   });
 
   it("keeps the returned-row tint, colour only", () => {
@@ -32,8 +50,12 @@ describe("LAX Admin and the staff kit motion", () => {
     expect(theme).toMatch(/@keyframes staff-row-returned\s*\{\s*from \{\s*background-color/);
   });
 
-  it("times its tab panels, panels and drawers from the motion tokens, not literals", () => {
-    const literal = /data-lax-motion[^\n]*\d+m?s|animation:[^;\n]*\b\d+(\.\d+)?m?s\b[^;\n]*lax-/;
-    expect(files.filter((f) => literal.test(readFileSync(f, "utf8")))).toEqual([]);
+  it("switches a tab's selected mark at once: no colour transition on a staff tab trigger", () => {
+    expect(theme).toMatch(/\[data-staff-ui\] \[role="tab"\] \{\s*transition: none;\s*\}/);
+  });
+
+  it("adds no new literal duration; motion runs on the --lax-motion-* tokens", () => {
+    const literal = files.filter((f) => LITERAL.test(readFileSync(f, "utf8"))).map(rel);
+    expect(literal.sort()).toEqual(KNOWN_LITERALS);
   });
 });

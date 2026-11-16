@@ -416,6 +416,15 @@ describe("tab content resolved in Chromium (docs/design/motion.md, MO13)", () =>
     { who: "staff", mode: "os-reduce", name: "none", duration: 0 },
     { who: "account", mode: "os-reduce", name: "none", duration: 0 },
     { who: "public", mode: "os-reduce", name: "lax-fade-in", duration: 120 },
+    // Bid's own setting, as for the overlays: force-reduce makes staff and Account instant and
+    // public a short fade; force-allow wins over the OS setting.
+    { who: "staff", mode: "force-reduce", name: "none", duration: 0 },
+    { who: "staff-lax-ui", mode: "force-reduce", name: "none", duration: 0 },
+    { who: "account", mode: "force-reduce", name: "none", duration: 0 },
+    { who: "public", mode: "force-reduce", name: "lax-fade-in", duration: 120 },
+    { who: "staff", mode: "force-allow-os-reduce", name: "lax-fade-in", duration: 150 },
+    { who: "account", mode: "force-allow-os-reduce", name: "lax-fade-in", duration: 200 },
+    { who: "public", mode: "force-allow-os-reduce", name: "lax-fade-in", duration: 200 },
   ];
   for (const c of cases) {
     it(`${c.who}, motion preference ${c.mode}: the active panel runs ${c.name} ${c.duration}ms`, async () => {
@@ -423,7 +432,8 @@ describe("tab content resolved in Chromium (docs/design/motion.md, MO13)", () =>
         css: CSS,
         body: `${shell(c.who)}<div data-probe="active" data-lax-motion="tabpanel" data-state="active"></div><div data-probe="idle" data-lax-motion="tabpanel" data-state="inactive"></div>`,
         htmlAttributes: htmlAttributes(c.who, c.mode),
-        reducedMotion: c.mode === "os-reduce" ? "reduce" : "no-preference",
+        reducedMotion:
+          c.mode === "os-reduce" || c.mode === "force-allow-os-reduce" ? "reduce" : "no-preference",
       });
       try {
         const active = await resolveAnimation(page, "active");
