@@ -86,11 +86,6 @@
       "count": 1
     },
     {
-      "file": "packages/marketing-ui/src/header/use-header-chrome.ts",
-      "rule": "transition:box-shadow",
-      "count": 1
-    },
-    {
       "file": "packages/marketing-ui/src/marketing-horizontal-rail.tsx",
       "rule": "transition:width",
       "count": 1

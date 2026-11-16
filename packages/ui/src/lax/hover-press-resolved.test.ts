@@ -171,7 +171,8 @@ describe("card hover with a mouse", () => {
           expect(fact.underline).toBe(false);
 
           if (moves(who, mode)) {
-            expect(card.transitions.translate).toBe(260);
+            // The card frame lifts over --lax-motion-lift (300ms, MO9).
+            expect(card.transitions.translate).toBe(300);
             expect(card.translate).toBe("0px -1px");
             for (const media of [img, zoom]) {
               expect(media.transitions.scale).toBe(700);
@@ -210,6 +211,165 @@ describe("card hover with a mouse", () => {
       expect(await probe(page, "card")).toMatchObject({ translate: "none", transitions: {} });
       expect(await probe(page, "media-img")).toMatchObject({ scale: "none", transitions: {} });
       expect((await probe(page, "title")).underline).toBe(false);
+    } finally {
+      await page.close();
+    }
+  });
+});
+
+/**
+ * An image that fades in when it loads (MediaImage: `opacity-0 transition-opacity duration-300`,
+ * `opacity-100` once loaded) and also zooms with the card. The utilities are Tailwind 4's own
+ * output, in `@layer utilities` as every app builds them, so the kit's unlayered zoom rule meets
+ * them exactly as it does in production.
+ */
+describe("card zoom keeps an image's own load fade", () => {
+  const TAILWIND_UTILITIES = `
+    @property --tw-duration { syntax: "*"; inherits: false; }
+    @property --tw-ease { syntax: "*"; inherits: false; }
+    :root { --default-transition-duration: 150ms; --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+    @layer utilities {
+      .opacity-0 { opacity: 0%; }
+      .opacity-100 { opacity: 100%; }
+      .transition-opacity {
+        transition-property: opacity;
+        transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+        transition-duration: var(--tw-duration, var(--default-transition-duration));
+      }
+      .duration-300 { --tw-duration: 300ms; transition-duration: 300ms; }
+      @media (prefers-reduced-motion: reduce) {
+        .motion-reduce\\:transition-none { transition-property: none; }
+      }
+    }`;
+  const FADE_CSS = `${CSS}\n${TAILWIND_UTILITIES}`;
+  const FADING = "opacity-0 transition-opacity duration-300 motion-reduce:transition-none";
+  const fadeBody = (
+    who: Who,
+  ) => `<div ${who === "staff" ? 'data-staff-ui data-lax-density="staff"' : 'data-lax-density="client"'}>
+    <a href="#card" class="lax-card" data-probe="card" style="display:block;width:320px;padding:8px">
+      <div style="overflow:hidden;width:200px;height:120px">
+        <img data-probe="zoom-img" class="lax-card-zoom ${FADING}" src="${PIXEL}" alt="" width="200" height="120">
+      </div>
+      <div class="lax-card-media" style="overflow:hidden;width:200px;height:120px">
+        <img data-probe="media-img" class="${FADING}" src="${PIXEL}" alt="" width="200" height="120">
+      </div>
+    </a>
+    <div data-probe="away" style="height:200px"></div>
+  </div>`;
+
+  /** The image loads: MediaImage swaps `opacity-0` for `opacity-100`. */
+  const load = (page: Page) =>
+    page.evaluate(() => {
+      for (const img of document.querySelectorAll("img")) {
+        img.classList.replace("opacity-0", "opacity-100");
+      }
+    });
+
+  /** What runs on an image right now (without finishing it), by property, with its easing. */
+  const running = (page: Page, id: string) =>
+    page.evaluate((name) => {
+      const el = document.querySelector(`[data-probe="${name}"]`) as HTMLElement;
+      const out: Record<string, { duration: number; easing: string }> = {};
+      for (const animation of el.getAnimations()) {
+        if (!(animation instanceof CSSTransition)) continue;
+        const timing = animation.effect?.getComputedTiming();
+        out[animation.transitionProperty] = {
+          duration: Number(timing?.duration ?? 0),
+          easing: String(timing?.easing ?? ""),
+        };
+      }
+      return out;
+    }, id);
+
+  const finishAll = (page: Page) =>
+    page.evaluate(() => {
+      for (const animation of document.getAnimations()) animation.finish();
+    });
+
+  for (const id of ["zoom-img", "media-img"] as const) {
+    it(`${id}: with a mouse, the load fade runs as the utility says, and the zoom still runs`, async () => {
+      const page = await pageWith(browser, { css: FADE_CSS, body: fadeBody("public") });
+      try {
+        await load(page);
+        expect(await running(page, id)).toEqual({
+          opacity: { duration: 300, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+        });
+        await finishAll(page);
+
+        await page.hover('[data-probe="card"]');
+        expect(await running(page, id)).toEqual({
+          scale: { duration: 700, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+        });
+        await finishAll(page);
+        expect(await probe(page, id)).toMatchObject({ scale: "1.02" });
+      } finally {
+        await page.close();
+      }
+    });
+
+    it(`${id}: an image that loads while the card is hovered fades and zooms together`, async () => {
+      const page = await pageWith(browser, { css: FADE_CSS, body: fadeBody("public") });
+      try {
+        await page.hover('[data-probe="card"]');
+        await load(page);
+        expect(Object.keys(await running(page, id)).sort()).toEqual(["opacity", "scale"]);
+      } finally {
+        await page.close();
+      }
+    });
+
+    it(`${id}: on a phone the image keeps exactly its own fade`, async () => {
+      const page = await pageWith(browser, {
+        css: FADE_CSS,
+        body: fadeBody("public"),
+        touch: true,
+      });
+      try {
+        await load(page);
+        expect(Object.keys(await running(page, id))).toEqual(["opacity"]);
+      } finally {
+        await page.close();
+      }
+    });
+
+    for (const mode of ["os-reduce", "force-reduce"] as const) {
+      it(`${id}: under ${mode} the image keeps its own transitions (here none) and never zooms`, async () => {
+        const page = await pageWith(browser, {
+          css: FADE_CSS,
+          body: fadeBody("public"),
+          htmlAttributes: htmlAttributes("public", mode),
+          reducedMotion: osReduce(mode),
+        });
+        try {
+          await page.hover('[data-probe="card"]');
+          await load(page);
+          const now = await running(page, id);
+          // The OS setting turns MediaImage's own fade off (motion-reduce:transition-none);
+          // Bid's switch leaves it to the app (globals.css shortens every transition there).
+          expect(now.scale).toBeUndefined();
+          if (mode === "os-reduce") expect(now).toEqual({});
+          else
+            expect(now).toEqual({
+              opacity: { duration: 300, easing: "cubic-bezier(0.4, 0, 0.2, 1)" },
+            });
+          await finishAll(page);
+          expect(await probe(page, id)).toMatchObject({ scale: "none" });
+        } finally {
+          await page.close();
+        }
+      });
+    }
+  }
+
+  it("staff: the fade still runs and nothing zooms", async () => {
+    const page = await pageWith(browser, { css: FADE_CSS, body: fadeBody("staff") });
+    try {
+      await page.hover('[data-probe="card"]');
+      await load(page);
+      const now = await running(page, "zoom-img");
+      expect(now.opacity?.duration).toBe(300);
+      await finishAll(page);
+      expect(await probe(page, "zoom-img")).toMatchObject({ scale: "none" });
     } finally {
       await page.close();
     }
@@ -366,6 +526,106 @@ describe("hang hover shadow layer", () => {
       expect(hovered.artTransitionDuration).toBe("0s");
       await page.hover('[data-probe="away"]');
       expect((await layer(page)).opacity).toBe("0");
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("a phone (touch, no hover, coarse pointer): a tap never leaves the hover shadow on", async () => {
+    const page = await pageWith(browser, { css: HANG_CSS, body: HANG_BODY, touch: true });
+    try {
+      const media = await page.evaluate(() => ({
+        hover: matchMedia("(hover: hover)").matches,
+        fine: matchMedia("(pointer: fine)").matches,
+      }));
+      expect(media).toEqual({ hover: false, fine: false });
+      await page.tap('[data-probe="work"]');
+      // The tap leaves the link in :hover (that is what made the old layer stick).
+      expect(await page.locator('[data-probe="work"]').evaluate((el) => el.matches(":hover"))).toBe(
+        true,
+      );
+      expect(await layer(page)).toMatchObject({ opacity: "0", running: [] });
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("the hovered work is as deep as the old hover shadow, not deeper", async () => {
+    const page = await pageWith(browser, { css: HANG_CSS, body: HANG_BODY });
+    try {
+      // Resting shadow plus the layer, composited per shadow, against the old hover alphas.
+      const alphas = await page.evaluate(() => {
+        const read = (name: string) =>
+          [
+            ...getComputedStyle(document.documentElement)
+              .getPropertyValue(name)
+              .matchAll(/\/\s*([\d.]+)\)/g),
+          ].map((m) => Number(m[1]));
+        return { rest: read("--hang-art-shadow"), layer: read("--hang-art-shadow-hover-layer") };
+      });
+      const combined = alphas.rest.map((r, i) => 1 - (1 - r) * (1 - (alphas.layer[i] ?? 0)));
+      expect(combined[0]).toBeCloseTo(0.18, 2);
+      expect(combined[1]).toBeCloseTo(0.44, 2);
+    } finally {
+      await page.close();
+    }
+  });
+});
+
+/**
+ * The marketing header's surface (packages/marketing-ui, MO15): its background and border fade on
+ * `--lax-motion-panel` / `--lax-ease-out` as it turns solid; the shadow and the backdrop blur switch
+ * at once, and under reduced motion nothing fades.
+ */
+describe("marketing header surface", () => {
+  const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
+  const HEADER_CSS = `${LAX_SYSTEM_CSS}
+    ${read("../../../marketing-ui/src/marketing-header.css")}
+    .bar { border: 1px solid transparent; height: 64px; }
+    .solid { background-color: rgb(250 250 250); border-color: rgb(200 200 200); box-shadow: 0 1px 2px rgb(0 0 0 / 0.1); backdrop-filter: blur(12px); }`;
+  const HEADER_BODY = `<header class="bar marketing-header-surface" data-probe="header"></header>`;
+
+  const turnSolid = (page: Page) =>
+    page.evaluate(() => {
+      const header = document.querySelector('[data-probe="header"]') as HTMLElement;
+      header.classList.add("solid");
+      return header.getAnimations().map((a) => {
+        const timing = a.effect?.getComputedTiming();
+        return {
+          property: (a as CSSTransition).transitionProperty,
+          duration: Number(timing?.duration ?? 0),
+          easing: String(timing?.easing ?? ""),
+        };
+      });
+    });
+
+  it("fades background and border on the panel token; never the shadow or the blur", async () => {
+    const page = await pageWith(browser, { css: HEADER_CSS, body: HEADER_BODY });
+    try {
+      const running = await turnSolid(page);
+      expect(running.map((r) => r.property).sort()).toEqual([
+        "background-color",
+        "border-bottom-color",
+        "border-left-color",
+        "border-right-color",
+        "border-top-color",
+      ]);
+      for (const r of running) {
+        expect(r).toMatchObject({ duration: 260, easing: "cubic-bezier(0.2, 0, 0, 1)" });
+      }
+    } finally {
+      await page.close();
+    }
+  });
+
+  it("under reduced motion it switches at once", async () => {
+    const page = await pageWith(browser, {
+      css: HEADER_CSS,
+      body: HEADER_BODY,
+      reducedMotion: "reduce",
+    });
+    try {
+      expect(await turnSolid(page)).toEqual([]);
     } finally {
       await page.close();
     }

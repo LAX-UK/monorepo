@@ -4,7 +4,7 @@
  * Card hover. A card marks its parts with classes, and this file is the only place that says what
  * they do when the card is hovered with a mouse:
  *   `lax-card`        the card frame; hovering it drives the parts below
- *   `lax-card-lift`   the frame rises 1px (put it on the `lax-card` element)
+ *   `lax-card-lift`   the frame rises 1px over `--lax-motion-lift` (put it on the `lax-card` element)
  *   `lax-card-zoom`   this element (an image or a picture layer) zooms to 1.02
  *   `lax-card-media`  a clipping media box; every `img` inside it zooms to 1.02
  *   `lax-card-title`  the title is underlined
@@ -12,6 +12,11 @@
  * look. Nothing is hidden or shown by hover; at rest every part is exactly as without this file.
  * The lift and zoom use the individual `translate` and `scale` properties, so they never fight a
  * `transform` the card already has, and they run on the compositor.
+ *
+ * An image that fades in when it loads (a `transition-opacity` utility, as `MediaImage` has) keeps
+ * that fade: the zoom's transition list adds `opacity` with the utility's own duration and easing
+ * (Tailwind's `--tw-duration` / `--tw-ease`), so neither cancels the other. Under reduced motion
+ * the zoom is off and the image's own transitions apply unchanged (`revert-layer`).
  *
  * Press. `lax-press` on a button scales it to 0.98 over `--lax-motion-press` while it is held,
  * and lets go at once. It is an animation, not a transition, so the button keeps its own colour
@@ -29,13 +34,19 @@
 
 @media (hover: hover) and (pointer: fine) {
   .lax-card-lift {
-    transition: translate var(--lax-motion-panel) var(--lax-ease-out), border-color
+    transition: translate var(--lax-motion-lift) var(--lax-ease-out), border-color
       var(--lax-motion-hover) var(--lax-ease-out), background-color var(--lax-motion-hover)
       var(--lax-ease-out);
   }
 
   :is(.lax-card-zoom, .lax-card-media img) {
     transition: scale var(--lax-motion-media) var(--lax-ease-out);
+  }
+
+  :is(.lax-card-zoom, .lax-card-media img).transition-opacity {
+    transition: scale var(--lax-motion-media) var(--lax-ease-out), opacity
+      var(--tw-duration, var(--default-transition-duration))
+      var(--tw-ease, var(--default-transition-timing-function));
   }
 
   .lax-card-lift:hover {
@@ -80,6 +91,10 @@
     scale: none;
   }
 
+  :root:not([data-reduce-motion="force-allow"]) :is(.lax-card-zoom, .lax-card-media img) {
+    transition: revert-layer;
+  }
+
   :root:not([data-reduce-motion="force-allow"]) .lax-press:active {
     animation: none;
   }
@@ -91,6 +106,10 @@
 
 :root[data-reduce-motion="force-reduce"] .lax-card:hover :is(.lax-card-zoom, .lax-card-media img) {
   scale: none;
+}
+
+:root[data-reduce-motion="force-reduce"] :is(.lax-card-zoom, .lax-card-media img) {
+  transition: revert-layer;
 }
 
 :root[data-reduce-motion="force-reduce"] .lax-press:active {

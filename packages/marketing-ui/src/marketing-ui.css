@@ -271,31 +271,40 @@ html.lenis {
 }
 
 /* The hang: a work hung on the paper wall. The shadow is stronger in dark, where the wall sits
-   almost on the page tone; the hover state deepens it. */
+   almost on the page tone; the hover state deepens it.
+   The hover shadow is a layer of its own over the resting one, faded in with opacity, so no shadow
+   is ever animated (docs/design/motion.md, MO15). Because it sits on top of the resting shadow
+   rather than replacing it, the layer is lighter than the old hover shadow: each of its two
+   shadows is the alpha that, composited over the resting one, gives the old hover alpha
+   (1 - (1 - rest)(1 - layer) = hover: light 0.14 -> 0.18 and 0.34 -> 0.44, dark 0.4 -> 0.5 and
+   0.7 -> 0.8), with the old hover offsets and blurs. So the hovered work is as deep as before. */
 :root {
   --hang-art-shadow: 0 1px 2px rgb(16 18 18 / 0.14), 0 14px 30px -10px rgb(16 18 18 / 0.34);
-  --hang-art-shadow-hover: 0 2px 4px rgb(16 18 18 / 0.18), 0 20px 36px -10px rgb(16 18 18 / 0.44);
+  --hang-art-shadow-hover-layer: 0 2px 4px rgb(16 18 18 / 0.047), 0 20px 36px -10px
+    rgb(16 18 18 / 0.152);
 }
 
 .dark {
   --hang-art-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 34px -10px rgb(0 0 0 / 0.7);
-  --hang-art-shadow-hover: 0 2px 4px rgb(0 0 0 / 0.5), 0 22px 40px -10px rgb(0 0 0 / 0.8);
+  --hang-art-shadow-hover-layer: 0 2px 4px rgb(0 0 0 / 0.167), 0 22px 40px -10px rgb(0 0 0 / 0.333);
 }
 
-/* The hover shadow is a layer of its own over the resting one, faded in with opacity, so no
-   shadow is ever animated (docs/design/motion.md, MO15). At rest the layer is fully transparent. */
+/* At rest the layer is fully transparent. It shows only for a mouse, like the kit's card hover
+   (packages/ui/src/lax/hover-press.css): a tap on a phone never leaves the work in its hover look. */
 .marketing-hang-art::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0;
-  box-shadow: var(--hang-art-shadow-hover);
+  box-shadow: var(--hang-art-shadow-hover-layer);
   transition: opacity var(--lax-motion-hover) var(--lax-ease-out);
 }
 
-a:hover .marketing-hang-art::after {
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  a:hover .marketing-hang-art::after {
+    opacity: 1;
+  }
 }
 
 .marketing-status-state {
