@@ -1,127 +1,134 @@
 Verdict: FIX FIRST
 
-# Review of PR #1488 "Shop and lax.art: shared empty states"
+# Final recheck of PR #1488 "Shop and lax.art: shared empty states"
 
-Reviewed head: `6e88bfd5` (branch `shop-art-shared-empty-states`), base `5569ca0e` (main).
-This review covers only the PR. The PR branch was not changed.
+Reviewed head: `33cc8483` (branch `shop-art-shared-empty-states`). This covers the commits after `6e88bfd5`: `479033d6`, `2fbb2fef`, `ec130aa1`, `9011bdce`, `720df7ee`, `4da1f3fe`, `90ab4bfc`, `33cc8483`, plus the main merge `c2747f7d` (base `aef61e26`).
 
-**What it was judged against.** The audit decisions S13 and D9 are not in the repository. I searched `docs/` and `docs/design` on main and on the PR branch for `S13`, `BP-14` and "artistic empty space", and ran a GitHub code and PR search. The only `D9` is the unrelated architecture decision about the OIDC issuer in `docs/architecture/02-decisions.md:137`. So I judged the PR against:
+The PR branch was not changed.
 
-- the kit `EmptyState` contract in `packages/ui/src/lax/empty-state.tsx`: "page" means "a whole-page state with the page's h1, for not found and route errors"
-- `docs/DESIGN_SYSTEM.md`
-- how LAX Bid uses the kit, in `apps/web/src/components/marketing/marketing-empty-state.tsx`: inline layout, `headingLevel` h2/h3, no `layout="page"` inside a page that already has an h1
+There is no "Changes after review" section, so this review is judged from the commits and the code.
+
+**Summary**
+
+- The code fixes from the last review are in:
+  - Shop and lax.art route JS is below main.
+  - Pages that own an h1 keep a single h1, with tests.
+  - Reduced motion and the phone stacking are restored.
+  - `art-browser-gates` is green.
+  - The non-blocking items are cleaned up.
+- Two things still block:
+  - The PR description contradicts the code in several places.
+  - CI's Bid (`apps/web`) `account` and `checkout` rows read slightly above main. The evidence says this is build noise and not the PR's code, but by the stated bar it has to be cleared.
 
 ## Blocking
 
-1. **Route JS grew on several routes.** I compared the PR's CI build table with main's own latest CI build table.
-   - PR: CI run 43809697600, job `build` 133108655182.
-   - main: merge-queue run 43805181198 at `5569ca0e`, job 133094757392.
-   - I reproduced the PR numbers locally from a production build of shop and art (same within 0.1 KB).
+1. **The PR description contradicts the code.** It was not updated after review. Statements that are now false:
+   - **Kit props that no longer exist.** It says the kit `EmptyState` gains `accent` and `announcement`, and that kit tests cover them.
+     - `9011bdce` removed both props.
+     - The plate ink is now the CSS token `--lax-plate-ink` → `--color-lax-plate`:
+       - `packages/ui/src/lax/theme.css:71`
+       - `apps/shop/src/app/base.css:162`
+       - `apps/art/src/app/base.css:182`
+     - The live regions now live in the wrappers:
+       - `apps/shop/src/components/shop-status-state.tsx:59,79`
+       - `apps/art/src/components/art-status-state.tsx:49,67`
+   - **Where `resolveStatusIllustration` lives.** It says `resolveStatusIllustration` "stays in `marketing-ui`". It moved to `packages/ui/src/lax/status-illustration.ts` (export `@auction/ui/lax/status-illustration`).
+   - **"Their CSS is unchanged."** `MarketingStatusAction` has a new phone rule, `flex: 1 1 100%` under `max-width: 39.99rem` (`packages/marketing-ui/src/marketing-ui.css:363-368`).
+   - **"Page layout with the page's h1."** The page layout now takes an explicit `headingLevel`, and 28 page-layout call sites pass `titleAs="h2"` (`packages/ui/src/lax/empty-state.tsx:68,73`).
+   - **The route JS section is stale.** It shows the pre-review table (shop product 557.7, public 524.1, art 523.5/525.4/529.1), says "69 of 82 routes grew", and calls sharing the illustration module "a follow-up". The latest CI build shows every Shop and lax.art route group below main, and the forced `lax-empty-state` chunk (`apps/shop/next.config.ts:54-76`, `apps/art/next.config.ts:54-75`) is that follow-up, done.
+   - **Fix:** rewrite the description from the current code. List the kit changes as they now are: `headingLevel` honoured on the page layout, `headingLevel="p"`, `title` as a node, the `--lax-plate-ink` token, and the new `status-illustration` export. Also cover the forced chunk, the phone rule, the latest CI route JS table, and the pre-existing art mobile flake (item 2 under Verified).
 
-   | app / group | main largest | PR largest | change | duplicates main → PR |
-   |---|---|---|---|---|
-   | shop product (`/artworks/[slug]`) | 552.8 KB | 557.8 KB | **+5.0 KB** | 9 (6.2 KB) → 18 (11.3 KB) |
-   | shop public (`/artworks/(hub)`) | 520.4 KB | 524.2 KB | **+3.8 KB** | 5 (4.1 KB) → 11 (7.8 KB) |
-   | art account (`/account/favourites`) | 522.0 KB | 523.5 KB | **+1.5 KB** | 7 (3.0 KB) → 11 (5.4 KB) |
-   | art product | 524.0 KB | 525.5 KB | **+1.5 KB** | 5 (3.5 KB) → 9 (6.0 KB) |
-   | art public (`/for-artists/apply`) | 527.7 KB | 529.1 KB | **+1.4 KB** | 4 (2.7 KB) → 8 (5.2 KB) |
-   | shop account | 520.4 KB | 518.6 KB | −1.8 KB | 20 → 7 |
-   | shop checkout | 551.8 KB | 550.3 KB | −1.5 KB | 7 → 7 |
+2. **CI route JS: the Bid `account` and `checkout` rows read above main.** The cause is very likely build noise, not this PR, but it needs a clean CI table before merge.
 
-   - The shop and art frames grew by about 4–5 KB and 1.5 KB. The PR says 69 of 82 routes grew.
-   - The duplicate counts roughly doubled. The illustration module is now duplicated across the error-boundary chunks, which the PR description also says.
-   - "Still under budget" is not the bar here: any growth on any route blocks.
-   - **Fix:** the kit `EmptyState` (or the `LaxIllustration` set it imports) has to land in one shared chunk. For example, keep route `error.tsx` boundaries off the full illustration set, or import a single drawing. Then the shop and art rows must be ≤ main's.
+   | app / group | main CI at the PR's base code (run 43818820212, job 133137626187) | main latest CI (run 43833229669, job 133184013355, `24483d2d`) | PR CI (run 43834015218, job 133186469487) |
+   |---|---|---|---|
+   | web account | 545.4 KB (frame 442.7) | 545.1 KB (frame 442.5) | **545.6 KB** (frame 442.9) |
+   | web checkout | 471.7 KB (frame 441.1) | 471.4 KB (frame 440.9) | **472.1 KB** (frame 441.3) |
+   | web listing / lot / public / sale | 462.3 / 467.5 / 394.5 / 478.9 | 462.3 / 467.5 / 394.6 / 478.9 | 462.3 / 467.5 / 394.5 / 478.9 |
 
-2. **Two h1s on about 30 Shop and lax.art screens.** This is a heading-order and accessibility regression.
-   - The cause: `packages/ui/src/lax/empty-state.tsx:72` forces `h1` whenever `layout="page"` (`const Heading = isPage ? "h1" : headingLevel`).
-   - The wrappers map `layout="page"` straight through (`apps/shop/src/components/shop-status-state.tsx:88`, `apps/art/src/components/art-status-state.tsx:57`), so an explicit `titleAs="h2"` is now silently ignored.
-   - On main, `MarketingStatusState` honoured `titleAs` (`packages/marketing-ui/src/marketing-status-state.tsx:95,100`).
-   - I confirmed it by rendering the real components:
-     - **Basket empty** (`apps/shop/src/app/basket/page.tsx:136-141`, inside `ShopCommercePageShell`): `<h1>Basket</h1>`, then `<h1>Your basket is empty</h1>`, then `<h2>On sale now</h2>`.
-     - **`/for-artists/apply`, signed out** (`apps/art/src/components/artist-application/application-status-views.tsx:243-244` under the page's own h1 at `apps/art/src/app/for-artists/apply/page.tsx:67`): `<h1>Apply to join the gallery</h1>`, then `<h1>Sign in to apply</h1>`.
-   - The same `layout="page"` + `titleAs="h2"` pattern is at:
-     - `basket/page.tsx` (3)
-     - `checkout/page.tsx` (4)
-     - `checkout/confirmation/page.tsx` (5)
-     - `checkout/cancel/page.tsx` (2)
-     - `account/orders/page.tsx` (4)
-     - `account/orders/[orderId]/page.tsx` (2)
-     - `account/orders/[orderId]/report-a-problem/page.tsx` (3)
-     - `account/orders/[orderId]/not-found.tsx` (1)
-     - `orders/guest/page.tsx` (2)
-     - `orders/guest/report-a-problem/page.tsx` (1)
-     - `for-artists/apply/page.tsx` (2)
-     - `application-status-views.tsx` (1)
-   - The PR's own tests check the h1 only where `titleAs="h1"` was passed. Nothing checks that `titleAs="h2"` stays h2.
-   - Bid never puts a page-layout state under an existing h1.
-   - **Fix:** in the wrappers, use the kit's inline layout when the page already owns its h1 (`titleAs !== "h1"`). Alternatively, let the kit honour an explicit `headingLevel` on the page layout. Then add a test that `layout="page" titleAs="h2"` renders an h2.
-
-3. **The PR removes the reduced-motion rule for the actions, but says their CSS is unchanged.**
-   - The PR says `MarketingStatusAction`'s "CSS is unchanged" and "No hover, press or loading code touched".
-   - It deletes the `@media (prefers-reduced-motion: reduce)` block at `packages/marketing-ui/src/marketing-ui.css:533-541` on main. That block switched off the action's `transition` and the `:active { transform: translateY(1px) }` press nudge.
-   - The press motion is still there (PR file, lines 310-312), so it now plays for people who asked for reduced motion.
-   - The same hunk also deletes the phone rule that stacked the actions full-width (main lines 569-586). The kit's `@max-2xl:[&>*]:flex-1` now lays them out side by side. At 375 px, "Create an account" wraps onto two lines in a half-width button.
-   - **Fix:** restore the reduced-motion block. Either restore the phone rule too or call out the change.
-
-4. **CI: `art-browser-gates` is red on this PR and green on main.**
-   - The PR run is 43809697494, job 133108484774. `[chromium-mobile] e2e/art-journeys.spec.ts:237` "favourites tabs are signed-in routes" failed all three attempts. After the "Follows" tab click, the URL stayed `/account/favourites` (expected `/account/favourites/follows`). The first attempt also timed out in sign-in.
-   - Main's latest merge-queue run of the same workflow (43805181158, `5569ca0e`) and the run before it both passed.
-   - `/account/favourites` is one of the pages whose empty state this PR changed. I could not prove the cause without the full stack, so this may be a flake.
-   - Either way, it needs a green re-run, or a root cause, before merge.
-   - `browser-gates` (web) was still running when I checked. `ci-result` and the other CI jobs passed.
+   - **Why I think it is noise:**
+     - In local builds on one machine (`next build` with the CI placeholder DSNs, then `check-route-js-budget.mjs --app apps/web --all`), no Bid account or checkout route is larger in the PR than at main `8ed75236`:
+       - account: 70 routes from −0.3 to 0.0 KB
+       - checkout: 4 routes from −0.2 to −0.1 KB
+     - Every Bid client chunk that carries the kit state (`data-empty-state`) is 41 bytes raw and 13–27 bytes gzip **smaller** in the PR: chunks 16334, 18875, 51863, 6092 and 94522.
+     - Main's two CI builds above also moved by 0.3 KB on these rows, for unrelated changes.
+     - Local lot and sale read +2.3 KB against my local main build. CI main reads exactly the PR's numbers there (467.5 / 478.9), so that is an artefact of my local main build, not growth.
+   - **Fix:** no code change is expected. Merge or rebase onto current main and re-run CI. The PR's `build` table must show every `apps/web` row ≤ main's latest CI table. If account/checkout still read higher, find the chunk that grew before merging.
 
 ## Non-blocking
 
-- **The eyebrow is cut off from its heading on Shop detail not-found, unlisted and unavailable pages.**
-  - Where: `apps/shop/src/components/artwork/artwork-detail-state.tsx:36`.
-  - The `Not found` eyebrow is now a loose `<p>` above the whole kit grid, about 120 px from the h1 and over the plate column. The PR's own `shop__detail-not-found__1440__light__after.png` shows this.
-  - Before, it sat directly above the h1.
-  - `children` (the search form and links) now render outside the text column (line 44) instead of under the description.
-  - Put the eyebrow and children into the state (for example through `control`/`whileYouWait`), or keep them in the copy column.
-- **Error variants lose their meaningful drawings.** The kit always draws `askew` for `variant="error"`.
-  - Before (`marketing-status-state.tsx:136` on main), only `gallery` was swapped.
-  - So basket "Sign in again" (`icon="bag"`) and "Your account cannot apply right now" (`icon="lock"`, `for-artists/apply/page.tsx:122-130`) lose the parcel and lock drawings.
-  - This matches Bid's kit rule, but it is a visual change the description does not mention.
-- **Dead code left behind.**
-  - `resolveAnnouncement()` in `shop-status-state.tsx:63` takes no arguments and always returns `"none"`. Inline it.
-  - `const headingLevel = titleAs === "p" ? "p" : titleAs` (`shop-status-state.tsx:81`) is an identity.
-  - `.shop-detail__state-media`, `.shop-detail--state .shop-detail__content` and `.shop-detail__state-copy` in `apps/shop/src/app/catalogue.css:45,80,84` no longer have any markup.
-  - `resolveLayout` still sniffs `className` for `shop-status-state--page`. A real prop would be cleaner.
-- **Duplication.**
-  - `ArtworkDetailState` keeps its own `ILLUSTRATIONS` map (`artwork-detail-state.tsx:7-13`), alongside `resolveStatusIllustration` in marketing-ui. Reuse the one map.
-  - The motif and layout types still live in `@auction/marketing-ui` while the behaviour lives in the kit. Move them, and `resolveStatusIllustration`, next to the kit or into the wrappers, so marketing-ui only owns `MarketingStatusAction`.
-- **Stale docs** that still describe the removed `MarketingStatusState`, banner layout or `ShopStateMotif`:
-  - `docs/marketing-design-language.md:121,123` (also wrong for Bid, whose `MarketingEmptyState` already uses the kit)
-  - `docs/ui/shop-storefront-architecture.md:59`
-  - `docs/ui/art-figma-inventory.md:248`
-- **The catalogue no-match state still uses the hatched "Editions" plate** (`apps/shop/src/components/catalogue/catalogue-states.tsx:23`), not a drawing. It is unchanged from main and passed through the `plate` slot. Note it if S13 means drawings everywhere.
-- **The kit accent tests only check for a class string.** `empty-state.test.tsx` checks that `--color-product-accent` appears somewhere in the markup. It does not check contrast of the accent line on `bg-lax-paper` in dark mode. The shop dark accent `#d6a8d4` is documented only against the dark surfaces, not the paper plate.
+- **The shop and art `next.config.ts` files carry the same `EMPTY_STATE_MODULES` list and `addEmptyStateChunk`.** They are almost line for line the same (Shop adds its two boundary modules). Consider a shared helper so the two cannot drift.
+- **Shop and art each declare their own `LIVE_ROLES` map and announcement union.** `shop-status-state.tsx:42,79` and `art-status-state.tsx:31,67` define the same thing. It is small, but it could live next to `status-illustration.ts`.
+- **The eyebrow sits inside the h1 as an `aria-hidden` span** (`apps/shop/src/components/artwork/artwork-detail-state.tsx:38-45`).
+  - It now sits directly above the title in the copy column, as asked. The h1's accessible name stays "Artist not found".
+  - Screen readers that ignore `aria-hidden` inside headings are rare, so this is fine. A sibling element above the h1 would be cleaner.
+- **`docs/marketing-design-language.md:121` says "Static page loads are silent".** lax.art errors default to polite (`art-status-state.tsx:48`). Say "Shop states are silent; lax.art errors are polite".
+- **The bottom tab bar in the 375 screenshots** (`art__favourites-empty__375__dark__after-review.png`) is captured over the middle of the page. That comes from the fixed bar in a full-page capture, not from the state. It is worth a note in the evidence README so reviewers do not read it as overlap.
 
 ## Verified
 
-- **Unit suites, run locally at the PR head after building the workspace packages:**
-  - `packages/ui`: 607/607
-  - `packages/marketing-ui`: 702/702
-  - `apps/shop`: 715/715, including the `checkout-return-origin` test the description called flaky
-  - `apps/art`: 805/805
-  - `apps/web`: 9888 passed, 10 skipped (1519 files)
-- **Coverage:** no `MarketingStatusState`, `MarketingStatusMotif` or `ShopStateMotif` is left in code.
-  - Every Shop and lax.art empty and error state goes through `ShopStatusState`, `ArtStatusState` or `ArtworkDetailState`, and all three now render the kit `EmptyState`.
-  - I found no hand-rolled empty state in `apps/shop/src` or `apps/art/src`. I grepped for `length === 0` branches, "No … yet/found" copy, and `empty` class names.
-- **Bid is not affected:** `accent` and `announcement` are additive and `headingLevel="p"` is opt-in. Bid's `MarketingEmptyState` sets none of them, and `apps/web` route JS changed by ≤ 0.1 KB.
-- **Accent:** each product keeps its own accent through `--color-product-accent`. It is defined in `apps/shop/src/app/base.css:38,302` and `apps/art/src/app/base.css:38,285`.
-- **Theme wiring:** both apps import `@auction/ui/lax-theme.css` and `@source` the kit, so the kit classes are generated.
-- **Copy:** no copy file is in the diff, and titles and descriptions are passed through unchanged. Links and `href`s inside the states are unchanged. `ArtworkDetailState` keeps "← Back to Collect".
-- **Announcements are as before:**
-  - Shop errors are silent unless asked; on main they were assertive only for the unused banner layout.
-  - lax.art errors are polite.
-  - The lax.art route error (`apps/art/src/app/error.tsx`) stays assertive (kit default) with an h1.
-- **Non-empty states:** errors, unavailable and not-found were already drawn by the same `MarketingStatusState` on main. Moving them to the kit's error/page variants matches Bid, which uses the kit for fetch errors, not-found and route errors. None of them became an `empty` variant.
-- **Production renders:** I built shop and art and rendered the changed states with the build CSS at 1440 and 375, light and dark: basket empty page, catalogue empty and no-match, home rail empty, detail not-found, art section empty, search no-results, account list empty, and apply sign-in.
-  - No horizontal overflow at 375.
-  - The layout matches the kit as Bid renders it: a plate beside the copy at desktop and stacked on phones, with the same tokens.
-  - The PR's own before/after screenshots agree with what I rendered, apart from the issues noted above.
-- **No other restyling:** the only CSS removed is the status-state block in `marketing-ui.css`, apart from item 3 above, and Shop's `state.css` title overrides for that block.
+1. **Route JS for Shop and lax.art is at or below main on every group (blocking item 1 of the last review: fixed).** PR CI job 133186469487 against main's latest CI job 133184013355:
 
-Web unit suite (`apps/web`, local, PR head): 1519 files passed, 9888 tests passed, 10 skipped.
+   | app / group | main | PR | duplicates main → PR |
+   |---|---|---|---|
+   | shop account | 520.4 | 517.2 | 20 (5.1) → 9 (3.5) |
+   | shop checkout | 551.8 | 549.0 | 7 (4.8) → 9 (2.5) |
+   | shop product | 552.9 | 550.1 | 9 (6.2) → 9 (3.9) |
+   | shop public | 520.5 | 518.2 | 5 (4.1) → 7 (2.1) |
+   | art account | 522.1 | 521.3 | 7 (3.0) → 6 (2.7) |
+   | art product | 524.0 | 523.3 | 5 (3.5) → 4 (3.3) |
+   | art public | 527.7 | 527.0 | 4 (2.7) → 3 (2.5) |
+
+   - The frames are 1.0–2.8 KB lighter.
+   - The illustration is no longer copied into each boundary: one forced `lax-empty-state` chunk (`apps/shop/next.config.ts:54-76`, `apps/art/next.config.ts:54-75`).
+   - `scripts/route-js-budgets.json` and the ratchets are untouched. `apps/web/next.config.ts` matches the base.
+2. **CI.**
+   - **`art-browser-gates` is green** on the latest run (43834015264, job 133186198337).
+   - The chromium-mobile "favourites tabs are signed-in routes" test (`apps/art/e2e/art-journeys.spec.ts:237`) is still flaky there. It failed twice (sign-in timeout, then the Follows URL not changing) and passed on retry #2.
+   - **It is pre-existing.** Main's own merge-queue run for #1489, which does not include this PR (run 43833229661, job 133183484279), has the same test flaky on chromium-mobile: a 30 s timeout in `signInArtBuyer`, then a pass on retry #1. So this PR does not cause it. It deserves its own ticket.
+   - `browser-gates`, `account-browser-gates`, `build`, `test`, `static-checks` and the web/shop-api/api vitest shards are all green on `33cc8483`.
+3. **One h1 (blocking item 2 of the last review: fixed).**
+   - The kit honours an explicit `headingLevel` on the page layout and defaults to h1 only when none is given (`packages/ui/src/lax/empty-state.tsx:68,73`).
+   - Both wrappers pass `titleAs` through (`shop-status-state.tsx:58,72`, `art-status-state.tsx:47,60`).
+   - Every `layout="page"` call under a page-owned h1 passes `titleAs="h2"`: basket, checkout, confirmation, cancel, account orders, order detail, report a problem, order not-found, guest orders, guest report, for-artists/apply, and `application-status-views.tsx:243`.
+   - Whole-page states keep h1: art `signed-out`, `session-expired`, `sign-in-error`, `account/disabled`, search, the editorial status, the art route error, and the Shop detail and route error.
+   - Bid's two `layout="page"` users (`alerts/stop`, `alerts/confirm`) pass no `headingLevel`, so they keep h1.
+   - Tests:
+     - `shop-empty-states.test.tsx:47` and `art-empty-states.test.tsx:33`: page layout with `titleAs="h2"` renders an h2.
+     - `apps/shop/src/app/basket/page.test.tsx:33`: the real basket page has one h1 "Basket" and an h2 "Your basket is empty".
+     - `apps/art/src/app/for-artists/apply/page.test.tsx:16`: the real apply page, signed out, has one h1 "Apply to join" and an h2 "Sign in to apply".
+4. **Reduced motion and phone actions (blocking item 3 of the last review: fixed).**
+   - The `@media (prefers-reduced-motion: reduce)` block is back (`packages/marketing-ui/src/marketing-ui.css:326-334`). It turns off the transition and the `:active` translate.
+   - The phone rule (`:363-368`) stacks the actions full width under 640 px. The `art__apply-signed-out__375__*__after-review.png` screenshots show "Sign in" and "Create an account" one per row at full width.
+5. **Non-blocking items from the last review.**
+   - **Eyebrow:** it now sits directly above the title in the copy column (`artwork-detail-state.tsx:33-48`). The actions are in the copy column and `children` sit under the whole state. Confirmed in `shop__detail-not-found__1440__light__after-review.png`.
+   - **Dead code removed:**
+     - `resolveAnnouncement`, the identity `headingLevel` mapping and `resolveLayout` are gone.
+     - The `.shop-detail__state-*` and `.shop-detail--state` rules are gone from `catalogue.css`.
+     - The `MarketingStatusState`/`MarketingStatusMotif` exports are gone (`packages/marketing-ui/src/index.ts`). `marketing-status-state.tsx` now holds only `MarketingStatusAction`.
+   - **One illustration map:** `resolveStatusIllustration` in `packages/ui/src/lax/status-illustration.ts`, used by both wrappers. `ArtworkDetailState` takes a `LaxIllustrationName` directly; its own `ILLUSTRATIONS` map is gone.
+   - **Docs updated:**
+     - `docs/marketing-design-language.md:121-123`
+     - `docs/ui/shop-storefront-architecture.md:59`
+     - `docs/ui/art-figma-inventory.md:248`
+     - No code or docs mention `MarketingStatusState`, `MarketingStatusMotif` or `ShopStateMotif` any more.
+   - **Dark accent contrast on the paper plate:** new check in `scripts/ci/verify-status-pill-contrast.test.mjs:170-192`. It passes. I computed the ratios from the resolved tokens:
+     - Shop: light 9.94:1, dark 8.56:1
+     - lax.art: light 19.09:1, dark 15.71:1
+     - All are above the 3:1 needed for a graphic.
+6. **Bid is not affected in code.**
+   - The kit change is opt-in: `headingLevel` on the page layout, `p`, and `title` as a node.
+   - The plate falls back to `--lax-fg` when no product sets `--lax-plate-ink` (`theme.css:71`).
+   - The kit `empty-state.js` grows by 85 bytes gzip, but the Bid chunks that carry it are smaller overall (see blocking item 2).
+7. **Unit suites, run locally at `33cc8483` after building the workspace packages:**
+   - `packages/ui`: 84 files, 610/610
+   - `packages/marketing-ui`: 110 files, 702/702
+   - `apps/shop`: 116 files, 720/720
+   - `apps/art`: 103 files, 808/808
+   - `apps/web`: 1523 files, 9927 passed, 10 skipped
+8. **Screenshots** (`docs/pr-evidence/shop-art-empty-states/*__after-review.png`, 1440 and 375, light and dark).
+   - Basket: one h1 "Basket", with the state title as a smaller h2 beside the parcel plate in the Shop accent (dark: lilac on the dark plate).
+   - Detail not-found: eyebrow over the title in the copy column, ticket drawing in aubergine.
+   - Favourites empty: a stacked plate and copy at 375.
+   - Apply signed out: one h1 and stacked full-width actions at 375.
+   - No horizontal overflow at 375.
