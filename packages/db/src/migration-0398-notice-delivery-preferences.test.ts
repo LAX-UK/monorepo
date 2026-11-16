@@ -15,7 +15,7 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 const NEW_TYPES = ["sale_registration_decided", "bidding_limit_changed"];
-const COLUMNS = ["identity_in_app", "identity_email", "registration_in_app"];
+const COLUMNS = ["identity_in_app", "registration_in_app"];
 
 function checkTypes(sql: string): string[] {
   const at = sql.lastIndexOf("ADD CONSTRAINT notification_type_check");
@@ -32,7 +32,7 @@ describe("migration 0398 notice delivery preferences", () => {
     expect(journal.entries.at(-1)?.tag).toBe(TAG);
   });
 
-  it("adds the three switches on by default, under a lock timeout, without touching rows", () => {
+  it("adds the two switches on by default, under a lock timeout", () => {
     expect(migration.indexOf("SET LOCAL lock_timeout")).toBeLessThan(
       migration.indexOf("ALTER TABLE"),
     );
@@ -41,7 +41,17 @@ describe("migration 0398 notice delivery preferences", () => {
         new RegExp(`ADD COLUMN IF NOT EXISTS "${column}" boolean DEFAULT true NOT NULL`),
       );
     }
-    expect(migration).not.toMatch(/\b(UPDATE|DELETE|INSERT)\b/);
+  });
+
+  it("writes only the artist and saved-search app switches, and deletes nothing", () => {
+    expect(migration).not.toMatch(/\bDELETE\b/);
+    expect(migration.match(/\b(INSERT|UPDATE)\b/g)).toEqual(["INSERT", "UPDATE"]);
+    expect(migration).toContain('INSERT INTO "notification_preference"');
+    expect(migration).toContain('ON CONFLICT ("user_id") DO UPDATE SET');
+  });
+
+  it("adds the rebuilt type check without scanning the table", () => {
+    expect(migration).toMatch(/'bidding_limit_changed'\s*\)\s*\)\s*NOT VALID;/);
   });
 
   it("rebuilds the type check with the 0392 list and the two new types after its tail", () => {

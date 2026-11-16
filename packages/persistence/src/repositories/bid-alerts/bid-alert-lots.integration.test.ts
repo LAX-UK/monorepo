@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createDb } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
 import { sql } from "drizzle-orm";
@@ -297,6 +300,53 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
 
       await setPreference(person.id, "search_alerts_in_app", false);
       expect((await watchers.alertingSearches()).some((w) => w.searchId === id)).toBe(false);
+    });
+
+    /**
+     * The migration that made the app switches independent carries an email opt-out over to the
+     * app. Its backfill statement, run on the state the previous release left.
+     */
+    function upgradeBackfill(): string {
+      const drizzle = join(dirname(fileURLToPath(import.meta.url)), "../../../../db/drizzle");
+      const file = readdirSync(drizzle).find((f) => f.endsWith("_notice_delivery_preferences.sql"));
+      const text = readFileSync(join(drizzle, file ?? ""), "utf8");
+      const statement = text
+        .split("--> statement-breakpoint")
+        .find((part) => part.includes('INSERT INTO "notification_preference"'));
+      if (!statement) throw new Error("backfill statement not found");
+      return statement;
+    }
+
+    it("gives a person who turned an alert email off before the upgrade no app notice after it", async () => {
+      const inApp = new BidAlertInAppTopics(db);
+      const artist = await insertArtist();
+      // Artist email off; no preference row (never opened notification settings).
+      const artistOff = await insertUser();
+      await follow(artistOff.id, artist);
+      // Saved-search email off; a preference row holding the old default (true).
+      const searchOff = await insertUser();
+      const searchId = await saveSearch(searchOff.id, { q: "upgrade-probe" });
+      await setPreference(searchOff.id, "search_alerts_in_app", true);
+      // Both emails on: keeps getting both.
+      const bothOn = await insertUser();
+      await follow(bothOn.id, artist);
+      await provisioner.ensureArtistFollowers([artist], NOW);
+      await provisioner.ensureSearchers(NOW);
+      const artistRow = await subscribers.findBySubject("bid", artistOff.id);
+      const searchRow = await subscribers.findBySubject("bid", searchOff.id);
+      const bothRow = await subscribers.findBySubject("bid", bothOn.id);
+      await topics.setEmail(artistRow?.id ?? "", "bid.artists", false, "person", NOW);
+      await topics.setEmail(searchRow?.id ?? "", "bid.searches", false, "person", NOW);
+
+      await db.execute(sql.raw(upgradeBackfill()));
+
+      expect((await watchers.artistWatchers([artist])).map((w) => w.subscriberId)).toEqual([
+        bothRow?.id,
+      ]);
+      expect((await watchers.alertingSearches()).some((w) => w.searchId === searchId)).toBe(false);
+      expect(await inApp.topicsOn(artistOff.id)).toEqual(["bid.searches"]);
+      expect(await inApp.topicsOn(searchOff.id)).toEqual(["bid.artists"]);
+      expect(await inApp.topicsOn(bothOn.id)).toEqual(["bid.artists", "bid.searches"]);
     });
 
     it("reads the person's app switches, on unless they turned one off", async () => {

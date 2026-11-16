@@ -12,7 +12,6 @@ const DEFAULTS: NotificationPreference = {
   artistAlertsInApp: true,
   searchAlertsInApp: true,
   identityInApp: true,
-  identityEmail: true,
   registrationInApp: true,
   outbidPush: true,
   wonPush: true,
@@ -136,22 +135,23 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     template: null,
   },
   /**
-   * The result of an identity check. Each follows the Identity checks switches, in the app and by
-   * email. Both are written with the decision, not through the dispatcher, so there is no template
-   * here. A request to send the documents again is not here: it waits for the person to act, so
-   * it is always delivered.
+   * The result of an identity check. The email is transactional and always sent: a decline carries
+   * the steps to try again and how to reach us. The app notice follows the Identity check switch.
+   * Both are written with the decision, not through the dispatcher, so there is no template here.
+   * A request to send the documents again is not here: it waits for the person to act, so it is
+   * always delivered.
    */
   kyc_approved: {
     inApp: "identityInApp",
     push: null,
-    email: "identityEmail",
+    email: null,
     whatsapp: null,
     template: null,
   },
   kyc_declined: {
     inApp: "identityInApp",
     push: null,
-    email: "identityEmail",
+    email: null,
     whatsapp: null,
     template: null,
   },
