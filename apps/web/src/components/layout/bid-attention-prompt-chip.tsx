@@ -2,6 +2,7 @@
 
 import { useBidAttention } from "@/hooks/use-bid-attention";
 import type { AttentionChip } from "@/lib/navigation/client-attention";
+import { useChipWithoutEndedLots } from "@/lib/navigation/ended-lots";
 import {
   MarketingAttentionStrip,
   type MarketingAttentionTone,
@@ -32,7 +33,8 @@ type Placement = "bar" | "strip";
  * nothing is pressing, and staff never see it.
  */
 export function BidAttentionPromptChip({ placement }: { placement: Placement }) {
-  const { chip } = useBidAttention();
+  // A lot that closes while its page is open leaves the prompt at once, not at the next re-read.
+  const { chip } = useChipWithoutEndedLots(useBidAttention());
   if (!chip) return null;
   return (
     // Each placement mounts both of the shared component's forms, so the wrapper keeps exactly

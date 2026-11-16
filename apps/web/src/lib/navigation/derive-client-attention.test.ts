@@ -81,6 +81,8 @@ describe("deriveClientAttention", () => {
       unreadNotifications: [],
     });
     expect(attention.outbidLots).toEqual(["14", "22", null]);
+    // The ids line up with the labels, so a lot that closes drops its own label.
+    expect(attention.outbidLotIds).toEqual(["b", "a", "d"]);
     expect(attention.groups).toMatchObject([{ kind: "outbid", count: 3, url: "/bids?tab=active" }]);
   });
 
@@ -133,6 +135,7 @@ describe("deriveClientAttention", () => {
     });
     expect(attention).toEqual({
       outbidLots: [],
+      outbidLotIds: [],
       paymentsDue: 2,
       paymentsInReview: false,
       stillToSend: { count: 0, pence: 0, lotIds: [] },

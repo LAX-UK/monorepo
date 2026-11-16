@@ -31,6 +31,7 @@ export function deriveClientAttention(sources: ClientAttentionSources): ClientAt
   const owed = summariseAmountsOwed(sources.amountsOwed);
   return {
     outbidLots: outbid.map((entry) => lotLabel(entry.row.lot?.lotNumber)),
+    outbidLotIds: outbid.map((entry) => entry.row.lot?.id ?? null),
     groups: groupBidderAttention(
       outbid.flatMap((entry) =>
         entry.row.lot
