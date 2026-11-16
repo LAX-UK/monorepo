@@ -20,6 +20,7 @@ import {
   purchaseStorageView,
   storageClearedOn,
   storageTermsForLot,
+  storageTermsOf,
 } from "./storage-terms.js";
 
 /** Monday to Friday, 10:00 to 19:00. */
@@ -567,6 +568,15 @@ describe("lots won before the first terms (ST9)", () => {
 
   it("cannot be changed by mistake", () => {
     expect(Object.isFrozen(LEGACY_STORAGE_TERMS)).toBe(true);
+  });
+});
+
+describe("storageTermsOf", () => {
+  it("copies only the fields the rules read, so a stored version passes the guard", () => {
+    const record = { ...TERMS, countMode: "working" as const, id: "t1", reason: "Launch" };
+    const terms = storageTermsOf(record);
+    expect(terms).toEqual({ ...TERMS, countMode: "working" });
+    expect(() => assertStorageTerms(terms)).not.toThrow();
   });
 });
 

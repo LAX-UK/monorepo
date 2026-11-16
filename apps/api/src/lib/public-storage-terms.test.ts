@@ -5,11 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findTermsInForce = vi.fn();
 const terms = { findTermsInForce };
 
-import {
-  listPlaceStorageTerms,
-  storageTermsOfRecord,
-  storageTermsTextForVenue,
-} from "./public-storage-terms.js";
+import { listPlaceStorageTerms, storageTermsTextForVenue } from "./public-storage-terms.js";
 
 const RECORD: StorageTermsRecord = {
   id: "t1",
@@ -30,15 +26,11 @@ const NOW = new Date("2026-11-15T12:00:00Z");
 beforeEach(() => findTermsInForce.mockReset());
 
 describe("the storage terms a visitor reads", () => {
-  it("maps a stored version onto the rules' terms", () => {
-    expect(storageTermsOfRecord({ ...RECORD, countMode: "working" })).toEqual({
-      freeDays: 14,
-      dayCount: "working",
-      standardDailyPence: 300,
-      largeDailyPence: 600,
-      handlingFeePence: 0,
-      effectiveFrom: "2026-10-01",
-    });
+  it("states a working-day count in working days", async () => {
+    findTermsInForce.mockResolvedValue({ ...RECORD, countMode: "working" });
+    await expect(storageTermsTextForVenue(terms, "v1", NOW)).resolves.toMatch(
+      /^Storage is free for 14 working days after your payment clears\./,
+    );
   });
 
   it("reads the terms in force on the London day, as the lot page copy", async () => {

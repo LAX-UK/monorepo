@@ -700,7 +700,7 @@ describe("the collect-by notice on a purchase card", () => {
   describe("under the place's storage terms", () => {
     const terms: StorageTerms = {
       freeDays: 14,
-      dayCount: "calendar",
+      countMode: "calendar",
       standardDailyPence: 300,
       largeDailyPence: 600,
       handlingFeePence: 0,

@@ -76,6 +76,22 @@ export const LEGACY_STORAGE_TERMS: Readonly<StorageTerms> = Object.freeze({
   effectiveFrom: "1970-01-01",
 });
 
+/**
+ * The terms the storage rules read, copied from any stored shape that carries them (a stored
+ * version, the terms a lot was sold under). The one place the fields are listed, so every reader
+ * keeps the same names as `StorageTerms`.
+ */
+export function storageTermsOf(source: StorageTerms): StorageTerms {
+  return {
+    freeDays: source.freeDays,
+    countMode: source.countMode,
+    standardDailyPence: source.standardDailyPence,
+    largeDailyPence: source.largeDailyPence,
+    handlingFeePence: source.handlingFeePence,
+    effectiveFrom: source.effectiveFrom,
+  };
+}
+
 /** The terms a lot is held under: the version recorded when its sale closed, else the legacy terms. */
 export function storageTermsForLot(recorded: StorageTerms | null): StorageTerms {
   return recorded ?? LEGACY_STORAGE_TERMS;

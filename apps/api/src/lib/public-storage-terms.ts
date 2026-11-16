@@ -1,10 +1,7 @@
 import type { Database } from "@auction/db";
 import { collectionPlace, venue } from "@auction/db/schema";
-import { type StorageTerms, formatStorageTerms, londonDateKey } from "@auction/domain";
-import type {
-  ICollectionStorageRepository,
-  StorageTermsRecord,
-} from "@auction/persistence/interfaces";
+import { formatStorageTerms, londonDateKey, storageTermsOf } from "@auction/domain";
+import type { ICollectionStorageRepository } from "@auction/persistence/interfaces";
 import { asc, eq } from "drizzle-orm";
 
 /** What the public reads need of the stored terms: the version in force on a London day. */
@@ -12,18 +9,6 @@ export type StorageTermsInForce = Pick<ICollectionStorageRepository, "findTermsI
 
 /** A collection place and the storage terms a buyer reads for it, in one sentence. */
 export type PlaceStorageTermsDto = { placeName: string; text: string };
-
-/** The stored version as the storage rules read it. */
-export function storageTermsOfRecord(record: StorageTermsRecord): StorageTerms {
-  return {
-    freeDays: record.freeDays,
-    dayCount: record.countMode,
-    standardDailyPence: record.standardDailyPence,
-    largeDailyPence: record.largeDailyPence,
-    handlingFeePence: record.handlingFeePence,
-    effectiveFrom: record.effectiveFrom,
-  };
-}
 
 /**
  * What a buyer reads about the terms in force at one place; `null` when none are set. `closesAt` is
@@ -38,7 +23,7 @@ export async function storageTermsTextForVenue(
 ): Promise<string | null> {
   const day = londonDateKey(closesAt && closesAt > now ? closesAt : now);
   const record = await terms.findTermsInForce(venueId, day);
-  return record ? formatStorageTerms(storageTermsOfRecord(record)) : null;
+  return record ? formatStorageTerms(storageTermsOf(record)) : null;
 }
 
 /** The terms in force today at every place that takes bookings, for the shipping page. */

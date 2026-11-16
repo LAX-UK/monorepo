@@ -995,6 +995,7 @@ export {
   calculateStorageCharge,
   isStoragePence,
   storageTermsForLot,
+  storageTermsOf,
   formatStorageBadge,
   formatStorageDeskLine,
   formatStorageInvoiceLine,
