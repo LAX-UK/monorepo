@@ -23,6 +23,8 @@ import { rowToRecord } from "../../lib/accounting-document-row.js";
 
 /** How many lapsed leases one call settles before it gives up looking for pending work. */
 const MAX_LAPSED_PER_CLAIM = 100;
+/** How long an entity with nothing waiting is left out of the turn order (see `emptyUntil`). */
+export const EMPTY_TURN_MS = 5000;
 
 type Step =
   | { kind: "empty" }
@@ -44,6 +46,13 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
    */
   private readonly served = new Map<string, Map<LegalEntity, number>>();
   private claims = 0;
+  /**
+   * `provider/entity` → clock ms until which that entity's turn is skipped because its narrowed
+   * pick found nothing waiting. Without it, an entity with nothing waiting would cost every claim
+   * a second query. Work that arrives for it is picked up by the plain pick (oldest first) in the
+   * meantime, so this delays at most {@link EMPTY_TURN_MS} of fairness, never the work itself.
+   */
+  private readonly emptyUntil = new Map<string, number>();
 
   constructor(
     private readonly db: Database,
@@ -217,15 +226,20 @@ export class DrizzleAccountingDocumentWorkQueue implements IAccountingDocumentWo
       // Turns: first the entity whose turn it is (its buyer-facing documents only, so its fees
       // never jump ahead of the other entity's invoices), then everything, oldest first. The
       // narrowed pick is the same statement with two more cheap filters, so it costs no more than
-      // the plain one; when that entity has nothing waiting, the plain pick runs after it.
-      let [row] = preferred
-        ? await pick(
-            and(
-              eq(accountingDocument.legalEntity, preferred),
-              notInArray(accountingDocument.kind, ["expense", "transfer"]),
-            ),
-          )
-        : [];
+      // the plain one. When that entity has nothing waiting, the plain pick runs after it, and that
+      // entity is left out of the turn order for EMPTY_TURN_MS so later claims run one query.
+      const emptyKey = `${request.provider}/${preferred}`;
+      const turnSkipped = (this.emptyUntil.get(emptyKey) ?? 0) > now.getTime();
+      let row: typeof accountingDocument.$inferSelect | undefined;
+      if (preferred && !turnSkipped) {
+        [row] = await pick(
+          and(
+            eq(accountingDocument.legalEntity, preferred),
+            notInArray(accountingDocument.kind, ["expense", "transfer"]),
+          ),
+        );
+        if (!row) this.emptyUntil.set(emptyKey, now.getTime() + EMPTY_TURN_MS);
+      }
       if (!row) [row] = await pick();
       if (!row) return { kind: "empty" };
 

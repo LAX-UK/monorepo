@@ -531,6 +531,21 @@ describe.skipIf(!HAS_DB)("accounting persistence (integration)", { timeout: 60_0
         expect(await claimAll(freshQueue(), 3)).toEqual([bid[0], bid[1], fee]);
       });
 
+      it("leaves an entity with nothing waiting out of the turn order for a short while", async () => {
+        await setModes("test_org");
+        const bid = await registerAll(["bid", "bid", "bid"]);
+        const queue = freshQueue();
+        // Bid is served; it is Shop's turn but Shop has nothing waiting, so Bid goes on.
+        expect(await claimAll(queue, 1)).toEqual([bid[0]]);
+        expect(await claimAll(queue, 1)).toEqual([bid[1]]);
+        // A Shop document arrives while Shop's turn is skipped: Bid's oldest still goes first...
+        const [shop] = await registerAll(["shop"]);
+        expect(await claimAll(queue, 1)).toEqual([bid[2]]);
+        // ...and once the pause has passed Shop's turn is tried again, so it is not starved.
+        nowMs += 5001;
+        expect(await claimAll(queue, 1)).toEqual([shop]);
+      });
+
       it("only its own claims count as a turn, not other activity on an entity", async () => {
         await setModes("test_org");
         const [shop0] = await registerAll(["shop"]);
