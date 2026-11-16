@@ -248,16 +248,57 @@ test.describe("lax.art journeys", () => {
     );
     const tabs = page.getByRole("navigation", { name: "Favourites sections" });
     await expect(tabs.getByRole("link", { name: "Saves" })).toHaveAttribute("aria-current", "page");
-    // Sign-in returns here while the page is still settling (a late client refresh or hydration can
-    // swallow an early tap), so retry the tap until the route changes instead of tapping once.
-    await expect(async () => {
-      await tabs.getByRole("link", { name: "Follows" }).click();
-      await expect(page).toHaveURL(/\/account\/favourites\/follows$/, { timeout: 5_000 });
-    }).toPass({ timeout: 30_000 });
-    await expect(tabs.getByRole("link", { name: "Follows" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    // TEMP DIAGNOSTIC (to be removed): log what the tap hits and what the router does.
+    const t0 = Date.now();
+    const log = (...a: unknown[]) => console.log(`[diag +${Date.now() - t0}ms]`, ...a);
+    const short = (u: string) => u.replace("http://localhost:3050", "").slice(0, 160);
+    page.on("console", (m) => log("console", m.type(), m.text().slice(0, 300)));
+    page.on("pageerror", (e) => log("pageerror", e.message.slice(0, 300)));
+    page.on("request", (r) => log("req", r.method(), short(r.url()), r.headers().rsc ?? ""));
+    page.on("response", (r) => log("res", r.status(), short(r.url())));
+    page.on("requestfailed", (r) => log("FAILED", short(r.url()), r.failure()?.errorText));
+    page.on("framenavigated", (f) => f === page.mainFrame() && log("nav", short(f.url())));
+    const follows = tabs.getByRole("link", { name: "Follows" });
+    const snapshot = async (label: string) => {
+      const box = await follows.boundingBox();
+      const info = await page.evaluate((b) => {
+        const x = b ? b.x + b.width / 2 : 0;
+        const y = b ? b.y + b.height / 2 : 0;
+        const a = document.querySelector(
+          'nav[aria-label="Favourites sections"] a[href$="/follows"]',
+        );
+        const describe = (e: Element) =>
+          `${e.tagName}${e.id ? `#${e.id}` : ""}.${String(e.getAttribute("class") ?? "").slice(0, 60)}`;
+        return {
+          stack: document.elementsFromPoint(x, y).slice(0, 5).map(describe),
+          hitIsLink: !!a && a.contains(document.elementFromPoint(x, y)),
+          reactProps: a ? Object.keys(a).filter((k) => k.startsWith("__react")).length : -1,
+          iframes: [...document.querySelectorAll("iframe")].map(
+            (f) =>
+              `${f.src.slice(0, 80)} ${JSON.stringify(f.getBoundingClientRect())} ${getComputedStyle(f).pointerEvents}`,
+          ),
+          fixed: [...document.querySelectorAll("body *")]
+            .filter((e) => ["fixed", "sticky"].includes(getComputedStyle(e).position))
+            .map((e) => `${describe(e)} ${JSON.stringify(e.getBoundingClientRect())}`)
+            .slice(0, 12),
+          scrollY: window.scrollY,
+          htmlClass: document.documentElement.className,
+          bodyStyle: document.body.getAttribute("style"),
+          historyLength: history.length,
+          ready: document.readyState,
+        };
+      }, box);
+      log(label, JSON.stringify({ box, ...info }));
+    };
+    await snapshot("before tap");
+    page.on("load", () => log("load event"));
+    await follows.click();
+    log("clicked");
+    await snapshot("after tap");
+    await page.waitForTimeout(2_000);
+    await snapshot("2s after tap");
+    log("url", page.url());
+    await expect(page).toHaveURL(/\/account\/favourites\/follows$/);
   });
 
   test("dark mode toggle persists across reloads", async ({ page }, testInfo) => {
