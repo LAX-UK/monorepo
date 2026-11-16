@@ -60,6 +60,30 @@ export const sellEnquiry: EnquiryView = {
       createdAt: "2026-11-02T10:02:00.000Z",
     },
   ],
+  replies: [],
+  awaitingReplySince: null,
+};
+
+/** A client's emailed reply, matched by its reply address, with one file named. */
+export const emailReply: EnquiryView["replies"][number] = {
+  id: "r1",
+  receivedAt: "2026-11-03T08:40:00.000Z",
+  subject: "Re: Your enquiry E-1042",
+  body: "Thank you. Tuesday afternoon works for a viewing.\nThe frame has a small chip on the corner.",
+  attachments: [{ name: "corner-detail.jpg", contentType: "image/jpeg", sizeBytes: 2_150_000 }],
+  matchedBy: "token",
+  spfResult: "pass",
+  dkimResult: "pass",
+};
+
+/** The same enquiry after the client replied by email: waiting for an answer. */
+export const repliedEnquiry: EnquiryView = {
+  ...sellEnquiry,
+  status: "in_progress",
+  nextStatuses: ["waiting_on_client", "closed"],
+  version: 4,
+  replies: [emailReply],
+  awaitingReplySince: "2026-11-03T08:40:00.000Z",
 };
 
 export const buyEnquiry: EnquiryView = {
@@ -120,6 +144,7 @@ export const listItem = (patch: Partial<EnquiryListItem> = {}): EnquiryListItem 
   status: "new",
   receivedAt: "2026-11-02T09:14:00.000Z",
   replyDueAt: "2026-11-04T09:14:00.000Z",
+  awaitingReplySince: null,
   version: 3,
   ...patch,
 });

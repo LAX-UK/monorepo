@@ -419,3 +419,46 @@ describe("EnquiryView: history", () => {
     expect(screen.getAllByText("Closed: Not a fit").length).toBeGreaterThan(1);
   });
 });
+
+describe("EnquiryView: replies by email", () => {
+  it("shows each reply as a client message labelled via email, in plain text, with file names only", async () => {
+    const { repliedEnquiry } = await import("./enquiry.fixture");
+    renderView({ enquiry: repliedEnquiry });
+    const section = screen.getByRole("region", { name: "Replies by email" });
+    const log = within(section).getByRole("log", { name: "Email replies from Daniel Price" });
+    expect(within(log).getByText("via email")).toBeInTheDocument();
+    expect(within(log).getByText(/Tuesday afternoon works for a viewing/)).toBeInTheDocument();
+    expect(within(log).getByText("corner-detail.jpg")).toBeInTheDocument();
+    expect(within(log).getByText("JPEG image · 2.1 MB")).toBeInTheDocument();
+    expect(within(log).queryByRole("link")).toBeNull();
+  });
+
+  it("says the client is waiting for an answer, in the header and a notice", async () => {
+    const { repliedEnquiry } = await import("./enquiry.fixture");
+    renderView({ enquiry: repliedEnquiry });
+    expect(screen.getAllByText("Client replied").length).toBeGreaterThan(0);
+    expect(screen.getByText("The client is waiting for an answer")).toBeInTheDocument();
+  });
+
+  it("says plainly when there are no replies by email", () => {
+    renderView();
+    const section = screen.getByRole("region", { name: "Replies by email" });
+    expect(within(section).getByText("No replies by email yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Client replied")).toBeNull();
+  });
+
+  it("lists the reply in the history", async () => {
+    const { repliedEnquiry } = await import("./enquiry.fixture");
+    renderView({ enquiry: repliedEnquiry });
+    expect(screen.getByText("Client replied by email")).toBeInTheDocument();
+    expect(screen.getByText("Matched by its reply address")).toBeInTheDocument();
+  });
+
+  it("shows the replies on a view-only record too", async () => {
+    const { repliedEnquiry } = await import("./enquiry.fixture");
+    renderView({ enquiry: repliedEnquiry, canWork: false });
+    expect(
+      screen.getByRole("log", { name: "Email replies from Daniel Price" }),
+    ).toBeInTheDocument();
+  });
+});

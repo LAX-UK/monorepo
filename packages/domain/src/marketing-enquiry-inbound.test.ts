@@ -28,10 +28,10 @@ describe("isInboundSenderAuthenticated", () => {
 
 describe("enquiryStatusAnswersClient", () => {
   it("is true for waiting on client, closed and converted only", () => {
-    expect(ENQUIRY_STATUSES.filter(enquiryStatusAnswersClient)).toEqual([
-      "waiting_on_client",
+    expect([...ENQUIRY_STATUSES.filter(enquiryStatusAnswersClient)].sort()).toEqual([
       "closed",
       "converted",
+      "waiting_on_client",
     ]);
   });
 });

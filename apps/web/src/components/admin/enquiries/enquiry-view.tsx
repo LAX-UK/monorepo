@@ -9,6 +9,7 @@ import {
   statusSentence,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import { enquiryRecordActions } from "@/lib/admin/enquiries/enquiry-actions";
+import { REPLIES_COPY } from "@/lib/admin/enquiries/enquiry-email-copy";
 import { enquiryTimeline } from "@/lib/admin/enquiries/enquiry-timeline";
 import { dealHref } from "@/lib/admin/private-sales/private-sales.vm";
 import type {
@@ -48,6 +49,7 @@ import { AssignEnquiryDialog } from "./assign-enquiry-dialog";
 import { CloseEnquiryDialog } from "./close-enquiry-dialog";
 import { AttachmentsSection } from "./enquiry-attachments";
 import { EnquiryStatusBadge } from "./enquiry-cells";
+import { AwaitingReplyBadge, EnquiryRepliesSection } from "./enquiry-replies-section";
 import {
   ClientSection,
   MessageSection,
@@ -190,6 +192,10 @@ export function EnquiryView({
       <Notice tone="success" title="Converted to a deal">
         This enquiry now belongs to its deal.
       </Notice>
+    ) : enquiry.awaitingReplySince ? (
+      <Notice tone="warning" title={REPLIES_COPY.awaitingNoticeTitle}>
+        {REPLIES_COPY.awaitingNoticeBody}
+      </Notice>
     ) : undefined;
 
   const replyBadge =
@@ -216,6 +222,7 @@ export function EnquiryView({
         status={
           <>
             <EnquiryStatusBadge status={enquiry.status} />
+            <AwaitingReplyBadge since={enquiry.awaitingReplySince} now={clock} />
             {replyBadge}
           </>
         }
@@ -256,6 +263,7 @@ export function EnquiryView({
       >
         <PrivateSaleSection enquiry={enquiry} />
         <MessageSection message={enquiry.message} />
+        <EnquiryRepliesSection enquiry={enquiry} now={clock} />
         <AttachmentsSection reference={enquiry.reference} attachments={enquiry.attachments} />
         <NotesSection
           notes={enquiry.notes}
