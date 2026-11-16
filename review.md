@@ -61,3 +61,63 @@ The task names two CI failures. The PR body explains only one of them.
   - The 3810 ms merge-queue failure was **not** reproduced locally. These runs do not show it is fixed.
 - **Typecheck and lint are clean.** `tsc --noEmit` on the worker passed, and `biome check` on the file was clean.
 - **PR body:** no AI footer or generated-by line. It is accurate about the #1503 failure. It is incomplete or inaccurate about the merge-queue failure (B1) and slightly overstated in N1.
+
+## Final recheck
+
+Rechecked head `de19803b` (2 commits on base `a811c33b`) after the round-2 fixer. The PR branch was not changed.
+
+**Summary:** the code is ready. The test is now deterministic against both observed failures, and repeated runs are clean. One blocking item is still open, and it is in the PR description only: B1.3. The description still lists only the #1503 run and calls the change "test only". It does not mention the merge-queue failure or the new `vitest.config.ts` project split. Once the description is updated, this can ship. No code change is needed.
+
+### What changed in `de19803b`
+
+- `apps/worker/vitest.config.ts` now defines two vitest projects:
+  - `worker`: every `src/**/*.test.ts` file except the wake test.
+  - `worker-realtime`: only `notification-outbox-wake.integration.test.ts`, with `sequence: { groupOrder: 1 }`.
+- The test file:
+  - waits for the follow-up drain by exact job id;
+  - bounds that wait by the sweep clearance;
+  - includes `active` jobs in the sweep scan;
+  - measures the clearance from the check that passed;
+  - recomputes the test timeout.
+
+### Findings, one by one
+
+| Finding | Status | Evidence |
+|---|---|---|
+| #1503 crash (`undefined` entry from `queue.getJobs`) | **Fixed** | `undefined` entries are filtered before use (`clearOfSweeps`, with a comment). The post-delivery sweep check no longer calls `getJobs`. It reads the `QueueEvents` stream recorded since staging (`ran = events.slice(eventsBefore)…`). No path in the test can dereference a removed job. |
+| Merge-queue failure (`expected 3810 to be less than 3000`, run 43928262155 / job 133513984682) | **Fixed (cause isolated, budget unchanged)** | I confirmed this in the job log: `outbid notice delivered 3810ms after commit` is next to `bid-collection-anonymisation.integration.test.ts (10 tests) 4150ms`. That same file took 275 ms in this PR's CI run. So another file running in parallel on the shared `auction_ci` / Redis stalled at the same moment. The fix is isolation in time: the wake test is in a later vitest group. In vitest 3.2.6 (`node_modules/vitest/dist/chunks/coverage.DfSpMS-b.js:3391-3406`), specs are bucketed by `sequence.groupOrder` and the groups run one after another, each awaited before the next starts. So no other worker file is running while the test measures. CI `test` runs packages with `turbo --concurrency=1`, and the api/web/shop-api suites run in separate jobs with their own services. So nothing else shares the database during the measurement. The queue was already isolated by a per-run Redis `prefix`. |
+| B1.1: explain the 3810 ms failure | **Fixed** | This is in the commit message and the `vitest.config.ts` comment: database/Redis contention from a file running beside the test, and not a sweep. One small inaccuracy: the commit says "no other file stages … notification_outbox rows". In fact `reoffer-clock.integration.test.ts` and `email-outbox-erasure.integration.test.ts` do stage rows. But neither one claims or drains rows, both delete their rows in `afterAll`, and both now finish before the wake test starts. So the claim-oldest-first hypothesis from round 1 cannot reach the wake test any more. |
+| B1.2: show the fix covers it, or fix it | **Fixed** | See the row above. Isolating the test is the approach this review asked for. |
+| B1.3: list both failing runs in the PR body | **Not fixed** | The PR body still names only run 43927432281 / job 133511730810. It still says "Fix (test only…)", omits the `vitest.config.ts` project split, and still says the follow-up is matched "by its bucketed job id". Run 43928262155 / job 133513984682 appears only in the commit message and the config comment. |
+| N1: "once" accepted any later settle job | **Fixed** | The test now waits for `…-settle-<signal bucket + WAKE_SETTLE_DELAY_MS/WAKE_BUCKET_MS>`, which is this signal's own follow-up, by exact id. The divisibility of the two constants is asserted. |
+| N2: follow-up wait not bounded by sweep clearance | **Fixed** | The wait timeout is `clearUntil - Date.now()`, where `clearUntil` is the passing clearance check + `SWEEP_CLEARANCE_MS`. The "no sweep ran" window is therefore covered by construction. |
+| N3: test timeout / "≤ ~70 s" | **Fixed in code** | The timeout is `CLEAR_OF_SWEEPS_TIMEOUT_MS + CI_DEADLINE_MS + SWEEP_CLEARANCE_MS`, which is the real worst case. The PR body still says "≤ ~70 s". That is a wording issue, and B1.3's body edit covers it. |
+
+### Not loosened, nothing weakened
+
+- The latency assertion is still `latencyMs < DELIVERY_BUDGET_MS` with `DELIVERY_BUDGET_MS = 3_000`, measured from commit to `notification.createdAt`.
+- The diff against base touches only `apps/worker/vitest.config.ts` and the test file. There is no production code in it.
+- There are no new skips. Suite totals are unchanged at 2175 passed / 462 skipped (2637), both locally and in CI.
+- `tsc --noEmit` (worker) passes. `biome check` on both changed files is clean.
+
+### Repeated runs (local Postgres 16 + Redis 7, `auction_ci` migrated and `db:roles` applied, CI env vars)
+
+| Mode | Runs | Passed | Target delivery (ms) |
+|---|---|---|---|
+| Wake test file alone (`vitest run <file>`, 6 tests) | 20 | **20/20** | 1550–1595 |
+| Full worker suite (`vitest run`, both projects, `worker` files in parallel, then `worker-realtime`) | 5 | **5/5** (2175 passed / 462 skipped each) | 1558–1590 |
+| Stress: wake file in its own process, started at the same time as a separate `vitest run --project worker` over the other 41 worker integration files (the old contention, which the project split now prevents) | 5 | **5/5** for the wake test | 1577–1600 |
+
+- In every full-suite run, the `worker-realtime` results print after every `worker` result. That matches the group ordering in the vitest source.
+- Stress-run caveat: my harness did not wait for each background "others" process to finish, so up to three copies of the other-files batch overlapped. In 2 of those 5 runs, `src/finance/accounting/shop-history-books.integration.test.ts` failed 2 tests. That was caused by overlapping copies of the same file on one database, not by this PR. The wake test passed in all 5.
+- PR CI at `de19803b` (run 43945409717): `ci-result` success. In `test` job 133574044773, `worker-realtime` ran `notification-outbox-wake.integration.test.ts` (6 tests) with `outbid notice delivered 1573ms after commit`.
+
+### Remaining before merge
+
+1. Update the PR description:
+   - list run 43928262155 / job 133513984682 and its cause (contention with `bid-collection-anonymisation` on the shared DB: 4150 ms against 275 ms normally);
+   - describe the `vitest.config.ts` `worker-realtime` project with `groupOrder: 1`;
+   - drop "test only" and "by its bucketed job id";
+   - fix the "≤ ~70 s" wait estimate.
+
+No code change is needed.
