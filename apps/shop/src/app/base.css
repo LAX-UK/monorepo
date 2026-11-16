@@ -158,6 +158,8 @@
 
 :root {
   --auth-column: 528px;
+  /* The kit empty-state drawing (`text-lax-plate`) in the product accent, both themes. */
+  --lax-plate-ink: var(--color-product-accent);
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   /* Warm paper: the mat behind artwork and the gallery-wall bands. The family's shared paper

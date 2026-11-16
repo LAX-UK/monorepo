@@ -15,18 +15,34 @@ describe("EmptyState", () => {
     expect(screen.getByRole("heading", { level: 3 })).toBeInTheDocument();
   });
 
-  it("is the page's h1 in the page layout, whatever level is passed", () => {
+  it("is the page's h1 in the page layout by default", () => {
     const { container } = render(
       <EmptyState
         layout="page"
         illustration="ticket"
         title="We can't find that page"
         description="The link may be mistyped."
-        headingLevel="h3"
       />,
     );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("We can't find that page");
     expect(container.querySelector("[data-layout='page']")).not.toBeNull();
+  });
+
+  it("keeps the level it is given in the page layout, so a page with its own h1 keeps one h1", () => {
+    render(
+      <main>
+        <h1>Basket</h1>
+        <EmptyState
+          layout="page"
+          illustration="parcel"
+          title="Your basket is empty"
+          description="Browse the shop."
+          headingLevel="h2"
+        />
+      </main>,
+    );
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Your basket is empty");
   });
 
   it("shows the askew drawing and announces itself in the error variant", () => {
@@ -73,5 +89,20 @@ describe("EmptyState", () => {
       <EmptyState size="compact" illustration="frame" title="Empty" description="Nothing." />,
     );
     expect(container.querySelector("svg")?.getAttribute("class")).toContain("w-20");
+  });
+});
+
+describe("EmptyState product options", () => {
+  it("draws the plate in the plate ink, which a product may point at its accent", () => {
+    const { container } = render(<EmptyState illustration="frame" title="t" description="d" />);
+    expect(container.querySelector("[aria-hidden]")?.className).toContain("text-lax-plate");
+  });
+
+  it("renders a paragraph title when the page already has its headings", () => {
+    const { container } = render(
+      <EmptyState illustration="frame" title="t" description="d" headingLevel="p" />,
+    );
+    expect(container.querySelector("p")?.textContent).toBe("t");
+    expect(screen.queryByRole("heading")).toBeNull();
   });
 });

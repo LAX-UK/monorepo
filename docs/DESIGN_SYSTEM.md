@@ -142,7 +142,7 @@ Counts are files importing the primitive (excluding tests). Rows from the origin
 | Follow row | `@auction/marketing-ui` `MarketingFollowRow` | — | — | 1 | Followed artists |
 | Enquiry list item | `@auction/marketing-ui` `MarketingEnquiryListItem` | — | — | 1 | Default, artwork and compact variants |
 | Success state | `@auction/marketing-ui` `MarketingSuccessState` | — | — | 2 | Animated check, static under reduced motion (enquiry sheets) |
-| Status state motif | `@auction/marketing-ui` `MarketingStatusState` | 1 | 1 | 2 | New `search-remove` motif for empty search |
+| Status state | `@auction/ui/lax` `EmptyState` (with `MarketingStatusAction` from `@auction/marketing-ui` for actions) | 1 | 1 | 2 | The shared empty state with each product's accent; `search-remove` maps to the search drawing |
 | Feature card | `@auction/marketing-ui` `MarketingFeatureCard` | — | — | 1 (#551) | `split`, `vertical`, `text` variants: collector hub, Art hub |
 | Step card | `@auction/marketing-ui` `MarketingStepCard` | — | — | 1 (#551) | How to buy |
 | Audio player | `@auction/marketing-ui` `MarketingAudioPlayer` | — | — | 3 (#552) | Art hub podcast, stories podcast tab, podcast articles |

@@ -10,11 +10,16 @@ export default function ArtworkDetailError({ reset }: { reset: () => void }) {
       eyebrow="Catalogue unavailable"
       title="Artwork unavailable"
       description="We could not load this work. The catalogue may be temporarily unavailable."
-      motif="alert"
-    >
-      <Button type="button" className={shopButtonClassName("default", "standard")} onClick={reset}>
-        Try again
-      </Button>
-    </ArtworkDetailState>
+      illustration="askew"
+      actions={
+        <Button
+          type="button"
+          className={shopButtonClassName("default", "standard")}
+          onClick={reset}
+        >
+          Try again
+        </Button>
+      }
+    />
   );
 }
