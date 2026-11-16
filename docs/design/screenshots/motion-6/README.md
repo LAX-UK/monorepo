@@ -23,3 +23,26 @@ Pages: `shop-home` (Shop home, the cover), `shop-print` (a Shop print page), `ar
   On main the Shop print's work (priority image), the lax.art hero (photograph and panel) and the
   sign-in panel's content are blank; on this branch each is drawn. Shop home is not included: its
   cover was already drawn on main's first frame and is unchanged.
+
+
+## Clips (`clips/`)
+
+Short webm recordings of the moving states (MO14 "Looks"), a few seconds each, recorded with
+Playwright video at 1440 or 375 px wide. They are **not** recorded from the live routes: the
+lax.art home and Shop grids need the seeded API stack, which was not available when these were
+made. Each clip loads a minimal page that uses this branch's compiled lax.art stylesheet
+(`apps/art/.next/static/css`, production build) and the real class names and markup of the
+components: the hero panel and drift classes from `ArtHomeHero`, and `.lax-image-fade`,
+`.lax-card` and `.lax-card-media` with the `opacity-100` on load that `MediaImage` adds. The
+pictures are generated placeholders (served with a 900ms delay so the fade can be seen), and the
+hero is the section and panel only, without the header.
+
+- `art-home-hero-1440.webm`, `art-home-hero-375.webm`: the hero panel is drawn from the first
+  frame and settles up 1rem over lax.art's `--art-hero-panel-duration` (900ms); the photograph
+  drifts.
+- `lazy-fade-grid-1440.webm`: a grid far below the fold is scrolled into view; each lazy picture
+  fades in over 200ms once it has loaded.
+- `lazy-fade-in-hovered-card-1440.webm`: the pointer is over a card while its lazy picture loads,
+  so the zoom and the fade run together.
+- `reduced-motion-hero-and-lazy-fade-1440.webm`: `prefers-reduced-motion: reduce`. The hero panel
+  and drift do not move; the lazy picture fades over 120ms.
