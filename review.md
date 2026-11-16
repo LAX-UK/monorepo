@@ -1,106 +1,123 @@
 Verdict: FIX FIRST
 
-# Final recheck of PR #1485 (motion-loading, motion system 5/8: loading)
+# Last recheck of PR #1485 (motion-loading, motion system 5/8: loading)
 
-Head reviewed: `debb8274` (merged locally with main `8ed75236` as `a4497ecc` for builds; not pushed). Judged against `docs/design/motion.md` on main: MO12, MO13, MO14 and Build item 5. Previous review: `e54eefa5` on this branch.
+- Head reviewed: `e77e5634`. Its main base is `46c9bdac` (motion 4/8 hover and press, #1486). Main has since moved one docs-only commit to `618ab329` (`docs/ui/art-figma-inventory.md`).
+- Previous recheck: `ee21fa31` on this branch.
+- Judged against `docs/design/motion.md` MO12–MO14 and the PR body's "Changes after review (round 2)".
 
-All four earlier blocking findings are fixed. One new blocking item remains: a staff route's JavaScript grows. The budget script does not measure `/admin`, so CI cannot see it. The PR body discloses it, but MO14 says "no growth on any route".
+The previous blocker (staff route JS) is fixed: every route, including `/admin` and `/dev`, is equal to or lower than main by code. One new blocking item comes from round 2 itself. The new `sales-live` e2e case fails in CI on every viewport and scheme, so `browser-gates` is red. It also stops the gates that come after it, including the Shop loading screens.
 
 ## Blocking
 
-1. **BLOCKING: route JS grows on one Bid staff route.** It is outside the budget script's scope, but it is real.
-   - I built main `8ed75236` and head merged with main, at the same path, with `SENTRY_RELEASE` and `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` pinned and the CI placeholder DSNs set. I then summed gzip bytes per route from `app-build-manifest.json`.
-   - `/admin/(platform)/compliance/source-of-funds/[id]/page`: **312,888 → 313,797 B (+909 B gzip, about +0.9 KB)**. The same route measured with root main files plus page files gives +894 B.
-   - Cause: a new shared chunk, `static/chunks/60472` (3,313 B gzip), holds the kit `Switch` and the LAX `Skeleton` (`lax-skeleton block rounded-lax-badge bg-lax-neutral-bg`, from `packages/ui/src/lax/skeleton.tsx:11`). The page's own chunk shrinks only 15,923 → 13,517 B. The same chunk is added to 4 staff detail layouts (artists, categories, venues, legal-entities; +681 to +924 B on the layout entry). Their pages net only +5 to +7 B.
-   - Every other staff and dev route moves by at most +12 B (`/dev/kit` +1 B). That is consistent with build-hash noise.
-   - The PR body says this itself ("webpack split some LAX kit modules (Switch, the LAX `Skeleton`) into a new shared chunk on 20 staff detail routes (+0.6 to 0.86 KB there); staff loading is motion PR 7"). MO14 (`docs/design/motion.md:63`) reads "Route JS: no growth on any route", and the brief for this recheck says any real growth is blocking.
+1. **BLOCKING: the new `sales-live` loading case fails in CI, so `browser-gates` is red.**
+   - Case: `apps/web/e2e/loading-screens.spec.ts:21-23` (`/terms` → `/sales?tab=live`).
+   - CI: run 43853085965, job 133250553534 (`browser-gates`), step "Run Bid loading screens" (`.github/workflows/e2e-pr.yml:304-307`).
+   - Result: **4 failed, 28 passed.** Every failure is `sales-live` (1440/375 × light/dark), each after a retry.
+   - Error: `locator.waitFor: Test timeout of 90000ms exceeded … waiting for locator('.lax-skeleton').first()` at `packages/e2e-utils/src/loading-check.ts:178`. After the navigation, no loading screen ever appears.
+   - The PR body says the author "could not run the seeded stack here; CI's `browser-gates` runs the new case". CI ran it, and it fails.
+   - **The failure stops the later gates.** These steps in the same job did not run on this head:
+     - "Run Shop loading screens" (`e2e-pr.yml:308-312`)
+     - Shop buyer flow (`:313`)
+     - Shop V1 portal smoke (`:322`)
+     - Shop home without JavaScript (`:329`)
+     - LAX Admin accessibility and role checks (`:334-340`)
+
+     So the Shop basket and Shop swap assertions have no CI result on this head.
+   - The other Bid cases pass, and their numbers are now in the log (non-blocking item 4 from the last recheck works):
+     - `home`, `results`, `artists`, `press`, `search` and `about`: `swapShift=0.0000 skeletonShift=0.0000` at all four combinations.
+     - `sales` (not asserted): 1.42 / 0.71 / 2.0 / 2.0.
+   - Likely cause, not verified:
+     - The hold matches on pathname (`loading-check.ts:58-73`), and the `/sales` case passes with the same helper. That suggests the router does not show `sales/(index)/loading.tsx` for a navigation to the same pathname with a query.
+     - The likely reason is that the `kind: "auto"` prefetch of `/sales?tab=live` (`:85-104`) either does not answer before the navigation, or answers with the full page.
+     - The case needs one run on the seeded stack with a trace (the trace and screenshot are in the `web-pr-playwright-report` artifact of that run).
    - Fix, either of:
-     - Make the class change chunk-neutral: for example, keep the LAX `Skeleton` module's dependency shape as on main, or ensure the split does not happen, and show source-of-funds detail equal or lower.
-     - Get an explicit owner decision that `/admin` is out of MO14's scope for this PR (the budget config already ignores it) and record it in the PR.
+     - Make the case show the loading screen and pass on CI, for example by navigating to a pathname the redirect does not cover.
+     - Remove the case, and keep the `/sales` swap as `swapNotAsserted` with the follow-up, as it was in the previous head.
+
+     Then `browser-gates` must be green with the Shop loading step run.
 
 ## Non-blocking
 
-2. **Bid `/sales` swap is not asserted.** `apps/web/e2e/loading-screens.spec.ts:14` (`swapNotAsserted`).
-   - The reason is real: `/sales` redirects to the live tab while a sale is live (`apps/web/src/lib/marketing/load-sales-browse-page.ts:140`). The PR measures the same 1.42 at 1440 on main.
-   - But the sales list loading screen's swap now has no gate in CI at all. A second case targeting `/sales?tab=live` (`holdNavigation` matches on pathname, so the hold still applies) would measure the screen visitors actually get. Add it with the redirect follow-up.
-3. **The kit exports test code.** `packages/ui/package.json:34` exports `./e2e/loading-check` (Playwright helpers) from the UI kit's public exports. It works and removes the cross-app import, but a dedicated test-utils entry or package would keep test code out of the kit surface. The helper's header comment still points at `apps/web/e2e/helpers/motion-check.ts` (`packages/ui/src/e2e/loading-check.ts:16`); it is a comment only, not an import.
-4. **I could not measure the Shop basket swap on main myself.** CI asserts swap ≤ 0.1 on the seeded basket with an item at 1440 and 375, light and dark (16/16 passed). That makes 375 better than main's 0.205 by construction. At 1440, "not worse than main's 0.033" rests on the PR's own number (0 after). The CI annotation that holds the actual value is not in the log. Printing `result.swapShift` to stdout in `defineLoadingScreenTests` would make the numbers auditable from CI logs.
-5. **Missing MO14 evidence.** There are no short recordings of moving states (MO14 "Looks") and no Lighthouse run. The PR names the post-deploy Lighthouse workflow as the check. Acceptable for a loading-only PR, but note it.
-6. **Follow-ups listed in the PR body.** Hand-rolled `animate-pulse` placeholders remain in palette, lot queue, quick-look, lot-card bidder state and three LAX Account cards. Build item 5 names the loading screens only, so this is fine as a follow-up.
+2. **The policy hub loading screen's links are plain anchors** (`apps/web/src/components/marketing/policy-hub-loading-shell.tsx:23`). This keeps `next/link` out of the `loading` entry (−1.4 KB). A click on a policy link while the skeleton is up does a full document load instead of a client navigation. The window is short and the markup and classes match `LegalHub`, so this is fine. Note it in case someone "fixes" it back to `LegalHub`.
+3. **The `/sales` redirect follow-up stands.** It is listed in the PR body, and the `/sales` case stays `swapNotAsserted` (`loading-screens.spec.ts:14-15`). If `sales-live` is dropped (blocking 1), the sales list loading screen's swap is again unasserted in CI, as it was in the last recheck.
+4. **MO14 recordings and Lighthouse** are still not attached. The PR names the post-deploy Lighthouse workflow as the check. This is unchanged from the last recheck, and acceptable for a loading-only PR.
+5. **Hand-rolled `animate-pulse` placeholders** in palette, lot queue, quick-look, lot-card bidder state and three LAX Account cards. These are listed follow-ups, as before.
 
 ## Verified
 
-- **(1) e2e tag check.**
-  - Each spec has its own tagged `test.describe`: `apps/web/e2e/loading-screens.spec.ts:7`, `apps/shop/e2e/loading-screens.spec.ts:21`, `apps/art/e2e/loading-screens.spec.ts:6`.
-  - `pnpm lint:e2e-tags` passes.
-  - The checker is unchanged (no diff under `apps/web/scripts` or `scripts`).
-  - Mutation: removing `@optin` from the Bid spec's describe makes the checker fail (exit 1), so it is not weakened.
-- **(2) Unit suites.**
-  - LAX Account run locally: 1071/1071 passed, 118 files (`apps/account/src/components/time-zone-section.test.tsx:54` now expects `lax-skeleton`).
-  - CI `test`, all `web vitest (1–8/8)`, `api`, `shop-api`, `ui-chromium` and `static-checks` are green on `debb8274`, and `ci-result` is success. All 41 check runs succeeded.
-- **(3) Route JS on budget routes: equal or lower.**
-  - Same-job CI evidence (run 43825559224, job 133158461181, at `ff213b82`):
-    - The workflow (`git show 49a5d5bf`) checks out main, then the PR merge commit, in one job at one path. It pins `SENTRY_RELEASE=route-js-same-job` and one `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` (both visible in the step env), runs `turbo build --force` for web, shop, art and account, and runs `check-route-js-budget.mjs --all`.
-    - I re-parsed both "All routes" tables from the log myself. Its column parsing is correct (size, frame, page, duplicate count and KB). Both sides have 216 routes with the same set, 0 higher on any column, and 74 lower.
-    - The workflow file was removed again in `debb8274`.
-  - Byte-level, my local build (pinned, same path): 331 routes on both sides. On every route in the budget table, gzip bytes are equal or lower (287 routes lower, down to −100 B).
-  - The `check-route-js-budget.mjs --all` tables from these builds also show 216/216 routes with none higher. Tracked ratchets: Home 394.5 → 394.4, Sales list 442.8 → 442.8, Lot 467.4 → 467.4, About 344.9 → 344.5, Terms 341.9 → 341.4 KB.
-  - Head's unpinned CI build (job 133166506669) shows +0.1 KB against main's earlier unpinned CI on some frames (listing/public frame 337.3, lot 467.5). The pinned comparisons on both CI and local show those are build-ID noise (the Sentry release defaults to the commit SHA, plus debug IDs), not code.
-  - Budgets, baselines (`scripts/route-js-baseline.json`), `route-js-budgets.json` and `scripts/compositor-allowlist.json` are untouched (no diff).
-- **(4) Swap shift against the seeded stack.**
-  - The loading specs are no longer only opt-in in CI.
-    - `e2e-pr.yml:300-312` runs the Bid and Shop specs after seeding the Shop catalogue.
-    - `art-e2e-pr.yml:162-166` sets `PLAYWRIGHT_LOADING_CHECK=1`.
-  - CI on `debb8274`:
-    - Bid: 28/28 passed (`browser-gates`, job 133166319202).
-    - Shop: 16/16 passed, including basket with an item at 1440/375, light/dark.
-    - lax.art: 20/20 passed on chromium-desktop (`art-browser-gates`, job 133166157039). The 20 chromium-mobile duplicates are skipped by design (`loading-check.ts:265`).
-  - Each test asserts:
-    - skeleton-phase shift `=== 0` (`packages/ui/src/e2e/loading-check.ts:296`)
-    - opacity-only keyframes
-    - swap ≤ 0.1 (`:302`)
-  - Method checked:
-    - `holdNavigation` holds only the non-prefetch RSC request (`:58-73`).
-    - The click is real input, so the old-page → skeleton swap is excluded as in a real visit.
-    - Shift is counted from first skeleton through 2.2 s hold, release, the screen's own block detaching, network idle and 1 s settle.
-    - The swap-end condition now tracks the loading screen's own block, not "no `.lax-skeleton` left".
-    - The Shop basket fixture adds a real line (`apps/shop/e2e/loading-screens.spec.ts:11-19`) and fails if it cannot.
-- **Mutation tests (my own runs, Chromium, `LAX_REQUIRE_CHROMIUM=1`, `skeleton-resolved` + `loading-screens`).** Every mutation below is caught:
-  - Pulse easing `linear` instead of `var(--lax-ease-pulse)`: 7 failed.
-  - `ease-in-out`: 7 failed.
-  - The literal `cubic-bezier(0.4, 0, 0.6, 1)` (same value, not the token): 1 failed.
-  - `@import "./skeleton.css"` removed from `packages/ui/src/lax/theme.css:19`: 1 failed.
-  - The import pointed at a missing file: 1 failed.
-  - `backwards` dropped from the fade-in (`skeleton.css:30`): 6 failed.
-  - Pulse kept under OS reduce: 1 failed.
-  - Kit `MediaPlaceholder` back to `animate-pulse`: 1 failed.
-  - Connect shell back to `animate-pulse`: 1 failed.
-  - `--lax-ease-pulse` value changed in `lax-system.css:164`: the branding drift test fails (1 of 32).
-  - Unmutated: `skeleton-resolved`, `loading-screens` and `motion-resolved` pass 124/124 with none skipped.
-- **Connect shell and media placeholder.** Both are on the shared skeleton: `apps/web/src/components/connect/connect-components-shell.tsx:28` and `packages/ui/src/components/ui/media-placeholder.tsx:68` (`loading && "lax-skeleton"`). `.lax-skeleton` has no infinite animation under reduce (`skeleton.css:34-44`, with Bid's `force-reduce` at `:47-54`), so neither loops under reduced motion.
-- **No cross-app imports.** The Bid, Shop and lax.art specs import `@auction/ui/e2e/loading-check`. No file imports `../../web/e2e/...`.
-- **Lenis untouched.** No Lenis file in the 55-file diff. No `blocking="render"`, Speculation Rules or new `transition-all`.
-- **Compositor lint.** `pnpm lint:compositor` reports "compositor-only motion: ok" and its rule tests pass.
-- **Spec match.**
-  - MO12: one skeleton, a 150 ms delay with backwards fill, fade, a 1.6 s opacity-only pulse, no shimmer, no page spinners.
-  - MO13: static under reduced motion; the public fade is ≤150 ms; staff and LAX Account are instant; `force-allow` and `force-reduce` are honoured.
-  - Build item 5: Bid/Shop/lax.art loading screens, Bid home shaped like home, and the lax.art frozen shimmer and reduced-motion pulse fixed. All present.
-- **Screenshots opened:**
-  - After-review Bid policy hub and Shop basket at 1440 and 375, light and dark.
-  - The Bid 1440 sheet and the lax.art 375 sheet.
-  - The policy hub draws the real policy list beside a screen-tall document; the basket draws one line plus the summary panel in the checkout grid.
-  - Dark mode has correct contrast. Every screen is in its page's shape.
-- **Commits.** No Co-Authored-By, Claude-Session or generated-by trailers in the PR commits.
+- **(1) Staff route JS: fixed. Every route is equal to or lower than main.**
+  - **Builds.** I built main `46c9bdac` and head `e77e5634` one after the other in the same worktree path (`/home/user/rbuild`).
+    - Command: `turbo run build --force --env-mode=loose` for `@auction/web`, `@auction/shop`, `@auction/art` and `@auction/account`.
+    - Pinned: `SENTRY_RELEASE=review-pinned` and one `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, plus CI's placeholder DSNs (`ci.yml:1028-1031`) and `NODE_OPTIONS=--max-old-space-size=6144`.
+    - 41/41 tasks on both.
+  - **Method.** Gzip bytes (level 9) summed per entry over every JS file in each app's `app-build-manifest.json`. That is 774 entries on both sides, the same set, with every `/admin` and `/dev` route included.
+  - **Previous blocker:**
+
+    | Entry | Main | Head | Δ |
+    |---|---|---|---|
+    | `/admin/(platform)/compliance/source-of-funds/[id]/page` | 312,807 | 312,786 | **−21** |
+    | `…/source-of-funds/[id]/loading` | 244,321 | 244,299 | −22 |
+    | `/admin/(platform)/legal-entities/[id]/layout` | 327,836 | 327,820 | −16 |
+    | `/admin/(platform)/artists/[id]/layout` | 195,987 | 195,988 | +1 (runtime, see below) |
+    | `/admin/(platform)/categories/[id]/layout` | 195,988 | 195,989 | +1 (runtime) |
+    | `/admin/(platform)/venues/[id]/layout` | 195,991 | 195,992 | +1 (runtime) |
+    | `/dev/kit/page` | 306,127 | 306,119 | −8 |
+
+  - **The shared chunk is gone.** Only one chunk file exists on one side alone: main's `static/chunks/58710` (3,332 B). It is used only by the five `/(marketing)/sell/*` pages. On head, webpack inlines it into those page chunks, and the routes net −252 to −256 B. No new shared chunk appears on head.
+  - **All 774 entries.**
+    - Raw sums: 362 at +1 B, 344 lower, 68 equal.
+    - With the webpack runtime left out: **0 higher, 344 lower, 430 equal.**
+    - Every +1 B is Bid's `webpack-*.js` runtime (3,721 → 3,722 B gzip). It is byte-for-byte the same length on both sides (7,908 B raw), with the same chunk-ID set. It differs only in:
+      - the Sentry debug ID;
+      - one async chunk's content hash (`31249`);
+      - the order of two entries in the chunk-URL map;
+      - one minifier-local name (`u` → `b`).
+
+      That is build-ID noise, not code. Only one other file is higher than on main: the five `/sell/*` page chunks that absorbed `58710`, a net decrease as above.
+  - **`check-route-js-budget.mjs --all` from the same builds:** no group, route or ratchet is higher.
+    - Home 394.4 → 394.4, Sales list 442.7 → 442.7, Sale page 478.7 → 478.6, Lot page 467.3 → 467.3, About 344.8 → 344.8, Terms 341.8 → 341.8 KB.
+    - Shop public 520.4 → 520.3; LAX Account 436.0 → 435.9; Bid listing duplicates 22.2 → 22.1 KB.
+  - **Untouched:** `scripts/`, `route-js-budgets.json`, `scripts/route-js-baseline.json` and `scripts/compositor-allowlist.json` have no diff between `46c9bdac` and `e77e5634`.
+- **(2) How the fix works.**
+  - The LAX `Skeleton` is back to a one-line module: `packages/ui/src/lax/skeleton.tsx:5` renders `lax-skeleton lax-bar`. The kit `SparklineSkeleton` renders `lax-skeleton lax-wave` (`packages/ui/src/lax/sparkline.tsx:124`).
+  - `.lax-bar` and `.lax-wave` sit in `@layer components` (`packages/ui/src/lax/skeleton.css:63-75`), so a caller's utility still wins.
+  - The values match the old utilities. `--lax-radius-badge` and `--lax-neutral-bg` are the same variables `rounded-lax-badge` and `bg-lax-neutral-bg` resolved to (`packages/ui/src/lax/theme.css:50,94`).
+  - Every app that renders these components loads `skeleton.css` through `@auction/ui/lax-theme.css`: web, shop, art, account and shop-admin `globals.css` / `base.css`.
+  - **Mutation (my run):** removing the `@layer components` wrapper makes `skeleton-resolved.test.ts` fail (1 of 16). The case is at `skeleton-resolved.test.ts:303`.
+- **(3) Main merge (motion 4/8).** `2b9dd568` is a normal two-parent merge (`debb8274`, `46c9bdac`). Both intents are kept in every conflict:
+  - `packages/ui/src/lax/theme.css:19-20` imports both `skeleton.css` and `hover-press.css`.
+  - `packages/ui/src/test/motion-browser.ts` exports both `SKELETON_SOURCE` and `HOVER_PRESS_SOURCE`.
+  - The `ci.yml` `ui-chromium` job runs `motion-resolved`, `hover-press-resolved` and `skeleton-resolved` (`ci.yml:414`).
+  - `docs/DESIGN_SYSTEM.md` keeps the `--lax-motion-lift` row, the hover/press paragraph, the skeleton token rows and the skeleton paragraph.
+  - The diff against main removes no `lax-card*`, `lax-press`, `MARKETING_CARD_*` or `hover-press` usage.
+- **(4) Kit tests are green.**
+  - Locally, with `LAX_REQUIRE_CHROMIUM=1`, `motion-resolved`, `hover-press-resolved`, `skeleton-resolved` and `loading-screens` pass: **176/176**.
+  - `@auction/ui` `src/lax/`: 33 files, 342 tests passed.
+  - CI on `e77e5634`: `ui-chromium`, `test`, `static-checks`, `build`, all `web vitest (1–8/8)`, `api`, `shop-api`, `docker-images` and `ci-result` succeeded. `art-browser-gates` and `account-browser-gates` succeeded. `browser-gates` failed (blocking 1).
+- **(5) The e2e helper is out of the kit's exports.**
+  - `packages/ui/package.json` no longer exports `./e2e/loading-check`.
+  - The helper is in the private, test-only `@auction/e2e-utils` package (`packages/e2e-utils/package.json`, `./loading-check` → `src/loading-check.ts`).
+  - It is a `workspace:*` devDependency of web, shop and art (`apps/web/package.json:89`, `apps/shop/package.json:39`, `apps/art/package.json:40`).
+  - The specs import `@auction/e2e-utils/loading-check` (each `e2e/loading-screens.spec.ts:1`).
+  - The stale `motion-check.ts` header reference is gone (`packages/e2e-utils/src/loading-check.ts:3-18`).
+- **(6) `swapShift` is printed.** `packages/e2e-utils/src/loading-check.ts:297-298` logs `[loading-check] <product> <case> <viewport> <scheme>: swapShift=… skeletonShift=… blocks=…`, and the lines are in the CI log (see blocking 1). `swapNotAsserted` cases are tagged and annotated (`:303-306`); every other case still asserts swap ≤ 0.1 (`:308`).
+- **(7) `/sales?tab=live` case.** It was added as asked (`apps/web/e2e/loading-screens.spec.ts:17-24`), but it fails in CI (blocking 1).
+- **Lenis untouched.** No Lenis file is in the diff from `46c9bdac` to `e77e5634`, and no `lenis` string either.
+- **Compositor lint passes.** `pnpm lint:compositor` reports "compositor-only motion: ok" and its rule tests pass 17/17. `pnpm lint:e2e-tags` reports ok, and the `@optin` describes are intact.
+- **Commits.** The four new PR commits (`b3216742`, `fd80388d`, `3f3a965f`, `e77e5634`) and the merge have no Co-Authored-By, Claude-Session or generated-by trailers.
 
 ## Commands run
 
-- `pnpm install --frozen-lockfile`; `pnpm -r --filter './packages/**' build`.
-- `pnpm lint:e2e-tags` (plus the untagged-describe mutation); `pnpm lint:compositor`.
-- `pnpm --filter @auction/account exec vitest run --maxWorkers=3`: 1071 passed.
-- `LAX_REQUIRE_CHROMIUM=1 vitest run src/lax/skeleton-resolved.test.ts src/lax/loading-screens.test.ts src/lax/motion-resolved.test.ts`: 124 passed, plus the 10 mutations above, each reverted.
-- `@auction/branding` `tests/lax-motion.test.ts` with the token mutation.
-- Builds:
-  - `turbo run build --force --env-mode=loose` for web, shop, art and account at main `8ed75236` and at head merged with main `a4497ecc`, same path, pinned release, server-action key and placeholder DSNs.
-  - `check-route-js-budget.mjs --all` on both, plus per-route gzip byte sums from `app-build-manifest.json`.
-  - A second main build of apps/web only, to diff chunks on the staff route.
-- CI logs read: `build` (133166506669), the same-job comparison (133158461181), `browser-gates` (133166319202) and `art-browser-gates` (133166157039).
+- `git worktree add /home/user/rbuild` (both builds at this one path); `pnpm install --frozen-lockfile`.
+- `turbo run build --force --env-mode=loose --filter=@auction/{web,shop,art,account}`, pinned as above, at `46c9bdac`, then at `e77e5634`.
+- `node scripts/check-route-js-budget.mjs --all` after each build.
+- A Python per-entry gzip sum over `app-build-manifest.json` for all four apps, with the runtime left out and debug IDs and hashes normalised. A per-file diff to find the +1 B source and `58710`.
+- In a head worktree:
+  - `pnpm lint:compositor`
+  - `pnpm lint:e2e-tags`
+  - `pnpm --filter @auction/ui exec vitest run src/lax/`
+  - `LAX_REQUIRE_CHROMIUM=1 vitest run` on the four Chromium suites
+  - the `@layer` mutation, reverted
+- `git show --cc 2b9dd568` for the conflict resolutions.
+- CI check runs for `e77e5634` and the failed `browser-gates` job log (run 43853085965, job 133250553534).
