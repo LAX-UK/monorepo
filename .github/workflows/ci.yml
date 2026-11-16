@@ -1054,7 +1054,9 @@ jobs:
 
       # The base is the main commit GitHub merged this PR onto for the run (the first parent of the
       # test merge commit it checks out), so the table shows this PR's change and nothing else.
-      # Only apps this run built are compared, and only those that exist at the base.
+      # Only apps this run built are compared, and only those that exist at the base
+      # (scripts/route-js-size-base.mjs, tested). The measuring scripts are copied out of the
+      # checkout first: the base build below checks other commits out in place.
       - name: Route JavaScript base
         id: route_js_base
         if: github.event_name == 'pull_request'
@@ -1064,36 +1066,33 @@ jobs:
           else
             base_sha=$(git merge-base HEAD main)
           fi
-          node -e '
-            const fs = require("node:fs");
-            const { execFileSync } = require("node:child_process");
-            const [headReport, base] = process.argv.slice(1);
-            const apps = Object.keys(JSON.parse(fs.readFileSync(headReport, "utf8")).apps).filter((app) => {
-              try { execFileSync("git", ["cat-file", "-e", `${base}:${app}/package.json`], { stdio: "ignore" }); return true; }
-              catch { return false; }
-            });
-            const names = apps.map((app) => JSON.parse(fs.readFileSync(`${app}/package.json`, "utf8")).name);
-            const out = [`apps=${apps.join(" ")}`, `filters=${names.map((n) => `--filter=${n}`).join(" ")}`, `key=${apps.join("+").replaceAll("/", "-")}`];
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${out.join("\n")}\n`);
-          ' "$RUNNER_TEMP/route-js-head.json" "$base_sha"
+          git diff --name-only "$base_sha" HEAD > "$RUNNER_TEMP/route-js-changed-files.txt"
+          mkdir -p "$RUNNER_TEMP/route-js-tools"
+          cp scripts/route-js-*.mjs scripts/route-js-*.sh scripts/route-js-budgets.json "$RUNNER_TEMP/route-js-tools/"
+          node scripts/route-js-size-base.mjs plan --head-report "$RUNNER_TEMP/route-js-head.json" --base "$base_sha" \
+            --changed-files "$RUNNER_TEMP/route-js-changed-files.txt"
           echo "sha=$base_sha" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "Route JS base: $base_sha"
 
-      # A base report is reused while the base commit, the apps and the measuring scripts are the
-      # same (a re-run, or a push to this PR before main moves).
+      # A base report is reused while the base commit, the apps, the measuring scripts and the
+      # size-build settings (this workflow's env, turbo.json) are the same: a re-run, or a push to
+      # this PR before main moves. v2: reports from v1 were built in a worktree at another path.
       - name: Restore base route JavaScript report
         id: route_js_base_cache
         if: steps.route_js_base.outputs.apps != ''
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/route-js-base.json
-          key: route-js-size-v1-${{ steps.route_js_base.outputs.sha }}-${{ steps.route_js_base.outputs.key }}-${{ hashFiles('scripts/route-js-size-report.mjs', 'scripts/route-js-startup-set.mjs', 'scripts/route-js-budget-rule.mjs', 'scripts/route-js-budgets.json') }}
+          key: route-js-size-v2-${{ steps.route_js_base.outputs.sha }}-${{ steps.route_js_base.outputs.key }}-${{ hashFiles('scripts/route-js-*', 'scripts/route-js-budgets.json', '.github/workflows/ci.yml', 'turbo.json') }}
 
-      # Builds the same apps at the base with the same size-build settings, in a worktree. Workspace
-      # packages replay from this job's turbo cache, and apps from the remote cache when main's
-      # merge-queue build already made them. A base from before deterministic size builds cannot
-      # pin its Sentry release through turbo, so it is built without cache and with the release
-      # pinned through the environment instead.
+      # Builds the same apps at the base with the same size-build settings, in this same checkout
+      # path (scripts/route-js-size-build-base.sh): the head's report is already written, so the
+      # script checks the base out here with a clean install, builds and reports it, then checks
+      # the head back out. The path matters: Next derives server action ids from module paths, so
+      # a base built anywhere else differs from the head by tens of bytes per route. Workspace
+      # packages replay from this job's turbo cache, and apps from the remote cache when CI already
+      # built them (in this same workspace path).
       - name: Build the base for route JavaScript
         id: route_js_base_build
         if: steps.route_js_base.outputs.apps != '' && steps.route_js_base_cache.outputs.cache-hit != 'true'
@@ -1103,34 +1102,22 @@ jobs:
           BASE_APPS: ${{ steps.route_js_base.outputs.apps }}
           BASE_FILTERS: ${{ steps.route_js_base.outputs.filters }}
         run: |
-          set -euo pipefail
-          base_dir="$RUNNER_TEMP/route-js-base"
-          git worktree add --detach "$base_dir" "$BASE_SHA"
-          cd "$base_dir"
-          pnpm install --frozen-lockfile --prefer-offline
-          flags=(--cache-dir="$GITHUB_WORKSPACE/.turbo/cache")
-          if ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json; then
-            echo "::notice title=Route JS base::The base predates deterministic size builds; building it without cache"
-            flags+=(--force --env-mode=loose)
-            export SENTRY_RELEASE=route-js-size-build
-          fi
-          # shellcheck disable=SC2086
-          pnpm turbo run build "${flags[@]}" $BASE_FILTERS
-          app_args=()
-          for app in $BASE_APPS; do app_args+=(--app "$app"); done
-          node "$GITHUB_WORKSPACE/scripts/route-js-size-report.mjs" --root "$base_dir" "${app_args[@]}" --label "${BASE_SHA:0:10}" --out "$RUNNER_TEMP/route-js-base.json"
+          tools="$RUNNER_TEMP/route-js-tools"
+          bash "$tools/route-js-size-build-base.sh" --sha "$BASE_SHA" --apps "$BASE_APPS" --filters "$BASE_FILTERS" \
+            --tools "$tools" --out "$RUNNER_TEMP/route-js-base.json"
 
       - name: Save base route JavaScript report
         if: steps.route_js_base_build.outcome == 'success'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/route-js-base.json
-          key: route-js-size-v1-${{ steps.route_js_base.outputs.sha }}-${{ steps.route_js_base.outputs.key }}-${{ hashFiles('scripts/route-js-size-report.mjs', 'scripts/route-js-startup-set.mjs', 'scripts/route-js-budget-rule.mjs', 'scripts/route-js-budgets.json') }}
+          key: route-js-size-v2-${{ steps.route_js_base.outputs.sha }}-${{ steps.route_js_base.outputs.key }}-${{ hashFiles('scripts/route-js-*', 'scripts/route-js-budgets.json', '.github/workflows/ci.yml', 'turbo.json') }}
 
       # Prints the per-route base-vs-head table in the job summary. It reports growth for every PR
-      # and fails only a motion or performance PR (label, or the word in the title) that grows any
-      # route: those promise no route JavaScript growth (docs/design/motion.md). The budget and
-      # ratchet step above is unchanged and still decides every other PR.
+      # and fails only motion or performance work (a label or title word, or a changed motion
+      # source file) that grows any route or adds one: those promise no route JavaScript growth
+      # (docs/design/motion.md). The budget and ratchet step above is unchanged and still decides
+      # every other PR.
       - name: Route JavaScript base vs head
         if: steps.route_js_base.outputs.apps != ''
         env:
@@ -1148,12 +1135,30 @@ jobs:
             PR_LABELS=$EVENT_LABELS
           fi
           export PR_TITLE PR_LABELS
+          changed="$RUNNER_TEMP/route-js-changed-files.txt"
           if [[ ! -f "$RUNNER_TEMP/route-js-base.json" ]]; then
-            echo "::warning title=Route JS vs base::The base could not be built, so there is no base-vs-head table."
-            node --input-type=module -e 'const { noGrowthReason, parseLabels } = await import("./scripts/route-js-size-compare.mjs"); const reason = noGrowthReason({ title: process.env.PR_TITLE, labels: parseLabels(process.env.PR_LABELS) }); if (reason) { console.log(`error: this PR is ${reason} and must show no route growth against its base; re-run the job`); process.exit(1); }'
-            exit 0
+            node scripts/route-js-size-base.mjs missing-base --changed-files "$changed"
+            exit $?
           fi
-          node scripts/route-js-size-compare.mjs --base "$RUNNER_TEMP/route-js-base.json" --head "$RUNNER_TEMP/route-js-head.json"
+          node scripts/route-js-size-compare.mjs --base "$RUNNER_TEMP/route-js-base.json" --head "$RUNNER_TEMP/route-js-head.json" \
+            --changed-files "$changed"
+
+      # Self-check of the table, for PRs that change what a size build depends on (this workflow,
+      # turbo.json, the measuring scripts, an app's next.config, the toolchain or the lockfile):
+      # builds the head a second time through the base route, without any cache, and requires
+      # "0 of N routes changed" in every app. It proves the base route measures like for like.
+      - name: Route JavaScript self-check
+        if: steps.route_js_base.outputs.self_check == 'true'
+        env:
+          HEAD_SHA: ${{ steps.route_js_base.outputs.head_sha }}
+          HEAD_APPS: ${{ steps.route_js_base.outputs.head_apps }}
+          HEAD_FILTERS: ${{ steps.route_js_base.outputs.head_filters }}
+        run: |
+          tools="$RUNNER_TEMP/route-js-tools"
+          bash "$tools/route-js-size-build-base.sh" --sha "$HEAD_SHA" --apps "$HEAD_APPS" --filters "$HEAD_FILTERS" \
+            --tools "$tools" --out "$RUNNER_TEMP/route-js-self.json" --force
+          node scripts/route-js-size-compare.mjs --base "$RUNNER_TEMP/route-js-self.json" --head "$RUNNER_TEMP/route-js-head.json" \
+            --require-unchanged --heading "Route JS: self-check (the head built again through the base route)"
 
   docker-images:
     runs-on: ubuntu-latest

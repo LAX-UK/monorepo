@@ -6,6 +6,7 @@ import { after, before, test } from "node:test";
 import {
   main as compareMain,
   compareReports,
+  isMotionSource,
   noGrowthReason,
   parseLabels,
   renderMarkdown,
@@ -125,11 +126,16 @@ test("one byte of growth is growth; shrinking, new and removed routes are listed
     result.grown.map((row) => row.route),
     ["/a/page"],
   );
+  assert.deepEqual(
+    result.added.map((row) => row.route),
+    ["/new/page"],
+  );
+  assert.equal(result.changedCount, 4);
   const markdown = renderMarkdown(result, { base, head, reason: null });
   assert.match(markdown, /\| `\/a\/page` \| 0\.98 \| 0\.98 \| \+0\.00 \| \+1 \|/);
   assert.match(markdown, /\| `\/new\/page` \| new \|/);
   assert.match(markdown, /\| `\/gone\/page` \| 0\.01 \| removed \|/);
-  assert.match(markdown, /Reported only/);
+  assert.match(markdown, /1 route\(s\) grew and 1 route\(s\) are new\. Reported only/);
 });
 
 test("apps built on one side only are not compared", () => {
@@ -152,6 +158,36 @@ test("motion and performance PRs are recognised by label or title word", () => {
   assert.deepEqual(parseLabels('["perf"]'), ["perf"]);
   assert.deepEqual(parseLabels("motion, ui"), ["motion", "ui"]);
   assert.deepEqual(parseLabels(""), []);
+  assert.throws(() => parseLabels("[not json"), /not valid JSON/);
+  assert.throws(() => parseLabels("[1"), /not valid JSON/);
+});
+
+test("a changed motion source file makes a PR motion work, whatever its title or labels", () => {
+  assert.equal(isMotionSource("packages/ui/src/lax/motion.css"), true);
+  assert.equal(isMotionSource("packages/marketing-ui/src/motion/reveal/reveal.tsx"), true);
+  assert.equal(isMotionSource("apps/web/src/lib/cover-motion.ts"), true);
+  assert.equal(isMotionSource("packages/ui/src/lax/motion.test.ts"), false);
+  assert.equal(isMotionSource("packages/ui/src/test/motion-css.ts"), false);
+  assert.equal(isMotionSource("docs/design/motion.md"), false);
+  assert.equal(isMotionSource("packages/ui/src/lax/button.tsx"), false);
+  const reason = noGrowthReason({
+    title: "Shop: basket copy",
+    labels: [],
+    changedFiles: ["docs/design/motion.md", "packages/ui/src/lax/motion.css"],
+  });
+  assert.equal(reason, "changes motion source `packages/ui/src/lax/motion.css`");
+  assert.equal(noGrowthReason({ title: "Docs", changedFiles: ["docs/design/motion.md"] }), null);
+});
+
+test("the summary sentence reads as a sentence for every kind of reason", () => {
+  const base = report({ "/a/page": r(1000) });
+  const result = compareReports(base, structuredClone(base));
+  const markdown = renderMarkdown(result, { base, head: base, reason: 'title mentions "Motion"' });
+  assert.match(
+    markdown,
+    /This PR counts as motion or performance work \(title mentions "Motion"\), so any growth or new route would fail this step\./,
+  );
+  assert.doesNotMatch(markdown, /PR is title/);
 });
 
 test("main: growth fails a motion PR, is reported for others, and bad input is exit 2", () => {
@@ -180,6 +216,66 @@ test("main: growth fails a motion PR, is reported for others, and bad input is e
   // No growth: a motion PR passes.
   assert.equal(run(["--base", basePath, "--head", basePath, "--title", "Card motion"]), 0);
   assert.equal(run(["--base", basePath]), 2);
+  // Malformed labels are bad input (exit 2), not a crash.
+  assert.equal(run(args, { PR_TITLE: "Docs tweak", PR_LABELS: "[oops" }), 2);
+  // A changed motion source file turns the check on without a label or title word.
+  const changed = path.join(dir, "changed.txt");
+  writeFileSync(changed, "packages/ui/src/lax/motion.css\n");
+  assert.equal(run([...args, "--changed-files", changed], { PR_TITLE: "Docs tweak" }), 1);
+  assert.equal(run([...args, "--changed-files", path.join(dir, "missing.txt")]), 2);
   writeFileSync(headPath, JSON.stringify({ version: 99, apps: {} }));
   assert.equal(run(args), 2);
+});
+
+test("main: a new route fails a motion PR and is a notice for others", () => {
+  const dir = path.join(root, "new-route");
+  mkdirSync(dir, { recursive: true });
+  const basePath = path.join(dir, "base.json");
+  const headPath = path.join(dir, "head.json");
+  writeFileSync(basePath, JSON.stringify(report({ "/a/page": r(1000) })));
+  writeFileSync(headPath, JSON.stringify(report({ "/a/page": r(1000), "/b/page": r(10) })));
+  const logs = [];
+  const run = (argv, env = {}) => {
+    logs.length = 0;
+    return compareMain(argv, { env, log: (line) => logs.push(line) });
+  };
+  const args = ["--base", basePath, "--head", headPath];
+  assert.equal(run(args, { PR_TITLE: "Docs tweak" }), 0);
+  assert.match(logs.at(-1), /^::notice title=Route JS vs base::apps\/web \/b\/page is a new route/);
+  assert.equal(run(args, { PR_TITLE: "Card motion" }), 1);
+  assert.match(logs.at(-1), /^error: apps\/web \/b\/page is a new route/);
+  // Removing a route is never growth.
+  assert.equal(run(["--base", headPath, "--head", basePath], { PR_TITLE: "Card motion" }), 0);
+});
+
+test("main --require-unchanged: the self-check passes only when no route differs", () => {
+  const dir = path.join(root, "self-check");
+  mkdirSync(dir, { recursive: true });
+  const a = path.join(dir, "a.json");
+  const b = path.join(dir, "b.json");
+  const c = path.join(dir, "c.json");
+  const d = path.join(dir, "d.json");
+  writeFileSync(a, JSON.stringify(report({ "/a/page": r(1000) })));
+  // Same sizes, different digest (the known Bid admin split-chunk case): passes.
+  writeFileSync(b, JSON.stringify(report({ "/a/page": r(1000) }, "other")));
+  writeFileSync(c, JSON.stringify(report({ "/a/page": r(999) })));
+  const onlyShop = report({ "/a/page": r(1000) });
+  onlyShop.apps = { "apps/shop": onlyShop.apps["apps/web"] };
+  writeFileSync(d, JSON.stringify(onlyShop));
+  const logs = [];
+  const run = (argv) => {
+    logs.length = 0;
+    return compareMain([...argv, "--require-unchanged", "--heading", "Self"], {
+      env: { PR_TITLE: "Docs" },
+      log: (line) => logs.push(line),
+    });
+  };
+  assert.equal(run(["--base", a, "--head", b]), 0);
+  assert.match(logs[0], /^### Self/);
+  assert.match(logs[0], /0 of 1 routes changed \(client scripts differ\)/);
+  assert.match(logs[0], /Self-check passed/);
+  // Shrinking is a failure too: the two builds must be the same.
+  assert.equal(run(["--base", a, "--head", c]), 1);
+  assert.match(logs.at(-1), /^error: apps\/web \/a\/page differs between two builds/);
+  assert.equal(run(["--base", a, "--head", d]), 1);
 });
