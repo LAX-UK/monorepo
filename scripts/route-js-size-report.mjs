@@ -12,7 +12,8 @@
  *
  * Usage: node scripts/route-js-size-report.mjs [--root <dir>] [--app apps/web ...] [--out <file>]
  *                                              [--label <text>]
- *   --root   the checkout to read (default: this repository); the base build lives in a worktree
+ *   --root   the checkout to read (default: this repository); CI passes it when running a copy of
+ *            this script kept outside the checkout
  *   --app    only these apps (default: every app in SIZE_APPS)
  *   --out    write the JSON there (default: print it)
  *   --label  stored in the report, for example the commit it was built from

@@ -60,7 +60,7 @@ Two existing rules sit above the kit's fades. Sonner's own `prefers-reduced-moti
 Fix the sign-in blink (layout hides server content then fades it back). Stop fading first-screen images on Shop. Start lax.art's home hero visible. Remove permanent `will-change` on reveals (only while running). Stop animating header `backdrop-filter`. Swap the hang's box-shadow hover for a fading pseudo-element layer. Replace all 11 `transition-all`.
 
 ## Proof for every motion PR (MO14)
-- Route JS: no growth on any route (`scripts/check-route-js-budget.mjs`; never raise budgets/baselines; motion PRs must not use the 1 KB noise allowance; the build job's **Route JS: base vs head** table must show no route growth, and fails the job for a PR labelled or titled motion or perf, see `docs/engineering/route-js-budgets.md`, "Base vs head").
+- Route JS: no growth on any route (`scripts/check-route-js-budget.mjs`; never raise budgets/baselines; motion PRs must not use the 1 KB noise allowance; the build job's **Route JS: base vs head** table must show no route growth and no new route, and fails the job for a PR labelled or titled motion or perf, or one that changes a motion source file, see `docs/engineering/route-js-budgets.md`, "Base vs head").
 - Lighthouse mobile (4x CPU, slow 4G), median of 5 runs, before and after deploy on test: Bid home, sales list, sale, lot; Shop home, print; lax.art home, artwork; Account overview. LCP not worse (within 100ms/5%), CLS ≤ 0.1 and not higher.
 - INP: scripted menu open, dialog open, card press, page change paint within 200ms at 4x CPU slowdown; no new long frames > 50ms.
 - Compositor-only lint: rejects `transition-all` and new keyframes on layout/paint properties; Chrome non-composited animation list must not grow.

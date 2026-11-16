@@ -336,7 +336,8 @@ placeholder DSNs and would not match what the budgets measure.
 
 Every pull request's `build` job also prints a **Route JS: base vs head** table in its job summary:
 the exact gzip start-up JavaScript of each page route in the PR against the same route at its base,
-both built in that job with the same settings. It is how a reviewer tells real growth from noise.
+both built in that job, in the same checkout path, with the same settings. It is how a reviewer
+tells real growth from noise.
 
 ### Size builds are deterministic
 
@@ -353,7 +354,16 @@ Both variables are in the `build` task's `env` in `turbo.json`, so they reach `n
 builds never share a turbo cache entry with any other build. Deploy builds set neither: their
 release stays the commit SHA and Next generates their key as before.
 
-Checked on 2026-11-16 with pairs of clean builds of one commit:
+A third source is not an environment setting: the **checkout path**. Next 15 hashes each server
+action id from the action's key and its module's absolute path, the Sentry debug id
+(`_sentryDebugIds`) is derived from the chunk content, and the chunk hashes and the webpack runtime
+that lists them follow. The same commit built at two different paths (for example a git worktree
+next to the CI checkout) differs by 19 to 92 bytes on routes that use server actions. So CI builds
+the head and the base **in the same directory**, one after the other, and a self-check proves it
+(see below). Turbo's task hashes do not depend on the path, and CI's size builds all run in the
+same workspace path, so an app replayed from the remote cache is byte-identical to a fresh build.
+
+Checked on 2026-11-16 with pairs of clean builds of one commit in the same directory:
 
 - Without the pins, and with the same environment for both builds (even the same `GITHUB_SHA`),
   every app moved: Bid 113 of 114 routes (from -0.30 to +0.16 KB), Shop 11 of
@@ -369,6 +379,9 @@ Checked on 2026-11-16 with pairs of clean builds of one commit:
   different shared chunk between builds, a webpack split-chunk choice. The admin area is not
   measured, so no route changes; the Bid block then reads "client scripts differ" with 0 routes
   changed.
+- The same commit built in a git worktree at another path, with the same pins: Account 15 of 20
+  routes changed (`/account/profile/page` +92 B, `/account/security/delete/page` +25 B, ...). This
+  is why the base is built in the head's own checkout.
 
 ### What CI does
 
@@ -378,17 +391,34 @@ Checked on 2026-11-16 with pairs of clean builds of one commit:
    only) in exact gzip and raw bytes, plus a digest of all client scripts.
 3. The **base** is the main commit GitHub merged the PR onto for the run (the first parent of the
    test merge commit CI checks out), so the table shows the PR's change and nothing from main.
-   The job builds the same apps at the base in a git worktree with the same settings. Workspace
-   packages replay from the job's turbo cache and apps from the remote cache when main's merge-queue
-   build already made them; the base report is kept in the actions cache for re-runs and later
-   pushes onto the same base.
+   `scripts/route-js-size-base.mjs plan` picks the apps: those in the head report that exist at the
+   base. The measuring scripts are copied out of the checkout, then
+   `scripts/route-js-size-build-base.sh` checks the base out **in the same workspace**
+   (`git checkout --detach`, then `git clean -ffdx` except the local turbo cache, and a clean
+   `pnpm install`), builds those apps with the same settings, writes the base report, and checks the
+   head back out with a clean install, even when the build fails. Workspace packages replay from
+   the job's turbo cache and apps from the remote cache when CI already built them at that commit.
+   The base report is kept in the actions cache for re-runs and later pushes onto the same base;
+   its key covers the base commit, the apps, the measuring scripts, `.github/workflows/ci.yml` and
+   `turbo.json`, so a PR that changes a size-build setting never reuses an older base report.
+   A base from before the pins (no `ROUTE_JS_SIZE_BUILD` in its `turbo.json`) is built without
+   cache, with the job's env passed through and the release pinned through `SENTRY_RELEASE`.
 4. `scripts/route-js-size-compare.mjs` prints the table.
+5. **Self-check.** When a PR changes what a size build depends on (`.github/workflows/ci.yml`,
+   `turbo.json`, the root `package.json`, `pnpm-lock.yaml`, `.nvmrc`, a `scripts/route-js-*` file
+   or an app's `next.config`), the job builds the head a second time through the same base route
+   (`route-js-size-build-base.sh --force`, so nothing replays from a cache) and compares it with the
+   first head build using `--require-unchanged`. Every app must read `0 of N routes changed`; any
+   changed, new or removed route fails the job. "client scripts differ" alone is allowed, for the
+   Bid admin split-chunk difference above. This is the proof that the base route measures like for
+   like; it adds one uncached build (about 10 minutes) to those PRs only.
 
 ### Reading the table
 
 - One block per app built on both sides: `N of M routes changed`, and whether the client scripts
-  are byte-identical. A route that did not change has no row. **Any number in the table is a real
-  change made by the PR**: there is no noise to discount and no tolerance.
+  are byte-identical. A route that did not change has no row. Because both sides are built at the
+  same path with the same pins, and the self-check holds that to 0 changed routes, **any number in
+  the table is a change made by the PR**: there is no noise to discount and no tolerance.
 - Columns are base and head KB (1024 bytes, two decimals), the delta in KB, and the delta in bytes.
   Rows are sorted by growth, largest first. `new` and `removed` mark routes on one side only.
 - "client scripts differ" with no changed rows means code changed outside the start-up sets (for
@@ -398,27 +428,44 @@ Checked on 2026-11-16 with pairs of clean builds of one commit:
 
 ### What fails
 
-- **Motion and performance PRs** (a label, or a word in the title, matching `motion`, `perf` or
-  `performance`) fail the step when any existing route grows by even one byte: they promise no route
-  JavaScript growth (`docs/design/motion.md`). The step reads the PR's current title and labels, so
-  after adding a label, re-run the `build` job. If the base cannot be built, such a PR fails too,
-  since the proof is missing; re-run the job.
-- **Every other PR**: the table only reports (a notice per grown route). Pass or fail is decided by
-  the budget and ratchet rules above, unchanged.
+- **Motion and performance PRs** fail the step when any existing route grows by even one byte, and
+  when they add a page route: they promise no route JavaScript growth on any route
+  (`docs/design/motion.md`, MO14), and a new route is start-up JavaScript visitors did not download
+  before. A PR counts as motion or performance work when a label or a word in its title matches
+  `motion`, `perf` or `performance`, **or** when it changes a motion source file: code or styles
+  under `apps/` or `packages/` with `motion` in a directory or file name (for example
+  `packages/ui/src/lax/motion.css` or `packages/marketing-ui/src/motion/`), tests and docs
+  excluded. The path rule keeps the check on if a motion PR is renamed or loses its label. The step
+  reads the PR's current title and labels, so after adding a label, re-run the `build` job. If the
+  base cannot be built, such a PR fails too, since the proof is missing; re-run the job.
+- **Every other PR**: the table only reports (a notice per grown or new route). Pass or fail is
+  decided by the budget and ratchet rules above, unchanged. New routes are judged by their group's
+  budget as before.
+- **The self-check** (step 5 above) fails the job when the head built twice differs on any route.
 
 The table adds no allowance anywhere and changes no budget, ratchet, baseline or tolerance. The
 ratchet's `toleranceKb` still applies to the ratchet check as before.
 
-To reproduce locally, build an app twice with the CI settings and compare:
+To reproduce CI locally, do what the job does: build the head, then build the base (or the head
+again, for the self-check) through `route-js-size-build-base.sh` in the **same checkout**. The
+script checks other commits out with `--force` and runs `git clean -ffdx`, so commit or stash your
+work first, and run it from a copy of the scripts outside the checkout:
 
 ```sh
 export ROUTE_JS_SIZE_BUILD=1 NEXT_SERVER_ACTIONS_ENCRYPTION_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
-  NEXT_PUBLIC_SENTRY_DSN_WEB=https://local@sentry.invalid/1 NODE_OPTIONS=--max-old-space-size=6144
-pnpm --filter @auction/web build && node scripts/route-js-size-report.mjs --app apps/web --out /tmp/a.json
-rm -rf apps/web/.next
-pnpm --filter @auction/web build && node scripts/route-js-size-report.mjs --app apps/web --out /tmp/b.json
-node scripts/route-js-size-compare.mjs --base /tmp/a.json --head /tmp/b.json   # 0 of N routes changed
+  NEXT_PUBLIC_SENTRY_DSN_WEB=https://budget@sentry.invalid/1 NODE_OPTIONS=--max-old-space-size=6144
+tools=$(mktemp -d) && cp scripts/route-js-*.mjs scripts/route-js-*.sh scripts/route-js-budgets.json "$tools"
+pnpm turbo run build --filter=@auction/web
+node scripts/route-js-size-report.mjs --app apps/web --out /tmp/head.json
+# The base: origin/main, or HEAD (with --force) for the self-check.
+bash "$tools/route-js-size-build-base.sh" --sha origin/main --apps apps/web \
+  --filters --filter=@auction/web --tools "$tools" --out /tmp/base.json
+node scripts/route-js-size-compare.mjs --base /tmp/base.json --head /tmp/head.json
 ```
+
+With `--sha "$(git rev-parse HEAD)" --force` and `--require-unchanged` on the compare, this is the
+CI self-check and must print `0 of N routes changed`. Building the two sides in different
+directories (a worktree, a second clone) does not reproduce CI: the path changes server action ids.
 
 ## Where the bytes come from
 
