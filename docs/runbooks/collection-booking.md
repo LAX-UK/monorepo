@@ -155,6 +155,13 @@ prod, run `DATABASE_URL_OWNER=... pnpm --filter @auction/db db:backfill-collecti
 (a dry run that prints counts), then the same with `--apply`. It is batched, safe to re-run, skips
 erased rows and any row whose new key already exists.
 
+The backfill is optional: nothing breaks if it never runs, because the sweep reads only the new
+format and an old-format reminder simply goes unsent (the booking itself is unaffected). It can run
+before or after the deploy of the sweep change; run it **before** if tomorrow's visit reminders
+matter, since the deployed sweep will not pick up old-format rows until they are rewritten. As a
+pre-deploy check, run the dry run on prod and note the `rewritten` count: zero means there is
+nothing to do. Afterwards a second dry run should print zero rewritten.
+
 **Limits.** An account can book, change and cancel 20 times an hour in total (HTTP 429 with
 `Retry-After`), and hold at most the place's "visits an account can hold" at once (default 5; Bid
 admin, Collections, Hours and rules). If the counter (Redis) is unreachable the limit is skipped

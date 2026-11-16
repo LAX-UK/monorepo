@@ -819,6 +819,16 @@ Plan v2, flow 25. Rehearsal only: Books stays in dry run, and the job only ever 
 Two runs at once, or a run repeated, book nothing twice: whichever inserts a transaction's row
 books it; the other finds the row and does nothing.
 
+**The "not issued" figure.** The daily report's "not issued" count and amount cover only
+documents still on their way: state `pending` (queued), `sending` (handed to the sender) or
+`unknown` (the send's outcome is not known yet). `needs_review` and `failed` documents are
+reported on their own lines, so they are not netted into "not issued". What to do with each:
+`pending` and `sending` need nothing unless they stay put for more than a day (then check the
+worker logs and the Failed jobs list); an `unknown` document is read again by the
+status check, so leave it until the next run and ask engineering if it is still `unknown` after
+two; `needs_review` and `failed` need a person (see "Needs a person" in the admin accounting
+view), and the report's totals are not clean until they are cleared.
+
 **Books call budget.** Each expense or transfer costs one to two Books calls (the create, and a
 lookup when the sender needs one). A day brings one expense per card payment (Bid and Shop), one
 transfer per payout (usually one a day per account), and Stripe's own fees (a few a month): 150
