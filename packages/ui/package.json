@@ -479,9 +479,17 @@
       "types": "./dist/lax/dialog.d.ts",
       "default": "./dist/lax/dialog.js"
     },
+    "./lax/drawings": {
+      "types": "./dist/components/ui/lax-drawings.d.ts",
+      "default": "./dist/components/ui/lax-drawings.js"
+    },
     "./lax/empty-state": {
       "types": "./dist/lax/empty-state.d.ts",
       "default": "./dist/lax/empty-state.js"
+    },
+    "./lax/empty-state-base": {
+      "types": "./dist/lax/empty-state-base.d.ts",
+      "default": "./dist/lax/empty-state-base.js"
     },
     "./lax/error-summary": {
       "types": "./dist/lax/error-summary.d.ts",
@@ -570,6 +578,10 @@
     "./lax/styles": {
       "types": "./dist/lax/styles.d.ts",
       "default": "./dist/lax/styles.js"
+    },
+    "./lax/status-illustration": {
+      "types": "./dist/lax/status-illustration.d.ts",
+      "default": "./dist/lax/status-illustration.js"
     },
     "./lax/switch": {
       "types": "./dist/lax/switch.d.ts",

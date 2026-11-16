@@ -28,6 +28,21 @@ describe("ArtStatusState is the shared EmptyState", () => {
     expect(out).toMatch(/<h1[^>]*>Gone<\/h1>/);
   });
 
+  it("keeps an h2 in the page layout when the page already owns its h1", () => {
+    const out = html(
+      <ArtStatusState
+        variant="empty"
+        layout="page"
+        titleAs="h2"
+        title="Sign in to apply"
+        description="d"
+      />,
+    );
+    expect(out).toContain('data-layout="page"');
+    expect(out).toMatch(/<h2[^>]*>Sign in to apply<\/h2>/);
+    expect(out).not.toContain("<h1");
+  });
+
   it("keeps the old motif names", () => {
     expect(
       html(<ArtStatusState variant="empty" icon="search-remove" title="t" description="d" />),

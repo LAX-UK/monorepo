@@ -245,7 +245,7 @@ Every new or extended component in `@auction/marketing-ui` and `@auction/ui` fro
 | `MarketingEnquiryListItem` | marketing-ui | Account enquiries | Shop account |
 | `MarketingSuccessState` (animated check) | marketing-ui | Enquiry sheets | Bid, Shop, Account |
 | `MarketingSideSheet` `titleCase` option | marketing-ui | Enquiry sheets, artwork options sheet | Shop, Bid |
-| `MarketingStatusState` `search-remove` motif | marketing-ui | Search no results | Bid, Shop |
+| Kit `EmptyState` `search` drawing (`search-remove` resolves to it) | ui (lax) | Search no results | Bid, Shop |
 | New icons in `marketing-icons.tsx`: map pin, calendar, arrow (and clock, mail from #551) | marketing-ui | Facts, cards, artwork detail | — |
 
 ### `@auction/ui`

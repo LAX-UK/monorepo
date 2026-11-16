@@ -1,19 +1,18 @@
-import { ShopAuthLink } from "@/components/shop-auth-link";
-import { isShopAuthHref } from "@/lib/is-shop-auth-href";
+import { EmptyState, type EmptyStateProps } from "@auction/ui/lax/empty-state";
 import {
-  MarketingStatusAction,
-  type MarketingStatusStateAnnouncement,
-  type MarketingStatusStateLayout,
-  type MarketingStatusStateMotif,
+  type StatusIllustration,
   resolveStatusIllustration,
-} from "@auction/marketing-ui";
-import { EmptyState } from "@auction/ui/lax/empty-state";
-import Link from "next/link";
+} from "@auction/ui/lax/status-illustration";
 import type { ReactNode } from "react";
 
 export type ShopStatusStateVariant = "empty" | "error";
-/** A drawing from the LAX illustration set; `bag` is the parcel, `alert` the askew frame. */
-export type ShopStatusStateIcon = MarketingStatusStateMotif;
+/** A drawing from the LAX illustration set; `bag` is the parcel, `gallery` the empty frame. */
+export type ShopStatusStateIcon = StatusIllustration;
+/**
+ * `page` for a commerce or account page's own state, `inline` and `open` (the same thing: the
+ * shared state draws no box) for grids and rails, `compact` for a short list.
+ */
+export type ShopStatusStateLayout = "inline" | "open" | "page" | "compact";
 
 type ShopStatusStateProps = {
   variant: ShopStatusStateVariant;
@@ -25,44 +24,17 @@ type ShopStatusStateProps = {
   /** A control under the description, such as a search field. */
   control?: ReactNode;
   actions?: ReactNode;
+  /**
+   * The title's element. A page-layout state is the page's h1 unless this says otherwise: pass
+   * h2 when the page already has its h1 (the basket, checkout and order pages). Elsewhere the
+   * title is a quiet paragraph unless asked.
+   */
   titleAs?: "h1" | "h2" | "p";
-  /** Page-level commerce/account empties; inline for catalogue grids and home rails. */
-  layout?: Exclude<MarketingStatusStateLayout, "banner">;
-  /** Overrides default first-paint announcement; use polite/assertive for client-side transitions. */
-  announcement?: MarketingStatusStateAnnouncement;
+  layout?: ShopStatusStateLayout;
+  /** Shop states are silent on first paint; client-side transitions ask for polite or assertive. */
+  announcement?: EmptyStateProps["announcement"];
   className?: string;
 };
-
-function resolveLayout(
-  className?: string,
-  layoutProp?: Exclude<MarketingStatusStateLayout, "banner">,
-): Exclude<MarketingStatusStateLayout, "banner"> {
-  if (layoutProp) {
-    return layoutProp;
-  }
-  if (className?.includes("shop-status-state--page")) {
-    return "page";
-  }
-  return "inline";
-}
-
-/** Errors keep the askew frame unless the state is about access or a missing page. */
-const ERROR_MOTIFS = new Set<MarketingStatusStateMotif>(["askew", "lock", "ticket"]);
-
-function resolveMotif(
-  variant: ShopStatusStateVariant,
-  icon: ShopStatusStateIcon | undefined,
-): MarketingStatusStateMotif {
-  if (variant === "error") {
-    return icon && ERROR_MOTIFS.has(icon) ? icon : "alert";
-  }
-  return icon ?? "gallery";
-}
-
-/** Errors were silent unless asked; the shared state would otherwise announce them. */
-function resolveAnnouncement(): MarketingStatusStateAnnouncement {
-  return "none";
-}
 
 export function ShopStatusState({
   variant,
@@ -72,59 +44,34 @@ export function ShopStatusState({
   description,
   control,
   actions,
-  titleAs = "p",
-  layout: layoutProp,
-  announcement: announcementProp,
+  titleAs,
+  layout = "inline",
+  announcement = "none",
   className,
 }: ShopStatusStateProps) {
-  const layout = resolveLayout(className, layoutProp);
-  const headingLevel = titleAs === "p" ? "p" : titleAs;
-  const announcement = announcementProp ?? resolveAnnouncement();
+  const isPage = layout === "page";
+  const headingLevel = titleAs ?? (isPage ? undefined : "p");
 
   return (
     <EmptyState
       accent
       variant={variant}
-      layout={layout === "page" ? "page" : "inline"}
+      layout={isPage ? "page" : "inline"}
       size={layout === "compact" ? "compact" : "default"}
-      illustration={resolveStatusIllustration(resolveMotif(variant, icon))}
+      illustration={resolveStatusIllustration(icon ?? "gallery")}
       {...(motifSlot ? { plate: motifSlot } : {})}
       title={title}
       description={description}
       control={control}
       actions={actions}
-      headingLevel={headingLevel}
+      {...(headingLevel ? { headingLevel } : {})}
       announcement={announcement}
       {...(className ? { className } : {})}
     />
   );
 }
 
-type ShopStatusStateLinkProps = {
-  href: string;
-  children: ReactNode;
-  priority?: "primary" | "secondary";
-};
-
-export function ShopStatusStateLink({
-  href,
-  children,
-  priority = "secondary",
-}: ShopStatusStateLinkProps) {
-  const linkClass = "shop-focus-ring";
-  return (
-    <MarketingStatusAction priority={priority} asChild>
-      {isShopAuthHref(href) ? (
-        <ShopAuthLink href={href} className={linkClass}>
-          {children}
-        </ShopAuthLink>
-      ) : (
-        <Link href={href} className={linkClass}>
-          {children}
-        </Link>
-      )}
-    </MarketingStatusAction>
-  );
-}
-
-export { MarketingStatusAction as ShopStatusStateAction };
+export {
+  ShopStatusStateAction,
+  ShopStatusStateLink,
+} from "@/components/shop-status-state-actions";

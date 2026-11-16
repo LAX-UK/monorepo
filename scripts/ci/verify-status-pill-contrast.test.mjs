@@ -163,3 +163,22 @@ describe("status pill contrast", () => {
     }
   }
 });
+
+// The empty-state drawing is a line graphic in the product accent on the kit's warm-paper plate
+// (`EmptyState accent`, `bg-lax-paper`), so it must reach 3:1 in both themes (WCAG 1.4.11).
+describe("empty-state accent drawing contrast on the paper plate", () => {
+  const lum = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  for (const productName of ["lax.art", "LAX Shop"]) {
+    for (const theme of ["light", "dark"]) {
+      it(`${productName} ${theme}: the accent line reads at 3:1 on the paper plate`, () => {
+        const tokens = PRODUCTS[productName][theme];
+        const [hi, lo] = [
+          lum(resolve("var(--color-product-accent)", tokens)),
+          lum(resolve("var(--lax-paper)", tokens)),
+        ].sort((x, y) => y - x);
+        const ratio = (hi + 0.05) / (lo + 0.05);
+        assert.ok(ratio >= 3, `${ratio.toFixed(2)}:1`);
+      });
+    }
+  }
+});

@@ -1,19 +1,17 @@
 import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
+import { MarketingStatusAction } from "@auction/marketing-ui";
+import { EmptyState, type EmptyStateProps } from "@auction/ui/lax/empty-state";
 import {
-  MarketingStatusAction,
-  type MarketingStatusStateAnnouncement,
-  type MarketingStatusStateLayout,
-  type MarketingStatusStateMotif,
+  type StatusIllustration,
   resolveStatusIllustration,
-} from "@auction/marketing-ui";
-import { EmptyState } from "@auction/ui/lax/empty-state";
+} from "@auction/ui/lax/status-illustration";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 export type ArtStatusStateVariant = "empty" | "error";
 /** A drawing from the LAX illustration set; `gallery` is the empty frame. */
-export type ArtStatusStateIcon = MarketingStatusStateMotif;
+export type ArtStatusStateIcon = StatusIllustration;
 
 type ArtStatusStateProps = {
   variant: ArtStatusStateVariant;
@@ -21,23 +19,17 @@ type ArtStatusStateProps = {
   title: string;
   description: string;
   actions?: ReactNode;
+  /**
+   * The title's element. A page-layout state is the page's h1 unless this says otherwise: pass
+   * h2 when the page already has its h1 (for-artists/apply). Elsewhere the title is a quiet
+   * paragraph unless asked.
+   */
   titleAs?: "h1" | "h2" | "p";
-  /** `page` for full-route empties, `open` (default) for grids and sections; never boxed (the shared state draws no box). */
-  layout?: Exclude<MarketingStatusStateLayout, "inline" | "banner">;
-  announcement?: MarketingStatusStateAnnouncement;
+  /** `page` for full-route states, `open` (default) for grids and sections, `compact` for short lists. */
+  layout?: "open" | "page" | "compact";
+  announcement?: EmptyStateProps["announcement"];
   className?: string;
 };
-
-/** Errors keep the askew frame unless the state is about access or a missing page. */
-const ERROR_MOTIFS = new Set<MarketingStatusStateMotif>(["askew", "lock", "ticket"]);
-
-function resolveMotif(
-  variant: ArtStatusStateVariant,
-  icon: ArtStatusStateIcon | undefined,
-): MarketingStatusStateMotif {
-  if (variant === "error") return icon && ERROR_MOTIFS.has(icon) ? icon : "alert";
-  return icon ?? "gallery";
-}
 
 export function ArtStatusState({
   variant,
@@ -45,22 +37,25 @@ export function ArtStatusState({
   title,
   description,
   actions,
-  titleAs = "p",
+  titleAs,
   layout = "open",
   announcement,
   className,
 }: ArtStatusStateProps) {
+  const isPage = layout === "page";
+  const headingLevel = titleAs ?? (isPage ? undefined : "p");
+
   return (
     <EmptyState
       accent
       variant={variant}
-      layout={layout === "page" ? "page" : "inline"}
+      layout={isPage ? "page" : "inline"}
       size={layout === "compact" ? "compact" : "default"}
-      illustration={resolveStatusIllustration(resolveMotif(variant, icon))}
+      illustration={resolveStatusIllustration(icon ?? "gallery")}
       title={title}
       description={description}
       actions={actions}
-      headingLevel={titleAs}
+      {...(headingLevel ? { headingLevel } : {})}
       announcement={announcement ?? (variant === "error" ? "polite" : "none")}
       {...(className ? { className } : {})}
     />

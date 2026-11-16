@@ -199,7 +199,8 @@ const SHELL_SESSION_MODULES = [
 ];
 
 /**
- * What the root error boundary renders (the route error page: copy, illustration, typography and
+ * What the root error boundary renders (the route error page: copy, illustration (with its
+ * drawing data and renderer, which are their own modules), typography and
  * its error report), which every page loads with its frame. The group error boundaries render the
  * same page; they shared one chunk only while the button sat in it too, and with the button in
  * the shell chunk it fell under the split threshold and was copied into each boundary. The forced
@@ -209,7 +210,7 @@ const ROUTE_ERROR_MODULES = [
   /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/]app[\\/]app-route-error\.tsx$/,
   /[\\/]apps[\\/]web[\\/]src[\\/]components[\\/](?:illustrations[\\/]empty-state-illustrations|ui[\\/]typography|marketing[\\/]marketing-section-subheading)\.tsx$/,
   /[\\/]apps[\\/]web[\\/]src[\\/]lib[\\/](?:auth[\\/]session-lookup-error|observability[\\/]use-report-route-error|ui[\\/]empty-state-copy)\.ts$/,
-  /[\\/]packages[\\/]ui[\\/]dist[\\/]components[\\/](?:typography|ui[\\/]lax-illustration)\.js$/,
+  /[\\/]packages[\\/]ui[\\/]dist[\\/]components[\\/](?:typography|ui[\\/](?:lax-illustration|lax-drawings|lax-drawing-svg))\.js$/,
 ];
 
 /**

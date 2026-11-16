@@ -3,6 +3,7 @@ import { CatalogueEmpty, CatalogueNoMatch } from "@/components/catalogue/catalog
 import { ShopCatalogueEmpty } from "@/components/catalogue/shop-catalogue-empty";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import { ticket } from "@auction/ui/lax/drawings";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -40,6 +41,28 @@ describe("ShopStatusState is the shared EmptyState", () => {
     );
     expect(out).toContain('data-layout="page"');
     expect(out).toMatch(/<h1[^>]*>Basket<\/h1>/);
+  });
+
+  it("keeps an h2 in the page layout when the page already owns its h1", () => {
+    const out = html(
+      <ShopStatusState
+        variant="empty"
+        layout="page"
+        titleAs="h2"
+        title="Your basket is empty"
+        description="d"
+      />,
+    );
+    expect(out).toContain('data-layout="page"');
+    expect(out).toMatch(/<h2[^>]*>Your basket is empty<\/h2>/);
+    expect(out).not.toContain("<h1");
+  });
+
+  it("is the page's h1 in the page layout when no level is given", () => {
+    const out = html(
+      <ShopStatusState variant="error" layout="page" title="Down" description="d" />,
+    );
+    expect(out).toMatch(/<h1[^>]*>Down<\/h1>/);
   });
 
   it("renders a quiet notice title as a paragraph by default", () => {
@@ -144,7 +167,7 @@ describe("Shop empty states", () => {
   it("detail not-found state: eyebrow, h1 title and the ticket drawing", () => {
     const out = html(
       <ArtworkDetailState
-        motif="ticket"
+        drawing={{ name: "ticket", paths: ticket }}
         eyebrow="Not found"
         title="Artist not found"
         description="This artist may have moved."
@@ -154,5 +177,25 @@ describe("Shop empty states", () => {
     expect(out).toMatch(/<h1[^>]*>Artist not found<\/h1>/);
     expect(out).toContain('data-empty-state="ticket"');
     expect(out).toContain('data-layout="page"');
+  });
+
+  it("detail state: the eyebrow sits right above the h1 and the actions under the description", () => {
+    const out = html(
+      <ArtworkDetailState
+        drawing={{ name: "ticket", paths: ticket }}
+        eyebrow="Not found"
+        title="We can't find this edition"
+        description="It may have been removed."
+        actions={<a href="/artworks?sort=newest">New editions</a>}
+      >
+        <section data-testid="related" />
+      </ArtworkDetailState>,
+    );
+    // Eyebrow, then h1, then description, then the action, all in the copy column.
+    expect(out).toMatch(
+      /<p[^>]*>Not found<\/p><h1[^>]*>We can&#x27;t find this edition<\/h1><p[^>]*>It may have been removed\.<\/p><div[^>]*><a href="\/artworks\?sort=newest">New editions<\/a><\/div>/,
+    );
+    // Related content comes after the whole state.
+    expect(out.indexOf('data-testid="related"')).toBeGreaterThan(out.indexOf("New editions"));
   });
 });

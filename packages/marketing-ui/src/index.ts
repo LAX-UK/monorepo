@@ -316,12 +316,7 @@ export { marketingEmailError } from "./marketing-email-error.js";
 export { useMarketingFormErrors } from "./use-marketing-form-errors.js";
 export {
   MarketingStatusAction,
-  resolveStatusIllustration,
   type MarketingStatusActionProps,
-  type MarketingStatusStateAnnouncement,
-  type MarketingStatusStateLayout,
-  type MarketingStatusStateMotif,
-  type MarketingStatusStateVariant,
 } from "./marketing-status-state.js";
 export {
   MARKETING_FILTER_ACCORDION_TRIGGER,

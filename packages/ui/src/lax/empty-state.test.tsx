@@ -1,5 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup as cleanupAll, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { askew, ticket } from "../components/ui/lax-drawings.js";
+import { EmptyStateBase } from "./empty-state-base.js";
 import { EmptyState } from "./index.js";
 
 describe("EmptyState", () => {
@@ -15,18 +17,34 @@ describe("EmptyState", () => {
     expect(screen.getByRole("heading", { level: 3 })).toBeInTheDocument();
   });
 
-  it("is the page's h1 in the page layout, whatever level is passed", () => {
+  it("is the page's h1 in the page layout by default", () => {
     const { container } = render(
       <EmptyState
         layout="page"
         illustration="ticket"
         title="We can't find that page"
         description="The link may be mistyped."
-        headingLevel="h3"
       />,
     );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("We can't find that page");
     expect(container.querySelector("[data-layout='page']")).not.toBeNull();
+  });
+
+  it("keeps the level it is given in the page layout, so a page with its own h1 keeps one h1", () => {
+    render(
+      <main>
+        <h1>Basket</h1>
+        <EmptyState
+          layout="page"
+          illustration="parcel"
+          title="Your basket is empty"
+          description="Browse the shop."
+          headingLevel="h2"
+        />
+      </main>,
+    );
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Your basket is empty");
   });
 
   it("shows the askew drawing and announces itself in the error variant", () => {
@@ -104,5 +122,47 @@ describe("EmptyState product options", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(container.querySelector("p")?.textContent).toBe("t");
     expect(screen.queryByRole("heading")).toBeNull();
+  });
+});
+
+describe("EmptyStateBase", () => {
+  it("draws the one drawing it is handed, and askew for the error variant", () => {
+    const { container, rerender } = render(
+      <EmptyStateBase
+        layout="page"
+        drawing={{ name: "ticket", paths: ticket }}
+        title="Not here"
+        description="d"
+      />,
+    );
+    expect(container.querySelector("[data-illustration='ticket']")).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Not here");
+    rerender(
+      <EmptyStateBase
+        variant="error"
+        drawing={{ name: "ticket", paths: ticket }}
+        title="Failed"
+        description="d"
+      />,
+    );
+    expect(container.querySelector("[data-illustration='askew']")).not.toBeNull();
+  });
+
+  it("renders the same markup as EmptyState for the same drawing", () => {
+    const props = { title: "t", description: "d", layout: "page" as const, accent: true };
+    const a = render(<EmptyState illustration="askew" {...props} />).container.innerHTML;
+    cleanupAll();
+    const b = render(<EmptyStateBase drawing={{ name: "askew", paths: askew }} {...props} />)
+      .container.innerHTML;
+    expect(b).toBe(a);
+  });
+
+  it("shows an eyebrow right above the title, in the copy column", () => {
+    const { container } = render(
+      <EmptyState illustration="ticket" eyebrow="Not found" title="Gone" description="d" />,
+    );
+    const eyebrow = screen.getByText("Not found");
+    expect(eyebrow.nextElementSibling).toHaveTextContent("Gone");
+    expect(container.querySelector("[aria-hidden] p")).toBeNull();
   });
 });

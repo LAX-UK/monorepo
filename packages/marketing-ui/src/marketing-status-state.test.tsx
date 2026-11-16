@@ -1,20 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MarketingStatusAction, resolveStatusIllustration } from "./marketing-status-state.js";
-
-describe("resolveStatusIllustration", () => {
-  it("maps the older motif names to the LAX drawings", () => {
-    expect(resolveStatusIllustration("gallery")).toBe("frame");
-    expect(resolveStatusIllustration("search-remove")).toBe("search");
-    expect(resolveStatusIllustration("bag")).toBe("parcel");
-    expect(resolveStatusIllustration("alert")).toBe("askew");
-  });
-
-  it("passes the set's own names through", () => {
-    expect(resolveStatusIllustration("ticket")).toBe("ticket");
-    expect(resolveStatusIllustration("lock")).toBe("lock");
-  });
-});
+import { MarketingStatusAction } from "./marketing-status-state.js";
 
 describe("MarketingStatusAction", () => {
   it("renders a button with the priority class", () => {
@@ -30,5 +18,23 @@ describe("MarketingStatusAction", () => {
       </MarketingStatusAction>,
     );
     expect(screen.getByRole("link", { name: "Go" })).toHaveClass("marketing-status-state__action");
+  });
+});
+
+describe("MarketingStatusAction CSS", () => {
+  const css = readFileSync(join(process.cwd(), "src/marketing-ui.css"), "utf8");
+
+  it("switches off the transition and the press nudge for reduced motion", () => {
+    const block = css.slice(
+      css.indexOf("@media (prefers-reduced-motion: reduce) {\n  .marketing-status-state__action"),
+    );
+    expect(block).toMatch(/\.marketing-status-state__action \{\s*transition: none;/);
+    expect(block).toMatch(/\.marketing-status-state__action:active \{\s*transform: none;/);
+  });
+
+  it("stacks the actions full width on phones", () => {
+    expect(css).toMatch(
+      /@media \(max-width: 39\.99rem\) \{\s*\.marketing-status-state__action \{\s*flex: 1 1 100%;\s*width: 100%;/,
+    );
   });
 });

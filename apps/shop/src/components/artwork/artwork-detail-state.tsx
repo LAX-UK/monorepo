@@ -1,22 +1,22 @@
-import { EmptyState } from "@auction/ui/lax/empty-state";
+import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
+import type { LaxDrawing } from "@auction/ui/lax/drawings";
+import { EmptyStateBase } from "@auction/ui/lax/empty-state-base";
 import Link from "next/link";
 import type { ReactNode } from "react";
-
-export type ArtworkDetailStateMotif = "empty" | "search" | "bag" | "alert" | "ticket";
-
-const ILLUSTRATIONS = {
-  empty: "frame",
-  search: "search",
-  bag: "parcel",
-  alert: "askew",
-  ticket: "ticket",
-} as const;
 
 type ArtworkDetailStateProps = {
   eyebrow: string;
   title: string;
   description: string;
-  motif?: ArtworkDetailStateMotif;
+  /**
+   * The one LAX drawing the page shows, imported on its own from `@auction/ui/lax/drawings`
+   * (`ticket` for not found, `askew` for the error boundary) so a client boundary does not carry
+   * the whole set.
+   */
+  drawing: { name: LaxIllustrationName; paths: LaxDrawing };
+  /** What to do next (a retry, a link), in the copy column under the description. */
+  actions?: ReactNode;
+  /** Related content under the whole state, such as other editions. */
   children?: ReactNode;
 };
 
@@ -25,7 +25,8 @@ export function ArtworkDetailState({
   eyebrow,
   title,
   description,
-  motif = "empty",
+  drawing,
+  actions,
   children,
 }: ArtworkDetailStateProps) {
   return (
@@ -33,13 +34,14 @@ export function ArtworkDetailState({
       <Link href="/" className="shop-detail__back shop-focus-ring">
         ← Back to Collect
       </Link>
-      <p className="shop-detail__eyebrow">{eyebrow}</p>
-      <EmptyState
+      <EmptyStateBase
         accent
         layout="page"
-        illustration={ILLUSTRATIONS[motif]}
+        drawing={drawing}
+        eyebrow={eyebrow}
         title={title}
         description={description}
+        actions={actions}
       />
       {children}
     </main>
