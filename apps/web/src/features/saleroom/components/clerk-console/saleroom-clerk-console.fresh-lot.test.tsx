@@ -58,7 +58,9 @@ vi.mock("@/features/saleroom/hooks/use-clerk-paddle-roster", () => ({
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
-vi.mock("@/lib/ui/notify", () => ({ notify: { error: vi.fn(), success: vi.fn() } }));
+vi.mock("@/lib/ui/notify", () => ({
+  notify: { error: vi.fn(), success: vi.fn(), loading: vi.fn() },
+}));
 
 /** What the page was first rendered with: the price and reserve before the room moved on. */
 const staleLots: Lot[] = [

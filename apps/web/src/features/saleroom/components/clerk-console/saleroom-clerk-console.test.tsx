@@ -106,7 +106,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
 }));
 vi.mock("@/lib/ui/notify", () => ({
-  notify: { error: vi.fn(), success: vi.fn() },
+  notify: { error: vi.fn(), success: vi.fn(), loading: vi.fn() },
 }));
 
 const lots: Lot[] = [

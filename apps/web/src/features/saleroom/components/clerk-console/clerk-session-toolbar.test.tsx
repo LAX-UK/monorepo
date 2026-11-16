@@ -15,7 +15,9 @@ vi.mock("@/features/saleroom/lib/clerk-commands.client", () => ({
   clerkPause: pause,
   clerkResume: vi.fn(),
 }));
-vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("@/lib/ui/notify", () => ({
+  notify: { success: vi.fn(), error: vi.fn(), loading: vi.fn() },
+}));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({
   redirectToHostedReauth: vi.fn(),
 }));
