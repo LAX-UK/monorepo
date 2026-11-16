@@ -1,12 +1,15 @@
 import { Hono } from "hono";
 import type { ContainerPostmarkInboundRoutesSlice } from "../../container.js";
 import { createBaseLogger } from "../../lib/logger.js";
+import { readBodyCapped } from "../../lib/read-body-capped.js";
 import { sharedSecretMatches } from "../../lib/shared-secret.js";
 import { inboundPayloadSchema } from "../../services/marketing-enquiry/enquiry-inbound-reply.service.js";
 
 /**
  * Postmark's inbound payload carries every attachment base64-encoded; Postmark itself accepts
- * mail up to about 35 MB. Anything larger than this is refused before it is read.
+ * mail up to about 35 MB. A larger declared length is refused before reading, and the body is
+ * read as a stream that stops at this many bytes, so a body without a Content-Length (or with a
+ * false one) is never held in memory beyond it.
  */
 export const INBOUND_WEBHOOK_MAX_BYTES = 40 * 1024 * 1024;
 
@@ -22,7 +25,11 @@ function isAuthorized(header: string | undefined, expected: string): boolean {
  * the delivery-event route and from its credentials. While `ENQUIRY_INBOUND_REPLIES_ENABLED` is
  * off the route does not exist (404).
  */
-export function createPostmarkInboundWebhookRoutes(container: ContainerPostmarkInboundRoutesSlice) {
+export function createPostmarkInboundWebhookRoutes(
+  container: ContainerPostmarkInboundRoutesSlice,
+  options: { maxBytes?: number } = {},
+) {
+  const maxBytes = options.maxBytes ?? INBOUND_WEBHOOK_MAX_BYTES;
   const r = new Hono();
   const log = createBaseLogger(container.env);
 
@@ -38,13 +45,11 @@ export function createPostmarkInboundWebhookRoutes(container: ContainerPostmarkI
     }
 
     const declared = Number(c.req.header("content-length") ?? "0");
-    if (Number.isFinite(declared) && declared > INBOUND_WEBHOOK_MAX_BYTES) {
+    if (Number.isFinite(declared) && declared > maxBytes) {
       return c.json({ error: "payload_too_large" }, 413);
     }
-    const raw = await c.req.text();
-    if (raw.length > INBOUND_WEBHOOK_MAX_BYTES) {
-      return c.json({ error: "payload_too_large" }, 413);
-    }
+    const raw = await readBodyCapped(c.req.raw, maxBytes);
+    if (raw === null) return c.json({ error: "payload_too_large" }, 413);
     let json: unknown;
     try {
       json = JSON.parse(raw);

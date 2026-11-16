@@ -3,6 +3,7 @@ import {
   BUYER_PREMIUM_CONDITIONS_HREF,
   CONDITIONS_OF_SALE_LABEL,
 } from "@/lib/lot/buyer-premium-copy";
+import { LOT_STORAGE_COPY } from "@/lib/lot/storage-copy";
 import { FactList } from "@auction/ui/lax/fact-list";
 import Link from "next/link";
 
@@ -13,15 +14,17 @@ type Props = {
   details: LotDetailsView;
   /** The premium in words, printed in the buying note; `null` hides it (a lot no longer for sale). */
   premiumTerms: string | null;
+  /** The storage terms where the work waits, in words; `null` hides the section. */
+  storageTerms: string | null;
 };
 
 /**
  * Below the fold: the cataloguer's note and the catalogue facts as one description list, and a
  * short note on buying. Sections with nothing to say are left out rather than shown empty.
  */
-export function LotDetails({ details, premiumTerms }: Props) {
+export function LotDetails({ details, premiumTerms, storageTerms }: Props) {
   const hasWork = details.about.length > 0 || details.facts.length > 0;
-  if (!hasWork && premiumTerms === null) return null;
+  if (!hasWork && premiumTerms === null && storageTerms === null) return null;
   return (
     <div className="mt-12 grid gap-10 border-t border-lax-line pt-10 lg:mt-16 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-14">
       {hasWork ? (
@@ -66,33 +69,54 @@ export function LotDetails({ details, premiumTerms }: Props) {
           />
         </section>
       ) : null}
-      {premiumTerms !== null ? (
-        <aside
-          aria-labelledby="lot-buying-heading"
-          className="self-start rounded-lax-card border border-lax-line p-5"
-        >
-          <h2
-            id="lot-buying-heading"
-            className="m-0 mb-2 font-lax-display text-lax-16 leading-6 font-semibold"
-          >
-            Buying this work
-          </h2>
-          <p className="m-0 mb-3 text-lax-13 leading-5 text-lax-muted">
-            Buyer&apos;s premium: {premiumTerms}. It is added to the hammer price. Delivery is
-            quoted when you pay.
-          </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <Link href={BUYER_PREMIUM_CONDITIONS_HREF} className={TEXT_LINK}>
-              {CONDITIONS_OF_SALE_LABEL}
-            </Link>
-            <Link href="/faq" className={TEXT_LINK}>
-              How bidding works
-            </Link>
-            <Link href="/shipping" className={TEXT_LINK}>
-              Delivery
-            </Link>
-          </div>
-        </aside>
+      {premiumTerms !== null || storageTerms !== null ? (
+        <div className="flex min-w-0 flex-col gap-6 self-start">
+          {premiumTerms !== null ? (
+            <aside
+              aria-labelledby="lot-buying-heading"
+              className="rounded-lax-card border border-lax-line p-5"
+            >
+              <h2
+                id="lot-buying-heading"
+                className="m-0 mb-2 font-lax-display text-lax-16 leading-6 font-semibold"
+              >
+                Buying this work
+              </h2>
+              <p className="m-0 mb-3 text-lax-13 leading-5 text-lax-muted">
+                Buyer&apos;s premium: {premiumTerms}. It is added to the hammer price. Delivery is
+                quoted when you pay.
+              </p>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                <Link href={BUYER_PREMIUM_CONDITIONS_HREF} className={TEXT_LINK}>
+                  {CONDITIONS_OF_SALE_LABEL}
+                </Link>
+                <Link href="/faq" className={TEXT_LINK}>
+                  How bidding works
+                </Link>
+                <Link href="/shipping" className={TEXT_LINK}>
+                  Delivery
+                </Link>
+              </div>
+            </aside>
+          ) : null}
+          {storageTerms !== null ? (
+            <aside
+              aria-labelledby="lot-storage-heading"
+              className="rounded-lax-card border border-lax-line p-5"
+            >
+              <h2
+                id="lot-storage-heading"
+                className="m-0 mb-2 font-lax-display text-lax-16 leading-6 font-semibold"
+              >
+                {LOT_STORAGE_COPY.heading}
+              </h2>
+              <p className="m-0 mb-3 text-lax-13 leading-5 text-lax-muted">{storageTerms}</p>
+              <Link href={LOT_STORAGE_COPY.policyHref} className={TEXT_LINK}>
+                {LOT_STORAGE_COPY.policyLink}
+              </Link>
+            </aside>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

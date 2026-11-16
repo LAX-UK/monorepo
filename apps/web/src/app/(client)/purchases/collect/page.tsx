@@ -10,6 +10,7 @@ import { COLLECT_COPY } from "@/lib/collect/collect-copy";
 import { collectHref, parseCollectLink } from "@/lib/collect/collect-links";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { GALLERY_CONTACT } from "@auction/branding";
 import { ButtonLink } from "@auction/ui/lax/button-link";
@@ -166,7 +167,19 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     lotIds = link.ids;
   }
 
-  const availability = await loadAvailability(lotIds, visit?.id ?? null, visit === null);
+  // The purchase facts for the storage line are read alongside the availability, not after it. A
+  // booked lot carries no collect-by notice, so a visit being changed has none to read.
+  const accountId = scope.account.id;
+  const [availability, facts] = await Promise.all([
+    loadAvailability(lotIds, visit?.id ?? null, visit === null),
+    visit === null && accountId !== null
+      ? getServerAccountPurchaseFacts(accountId).catch((error: unknown) => {
+          // The page still books without the storage line; say why it is missing.
+          console.error("[collect] purchase facts failed", error);
+          return [];
+        })
+      : Promise.resolve([]),
+  ]);
   if (!availability.ok) {
     if (availability.failure.kind === "forbidden" || availability.failure.kind === "lot") {
       return (
@@ -175,6 +188,15 @@ export default async function CollectRoute({ searchParams }: PageProps) {
     }
     return <LoadError />;
   }
+
+  // Lots that owe storage today: the summary tells the buyer it is charged up to the visit day.
+  const storageLotIds = (facts ?? [])
+    .filter(
+      (purchase) =>
+        lotIds.includes(purchase.lotId) &&
+        (purchase.delivery.collectBy?.storage?.amountPence ?? 0) > 0,
+    )
+    .map((purchase) => purchase.lotId);
 
   return (
     <Shell
@@ -189,6 +211,7 @@ export default async function CollectRoute({ searchParams }: PageProps) {
         viewOnly={viewOnly}
         nowIso={now.toISOString()}
         contactEmail={contactEmail}
+        storageLotIds={storageLotIds}
       />
     </Shell>
   );

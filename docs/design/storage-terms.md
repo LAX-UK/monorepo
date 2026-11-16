@@ -73,6 +73,22 @@ The Storage tab (PR 3) saves versioned terms, but buyers do not see them yet: bu
 - Lot/shipping page: "Storage is free for 14 days after your payment clears. After that it is £3 a day for each work, or £6 for works over 150 cm on any side, plus VAT where it applies."
 - Email "Storage charges have started".
 
+Wording that is not in the approved list above, added so the formatter and this document agree (change it here and in `packages/domain/src/storage-terms.ts` together):
+- Handling fee, on the upcoming and soon notices when a fee is set: "A handling fee of {fee} applies once when charges start."
+- Handling fee, in the running total: "{amount} so far ({n} days at {rate}, and a {fee} handling fee), plus VAT where it applies." With no daily rate: "{amount} so far (a {fee} handling fee), plus VAT where it applies."
+- Lot/shipping sentence when only the large band is charged: "…it is {large rate} a day for works over 150 cm on any side, and nothing for others, plus VAT where it applies."
+- Lot/shipping sentence with no free days: "It is {rates}", or "Storage is charged from the day after your payment clears."
+- Lot/shipping sentence when no rate is set: "After that, storage charges may apply."
+- Lot page: the terms stated are those in force on the day the sale closes (ST9), and the shipping page carries its old general "storage charges may apply" sentence only while no place has terms.
+- A lot won before its place had terms (no `storage_terms_id`) is priced by the same rules under `LEGACY_STORAGE_TERMS` (`storageTermsForLot`): 30 calendar days free and nothing charged, whatever the place's old `free_storage_days`. Its notice reads "Storage is free until then." with no rate, and after the day "That day has passed. Book a time to collect your work from {place}, or email us if you need longer." with no total.
+- If a place has no opening calendar, or a stored version cannot be priced (the purchases read logs it), that lot alone keeps today's collect-by notice; the rest of the list is unaffected.
+- The lot and shipping pages describe the terms in force at a place; a place with no terms yet shows no storage sentence on the lot page.
+- List badge when the day has passed and nothing is owed (charging off, or a day count of zero): "Collect by {day}" with no total; a waived lot shows "No storage to pay" on its notice.
+
+## Not yet built (tracked)
+- ST5 pauses on the buyer's running total: only a shipping quote LAX still owes is applied (from the day it was asked to the day it was quoted). Open checks and disputes are not linked to a lot in the data the purchases read uses, so they do not pause the total yet. This must land before charging is switched on (PR 6), or a buyer in a dispute would see charges.
+- ST13 on the booking page: the "Storage to pay" line shows for a new booking only. A visit being changed has none; the charge must be re-priced when the visit moves (PR 6).
+
 ## Build (7 PRs)
 1. Domain rules: storage terms type, pure charge calculator (calendar/working days, pauses, bands, extension, waiver), next-open-day rule replacing DEFAULT_COLLECT_BY_POLICY reads. Unit tests first.
 2. Data: versioned storage terms per place, the terms a lot was sold under, large flag on the lot, extensions and waivers; move free_storage_days across; drop the unused weekly charge. Rollback included. Independent review.

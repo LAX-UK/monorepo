@@ -101,6 +101,28 @@ describe("PurchaseRow's collection badge", () => {
     expect(screen.getByText(sentence)).toHaveClass("sr-only");
   });
 
+  it("draws the running total as its own badge so a narrow row wraps it instead of cutting it off", () => {
+    const sentence = "Collect by Mon 16 Nov · Storage £9.00 so far.";
+    render(
+      <PurchaseRow
+        card={card({
+          collection: badge({
+            state: "overdue",
+            tone: "warning",
+            label: "Collect by Mon 16 Nov · Storage £9.00 so far",
+            title: sentence,
+          }),
+        })}
+        selection={null}
+        selectColumn={false}
+      />,
+    );
+    expect(screen.getByText("Collect by Mon 16 Nov")).toBeVisible();
+    expect(screen.getByText("Storage £9.00 so far")).toBeVisible();
+    // The sentence is read once, not once per badge.
+    expect(screen.getAllByText(sentence)).toHaveLength(1);
+  });
+
   it("draws no collection badge when there is none", () => {
     render(<PurchaseRow card={card()} selection={null} selectColumn={false} />);
     expect(screen.queryByText(/Booked|Overdue|Collect by/)).toBeNull();

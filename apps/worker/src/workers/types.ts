@@ -22,6 +22,7 @@ import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-j
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
 import type { IEmailAddressLookup } from "../interfaces/email-provider-suppression.js";
+import type { IEnquiryQuarantinePurgeRepository } from "../interfaces/enquiry-quarantine-purge.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subject.store.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
@@ -81,6 +82,7 @@ export type WorkerBootstrapDeps = {
   mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
+  enquiryQuarantinePurgeRepo: IEnquiryQuarantinePurgeRepository;
   failedJobPayloadPurge: IFailedJobPayloadPurge;
   marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
   marketingAttributionPurgeRepo: IMarketingAttributionPurgeRepository;

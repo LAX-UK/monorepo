@@ -1,12 +1,4 @@
 import {
-  ENQUIRY_ASSIGN_ACCESS,
-  MARKETING_ENQUIRIES_ACCESS,
-  PRIVATE_SALE_ENQUIRIES_READ_ACCESS,
-  type StaffRoles,
-  type UserRole,
-  userHasAccessTo,
-} from "@auction/types";
-import {
   adminDealConvertSchema,
   adminEnquiryListQuerySchema,
   adminEnquiryPatchSchema,
@@ -15,29 +7,16 @@ import {
   enquiryRefParamSchema,
   marketingEnquiryIdParamSchema,
 } from "@auction/validators";
-import type { Context } from "hono";
 import { zValidator } from "../../lib/z-validator.js";
+import { enquiryViewerOf as viewerOf } from "../../middleware/enquiry-viewer.js";
 import {
   requireEnquiries,
   requireEnquiryRoutingManage,
   requirePrivateSaleDealsManage,
 } from "../../middleware/require-capability.js";
 import type { AdminEnquiryRoutesContainer } from "../../services/interfaces/admin-routes/index.js";
-import type { EnquiryStaffViewer } from "../../services/interfaces/marketing-enquiry-service.js";
 import type { ConvertEnquiryError } from "../../services/interfaces/private-sale-deal-desk.js";
 import type { AdminHono } from "./_shared.js";
-
-/** What the signed-in person may read and do, from their capabilities. */
-function viewerOf(c: Context): EnquiryStaffViewer {
-  const role = c.get("userRole") as UserRole;
-  const staff = c.get("userStaffRoles") as StaffRoles | undefined;
-  return {
-    userId: c.get("userId") as string,
-    readsGeneral: userHasAccessTo(role, staff, MARKETING_ENQUIRIES_ACCESS),
-    readsPrivateSale: userHasAccessTo(role, staff, PRIVATE_SALE_ENQUIRIES_READ_ACCESS),
-    canAssign: userHasAccessTo(role, staff, ENQUIRY_ASSIGN_ACCESS),
-  };
-}
 
 const UPDATE_ERROR_STATUS = {
   enquiry_not_found: 404,

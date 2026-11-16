@@ -18,6 +18,7 @@ import {
   WORKER_ACCOUNTING_DOCUMENT_UPDATE_COLUMNS,
   WORKER_ACCOUNTING_HISTORY_READ_COLUMNS,
   WORKER_ACCOUNTING_READ_TABLES,
+  WORKER_ANONYMISATION_SCRUB_COLUMNS,
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_RECONCILIATION_REPORT_TABLES,
@@ -131,6 +132,38 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       expect(allowed.sort()).toEqual([...WORKER_SOLD_ATTENTION_UPDATE_COLUMNS].sort());
       for (const column of ["zoho_product_id", "register_id", "place", "override_reason"]) {
         expect(allowed, column).not.toContain(column);
+      }
+    });
+  });
+
+  it("reads and deletes held inbound enquiry mail for the purge, and never adds or changes any", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["enquiry_inbound_quarantine"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+      );
+      expectTablePrivileges(rows, (row) => ["SELECT", "DELETE"].includes(row.privilege));
+    });
+  });
+
+  it("updates the emailed-reply columns enquiry erasure scrubs, the staff review reason included", async () => {
+    await withWorkerClient(async (client) => {
+      const columns = await client.query<{ column_name: string }>(
+        `select column_name::text from information_schema.columns
+          where table_schema = 'public' and table_name = 'marketing_enquiry_message'
+            and has_column_privilege(current_user, 'public.marketing_enquiry_message', column_name, 'UPDATE')
+          order by column_name`,
+      );
+      const updatable = columns.rows.map((row) => row.column_name);
+      // Written out, so widening or narrowing the grant is a visible change here too.
+      expect(updatable).toEqual(["attachments", "body", "review_reason", "subject"]);
+      const scrub = WORKER_ANONYMISATION_SCRUB_COLUMNS.find(
+        ([table]) => table === "marketing_enquiry_message",
+      );
+      expect([...(scrub?.[1] ?? [])].sort()).toEqual(updatable);
+      for (const column of ["enquiry_id", "direction", "held_reason", "from_email_hash"]) {
+        expect(updatable, column).not.toContain(column);
       }
     });
   });

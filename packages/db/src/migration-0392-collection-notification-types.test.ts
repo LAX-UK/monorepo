@@ -46,7 +46,7 @@ describe("migration 0392 collection notification types", () => {
 
   it("allows every type the schema declares up to its own", () => {
     const allowed = new Set(checkTypes(migration));
-    // Later migrations add their own types; 0399's test keeps the final list whole.
+    // Later migrations add their own types; 0402's test keeps the final list whole.
     const LATER = ["sale_registration_decided", "bidding_limit_changed"];
     expect(
       NOTIFICATION_TYPES.filter((type) => !allowed.has(type) && !LATER.includes(type)),

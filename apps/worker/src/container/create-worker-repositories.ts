@@ -45,6 +45,7 @@ import type { IDataExportJobRepository } from "../interfaces/data-export.reposit
 import type { IDomainEventProjectorReader } from "../interfaces/domain-event-projector.reader.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
 import type { IEmailAddressLookup } from "../interfaces/email-provider-suppression.js";
+import type { IEnquiryQuarantinePurgeRepository } from "../interfaces/enquiry-quarantine-purge.repository.js";
 import type { IIdentityOutboxRelayRepository } from "../interfaces/identity-outbox-relay.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subject.store.js";
@@ -90,6 +91,7 @@ import { DrizzleDataExportJobRepository } from "../repositories/drizzle-data-exp
 import { DrizzleDomainEventProjectorReader } from "../repositories/drizzle-domain-event-projector.reader.js";
 import { DrizzleEmailAddressLookup } from "../repositories/drizzle-email-address.lookup.js";
 import { DrizzleEmailOutboxRepository } from "../repositories/drizzle-email-outbox.repository.js";
+import { DrizzleEnquiryQuarantinePurgeRepository } from "../repositories/drizzle-enquiry-quarantine-purge.repository.js";
 import { DrizzleIdentityOutboxRelayRepository } from "../repositories/drizzle-identity-outbox-relay.repository.js";
 import { DrizzleImpersonationSweepRepository } from "../repositories/drizzle-impersonation-sweep.repository.js";
 import { DrizzleKycRetentionLegalEntityStore } from "../repositories/drizzle-kyc-retention-legal-entity.store.js";
@@ -145,6 +147,7 @@ export type WorkerRepositories = {
   mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
+  enquiryQuarantinePurgeRepo: IEnquiryQuarantinePurgeRepository;
   failedJobPayloadPurge: IFailedJobPayloadPurge;
   marketingClickIdPurgeRepo: IMarketingClickIdPurgeRepository;
   marketingAttributionPurgeRepo: IMarketingAttributionPurgeRepository;
@@ -211,6 +214,7 @@ export function createWorkerRepositories(
     mediaAssetCleanupRepo: new DrizzleMediaAssetCleanupRepository(db),
     qrCodeScanPersister: new DrizzleQrCodeScanPersister(db),
     qrCodeScanPurgeRepo: new DrizzleQrCodeScanPurgeRepository(db),
+    enquiryQuarantinePurgeRepo: new DrizzleEnquiryQuarantinePurgeRepository(db),
     failedJobPayloadPurge: new DrizzleFailedJobReviewRepository(db),
     marketingClickIdPurgeRepo: new DrizzleMarketingClickIdPurgeRepository(db),
     marketingAttributionPurgeRepo: new DrizzleMarketingAttributionPurgeRepository(db),
