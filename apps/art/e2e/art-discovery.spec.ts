@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, testWithoutSignOut as test } from "./helpers/test";
 import { artE2eEnabled, artE2eSkipReason } from "./helpers/art-e2e";
 
 /** Mirrors `ART_EDITORIAL_ENABLED` on the Art server; CI seeds the editorial showcase. */
@@ -72,20 +72,23 @@ test.describe("lax.art discovery", () => {
       "the right-hand drawer is desktop-only",
     );
     await page.goto("/artworks");
-    await page
-      .getByRole("button", { name: /^Filters/ })
-      .first()
-      .click();
     const drawer = page.getByRole("dialog", { name: "Filters" });
-    await expect(drawer).toBeVisible();
+    // The document is interactive before React has hydrated the toolbar, so a click that lands
+    // early is dropped; retry the open until the drawer actually appears.
+    const openDrawer = () =>
+      expect(async () => {
+        await page
+          .getByRole("button", { name: /^Filters/ })
+          .first()
+          .click();
+        await expect(drawer).toBeVisible({ timeout: 2_000 });
+      }).toPass({ timeout: 20_000 });
+    await openDrawer();
     await drawer.getByRole("radio", { name: "Title (A–Z)" }).check();
     await drawer.getByRole("button", { name: "Cancel" }).click();
     await expect(page).not.toHaveURL(/sort=/);
 
-    await page
-      .getByRole("button", { name: /^Filters/ })
-      .first()
-      .click();
+    await openDrawer();
     await drawer.getByRole("radio", { name: "Title (A–Z)" }).check();
     await drawer.getByRole("button", { name: "Apply" }).click();
     await expect(page).toHaveURL(/sort=title/);
