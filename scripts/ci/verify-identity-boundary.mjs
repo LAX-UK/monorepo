@@ -86,13 +86,21 @@ function run(command, args) {
   }
 }
 
+/** Room for the full file listing; a short buffer ends the read with ENOBUFS. */
+export const GIT_LISTING_MAX_BUFFER = 64 * 1024 * 1024;
+
 function trackedText() {
   const result = spawnSync(
     "git",
     ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
-    { encoding: "utf8" },
+    // The listing passed Node's 1 MiB default buffer as the repository grew (ENOBUFS).
+    { encoding: "utf8", maxBuffer: GIT_LISTING_MAX_BUFFER },
   );
-  if (result.status !== 0) throw new Error("unable to enumerate repository files");
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      `unable to enumerate repository files${result.error ? `: ${result.error.message}` : ""}`,
+    );
+  }
   return result.stdout
     .split("\0")
     .filter(Boolean)
