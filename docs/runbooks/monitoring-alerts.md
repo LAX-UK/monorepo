@@ -821,13 +821,16 @@ books it; the other finds the row and does nothing.
 
 **The "not issued" figure.** The daily report's "not issued" count and amount cover only
 documents still on their way: state `pending` (queued), `sending` (handed to the sender) or
-`unknown` (the send's outcome is not known yet). `needs_review` and `failed` documents are
-reported on their own lines, so they are not netted into "not issued". What to do with each:
-`pending` and `sending` need nothing unless they stay put for more than a day (then check the
-worker logs and the Failed jobs list); an `unknown` document is read again by the
-status check, so leave it until the next run and ask engineering if it is still `unknown` after
-two; `needs_review` and `failed` need a person (see "Needs a person" in the admin accounting
-view), and the report's totals are not clean until they are cleared.
+`unknown` (the send's outcome is not known yet). Parked documents (`needs_review` with a
+`accounting_parked_*` reason) have their own "parked" line. `failed` documents, and
+`needs_review` documents for any other reason, are on no line of their own: they show up only as
+a difference (`differencePence`) or a count mismatch for their type, so a difference with nothing
+"not issued" or parked usually means one of them. What to do with each: `pending` and `sending`
+need nothing unless they stay put for more than a day (then check the worker logs and the Failed
+jobs list); an `unknown` document is read again by the status check, so leave it until the next
+run and ask engineering if it is still `unknown` after two; parked, `failed` and other
+`needs_review` documents need a person (see "Needs a person" in the admin accounting view), and
+the report's totals are not clean until they are cleared.
 
 **Books call budget.** Each expense or transfer costs one to two Books calls (the create, and a
 lookup when the sender needs one). A day brings one expense per card payment (Bid and Shop), one
