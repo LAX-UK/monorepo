@@ -250,7 +250,11 @@ export function formatStorageNotice(
     case "charging": {
       if (!chargingOn) return passedNotice(pleaseCollect, placeName, true);
       const fee = terms.handlingFeePence;
-      const makeUp = `${plural(charge.chargeableDays, "day")} at ${rate}${fee > 0 ? `, and a ${money(fee)} handling fee` : ""}`;
+      const days = `${plural(charge.chargeableDays, "day")} at ${rate}`;
+      // With no daily rate the fee is all there is to make up, so no "£0 a day".
+      const makeUp = !charged
+        ? `a ${money(fee)} handling fee`
+        : `${days}${fee > 0 ? `, and a ${money(fee)} handling fee` : ""}`;
       return {
         heading: `Storage charges since ${dayLabel(charge.chargingFrom, now)}`,
         body: `${money(charge.amountPence, true)} so far (${makeUp}), plus VAT where it applies. Book a time to collect, and you will pay the storage up to that day when you book.`,

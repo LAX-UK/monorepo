@@ -249,6 +249,14 @@ describe("the state", () => {
     expect(charge({ extensionDays: 14, asOf: "2026-11-30" }).state).toBe("soon");
   });
 
+  it("counts the extension when deciding whether the free period is long enough to warn early", () => {
+    // Five free days alone give no early warning, but five more make the collect-by day Thu 12 Nov
+    // and a free period of ten days, so the warning starts Thu 5 Nov.
+    const terms = { ...TERMS, freeDays: 5 };
+    expect(charge({ terms, extensionDays: 5, asOf: "2026-11-04" }).state).toBe("extended");
+    expect(charge({ terms, extensionDays: 5, asOf: "2026-11-05" }).state).toBe("soon");
+  });
+
   it("is overdue, not charging, when nothing is owed past the day", () => {
     const zero = { ...TERMS, standardDailyPence: 0, largeDailyPence: null };
     expect(charge({ terms: zero, asOf: "2026-11-20" })).toMatchObject({
@@ -394,6 +402,19 @@ describe("the running-total lines", () => {
     expect(formatStorageNotice(early, fee, "standard", ctx).body).toContain(
       "A handling fee of £5 applies once when charges start.",
     );
+  });
+
+  it("names only the handling fee when the daily rate is zero", () => {
+    const feeOnly = {
+      ...TERMS,
+      standardDailyPence: 0,
+      largeDailyPence: null,
+      handlingFeePence: 500,
+    };
+    const charging = calculateStorageCharge(base({ terms: feeOnly, asOf: "2026-11-19" }));
+    const { body } = formatStorageNotice(charging, feeOnly, "standard", ctx);
+    expect(body).toContain("£5.00 so far (a £5 handling fee), plus VAT where it applies.");
+    expect(body).not.toContain("£0");
   });
 
   it("never says £0 a day at a zero rate, and never shows a £0.00 total", () => {
