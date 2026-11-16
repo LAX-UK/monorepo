@@ -1,7 +1,6 @@
-/** @vitest-environment jsdom */
 import ArtistApplyPage from "@/app/for-artists/apply/page";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/art-services.server", () => ({
   artServices: { viewer: { load: async () => ({ kind: "guest" }) } },
@@ -14,14 +13,11 @@ vi.mock("@/components/artist-application/artist-application-form.client", () => 
 }));
 
 describe("for-artists/apply, signed out", () => {
-  afterEach(cleanup);
-
   it("keeps the page's one h1 and shows the sign-in state under it as an h2", async () => {
-    render(await ArtistApplyPage({ searchParams: Promise.resolve({}) }));
-    const h1s = screen.getAllByRole("heading", { level: 1 });
-    expect(h1s).toHaveLength(1);
-    expect(h1s[0]?.textContent).toContain("Apply to join");
-    expect(screen.getByRole("heading", { level: 2, name: "Sign in to apply" })).toBeTruthy();
-    expect(document.querySelector("[data-layout='page']")).not.toBeNull();
+    const html = renderToStaticMarkup(await ArtistApplyPage({ searchParams: Promise.resolve({}) }));
+    expect(html.match(/<h1[\s>]/g)).toHaveLength(1);
+    expect(html).toMatch(/<h1[^>]*>Apply to join<\/h1>/);
+    expect(html).toMatch(/<h2[^>]*>Sign in to apply<\/h2>/);
+    expect(html).toContain('data-layout="page"');
   });
 });
