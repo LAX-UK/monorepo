@@ -1,6 +1,7 @@
 import { LAX_ART_POLICIES } from "@auction/marketing-ui";
 import { describe, expect, it } from "vitest";
 import {
+  OUTSIDE_UK_HELP_HREF,
   SHOP_POLICY_DOCUMENTS,
   SHOP_POLICY_RELEASES,
   SHOP_POLICY_SOURCES,
@@ -67,5 +68,37 @@ describe("Shop policy pages", () => {
       expect(text).toContain(detail);
     }
     expect(SHOP_POLICY_RELEASES.help.status).toBe("approved");
+  });
+});
+
+describe("the help page's delivery outside the UK entry", () => {
+  const build = (bidBaseUrl: URL | null) =>
+    buildShopHelpDocument({
+      ordersHref: "/account/orders",
+      accountHref: "https://account.example/account",
+      artBaseUrl: null,
+      bidBaseUrl,
+    });
+
+  it("is a section the quote steps can link to, and says who quotes, when, and how it is paid", () => {
+    const help = build(new URL("https://bid.example"));
+    const section = help.sections.find((s) => s.id === "delivery-outside-uk");
+    expect(section?.heading).toBe("Delivery outside the UK");
+    expect(OUTSIDE_UK_HELP_HREF).toBe("/help#delivery-outside-uk");
+    const text = shopPolicyTexts({ ...help, sections: section ? [section] : [] }).join("\n");
+    expect(text).toContain("Our gallery team quotes delivery outside the UK");
+    expect(text).toContain("within one working day");
+    expect(text).toContain("Pay for your print and its delivery together");
+    expect(text).toContain("up to three working days");
+  });
+
+  it("points the full terms at lax.bid/shipping as a plain link", () => {
+    const text = shopPolicyTexts(build(new URL("https://bid.example"))).join("\n");
+    expect(text).toContain("[shipping and logistics](https://bid.example/shipping)");
+  });
+
+  it("leaves the terms link out when lax.bid is not configured", () => {
+    const text = shopPolicyTexts(build(null)).join("\n");
+    expect(text).not.toContain("/shipping");
   });
 });

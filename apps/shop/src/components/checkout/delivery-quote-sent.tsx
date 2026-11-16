@@ -1,7 +1,9 @@
 "use client";
 
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
+import { OUTSIDE_UK_HELP_HREF } from "@/content/policies/help";
 import { countryName, holdUntilLabel } from "@/lib/checkout/outside-uk";
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 type Props = {
@@ -59,6 +61,11 @@ export function DeliveryQuoteSent({ orderReference, country, holdUntil }: Props)
       <p className="shop-checkout__sent-note">
         If the quote is not paid by {holdUntilLabel(holdUntil)}, we release the print and you can
         ask again.
+      </p>
+      <p className="shop-checkout__sent-note">
+        <Link href={OUTSIDE_UK_HELP_HREF} className="shop-inline-link shop-focus-ring">
+          How delivery outside the UK works
+        </Link>
       </p>
       <ShopCommerceButton href="/" variant="outline" className="shop-checkout__sent-action">
         Continue shopping
