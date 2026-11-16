@@ -137,9 +137,10 @@
   --color-hero-panel-ink: #17150f;
   --color-hero-panel-body: var(--color-brand-obsidian);
   --color-hero-panel-cta: var(--color-hero-panel-ink);
-  /* lax.art's editorial reveal timing (Q3), and the panel is never hidden: it is drawn from the
+  /* lax.art's own slower editorial duration (Q3; 900ms, longer than the 650ms it replaces), and the panel is never hidden: it is drawn from the
      server HTML and the first paint, and only settles up into place (MO15). */
-  --animate-art-hero-panel-in: art-hero-panel-in var(--motion-duration-lg)
+  --art-hero-panel-duration: var(--motion-duration-xl);
+  --animate-art-hero-panel-in: art-hero-panel-in var(--art-hero-panel-duration)
     var(--motion-ease-emphasize) both;
   --animate-art-hero-drift: art-hero-drift 18s ease-in-out infinite alternate;
   /* Figma page titles: 60px at 1440 (DM Sans SemiBold 60/1.2, set in Montserrat). */

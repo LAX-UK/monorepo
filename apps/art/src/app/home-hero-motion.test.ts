@@ -37,7 +37,8 @@ describe("lax.art home hero at start", () => {
 
   it("the panel entrance is timed from tokens, with lax.art's editorial reveal timing", () => {
     const value = declaration("--animate-art-hero-panel-in");
-    expect(value).toContain("var(--motion-duration-lg)");
+    expect(value).toContain("var(--art-hero-panel-duration)");
+    expect(declaration("--art-hero-panel-duration")).toContain("var(--motion-duration-xl)");
     expect(value).toContain("var(--motion-ease-emphasize)");
     expect(value).not.toMatch(
       /\b\d+(?:\.\d+)?m?s\b|cubic-bezier|(?<![-\w])ease(?:-out|-in)?(?![-\w])/,

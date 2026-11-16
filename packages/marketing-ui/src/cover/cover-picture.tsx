@@ -13,7 +13,8 @@ type LoadPhase = "ssr" | "loading" | "loaded";
 /**
  * Tracks one image's load for the fade. The picture is drawn from the server's HTML as it is, so
  * the largest element is never held back. Only a picture still downloading when the page wakes
- * up is hidden and faded in over its preview; one that already finished is left alone, and one
+ * up is hidden and faded in over its preview (only non-first slides: slide 0 is eager, so it is
+ * never hidden, and the others are off screen, so their one-time blink is not seen); one that already finished is left alone, and one
  * that finished broken is reported so the next source takes over.
  */
 function useImageLoad(onError: () => void) {
