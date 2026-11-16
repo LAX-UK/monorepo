@@ -4,6 +4,7 @@ import {
   collectionBooking,
   collectionBookingLot,
   domainEvent,
+  enquiryInboundQuarantine,
   itemSubmission,
   marketingEnquiry,
   marketingEnquiryAttachment,
@@ -14,7 +15,7 @@ import {
 } from "@auction/db/schema";
 import { ERASED_ENQUIRY } from "@auction/domain";
 import { DrizzlePrivateSaleDealRepository } from "@auction/persistence/repositories";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { anonymiseBidPersonalData } from "./anonymise-bid-personal-data.js";
 import { BID_ANONYMISATION_RULES } from "./bid-personal-data-policy.js";
@@ -207,6 +208,85 @@ describe.skipIf(!ownerUrl || !workerUrl)("enquiry erasure as worker_app (integra
     });
     expect(seen.attachments).toEqual([]);
     expect((seen.file as { expiresAt: Date }).expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("replaces the staff review reason in the held-mail events for the erased enquiry, as worker_app", async () => {
+    if (!rule) throw new Error("No marketing_enquiry rule in the policy");
+    const [held] = await owner
+      .insert(enquiryInboundQuarantine)
+      .values({
+        providerMessageId: `enq-erase-held-${run}`,
+        reason: "sender_mismatch",
+        fromAddress: "someone@integration.test",
+        subject: "Re: your enquiry",
+        body: "Held text",
+        attachments: [],
+        spfResult: "pass",
+        dkimResult: "none",
+        suspectedEnquiryId: enquiryId,
+      } as never)
+      .returning({ id: enquiryInboundQuarantine.id });
+    const heldId = (held as { id: string }).id;
+    const otherAggregate = randomUUID();
+    const seeded = await owner
+      .insert(domainEvent)
+      .values([
+        {
+          aggregateType: "marketing_enquiry",
+          aggregateId: enquiryId,
+          eventType: "marketing_enquiry.inbound_attached",
+          payload: { enquiryId, quarantineId: randomUUID(), reviewReason: "Maya's PA, by phone" },
+          producer: "integration_test",
+        },
+        {
+          aggregateType: "enquiry_inbound_quarantine",
+          aggregateId: heldId,
+          eventType: "marketing_enquiry.inbound_discarded",
+          payload: { quarantineId: heldId, reason: "sender_mismatch", reviewReason: "Maya's spam" },
+          producer: "integration_test",
+        },
+        {
+          aggregateType: "enquiry_inbound_quarantine",
+          aggregateId: otherAggregate,
+          eventType: "marketing_enquiry.inbound_discarded",
+          payload: { quarantineId: otherAggregate, reason: "unmatched", reviewReason: "Other" },
+          producer: "integration_test",
+        },
+      ])
+      .returning({ id: domainEvent.id });
+    const ids = seeded.map((row) => row.id);
+    let payloads: unknown[] = [];
+    try {
+      try {
+        await worker.transaction(async (tx) => {
+          await rule.apply(tx as never, {
+            subjectIds: [subject],
+            personalLegalEntityIds: [],
+            pseudonym: "Deleted user 7F3A",
+          });
+          const rows = await tx
+            .select({ id: domainEvent.id, payload: domainEvent.payload })
+            .from(domainEvent)
+            .where(inArray(domainEvent.id, ids));
+          payloads = ids.map((id) => rows.find((row) => row.id === id)?.payload);
+          throw new RolledBack();
+        });
+      } catch (error) {
+        if (!(error instanceof RolledBack)) throw error;
+      }
+    } finally {
+      await owner.delete(domainEvent).where(inArray(domainEvent.id, ids));
+      await owner.delete(enquiryInboundQuarantine).where(eq(enquiryInboundQuarantine.id, heldId));
+    }
+    const [attached, discarded, other] = payloads as Array<Record<string, unknown>>;
+    // Only the reason is replaced; ids and codes stay. Someone else's event is untouched.
+    expect(attached).toMatchObject({ enquiryId, reviewReason: ERASED_ENQUIRY.note });
+    expect(discarded).toEqual({
+      quarantineId: heldId,
+      reason: "sender_mismatch",
+      reviewReason: ERASED_ENQUIRY.note,
+    });
+    expect(other).toMatchObject({ reviewReason: "Other" });
   });
 
   it("runs the whole policy for a person with a live visit and an enquiry, as worker_app", async () => {

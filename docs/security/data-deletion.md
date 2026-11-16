@@ -87,7 +87,10 @@ window, while the personal profile fields are still anonymised.
 **KYC records** follow their own five-year retention purge.
 
 **`domain_events`** is append-only. Payloads carry as little personal data as possible so retained
-audit rows do not hold more than they need.
+audit rows do not hold more than they need. One exception: enquiry erasure replaces the free-text reason staff
+typed when attaching or discarding held inbound mail (`reviewReason` on
+`marketing_enquiry.inbound_attached` and `.inbound_discarded`), because it can name the sender. See
+[postmark-inbound.md](../integrations/postmark-inbound.md).
 
 ## Requests that do not come through the product
 

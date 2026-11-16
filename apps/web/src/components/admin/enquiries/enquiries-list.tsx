@@ -20,7 +20,9 @@ import {
   humaniseSlug,
 } from "@/lib/admin/enquiries/enquiries.vm";
 import type { EnquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
+import { QUARANTINE_COPY } from "@/lib/admin/enquiries/enquiry-email-copy";
 import { routingRows } from "@/lib/admin/enquiries/enquiry-routing-rows";
+import { QUARANTINE_PATH } from "@/lib/admin/enquiries/quarantine.vm";
 import type {
   EnquiryAssignee,
   EnquiryListItem,
@@ -38,12 +40,14 @@ import {
   SortMenu,
   StackedCell,
   StaffButton,
+  StaffButtonLink,
   TableSearch,
 } from "@auction/staff-ui";
-import { Route } from "@auction/staff-ui/icons";
+import { MailWarning, Route } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { AssigneeCell, EnquiryStatusBadge, WaitingCell } from "./enquiry-cells";
+import { AwaitingReplyBadge } from "./enquiry-replies-section";
 import { RoutingDialog } from "./routing-dialog";
 
 export type EnquiriesListProps = {
@@ -166,7 +170,12 @@ export function EnquiriesList(props: EnquiriesListProps) {
         hideBelow: "md",
         mobile: "badge",
         truncate: false,
-        cell: (row) => <EnquiryStatusBadge status={row.status} />,
+        cell: (row) => (
+          <span className="inline-flex flex-wrap items-center gap-1.5">
+            <EnquiryStatusBadge status={row.status} />
+            <AwaitingReplyBadge since={row.awaitingReplySince} now={now} />
+          </span>
+        ),
       },
     ],
     [nameOf, now],
@@ -209,19 +218,27 @@ export function EnquiriesList(props: EnquiriesListProps) {
         Link={ListLink}
         listKey="bid-admin.enquiries"
         access="full"
-        {...(abilities.canRoute && props.routing
-          ? {
-              secondaryActions: (
-                <StaffButton
-                  variant="secondary"
-                  icon={<Route aria-hidden />}
-                  onClick={() => setRoutingOpen(true)}
-                >
-                  Routing
-                </StaffButton>
-              ),
-            }
-          : {})}
+        secondaryActions={
+          <>
+            <StaffButtonLink
+              href={QUARANTINE_PATH}
+              Link={Link}
+              variant="secondary"
+              icon={<MailWarning aria-hidden />}
+            >
+              {QUARANTINE_COPY.openFromEnquiries}
+            </StaffButtonLink>
+            {abilities.canRoute && props.routing ? (
+              <StaffButton
+                variant="secondary"
+                icon={<Route aria-hidden />}
+                onClick={() => setRoutingOpen(true)}
+              >
+                Routing
+              </StaffButton>
+            ) : null}
+          </>
+        }
         views={
           <DataViews
             views={ENQUIRY_VIEW_IDS.map((id) => ({
