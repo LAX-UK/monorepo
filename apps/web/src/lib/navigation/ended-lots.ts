@@ -9,7 +9,7 @@ import { type AttentionChip, type ClientAttention, attentionChip } from "./clien
  *
  * Only the lazily loaded header parts (the attention chip and the signed-in account entry) import
  * this module, so the shared frame every page loads does not grow. The lot page tells it about a
- * close with a window event (`announceLotEnded`), not by importing it.
+ * close with a window event (`LOT_ENDED_SIGNAL`), not by importing it.
  *
  * The set only grows during a visit: if staff reopen a lot after it closed (a voided hammer, say),
  * its outbid prompt stays hidden until the next full load. That is rare, and the My bids page

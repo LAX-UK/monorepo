@@ -74,14 +74,14 @@ describe("LotRealtimeProvider and the ended-lots store", () => {
     expect(ended.has("lot-1")).toBe(true);
   });
 
-  it("ignores a lotEnded that names another lot", () => {
+  it("marks the lot the event names, not the page's own lot", () => {
     const { port, endLot } = fakeRealtime();
     renderLot("lot-1", port);
 
     // The socket is shared by the tab, so another room's close can reach this listener.
     endLot("lot-1", { lotId: "lot-2" });
 
-    expect(ended.size).toBe(0);
+    expect([...ended]).toEqual(["lot-2"]);
   });
 });
 

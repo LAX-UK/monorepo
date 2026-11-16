@@ -41,12 +41,13 @@ export function LotRealtimeProvider({
 
   useEffect(() => {
     if (!lotId) return;
-    // Each socket callback is relayed to every registered listener, in order.
+    // Each socket callback is relayed to every registered listener, in order. Every callback
+    // takes at most one argument.
     const relay =
-      <K extends keyof Listener>(key: K) =>
-      (...args: Parameters<NonNullable<Listener[K]>>) => {
+      (key: keyof Listener) =>
+      (payload?: unknown): void => {
         for (const listener of listenersRef.current) {
-          (listener[key] as ((...a: typeof args) => void) | undefined)?.(...args);
+          (listener[key] as ((payload?: unknown) => void) | undefined)?.(payload);
         }
       };
     const onLotEnded = relay("onLotEnded");
@@ -55,13 +56,11 @@ export function LotRealtimeProvider({
       onLotExtended: relay("onLotExtended"),
       onLotEnded: (p: LotEndedEvent) => {
         // Tells the header's outbid prompt (`lib/navigation/ended-lots.ts`) at once. The socket is
-        // shared by the tab and `lotEnded` is not scoped to a room, so only this lot's own close is
-        // announced, by the id the event names. The name is `LOT_ENDED_SIGNAL`
+        // shared by the tab and `lotEnded` is not scoped to a room, so the close is announced by
+        // the id the event names, never this provider's own. The name is `LOT_ENDED_SIGNAL`
         // (`lib/realtime/lot-ended-signal.ts`), written out so the lot page loads no extra module;
         // `lot-realtime-provider.test.tsx` fails if the two drift apart.
-        if (p.lotId === lotId) {
-          window.dispatchEvent(new CustomEvent("lax:lot-ended", { detail: p.lotId }));
-        }
+        window.dispatchEvent(new CustomEvent("lax:lot-ended", { detail: p.lotId }));
         onLotEnded(p);
       },
       onLotEvent: relay("onLotEvent"),

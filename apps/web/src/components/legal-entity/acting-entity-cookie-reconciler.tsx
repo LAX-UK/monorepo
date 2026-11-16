@@ -10,9 +10,13 @@ import { useEffect } from "react";
 type Props = {
   /** Acting entity id resolved server-side for this request (membership-validated). */
   serverActingId: string | null | undefined;
-  /** Log a snapshot even when the cookie already matches. */
-  verbose?: boolean;
 };
+
+/** `?acting_debug=1` (or `true`) logs a snapshot even when the cookie already matches. */
+function actingDebugRequested(): boolean {
+  const debug = new URLSearchParams(window.location.search).get("acting_debug");
+  return debug === "1" || debug === "true";
+}
 
 const LOG_PREFIX = "[lax:acting-entity]";
 
@@ -26,8 +30,9 @@ const LOG_PREFIX = "[lax:acting-entity]";
  * here — where `document.cookie` writes are allowed — heals it for every
  * browser request. Impersonation cookies are left untouched (their session
  * payload must not be replaced with a plain UUID). */
-export function ActingEntityCookieReconciler({ serverActingId, verbose = false }: Props) {
+export function ActingEntityCookieReconciler({ serverActingId }: Props) {
   useEffect(() => {
+    const verbose = actingDebugRequested();
     // Before reading: a lingering shared copy would be reported as the cookie value.
     expireSharedActingCookie();
     const drift = detectActingEntityCookieDrift(
@@ -54,7 +59,7 @@ export function ActingEntityCookieReconciler({ serverActingId, verbose = false }
         to: drift.serverActingId,
       });
     }
-  }, [serverActingId, verbose]);
+  }, [serverActingId]);
 
   return null;
 }

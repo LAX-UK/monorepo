@@ -44,7 +44,7 @@ export function SaleroomHeroEditorial({
   explainerContext,
 }: Props) {
   const saleroomLive = useSaleroomLive();
-  const liveSession: PublicSaleroomSessionStatus | null = saleroomLive ?? saleroomSession ?? null;
+  const liveSession: PublicSaleroomSessionStatus | null = saleroomLive ?? saleroomSession;
   const liveTrailing = resolveSaleroomHeroLiveTrailing(hero, {
     liveSession,
     catalogLotRefs,
