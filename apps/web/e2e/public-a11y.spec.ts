@@ -64,7 +64,10 @@ async function navigate(page: Page, path: string) {
   const retry = await page.goto(path, { waitUntil: "domcontentloaded" });
   // Soft: the scan still runs, but the run is red so a crashing or restarting service is seen.
   expect
-    .soft(false, `${path} answered ${status} at ${at} and needed a retry (retry answered ${retry?.status()})`)
+    .soft(
+      false,
+      `${path} answered ${status} at ${at} and needed a retry (retry answered ${retry?.status()})`,
+    )
     .toBeTruthy();
   return retry;
 }
