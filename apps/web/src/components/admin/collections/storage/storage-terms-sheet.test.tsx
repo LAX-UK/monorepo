@@ -60,6 +60,16 @@ function setStart(sheet: HTMLElement, text: string) {
 }
 
 describe("Schedule a change", () => {
+  it("sizes each field to what it takes: two-digit days, amounts, a date", () => {
+    const { sheet } = open();
+    const box = (input: HTMLElement) => input.parentElement?.className ?? "";
+    expect(box(within(sheet).getByLabelText("Free days"))).toContain("max-w-staff-field-count");
+    expect(box(within(sheet).getByLabelText("Standard"))).toContain("max-w-staff-field-money");
+    expect(box(within(sheet).getByLabelText("Large"))).toContain("max-w-staff-field-money");
+    expect(box(field(sheet, "Handling fee"))).toContain("max-w-staff-field-money");
+    expect(box(within(sheet).getByLabelText("Starts on"))).toContain("max-w-staff-field-date");
+  });
+
   it("has the four sections and starts from the terms in force", () => {
     const { sheet } = open();
     for (const name of [

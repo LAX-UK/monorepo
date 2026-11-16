@@ -182,10 +182,8 @@ type TermsValues = Omit<StaffStorageTerms, "id" | "reason">;
 /** The "In force" card's facts, label then value. */
 export function termsFacts(terms: TermsValues): { label: string; value: string }[] {
   return [
-    {
-      label: C.labels.freeStorage,
-      value: C.values.freeStorage(terms.freeDays, terms.countMode === "working"),
-    },
+    { label: C.labels.free, value: C.values.free(terms.freeDays) },
+    { label: C.labels.counting, value: C.values.counting(terms.countMode === "working") },
     { label: C.labels.standard, value: C.values.perLot(money(terms.standardDailyPence)) },
     {
       label: C.labels.large,
@@ -205,9 +203,6 @@ export function termsFacts(terms: TermsValues): { label: string; value: string }
   ];
 }
 
-const freeText = (terms: TermsValues) =>
-  C.sentences.summary.free(terms.freeDays, terms.countMode === "working");
-
 /** The scheduled change beside the terms in force, value by value; changed rows stand out. */
 export function scheduledChanges(
   inForce: TermsValues | null,
@@ -220,23 +215,24 @@ export function scheduledChanges(
     after,
     changes: before !== after,
   });
+  const V = C.changeValues;
+  const free = (t: TermsValues) => V.free(t.freeDays);
+  const counting = (t: TermsValues) => C.values.counting(t.countMode === "working");
   const large = (t: TermsValues) =>
-    t.largeDailyPence === null ? C.values.largeOff : money(t.largeDailyPence);
+    t.largeDailyPence === null ? V.largeOff : money(t.largeDailyPence);
   const handling = (t: TermsValues) =>
-    t.handlingFeePence === 0 ? C.values.handlingNone : money(t.handlingFeePence);
+    t.handlingFeePence === 0 ? V.handlingNone : money(t.handlingFeePence);
   // The start date is the card's own heading ("From Tue 1 Dec"), so it is not a row: it would
-  // always read as changed.
-  const L = C.changeLabels;
+  // always read as changed. Labels are the In force list's, so the cards side by side match.
+  const L = C.labels;
+  const pair = (id: string, label: string, value: (t: TermsValues) => string) =>
+    row(id, label, value(scheduled), inForce ? value(inForce) : null);
   return [
-    row("free", L.freeStorage, freeText(scheduled), inForce ? freeText(inForce) : null),
-    row(
-      "standard",
-      L.standard,
-      money(scheduled.standardDailyPence),
-      inForce ? money(inForce.standardDailyPence) : null,
-    ),
-    row("large", L.large, large(scheduled), inForce ? large(inForce) : null),
-    row("handling", L.handling, handling(scheduled), inForce ? handling(inForce) : null),
+    pair("free", L.free, free),
+    pair("counting", L.counting, counting),
+    pair("standard", L.standard, (t) => money(t.standardDailyPence)),
+    pair("large", L.large, large),
+    pair("handling", L.handling, handling),
   ];
 }
 

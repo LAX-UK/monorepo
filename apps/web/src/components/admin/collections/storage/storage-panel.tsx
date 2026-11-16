@@ -124,7 +124,8 @@ export function StoragePanel({ storage: initial, canChange }: Props) {
           {failure}
         </Notice>
       ) : null}
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      {/* Cards that share a row stretch to the taller one, so the row has one bottom edge. */}
+      <div className="grid gap-6 lg:grid-cols-2">
         {inForce ? (
           <InForceCard
             terms={inForce}

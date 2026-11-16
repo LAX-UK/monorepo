@@ -152,11 +152,9 @@ describe("Storage tab, a change scheduled", () => {
     expect(standard.getAttribute("data-changes")).toBe("true");
     expect(standard.textContent).toContain("£3.00");
     expect(standard.textContent).toContain("£3.50");
-    expect(
-      within(table)
-        .getByRole("row", { name: /Free storage/ })
-        .getAttribute("data-changes"),
-    ).toBe("false");
+    expect(within(table).getByRole("row", { name: /^Free/ }).getAttribute("data-changes")).toBe(
+      "false",
+    );
     expect(within(card).getByText("Reason: Rates for 2027, agreed with the gallery")).toBeTruthy();
     // The start is the card's heading, not a row that always reads as changed.
     expect(within(table).queryByRole("row", { name: /Starts on/ })).toBeNull();
@@ -174,8 +172,25 @@ describe("Storage tab, a change scheduled", () => {
 
   it("says why another change cannot be scheduled while one waits", () => {
     renderPanel(STORAGE_WITH_CHANGE);
-    const button = within(section("In force")).getByRole("button", { name: "Schedule a change" });
+    const card = section("In force");
+    const button = within(card).getByRole("button", { name: "Schedule a change" });
     expect(button.getAttribute("aria-disabled")).toBe("true");
+    // On the card as text too, not only in the tooltip: a phone has no hover (PRM-2).
+    expect(
+      within(card).getByText("A change is already scheduled. Edit or cancel it first."),
+    ).toBeTruthy();
+  });
+
+  it("shows no reason line on In force when a change can be scheduled", () => {
+    renderPanel(STORAGE);
+    expect(within(section("In force")).queryByText(/already scheduled/)).toBeNull();
+  });
+
+  it("lets cards that share a row stretch to one bottom edge", () => {
+    renderPanel(STORAGE_WITH_CHANGE);
+    const grid = section("In force").parentElement;
+    expect(grid?.className).toContain("grid");
+    expect(grid?.className).not.toContain("items-start");
   });
 
   it("cancels the change after an in-page confirmation with a reason", async () => {

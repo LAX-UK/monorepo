@@ -1,10 +1,10 @@
 import { SectionSkeleton, Skeleton } from "@auction/staff-ui";
 
 /**
- * The In force card's facts and the lines each takes at 1440: free storage (2), standard, large
- * (2), handling fee, applies to.
+ * The In force card's facts and the lines each takes at 1440: free (2), counting, standard, large
+ * (2), handling, applies to.
  */
-const FACTS = [2, 1, 2, 1, 1] as const;
+const FACTS = [2, 1, 1, 2, 1, 1] as const;
 /** The Charging card's explanation and its reason line. */
 const CHARGING = [2, 1] as const;
 
@@ -17,7 +17,7 @@ export function StorageSkeleton() {
   return (
     <div aria-busy="true" className="flex flex-col gap-6">
       <Skeleton className="h-24 w-full rounded-staff-lg" />
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <SectionSkeleton rows={FACTS} description action />
         <SectionSkeleton rows={CHARGING} body="choice" />
       </div>

@@ -62,7 +62,12 @@ export function InForceCard({
         ) : null
       }
     >
-      <KeyValueList items={termsFacts(terms)} />
+      <div className="flex flex-col gap-3">
+        {/* The reason is on the card as text too, not only in the button's tooltip: there is no
+            hover on a phone (PRM-2). */}
+        {canChange && blockedReason ? <DisabledReason>{blockedReason}</DisabledReason> : null}
+        <KeyValueList items={termsFacts(terms)} />
+      </div>
     </Section>
   );
 }

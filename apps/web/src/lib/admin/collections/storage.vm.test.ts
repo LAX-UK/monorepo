@@ -193,16 +193,17 @@ describe("the cards", () => {
   it("lists the terms in force as the design writes them", () => {
     expect(termsFacts(IN_FORCE)).toEqual([
       {
-        label: "Free storage",
+        label: "Free",
         value:
-          "14 days after payment clears, counted in calendar days. A date that falls on a closed day moves to the next open day.",
+          "14 days after payment clears. A date that falls on a closed day moves to the next open day.",
       },
-      { label: "Standard works", value: "£3.00 per lot a day" },
+      { label: "Counting", value: "Calendar days" },
+      { label: "Standard", value: "£3.00 per lot a day" },
       {
-        label: "Large works",
+        label: "Large",
         value: "£6.00 per lot a day · any side over 150 cm, marked on the lot",
       },
-      { label: "Handling fee", value: "None" },
+      { label: "Handling", value: "None" },
       { label: "Applies to", value: "Lots won in sales that close on or after the start date" },
     ]);
   });
@@ -214,11 +215,31 @@ describe("the cards", () => {
       standardDailyPence: 350,
     });
     expect(rows.map((row) => [row.label, row.before, row.after, row.changes])).toEqual([
-      ["Free storage", "14 calendar days free", "14 calendar days free", false],
+      ["Free", "14 days", "14 days", false],
+      ["Counting", "Calendar days", "Calendar days", false],
       ["Standard", "£3.00", "£3.50", true],
       ["Large", "£6.00", "£6.00", false],
       ["Handling", "None", "None", false],
     ]);
+  });
+
+  it("uses the In force list's labels, with short values that fit a phone", () => {
+    const rows = scheduledChanges(IN_FORCE, {
+      ...IN_FORCE,
+      freeDays: 0,
+      countMode: "working",
+      largeDailyPence: null,
+    });
+    const facts = termsFacts(IN_FORCE).map((fact) => fact.label);
+    for (const row of rows) expect(facts).toContain(row.label);
+    expect(rows.map((row) => [row.label, row.after])).toEqual([
+      ["Free", "None"],
+      ["Counting", "Working days"],
+      ["Standard", "£3.00"],
+      ["Large", "As standard"],
+      ["Handling", "None"],
+    ]);
+    expect(scheduledChanges(IN_FORCE, { ...IN_FORCE, freeDays: 1 })[0]?.after).toBe("1 day");
   });
 
   it("shows every value as new for a place's first terms", () => {

@@ -53,26 +53,26 @@ export const STORAGE_COPY = {
       reasonMissing: "Enter why you're cancelling the change.",
     },
   },
-  /** The Scheduled card's table: short labels, so they stay on one line on a phone. */
-  changeLabels: {
-    freeStorage: "Free storage",
+  /**
+   * One set of short labels for the In force list and the Scheduled table beside it, so the two
+   * cards read alike and every table row stays on one line on a phone.
+   */
+  labels: {
+    startsOn: "Starts on",
+    free: "Free",
+    counting: "Counting",
     standard: "Standard",
     large: "Large",
     handling: "Handling",
-  },
-  labels: {
-    startsOn: "Starts on",
-    freeStorage: "Free storage",
-    standard: "Standard works",
-    large: "Large works",
-    handling: "Handling fee",
     appliesTo: "Applies to",
   },
+  /** The In force list: the full terms, in sentences. */
   values: {
-    freeStorage: (days: number, working: boolean) =>
+    free: (days: number) =>
       days === 0
         ? "None. Charges start the day after payment clears."
-        : `${days} ${days === 1 ? "day" : "days"} after payment clears, counted in ${working ? "working" : "calendar"} days. A date that falls on a closed day moves to the next open day.`,
+        : `${days} ${days === 1 ? "day" : "days"} after payment clears. A date that falls on a closed day moves to the next open day.`,
+    counting: (working: boolean) => (working ? "Working days" : "Calendar days"),
     perLot: (amount: string) => `${amount} per lot a day`,
     largeOn: (amount: string, cm: number) =>
       `${amount} per lot a day · any side over ${cm} cm, marked on the lot`,
@@ -80,6 +80,12 @@ export const STORAGE_COPY = {
     handlingNone: "None",
     handling: (amount: string) => `${amount} once per lot, when charges start`,
     appliesTo: "Lots won in sales that close on or after the start date",
+  },
+  /** The Scheduled table: the same facts as short values, so each row fits one line at 375. */
+  changeValues: {
+    free: (days: number) => (days === 0 ? "None" : `${days} ${days === 1 ? "day" : "days"}`),
+    largeOff: "As standard",
+    handlingNone: "None",
   },
   charging: {
     title: "Charging",

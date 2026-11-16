@@ -199,6 +199,7 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
               value={draft.effectiveFrom}
               min={shiftDay(today, 1)}
               max={latestStorageTermsStart(today)}
+              boxClassName="max-w-staff-field-date"
               onValueChange={(day) => set("effectiveFrom", day)}
             />
           </Field>
@@ -230,6 +231,7 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
               inputMode="numeric"
               autoComplete="off"
               className="tabular-nums"
+              boxClassName="max-w-staff-field-count"
               value={draft.freeDays}
               onChange={(event) => set("freeDays", event.target.value)}
             />
@@ -265,6 +267,7 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
             disabled={locked}
           >
             <MoneyInput
+              boxClassName="max-w-staff-field-money"
               value={draft.standard.pence}
               onValueChange={(pence, parsed) =>
                 set("standard", { pence, empty: !parsed.ok && parsed.reason === "empty" })
@@ -294,6 +297,7 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
               disabled={locked}
             >
               <MoneyInput
+                boxClassName="max-w-staff-field-money"
                 value={draft.large.pence}
                 onValueChange={(pence, parsed) =>
                   set("large", { pence, empty: !parsed.ok && parsed.reason === "empty" })
@@ -313,6 +317,7 @@ export function StorageTermsSheet({ onClose, venueId, today, inForce, editing, o
             disabled={locked}
           >
             <MoneyInput
+              boxClassName="max-w-staff-field-money"
               value={draft.handling.pence}
               onValueChange={(pence, parsed) =>
                 set("handling", { pence, empty: !parsed.ok && parsed.reason === "empty" })
