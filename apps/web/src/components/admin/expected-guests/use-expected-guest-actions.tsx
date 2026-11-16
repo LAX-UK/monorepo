@@ -2,7 +2,7 @@
 
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { adminAssignPaddleResultAction, adminClearPaddleResultAction } from "@/lib/actions/admin";
-import { checkInBidder } from "@/lib/admin/saleroom/check-in.client";
+import { checkInBidder } from "@/lib/admin/saleroom/check-in.lazy";
 import type { AdminExpectedGuestRow } from "@/lib/data/http/admin-expected-guests.server";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";

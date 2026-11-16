@@ -3,7 +3,7 @@
 import { AssignPaddleDialog } from "@/components/admin/assign-paddle-dialog";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { adminDecideSaleRegistrationResultAction } from "@/lib/actions/admin";
-import { checkInBidder } from "@/lib/admin/saleroom/check-in.client";
+import { checkInBidder } from "@/lib/admin/saleroom/check-in.lazy";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin-sale-registrations.types";
 import { registrationBidderLabel } from "@/lib/data/view-models/sale-registrations-tab.vm";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";

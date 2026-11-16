@@ -1,11 +1,8 @@
 "use client";
 
 import { CHECK_IN_LIMIT_ERROR, parseCheckInLimit } from "@/lib/admin/saleroom/check-in-limit";
-import {
-  type CheckInInput,
-  checkInBidder,
-  searchCheckInCandidates,
-} from "@/lib/admin/saleroom/check-in.client";
+import type { CheckInInput } from "@/lib/admin/saleroom/check-in.client";
+import { checkInBidder, searchCheckInCandidates } from "@/lib/admin/saleroom/check-in.lazy";
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin-sale-registrations.types";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";

@@ -17,6 +17,7 @@ import { useClerkConsoleModel } from "@/features/saleroom/hooks/use-clerk-consol
 import { useClerkLotRosterSync } from "@/features/saleroom/hooks/use-clerk-lot-roster-sync";
 import { useClerkPaddleRoster } from "@/features/saleroom/hooks/use-clerk-paddle-roster";
 import { clerkLotSnapshot } from "@/features/saleroom/lib/clerk-commands.client";
+import { ClerkRoomRecheckContext } from "@/features/saleroom/lib/clerk-room-recheck";
 import { useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
 import type {
   AdminPaddleRosterEntry,
@@ -27,7 +28,7 @@ import { mapAdminSaleroomSnapshotToSessionStatus } from "@/lib/saleroom/map-admi
 import { notify } from "@/lib/ui/notify";
 import type { Lot, SaleDeliveryMode, SaleroomDisplayOverlay } from "@auction/types";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 /** Set once the console has mounted in this document; a later mount is a remount. */
 let consoleMounted = false;
@@ -111,15 +112,29 @@ function ClerkConsoleInner({
     consoleMounted = true;
   }, [resyncFromServer, router]);
 
+  // What every command control runs when a command fails or goes unanswered: refetch the page and
+  // read the session again, so the clerk sees what the server holds before the error.
+  const recheckRoom = useCallback(async () => {
+    router.refresh();
+    await resyncFromServer();
+  }, [resyncFromServer, router]);
+
   const currentLotId = session.currentLotId;
+  /** When the last live price (a socket bid update) was applied to the lot on the block. */
+  const livePriceAtRef = useRef<number | null>(null);
   // Price and reserve of the lot on the block, read from the API whenever it changes (and on
   // mount), so a console reset or restored from cache never shows the price it was loaded with.
-  // A later server render (a refresh) replaces it.
+  // A later server render (a refresh) replaces it. A snapshot requested before the last live price
+  // arrived is older than that price, so it is dropped rather than wind the price back.
   useEffect(() => {
     if (!currentLotId) return;
     let current = true;
+    const requestedAt = Date.now();
     void clerkLotSnapshot({ saleId, lotId: currentLotId }).then((result) => {
-      if (current && result.ok && result.data) applyLotSnapshot(result.data);
+      if (!current || !result.ok || !result.data) return;
+      const livePriceAt = livePriceAtRef.current;
+      if (livePriceAt !== null && livePriceAt >= requestedAt) return;
+      applyLotSnapshot(result.data);
     });
     return () => {
       current = false;
@@ -138,6 +153,7 @@ function ClerkConsoleInner({
     currentLotForBid?.currentPrice ?? "0.00",
     paddleRoster,
   );
+  livePriceAtRef.current = liveBid.livePriceAt ?? null;
 
   const model = useClerkConsoleModel({
     saleId,
@@ -160,115 +176,117 @@ function ClerkConsoleInner({
   const panelVariant = model.phaseLayout.toolsPresentation === "tabbed" ? "plain" : "bordered";
 
   return (
-    <ClerkConsoleLayout
-      phaseLayout={model.phaseLayout}
-      showActionBar={model.showActionBar}
-      slots={{
-        alerts: (
-          <ClerkConsoleAlertsPanel
-            alerts={model.feedback.alerts}
-            {...(model.feedback.registrationsHref
-              ? { registrationsHref: model.feedback.registrationsHref }
-              : {})}
-          />
-        ),
-        sessionBar: (
-          <ClerkSessionBar
-            session={model.session.session}
-            currentLot={model.lot.currentLot}
-            progress={model.lot.progress}
-            leaderLabel={model.lot.liveBid.leaderLabel}
-            leaderAmount={model.lot.liveBid.leaderAmount}
-            mode={model.phaseLayout.sessionBarMode}
-          />
-        ),
-        sessionToolbar: (
-          <ClerkSessionToolbar
-            saleId={saleId}
-            livePhase={model.session.livePhase}
-            sessionStatus={model.action.sessionStatus}
-            sticky={model.phaseLayout.stickySessionToolbar}
-            confirmFromServer={resyncFromServer}
-          />
-        ),
-        runway: (
-          <LotRunwayPanel
-            saleId={saleId}
-            lots={model.lot.lots}
-            currentLotId={model.lot.currentLotId}
-            sessionLive={model.action.sessionLive}
-            sessionStatus={model.action.sessionStatus}
-            policy={model.action.policy}
-            betweenLots={model.lot.progress.betweenLots}
-            nextLot={model.lot.nextLot}
-            hammeredLotIds={hammeredLotIds}
-          />
-        ),
-        onBlock: (
-          <LotOnBlockPanel
-            saleId={saleId}
-            currentLotId={model.lot.currentLotId}
-            lots={model.lot.lots}
-            telephoneBookings={model.roster.telephoneBookings}
-            paddleRoster={model.roster.paddleRoster}
-            liveBid={model.lot.liveBid}
-            nextLot={model.lot.nextLot}
-            sessionLive={model.action.sessionLive}
-            sessionStatus={model.action.sessionStatus}
-            betweenLots={model.lot.progress.betweenLots}
-            renderDock={({ hammerPrimary }) => (
-              <ClerkLiveActionBar
-                saleId={saleId}
-                currentLotId={model.lot.currentLotId}
-                resync={resyncFromServer}
-                canHammer={model.action.canHammer}
-                sessionLive={model.action.sessionLive}
-                nextLot={model.lot.nextLot}
-                policy={model.action.policy}
-                hammerPrimary={hammerPrimary}
-              />
-            )}
-          />
-        ),
-        tools: (
-          <ClerkSecondaryToolsRail
-            phase={model.session.livePhase}
-            phaseLayout={model.phaseLayout}
-            pendingTelForLot={model.pendingTelForLot}
-            slots={{
-              display: (
-                <DisplayControlPanel
-                  saleId={saleId}
-                  initialOverlay={initialDisplayOverlay}
-                  panelVariant={panelVariant}
-                />
-              ),
-              telephone: (
-                <TelephoneLinesPanel
+    <ClerkRoomRecheckContext.Provider value={recheckRoom}>
+      <ClerkConsoleLayout
+        phaseLayout={model.phaseLayout}
+        showActionBar={model.showActionBar}
+        slots={{
+          alerts: (
+            <ClerkConsoleAlertsPanel
+              alerts={model.feedback.alerts}
+              {...(model.feedback.registrationsHref
+                ? { registrationsHref: model.feedback.registrationsHref }
+                : {})}
+            />
+          ),
+          sessionBar: (
+            <ClerkSessionBar
+              session={model.session.session}
+              currentLot={model.lot.currentLot}
+              progress={model.lot.progress}
+              leaderLabel={model.lot.liveBid.leaderLabel}
+              leaderAmount={model.lot.liveBid.leaderAmount}
+              mode={model.phaseLayout.sessionBarMode}
+            />
+          ),
+          sessionToolbar: (
+            <ClerkSessionToolbar
+              saleId={saleId}
+              livePhase={model.session.livePhase}
+              sessionStatus={model.action.sessionStatus}
+              sticky={model.phaseLayout.stickySessionToolbar}
+              confirmFromServer={resyncFromServer}
+            />
+          ),
+          runway: (
+            <LotRunwayPanel
+              saleId={saleId}
+              lots={model.lot.lots}
+              currentLotId={model.lot.currentLotId}
+              sessionLive={model.action.sessionLive}
+              sessionStatus={model.action.sessionStatus}
+              policy={model.action.policy}
+              betweenLots={model.lot.progress.betweenLots}
+              nextLot={model.lot.nextLot}
+              hammeredLotIds={hammeredLotIds}
+            />
+          ),
+          onBlock: (
+            <LotOnBlockPanel
+              saleId={saleId}
+              currentLotId={model.lot.currentLotId}
+              lots={model.lot.lots}
+              telephoneBookings={model.roster.telephoneBookings}
+              paddleRoster={model.roster.paddleRoster}
+              liveBid={model.lot.liveBid}
+              nextLot={model.lot.nextLot}
+              sessionLive={model.action.sessionLive}
+              sessionStatus={model.action.sessionStatus}
+              betweenLots={model.lot.progress.betweenLots}
+              renderDock={({ hammerPrimary }) => (
+                <ClerkLiveActionBar
                   saleId={saleId}
                   currentLotId={model.lot.currentLotId}
-                  rows={model.roster.telephoneBookings}
-                  panelVariant={panelVariant}
+                  resync={resyncFromServer}
+                  canHammer={model.action.canHammer}
+                  sessionLive={model.action.sessionLive}
+                  nextLot={model.lot.nextLot}
+                  policy={model.action.policy}
+                  hammerPrimary={hammerPrimary}
                 />
-              ),
-              activity: (
-                <SaleroomActivityLog
-                  entries={model.session.activityLog}
-                  panelVariant={panelVariant}
-                />
-              ),
-            }}
-          />
-        ),
-        phoneView: (
-          <ClerkReadOnlyView
-            currentLot={model.lot.currentLot}
-            liveBid={model.lot.liveBid}
-            activityLog={model.session.activityLog}
-          />
-        ),
-      }}
-    />
+              )}
+            />
+          ),
+          tools: (
+            <ClerkSecondaryToolsRail
+              phase={model.session.livePhase}
+              phaseLayout={model.phaseLayout}
+              pendingTelForLot={model.pendingTelForLot}
+              slots={{
+                display: (
+                  <DisplayControlPanel
+                    saleId={saleId}
+                    initialOverlay={initialDisplayOverlay}
+                    panelVariant={panelVariant}
+                  />
+                ),
+                telephone: (
+                  <TelephoneLinesPanel
+                    saleId={saleId}
+                    currentLotId={model.lot.currentLotId}
+                    rows={model.roster.telephoneBookings}
+                    panelVariant={panelVariant}
+                  />
+                ),
+                activity: (
+                  <SaleroomActivityLog
+                    entries={model.session.activityLog}
+                    panelVariant={panelVariant}
+                  />
+                ),
+              }}
+            />
+          ),
+          phoneView: (
+            <ClerkReadOnlyView
+              currentLot={model.lot.currentLot}
+              liveBid={model.lot.liveBid}
+              activityLog={model.session.activityLog}
+            />
+          ),
+        }}
+      />
+    </ClerkRoomRecheckContext.Provider>
   );
 }
 

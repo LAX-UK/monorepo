@@ -1,6 +1,5 @@
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin-sale-registrations.types";
 import type { ActionResult } from "@/lib/forms/form-result";
-import { SALEROOM_CHECK_IN_TRANSPORT_COPY } from "@/lib/saleroom/check-in-error-messages";
 
 /**
  * Door check-in, sent from the browser to the API through the same-origin BFF (`/api/bff/...`)
@@ -8,9 +7,16 @@ import { SALEROOM_CHECK_IN_TRANSPORT_COPY } from "@/lib/saleroom/check-in-error-
  * one build, so a panel opened before a deploy crashed into the tab's error boundary. A BFF path
  * is the same on every build. The API checks saleroom and sales access on both calls.
  *
- * Deliberately self-contained (plain same-origin `fetch`, no shared helpers): it ships only on the
- * registrations tab and must not pull the console's transport into that page.
+ * Deliberately self-contained (plain same-origin `fetch`, no shared helpers), and loaded only when
+ * staff first search or check someone in (`check-in.lazy.ts`), so none of it is in the
+ * registrations tab's start-up JavaScript.
  */
+
+/** When the check-in request itself does not go through. */
+export const SALEROOM_CHECK_IN_TRANSPORT_COPY = {
+  unreachable: "The saleroom could not be reached. Check the connection, then try again.",
+  sessionExpired: "Your session has ended. Sign in again to continue.",
+} as const;
 
 export type CheckInInput = {
   saleId: string;

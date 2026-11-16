@@ -2,7 +2,7 @@ import { SaleroomClerkConsole } from "@/features/saleroom/components/clerk-conso
 import { setClerkCommandFetchForTests } from "@/features/saleroom/lib/clerk-commands.client";
 import type { AdminSaleroomSessionSnapshot } from "@/lib/data/http/admin.server";
 import type { Lot } from "@auction/types";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -14,8 +14,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const SALE = "11111111-1111-4111-8111-111111111111";
 const LOT = "22222222-2222-4222-8222-222222222222";
 
+const { socketHandlers } = vi.hoisted(() => ({
+  socketHandlers: new Map<string, (payload: unknown) => void>(),
+}));
+
 vi.mock("@/lib/socket", () => ({
-  getSocket: () => ({ emit: vi.fn(), on: vi.fn(), off: vi.fn() }),
+  getSocket: () => ({
+    emit: vi.fn(),
+    on: (event: string, handler: (payload: unknown) => void) => socketHandlers.set(event, handler),
+    off: vi.fn(),
+  }),
 }));
 vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
   SaleroomLiveShell: ({
@@ -86,6 +94,7 @@ const initial: AdminSaleroomSessionSnapshot = {
 
 afterEach(() => {
   setClerkCommandFetchForTests(null);
+  socketHandlers.clear();
 });
 
 describe("SaleroomClerkConsole after Try again", () => {
@@ -119,5 +128,56 @@ describe("SaleroomClerkConsole after Try again", () => {
       `/api/bff/admin/sales/${SALE}/saleroom/lots/${LOT}`,
       expect.objectContaining({ method: "GET" }),
     );
+  });
+
+  it("keeps a live price that arrived while the snapshot was in flight, not the older snapshot", async () => {
+    let answerSnapshot: (response: Response) => void = () => {};
+    const server = vi.fn(
+      (input: string) =>
+        new Promise<Response>((resolve) => {
+          if (input === `/api/bff/admin/sales/${SALE}/saleroom/lots/${LOT}`) {
+            answerSnapshot = resolve;
+          } else {
+            resolve(new Response("Not found", { status: 404 }));
+          }
+        }),
+    );
+    setClerkCommandFetchForTests(server);
+
+    render(
+      <SaleroomClerkConsole
+        saleId={SALE}
+        saleTitle="Evening sale"
+        initial={initial}
+        lots={staleLots}
+      />,
+    );
+
+    // A bid lands on the socket after the snapshot was read but before its answer arrives.
+    await act(async () => {
+      socketHandlers.get("bidUpdate")?.({
+        type: "bid_placed",
+        lotId: LOT,
+        bid: { id: "bid-9", amount: "1200.00", bidderId: "bidder-9", placedVia: "paddle" },
+        currentPrice: "1200.00",
+        bidCount: 5,
+      });
+    });
+    expect(await screen.findByText("£1,200.00")).toBeInTheDocument();
+
+    await act(async () => {
+      answerSnapshot(
+        new Response(
+          JSON.stringify({
+            data: { lotId: LOT, status: "active", currentPrice: "950.00", reservePrice: "900.00" },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(screen.getByText("£1,200.00")).toBeInTheDocument();
+    expect(screen.queryByText("£950.00")).not.toBeInTheDocument();
   });
 });
