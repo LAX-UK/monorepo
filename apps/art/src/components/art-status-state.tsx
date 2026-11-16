@@ -2,11 +2,12 @@ import { ArtAuthLink } from "@/components/art-auth-link";
 import { isArtAuthHref } from "@/lib/is-art-auth-href";
 import {
   MarketingStatusAction,
-  MarketingStatusState,
   type MarketingStatusStateAnnouncement,
   type MarketingStatusStateLayout,
   type MarketingStatusStateMotif,
+  resolveStatusIllustration,
 } from "@auction/marketing-ui";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -21,8 +22,8 @@ type ArtStatusStateProps = {
   description: string;
   actions?: ReactNode;
   titleAs?: "h1" | "h2" | "p";
-  /** `page` for full-route empties, `open` (default) for grids and sections; never boxed. */
-  layout?: Exclude<MarketingStatusStateLayout, "inline">;
+  /** `page` for full-route empties, `open` (default) for grids and sections; never boxed (the shared state draws no box). */
+  layout?: Exclude<MarketingStatusStateLayout, "inline" | "banner">;
   announcement?: MarketingStatusStateAnnouncement;
   className?: string;
 };
@@ -50,14 +51,16 @@ export function ArtStatusState({
   className,
 }: ArtStatusStateProps) {
   return (
-    <MarketingStatusState
+    <EmptyState
+      accent
       variant={variant}
-      layout={layout}
-      motif={resolveMotif(variant, icon)}
+      layout={layout === "page" ? "page" : "inline"}
+      size={layout === "compact" ? "compact" : "default"}
+      illustration={resolveStatusIllustration(resolveMotif(variant, icon))}
       title={title}
       description={description}
       actions={actions}
-      titleAs={titleAs}
+      headingLevel={titleAs}
       announcement={announcement ?? (variant === "error" ? "polite" : "none")}
       {...(className ? { className } : {})}
     />

@@ -1,72 +1,34 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MarketingStatusMotif, MarketingStatusState } from "./marketing-status-state.js";
+import { MarketingStatusAction, resolveStatusIllustration } from "./marketing-status-state.js";
 
-describe("MarketingStatusMotif", () => {
-  it("draws the magnifier for the search-remove alias", () => {
-    const { container } = render(<MarketingStatusMotif motif="search-remove" />);
-    const motif = screen.getByTestId("marketing-status-motif-search-remove");
-    expect(motif).toHaveAttribute("aria-hidden", "true");
-    expect(container.querySelector('svg[data-illustration="search"]')).not.toBeNull();
+describe("resolveStatusIllustration", () => {
+  it("maps the older motif names to the LAX drawings", () => {
+    expect(resolveStatusIllustration("gallery")).toBe("frame");
+    expect(resolveStatusIllustration("search-remove")).toBe("search");
+    expect(resolveStatusIllustration("bag")).toBe("parcel");
+    expect(resolveStatusIllustration("alert")).toBe("askew");
   });
 
-  it("draws the empty frame for gallery and the parcel for bag, never a labelled plate", () => {
-    const { container } = render(
-      <>
-        <MarketingStatusMotif motif="gallery" />
-        <MarketingStatusMotif motif="bag" />
-      </>,
-    );
-    expect(container.querySelector('svg[data-illustration="frame"]')).not.toBeNull();
-    expect(container.querySelector('svg[data-illustration="parcel"]')).not.toBeNull();
-    expect(container.textContent).not.toContain("Gallery");
+  it("passes the set's own names through", () => {
+    expect(resolveStatusIllustration("ticket")).toBe("ticket");
+    expect(resolveStatusIllustration("lock")).toBe("lock");
   });
 });
 
-describe("MarketingStatusState", () => {
-  it("offers an open layout that sits on the page without a box", () => {
-    const { container } = render(<MarketingStatusState layout="open" title="No questions yet" />);
-    expect(container.firstElementChild).toHaveClass("marketing-status-state--open");
-    expect(container.firstElementChild).not.toHaveClass("marketing-status-state--inline");
+describe("MarketingStatusAction", () => {
+  it("renders a button with the priority class", () => {
+    render(<MarketingStatusAction priority="primary">Try again</MarketingStatusAction>);
+    const button = screen.getByRole("button", { name: "Try again" });
+    expect(button).toHaveClass("marketing-status-state__action--primary");
   });
 
-  it("renders a no-results state with the search-remove motif", () => {
+  it("renders its child element when asChild", () => {
     render(
-      <MarketingStatusState
-        motif="search-remove"
-        title="No available items"
-        description="Try a different spelling."
-      />,
+      <MarketingStatusAction asChild>
+        <a href="/x">Go</a>
+      </MarketingStatusAction>,
     );
-    expect(screen.getByRole("heading", { name: "No available items" })).toBeInTheDocument();
-    expect(screen.getByTestId("marketing-status-motif-search-remove")).toBeInTheDocument();
-  });
-
-  it("swaps the empty frame for the askew frame on errors", () => {
-    const { container } = render(
-      <MarketingStatusState variant="error" title="We couldn’t load this" layout="page" />,
-    );
-    expect(container.querySelector('svg[data-illustration="askew"]')).not.toBeNull();
-  });
-
-  it("places extra content, such as a search field, between the description and the actions", () => {
-    const { container } = render(
-      <MarketingStatusState
-        layout="page"
-        title="We can’t find that page"
-        description="Search, or start from one of these."
-        control={<input aria-label="Search editions and artists" />}
-        actions={<a href="/artworks">Browse editions</a>}
-      />,
-    );
-    const order = [...container.querySelectorAll(".marketing-status-state > *")].map(
-      (node) => node.className,
-    );
-    expect(order.slice(-3)).toEqual([
-      "marketing-status-state__description",
-      "marketing-status-state__control",
-      "marketing-status-state__actions",
-    ]);
-    expect(screen.getByRole("textbox", { name: "Search editions and artists" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Go" })).toHaveClass("marketing-status-state__action");
   });
 });

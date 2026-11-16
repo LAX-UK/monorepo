@@ -2,11 +2,12 @@ import { ShopAuthLink } from "@/components/shop-auth-link";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import {
   MarketingStatusAction,
-  MarketingStatusState,
   type MarketingStatusStateAnnouncement,
   type MarketingStatusStateLayout,
   type MarketingStatusStateMotif,
+  resolveStatusIllustration,
 } from "@auction/marketing-ui";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -26,7 +27,7 @@ type ShopStatusStateProps = {
   actions?: ReactNode;
   titleAs?: "h1" | "h2" | "p";
   /** Page-level commerce/account empties; inline for catalogue grids and home rails. */
-  layout?: MarketingStatusStateLayout;
+  layout?: Exclude<MarketingStatusStateLayout, "banner">;
   /** Overrides default first-paint announcement; use polite/assertive for client-side transitions. */
   announcement?: MarketingStatusStateAnnouncement;
   className?: string;
@@ -34,13 +35,10 @@ type ShopStatusStateProps = {
 
 function resolveLayout(
   className?: string,
-  layoutProp?: MarketingStatusStateLayout,
-): MarketingStatusStateLayout {
+  layoutProp?: Exclude<MarketingStatusStateLayout, "banner">,
+): Exclude<MarketingStatusStateLayout, "banner"> {
   if (layoutProp) {
     return layoutProp;
-  }
-  if (className?.includes("shop-status-state--banner")) {
-    return "banner";
   }
   if (className?.includes("shop-status-state--page")) {
     return "page";
@@ -61,13 +59,8 @@ function resolveMotif(
   return icon ?? "gallery";
 }
 
-function resolveAnnouncement(
-  variant: ShopStatusStateVariant,
-  layout: MarketingStatusStateLayout,
-): MarketingStatusStateAnnouncement {
-  if (variant === "error" && layout === "banner") {
-    return "assertive";
-  }
+/** Errors were silent unless asked; the shared state would otherwise announce them. */
+function resolveAnnouncement(): MarketingStatusStateAnnouncement {
   return "none";
 }
 
@@ -86,19 +79,21 @@ export function ShopStatusState({
 }: ShopStatusStateProps) {
   const layout = resolveLayout(className, layoutProp);
   const headingLevel = titleAs === "p" ? "p" : titleAs;
-  const announcement = announcementProp ?? resolveAnnouncement(variant, layout);
+  const announcement = announcementProp ?? resolveAnnouncement();
 
   return (
-    <MarketingStatusState
+    <EmptyState
+      accent
       variant={variant}
-      layout={layout}
-      motif={resolveMotif(variant, icon)}
-      {...(motifSlot ? { motifSlot } : {})}
+      layout={layout === "page" ? "page" : "inline"}
+      size={layout === "compact" ? "compact" : "default"}
+      illustration={resolveStatusIllustration(resolveMotif(variant, icon))}
+      {...(motifSlot ? { plate: motifSlot } : {})}
       title={title}
       description={description}
       control={control}
       actions={actions}
-      titleAs={headingLevel}
+      headingLevel={headingLevel}
       announcement={announcement}
       {...(className ? { className } : {})}
     />

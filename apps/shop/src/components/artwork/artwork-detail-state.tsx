@@ -1,16 +1,26 @@
-import { ShopStateMotif } from "@/components/shop-state-motif";
-import type { ShopStateMotifVariant } from "@/components/shop-state-motif";
+import { EmptyState } from "@auction/ui/lax/empty-state";
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+export type ArtworkDetailStateMotif = "empty" | "search" | "bag" | "alert" | "ticket";
+
+const ILLUSTRATIONS = {
+  empty: "frame",
+  search: "search",
+  bag: "parcel",
+  alert: "askew",
+  ticket: "ticket",
+} as const;
 
 type ArtworkDetailStateProps = {
   eyebrow: string;
   title: string;
   description: string;
-  motif?: ShopStateMotifVariant;
+  motif?: ArtworkDetailStateMotif;
   children?: ReactNode;
 };
 
+/** A detail page that has nothing to show: the shared empty state, with what to do next below. */
 export function ArtworkDetailState({
   eyebrow,
   title,
@@ -23,19 +33,15 @@ export function ArtworkDetailState({
       <Link href="/" className="shop-detail__back shop-focus-ring">
         ← Back to Collect
       </Link>
-      <div className="shop-detail shop-detail--state">
-        <div className="shop-detail__media shop-detail__state-media">
-          <ShopStateMotif variant={motif} />
-        </div>
-        <div className="shop-detail__content">
-          <div className="shop-detail__heading">
-            <p className="shop-detail__eyebrow">{eyebrow}</p>
-            <h1>{title}</h1>
-          </div>
-          <p className="shop-detail__state-copy">{description}</p>
-          {children}
-        </div>
-      </div>
+      <p className="shop-detail__eyebrow">{eyebrow}</p>
+      <EmptyState
+        accent
+        layout="page"
+        illustration={ILLUSTRATIONS[motif]}
+        title={title}
+        description={description}
+      />
+      {children}
     </main>
   );
 }

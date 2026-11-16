@@ -75,3 +75,34 @@ describe("EmptyState", () => {
     expect(container.querySelector("svg")?.getAttribute("class")).toContain("w-20");
   });
 });
+
+describe("EmptyState product options", () => {
+  it("draws the plate in the product accent when asked, and in the foreground otherwise", () => {
+    const { container, rerender } = render(
+      <EmptyState accent illustration="frame" title="t" description="d" />,
+    );
+    expect(container.innerHTML).toContain("--color-product-accent");
+    rerender(<EmptyState illustration="frame" title="t" description="d" />);
+    expect(container.innerHTML).not.toContain("--color-product-accent");
+  });
+
+  it("announces politely or not at all as asked, and renders a paragraph title", () => {
+    const { container, rerender } = render(
+      <EmptyState announcement="polite" illustration="frame" title="t" description="d" />,
+    );
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    rerender(
+      <EmptyState
+        variant="error"
+        announcement="none"
+        illustration="frame"
+        title="t"
+        description="d"
+        headingLevel="p"
+      />,
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(container.querySelector("p")?.textContent).toBe("t");
+    expect(screen.queryByRole("heading")).toBeNull();
+  });
+});

@@ -30,8 +30,18 @@ export type EmptyStateProps = {
   size?: "default" | "compact";
   /** `error` is a calm "something went wrong": the askew drawing, announced to assistive tech. */
   variant?: "empty" | "error";
-  /** h1 when the state is the whole page (a page layout is always h1), h2 when it replaces a section's content, h3 inside a section. */
-  headingLevel?: "h1" | "h2" | "h3";
+  /** h1 when the state is the whole page (a page layout is always h1), `p` when the page already has its headings and the state is a quiet notice, h2 when it replaces a section's content, h3 inside a section. */
+  headingLevel?: "h1" | "h2" | "h3" | "p";
+  /**
+   * Draws the plate's illustration in the product's accent (`--color-product-accent`, set by the
+   * app: Shop's aubergine, lax.art's ink) instead of the foreground. Bid sets no accent here.
+   */
+  accent?: boolean;
+  /**
+   * How the state is announced. Defaults to `assertive` for the error variant and `none`
+   * otherwise; a state that replaces content after a client-side change can ask for `polite`.
+   */
+  announcement?: "none" | "polite" | "assertive";
   className?: string;
 };
 
@@ -53,18 +63,27 @@ export function EmptyState({
   size = "default",
   variant = "empty",
   headingLevel = "h2",
+  accent = false,
+  announcement,
   className,
 }: EmptyStateProps) {
   const isPage = layout === "page";
   const compact = size === "compact" && !isPage;
   const Heading = isPage ? "h1" : headingLevel;
   const drawing = variant === "error" ? "askew" : illustration;
+  const live = announcement ?? (variant === "error" ? "assertive" : "none");
+  const liveProps =
+    live === "assertive"
+      ? { role: "alert" as const }
+      : live === "polite"
+        ? { role: "status" as const }
+        : {};
 
   return (
     <div
       data-empty-state={drawing}
       data-layout={layout}
-      {...(variant === "error" ? { role: "alert" } : {})}
+      {...liveProps}
       className={cn("@container", className)}
     >
       <div
@@ -80,7 +99,8 @@ export function EmptyState({
         <div
           aria-hidden
           className={cn(
-            "relative grid place-items-center overflow-hidden rounded-lax-menu text-lax-fg",
+            "relative grid place-items-center overflow-hidden rounded-lax-menu",
+            accent ? "text-[var(--color-product-accent)]" : "text-lax-fg",
             !plate && "bg-lax-paper",
             isPage && "aspect-[4/3] w-full @3xl:col-span-5",
             compact && "h-24 w-full @xl:w-32",
