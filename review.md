@@ -1,131 +1,145 @@
 Verdict: FIX FIRST
 
-# Review of PR #1482: an item in every staff queue on test (GAP-31)
+# Recheck of PR #1482 after the fixes (demo seed: an item in every staff queue)
 
-Reviewed head `0b9d9a81` against `main` `a54b584f`.
+Rechecked head `5030299b`. It has not changed since 01:58 UTC. Base is `main` `a54b584f`; the branch is 3 commits behind current `main` and merges cleanly. This file replaces the first review (which was of `0b9d9a81`).
+
+The fixes for findings 1 to 13 hold up locally. One blocking problem is new: the database guard makes a required CI gate fail (finding 1 below).
 
 ## What I ran
 
-- `pnpm install --frozen-lockfile` and `pnpm -r --filter './packages/**' build`: passed.
-- Local Postgres 16: `db:migrate`, `db:roles`, `db:seed:dev`. Then `db:seed:demo-full` twice and Shop `seed:demo-full` twice.
-  - Both re-runs completed.
-  - Table counts did not change on the second run.
-  - Shop reported `{"paidOrders":4,"ordersToFulfil":4,"pendingRefunds":1,"openDisputes":1}` on both runs.
-- Tests:
-  - `@auction/db` `vitest run src/seed --maxWorkers=2`, with `MIGRATION_TEST_DATABASE_URL` set: 13 files, 109 tests passed. The new integration test actually ran.
-  - `@auction/shop-api` `vitest run src/infrastructure/seed --maxWorkers=2`: 10 files, 24 tests passed.
-- `tsc --noEmit` for `@auction/db` and `@auction/shop-api`: clean.
-- Biome (`lint` for both packages): clean.
-- `lint:deps`, `lint:layers`, `lint:datetime`: clean.
-- CI check-runs on the head (REST API): 38 success, 1 skipped, `browser-gates` still in progress.
-- Commit message and PR body: no Co-Authored-By, Claude-Session or generated-by lines.
-- No migrations in the diff.
-- Simulated staff work on the seeded rows, then ran the seed again:
-  - lot 28 fulfilment marked collected;
-  - booking cancelled;
-  - dispute set to won;
+- `corepack enable`, `pnpm install --frozen-lockfile`, `pnpm -r --filter './packages/**' build`: passed.
+- Local Postgres 16, `db:migrate` (0398 applied), `db:roles`, `db:seed:dev`.
+- `db:seed:demo-full` on the unmarked database was refused before writing anything: `[demo-full] refusing to seed: this database is not marked as a demo seed target ...`.
+- I marked the database (`'local'`) and ran `db:seed:demo-full` twice. I snapshotted every seeded row (ids `df9…`), all sales' venue and status, and the demo-seed events. The two snapshots were identical.
+- Second database, staff work, then a re-run. Changes made:
+  - booking cancelled, and its lot row set inactive;
+  - lot 1 handed over (`delivered`, `collected_by`);
+  - lot 2 released;
+  - dispute won;
+  - purchase problem resolved;
+  - export failed;
+  - submission under review;
   - deal cancelled;
-  - sale 4's venue cleared.
+  - venue renamed and one opening-hours row deleted;
+  - the seed sale's venue cleared, and `venue_id` cleared on every other sale;
+  - a `payment.unapplied_money_resolved` event added.
+
+  After `db:seed:demo-full` ran again, every snapshot row was byte-identical. Nothing moved back and nothing new was written.
+- Shop: `seed:catalogue`, then `seed:demo-full` twice as `shop_app`. Both runs reported `{"paidOrders":4,"ordersToFulfil":4,"failedRefunds":1,"openDisputes":1}`.
+  - Refund: `failed`, `submit_attempts=1`, `last_error='Order missing stripe_payment_intent_id'`, 9,000p, which is a quarter of the 36,000p order.
+  - The refund also has a `shop_admin_audit` `request_refund` row and a `shop.refund.requested` event.
+  - Dispute: `opened`, with a `shop_processed_payment_event` claim and `shop.dispute.opened`.
+  - I settled the refund (`succeeded`) and won the dispute, then re-ran. Refunds, disputes, order statuses, shop events and the audit count were all unchanged.
+- Queue claims were checked by calling the real readers against the seeded database (script, read-only). All of them return the seeded item:
+  - `DrizzlePurchaseProblemDeskRepository.list` (open);
+  - work inbox `listPurchaseProblems`, `listUnappliedMoney`, `listLotFulfilment`, `listSubmissionReviews`;
+  - `DrizzleAdminDisputeDeskReader.listPage` (`needs_allocation`, 2 invoices);
+  - `DrizzleDataRequestReader.list` (open; delayed; due 23 Nov);
+  - `DrizzleCollectionBookingRepository.listInRange` at "LAX Demo Collection Point" (slot 19 Nov 10:00Z, `booked`);
+  - `DrizzleLotFulfilmentRepository.listForAdmin` (lot 1 `ready_for_collection`, lots 2 and 3 `awaiting_release`);
+  - `DrizzleItemSubmissionRepository.listForAdmin`;
+  - `DrizzlePrivateSaleDealQueryRepository.list` (active, `offer`).
+  - On the real `DrizzleCollectionLotFactsReader` facts, `collectionEligibility` returns eligible for lot 1 once its own booking is set aside.
+  - The stored `request_fingerprint` equals the persistence `collectionRequestFingerprint` for the same request.
+- Tests, `--maxWorkers=2`:
+  - `@auction/db`: `src/seed`, `src/migration-0398*`, `migrate-roles.test.ts`, `shop-app-role.contract.test.ts` and `api-app-role.contract.test.ts`. Result: 18 files, 220 passed, 4 skipped, 2 failed. The 2 failures were `api_app` contract tests that failed only because `DATABASE_URL_OWNER` was not set in my shell. Re-run with it set, that file passed 26/26.
+  - `@auction/shop-api` `src/infrastructure/seed` and `handlers/webhooks`, with the CI layout of URLs (all on one migrated database): 13 files, 44 tests passed.
+  - `@auction/worker` `src/projectors`: 36 files, 199 passed.
+  - `@auction/domain`: 3,865 passed.
+  - `@auction/persistence` `collection-request`: 16 passed.
+- `tsc --noEmit` for domain, db, persistence, shop-api, worker and api: clean.
+- `biome check` on the five changed packages: clean.
+- `lint:deps`, `lint:layers`, `lint:datetime`: pass.
+- CI check-runs on `5030299b` (REST): 38 success, 1 skipped (`art-browser-gates`), 1 **failure** (`account-browser-gates`). `ci-result` is success.
+- Commit messages (5 commits) and PR body: no Co-Authored-By, Claude-Session or generated-by lines. All commits are by `mahmoudamrspace`.
 
 ## Findings
 
-1. **BLOCKING: re-running the seed undoes staff work on the collection fulfilment row and leaves it contradicting itself.**
-   - Where: `packages/db/src/seed/demo/queues/collection.seeder.ts:96-99`. It upserts `lot_fulfilment` on `lot_id` and sets every field.
-   - Reproduced: after a staff-style hand-over (`status='delivered'`, `collected_at` and `collected_by` set), the next run set `status` back to `ready_for_collection` and left `collected_at` / `collected_by='Real Staff'` in place.
-   - The row is matched on `lot_id`, not on an id the seed owns. A fulfilment row that the app or a person created for lot 28 (for example a shipping release) would be overwritten too, including its method.
-   - Fix: insert with a fixed id and `onConflictDoNothing`. Refresh only `payment_cleared_at` / `release_approved_at`, and only while the row is still the seed's own and still `ready_for_collection` (`where` on id and status).
+1. **BLOCKING: `account-browser-gates` fails because CI's database is not marked.**
+   - Where: `.github/workflows/account-e2e-pr.yml:151` runs `pnpm --filter @auction/db db:seed:demo-full` right after `db:migrate`, on a fresh `auction_ci` database.
+   - With this PR, `runDemoFull` now calls `assertDemoSeedDatabase` first (`packages/db/src/seed/demo/demo-full-seed.ts:52`). Nothing in the workflow inserts a `demo_seed_target` row, so the seed is refused.
+   - The job failed in the "Migrate and seed" step, after about 2 minutes. No process logs were uploaded, so the stack never started. The same job passes on other PRs and on the merge queue at the same time.
+   - I reproduced the same refusal locally on an unmarked, freshly migrated database.
+   - Fix: in that step, after `db:migrate`, mark the CI database as the owner:
+     ```sh
+     psql "$DATABASE_URL" -c "insert into demo_seed_target (environment, database_name, marked_by) values ('local', current_database(), 'ci') on conflict do nothing"
+     ```
+     The same can be done with a small `db:seed:mark-demo-target` script. Also look for any other runner that calls `db:seed:demo-full`; I found none besides `worker-task-test.yml`, which the runbook covers.
 
-2. **BLOCKING: re-running the seed brings a cancelled or completed booking back to `booked`, producing an invalid state.**
-   - Where: `collection.seeder.ts:125-127` (`set: { ..., status: "booked" }`).
-   - Reproduced: a booking cancelled by staff became `booked` again with `cancelled_at` still set.
-   - The same rewrite would turn `collected`, `partly_collected` or `not_collected` back to `booked`.
-   - Moving `slot_start` while forcing `booked` can also hit `collection_booking_seat_live_uidx` (venue, slot_start, seat 1). That fails the whole demo-full transaction if another live booking at the demo venue holds that seat.
-   - Fix: only move the slot `where status = 'booked'`. Never write `status` on conflict. If the demo booking is no longer live, insert a new one with a new id (for example keyed by date).
+2. **The insert-once design leaves the clock-bound items to go stale on test (non-blocking; say it in the runbook or refresh them safely).**
+   - Where:
+     - booking slot: `packages/db/src/seed/demo/queues/collection.seeder.ts:56`, first offered slot about 3 days out;
+     - offer expiry: `private-sale.seeder.ts:95`, now + 5 days;
+     - export: `data-request.seeder.ts:199`, requested 24 days ago, due one month later.
+   - Every later run sees the fixed id and writes nothing. The test site gets these items only on the first run. After about 3 days the visit is no longer under "Upcoming", after 5 the offer has lapsed, and after about a week the export is overdue.
+   - The runbook says the seed "is safe to run again". It does not say that re-running will not refill these.
+   - Options:
+     - insert a new booking keyed by date when the seeded one is no longer `booked` in the future, which the first review suggested;
+     - or state in `docs/runbooks/demo-seed.md` and the PR table that these three are shown only for a few days after the first run.
 
-3. **BLOCKING: the Shop "pending refund" cannot stay pending, and on test it will raise a Sentry error and an ops alert.**
-   - Where: `apps/shop-api/src/infrastructure/seed/demo-staff-queues-seed.ts:52-61`.
-   - The seeded order has no `stripe_payment_intent_id`; checked locally: order `paid`, intent null.
-   - `submit-pending-refunds.runner.ts:66-75` picks up any `pending` refund with no `stripe_refund_id`. On the first scheduler run it treats a missing intent as terminal (`:176-202`): it sets the refund to `failed`, calls `Sentry.captureMessage("shop_refund_submit_terminal_failure")`, and queues the ops alert email.
-   - On the real test environment the orders may carry intents from the seeded checkout. In that case the runner would ask Stripe to refund them.
-   - No staff list filters on pending refunds anyway. `drizzle-admin-read.repository.ts:76-79` only filters `refund === "failed"`, so the "Refunds" row in the PR table is not met as described.
-   - The raw insert also skips what `request-refund.handler.ts` does:
-     - the remaining-balance check: the seed always refunds `totalPence`, even on a `partially_refunded` order, which can exceed the refundable amount;
-     - the `shop_admin_audit` `request_refund` row;
-     - the `shop.refund.requested` event.
-   - Fix: create the refund through the request-refund handler, in a state the scheduler will not submit. Otherwise drop the refund item and say which screen shows refunds.
+3. **The PR text claims "A deleted ... item is never brought back"; that is not true (non-blocking, text).**
+   - I deleted the seeded `purchase_problem` and re-ran. It came back as `open`, with a second `purchase_problem.reported` event.
+   - Each seeder keys `onConflictDoNothing` on the fixed id, so a row that is gone is written again (for example `purchase-problem.seeder.ts:269-286`).
+   - Staff cannot delete these rows in the app, so this is only wording. Change it to "a worked item is never changed".
 
-4. **BLOCKING (accuracy of the PR claims): three listed queues or screens do not show the item.**
-   - **Storage:** no staff screen reads `collection_storage_terms` or storage overdue. `DrizzleCollectionStorageRepository` is not wired to any API route. Lot 28 shows only in the lot-fulfilment work list.
-   - **Quarantined replies:** no route or page lists `enquiry_inbound_quarantine`. The only staff-visible trace in the real path is the `marketing_enquiry.inbound_quarantined` domain event (`enquiry-inbound-reply.service.ts:234-251`), and the seed does not write it (`quarantined-reply.seeder.ts:13`).
-   - **Shop pending refund:** see 3.
-   - Either fill these the way the screens read them, or remove them from the PR table and the `QUEUE_SEEDERS` names so the log line "staff queues filled" is not misleading.
+4. **A doc comment was displaced in `migrate-roles.ts` (minor).**
+   - Where: `packages/db/src/migrate-roles.ts:632-638`.
+   - The new `SHOP_DEMO_SEED_TARGET_READ_TABLES` and its one-line JSDoc were inserted between the existing "Download my data for LAX Shop reads ..." JSDoc and `SHOP_SUBJECT_EXPORT_READ_TABLES`. That comment now sits on nothing, and hovers lose it.
+   - Fix: move the new constant above the old comment.
 
-5. **Erasure hold opens a "not found" page.**
-   - Where: `packages/db/src/seed/demo/queues/data-request.seeder.ts:10,51`.
-   - `DR-DEMO-0001` has no matching `subject_data_request`. The attention card links to it, and `findRecord` returns null. Re-run and erase actions call `identity.record` first, so they fail too.
-   - A real hold exists only for a real manual erasure request. Create the request too, or drop the hold.
-   - Also, when staff clear the hold the row is deleted, so every re-run brings it back.
+5. **The Shop dispute names a payment intent its order does not have (minor, realism).**
+   - Where: `apps/shop-api/src/infrastructure/seed/demo-staff-queues-seed.ts:81`. The dispute is recorded with `paymentIntentId: "pi_demo_example_shop_0001"`, but the demo orders have `stripe_payment_intent_id` null.
+   - The webhook path could never have matched this order. Anything that later joins on the dispute's intent would not find the order.
+   - The dispute screen reads it by `order_id`, so it shows correctly. Consider leaving the intent out or noting it in the docstring.
 
-6. **Collection booking is valid only by accident of filters.**
-   - The demo venue has no `collection_weekly_hours`, so the 10:00 slot falls outside any opening hours.
-   - Lot 25 has no `lot_fulfilment` row, so the desk shows the lot as not released and blocks hand-over.
-   - `request_fingerprint` is a literal (`collection.seeder.ts:123`), not `collectionRequestFingerprint(...)`.
-   - The desk opens on the first venue by name and on today's tab, so staff have to pick the demo venue and the Upcoming tab to see it.
-   - Add opening hours and a released fulfilment row for lot 25, or say this in the PR.
+6. **Shop seed events carry producer `shop-api`, not `demo-seed` (note).**
+   - `shop.refund.requested` and `shop.dispute.opened` come from the real handlers with the Shop producer.
+   - No worker projector or fan-out consumes either today (grep of `apps/worker` and `packages`), so nobody is emailed.
+   - If a consumer is added later, it will not see the demo mark. A one-line comment in `demo-staff-queues-seed.ts` would help.
+   - If staff press Retry on the failed refund, the scheduler fails it again and reports to Sentry and the ops inbox (`submit-pending-refunds.runner.ts`). The PR body states this; it happens only after a deliberate staff action.
 
-7. **Dispute case is in a state the real recorder never produces.**
-   - Where: `dispute.seeder.ts:20,27`.
-   - The real recorder allocates automatically when there is exactly one candidate payment. "needs_allocation with one candidate" therefore can't happen for real.
-   - `ch_demo_example_0001` also does not match the candidate payment, whose `stripe_charge_id` is null.
-   - The `dispute_case.needs_allocation` event is not written.
-   - Use two candidates, or go through the recorder.
+## Findings of the first review, rechecked
 
-8. **Raw inserts skip events, audit rows and history across the Bid seeders.** These are valid rows, but timelines will be empty and some side effects fire anyway.
-   - **Purchase problem:** no `purchase_problem.reported` event.
-   - **Private sale deal:** no `private_sale_deal_stage_history`, `party_history` or `stage_changed` events (`private-sale.seeder.ts:36-39`).
-   - **Data export:**
-     - no `subject_data_export_audit` row;
-     - `deadline_alert_tier=0` with `requested_at` 24 days ago, so the worker's deadline alerts will email compliance staff;
-     - an open `delayed` export may be picked up and finished by the export worker, which empties the queue.
-   - **Consignment** (`consignment.seeder.ts:24`): no category and no images. The real submit requires both.
-   - **Shop dispute:** no `shop.dispute.opened` event and no `shop_processed_payment_event` row.
-   - The PR's "Design" section should say these are direct inserts. Alternatively, route the riskier ones (refund, dispute, deal) through the services.
-
-9. **Unapplied-money event differs from what the recorder writes, and it emails finance staff on test.**
-   - Where: `unapplied-money.seeder.ts:18,29,34`.
-   - `aggregateType: "payment"` with no paymentId. `unappliedMoneyAggregate` gives `payment_group`, so the received and resolved events end up on different aggregates.
-   - The dedupe key format is `demo:...`, not `customer_balance_unapplied:cbtxn_demo_example_0001`.
-   - `actorUserId` is a finance user instead of null.
-   - `notification-fanout.ts:223` will send the "payment-unapplied-money-admin-notice" email to every finance recipient on test. That may be intended, but the PR should say so.
-   - Fix: use `unappliedMoneyAggregate` / `unappliedMoneyPayload`.
-
-10. **Production guard: adequate for now, but it is a name heuristic, not a database identity check (non-blocking, existing code).**
-    - `assertDemoFullTarget` (`packages/db/src/seed/runners/demo-full-cli.ts:19-27`) and `assertDemoSeedTarget` refuse `NODE_ENV`/`APP_ENV=production|prod` or a hostname containing "prod".
-    - The production cluster is `lax-prod-postgres` (docs/runbooks/postgres-backup-restore.md), so its DigitalOcean hostnames contain "prod". The workflow also loads URLs only from the `ephemeral/test` Terraform outputs. So the seed cannot reach production through the shipped entry points.
-    - It fails open for an IP address URL or a renamed cluster. The new exported functions (`seedStaffQueues`, `seedDemoStaffQueues`) have no guard of their own.
-    - Recommend a follow-up: check identity inside the database (for example `current_database()` plus a marker row or setting that only test has) before writing. Also add a test with an IP-host URL.
-    - The new test `queues.test.ts:68-79` only re-tests the existing guard; it does not prove that the new queue entry points refuse production.
-
-11. **Seed changes demo sales it does not own in this PR (minor).**
-    - `collection.seeder.ts:64` points sales 4 and 5 at the demo venue on every run. Reproduced: a cleared `venue_id` was set back.
-    - Both are online-only sales (`atVenue: false`, no location), so they now have a venue but no location text.
-    - Only update `where venue_id is null`, or say this in the PR.
-
-12. **Fictional data: OK (minor note).**
-    - All new addresses are `@example.com` / `@example.test`.
-    - Stripe-style ids are `*_demo_example_*`.
-    - No card, bank or secret values were found in the diff.
-    - `EC1A 1AA` (`queue-ids.ts:38`) is a real London postcode, though widely used as an example. Consider a clearly fake one.
-
-13. **Tests (minor).**
-    - The integration tests skip without a database (`queues.integration.test.ts:15`), so CI only covers them if it provides one.
-    - The idempotence test runs the seed twice on untouched rows. It never mutates rows between runs, so findings 1, 2 and 11 went unnoticed.
-    - Add a test that changes the seeded rows (cancel the booking, hand over the lot, change the venue) and asserts that a re-run leaves them alone.
+- 1, 2, 11, 13 (re-run undoes staff work; tests). **Fixed.** The full staff-work re-run above changed nothing, including other sales' venues. The integration tests now work the items between runs.
+- 3 (Shop refund). **Fixed.**
+  - The refund goes through `createRequestRefundHandler`, with the balance check, audit row and event.
+  - It is set to the scheduler's terminal `failed` state in the same transaction, guarded on `status='pending' and submit_attempts=0`.
+  - The scheduler selects only `pending` (`submit-pending-refunds.runner.ts:66-75`), so nothing is submitted and no Sentry or ops alert is raised.
+  - It shows under "Failed refunds".
+- 4 (claimed queues). **Fixed.** The storage and quarantine claims were removed. Every remaining claim is confirmed with the real readers (see above).
+- 5 (erasure hold). **Fixed** by removal. No `DR-DEMO` hold is written, so there is no dead link.
+- 6 (collection booking). **Fixed.** Default weekly hours are added, the slot is the first one `collectionSlots` offers, lot 1 is released (`ready_for_collection`), and the fingerprint matches the repository's.
+- 7 (dispute). **Fixed.**
+  - There are two candidate payments on one "Pay several" charge. `planAutomaticDisputeAllocation` (`packages/domain/src/dispute-case.ts:92-106`) returns null for more than one candidate, so `needs_allocation` is what the recorder would produce.
+  - The candidate payments carry the case's `stripe_charge_id`.
+  - The claim uses source `stripe_payment_webhook`.
+  - The `dispute_case.needs_allocation` payload matches `announceNeedsAllocation` field for field.
+- 8 (events and history). **Fixed.**
+  - Purchase problem: event written.
+  - Deal: party and stage history, plus the created, converted, party named, terms and stage events. These match `enquiry-conversion.service.ts`.
+  - Export: audit rows written, `deadline_alert_tier=3`. `claimDeadlineAlerts` takes `< 3` only, so no further alerts are sent.
+  - Consignment: category and image, and it passes `evaluateSubmissionQuality`.
+  - Shop dispute and refund: written through the real handlers.
+- 9 (unapplied money and notifications). **Fixed.**
+  - Built with `unappliedMoneyPayload` and `unappliedMoneyAggregate`: key `customer_balance_unapplied:evt_demo_example_unapplied_0001:gbp`, no actor.
+  - Fan-out and collection-booking notices skip `producer='demo-seed'` and advance their cursor. Unit tests cover both.
+  - Notifications are not disabled anywhere else.
+  - No other worker projector consumes the seeded Bid event types (checked the Zoho, accounting and public-cache projectors).
+- 10 (production guard). **Fixed.**
+  - Migration 0398 adds `demo_seed_target`: one row at most, environment `test` or `local`, and the row names the database it was written in.
+  - Rollback is included. `api_app` is denied; `shop_app` gets SELECT only.
+  - Refusal tests passed: unmarked database, mark copied from another database, unknown environment, IP-address host, table missing.
+  - I confirmed the refusal live as well.
+  - It is the cause of finding 1 above.
+- 12 (fictional data). **Fixed.**
+  - Postcode `ZZ99 9ZZ`.
+  - New addresses are all `example.test` / `example.com`.
+  - Stripe-style ids are all `*_demo_example_*`.
+  - No card, bank or secret values.
+  - The demo people (`*@lax.bid`, "Charlotte Hayes", "Northbank Gallery") come from the existing top-up seed and are not new here.
 
 ## What is fine
 
-- Dispute and private sale deal upserts only refresh dates. Staff changes (won, cancelled) survived a re-run.
-- Purchase problem, consignment, quarantine and Shop dispute use `onConflictDoNothing` with fixed keys.
-- Unapplied money dedupes on the existing unique index (`domain_events_unapplied_money_dedupe_key_uid`).
-- Money is in pence or minor units throughout, and amounts match the anchored payments (dispute £5,520 = payment 3).
-- Paid lots are found from the top-up, and the seed fails loudly if the top-up is missing.
+- No demo sale owned by other code is modified. Collection uses the seed's own sale `df950000-…` and venue.
+- Migration number 0398 follows `main`'s last journal entry (0397). The branch merges cleanly with current `main`.
