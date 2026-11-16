@@ -1,4 +1,5 @@
 import { EnquiryView } from "@/components/admin/enquiries/enquiry-view";
+import { departmentLabel } from "@/lib/admin/enquiries/department-label";
 import { enquiryHref } from "@/lib/admin/enquiries/enquiries-search";
 import { enquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
 import { loadAdminEnquiryPage } from "@/lib/admin/enquiries/load-enquiry-page";
@@ -39,6 +40,9 @@ export default async function AdminEnquiryPage({ params }: Props) {
       assignees={page.assignees}
       history={page.history}
       viewerId={user.id}
+      departmentName={
+        page.enquiry.departmentSlug ? departmentLabel(page.enquiry.departmentSlug) : null
+      }
       canWork={abilities.canWork}
       canConvert={userHasAccessTo(
         user.role as UserRole,

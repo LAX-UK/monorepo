@@ -41,6 +41,7 @@ function renderView(props: Partial<EnquiryViewProps> = {}) {
         assignees={ASSIGNEES}
         history={[]}
         viewerId="u-sofia"
+        departmentName="Paintings"
         canWork
         now="2026-11-03T12:00:00.000Z"
         {...props}

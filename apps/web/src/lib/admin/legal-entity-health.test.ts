@@ -1,4 +1,5 @@
-import type { LegalEntity } from "@auction/types";
+import { statusLabel } from "@/lib/admin/legal-entity-list-presenter";
+import { type LegalEntity, legalEntityStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { buildLegalEntityHealthVM } from "./legal-entity-health";
 
@@ -46,6 +47,23 @@ describe("buildLegalEntityHealthVM", () => {
     );
     expect(vm.canPublish).toBe(false);
     expect(vm.blockers.some((b) => b.key === "lifecycle_status")).toBe(true);
+  });
+
+  it.each(legalEntityStatuses.filter((status) => status !== "approved"))(
+    "names the %s status in staff words, never the stored code",
+    (status) => {
+      const vm = buildLegalEntityHealthVM(minimalEntity({ status, stripeConnectAccountId: null }));
+      const hint = vm.blockers.find((b) => b.key === "lifecycle_status")?.hint ?? "";
+      expect(hint).toBe(`Status is ${statusLabel(status)} — approval required before selling.`);
+      expect(hint).not.toMatch(/_/);
+    },
+  );
+
+  it("says Documents requested, not docs requested", () => {
+    const vm = buildLegalEntityHealthVM(
+      minimalEntity({ status: "docs_requested", stripeConnectAccountId: null }),
+    );
+    expect(vm.blockers[0]?.hint).toContain("Documents requested");
   });
 
   it("includes status reason in blockers", () => {

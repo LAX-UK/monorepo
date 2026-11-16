@@ -25,6 +25,7 @@ import {
   formatStaffDateTime,
   humanizeStatus,
 } from "@auction/staff-ui";
+import { refundSourceLabel } from "./enum-labels.copy";
 import { orderNumber } from "./order-list.vm";
 import { presentStatus, staffStatusLabel } from "./staff-status";
 
@@ -368,11 +369,7 @@ export function refundRowContext(
   line: OrderLine | undefined,
   printLabel: string | null = null,
 ): string {
-  const origin = refund.settledOutside
-    ? "Refunded outside LAX"
-    : refund.source === "cancellation"
-      ? "Cancelled after possession"
-      : humanizeStatus(refund.source);
+  const origin = refund.settledOutside ? "Refunded outside LAX" : refundSourceLabel(refund.source);
   const subject = line
     ? [orderLineLabel(line), printLabel].filter(Boolean).join(" for ")
     : "Whole order";

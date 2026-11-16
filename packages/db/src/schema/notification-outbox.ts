@@ -20,6 +20,8 @@ export const notificationOutbox = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp("processed_at", { mode: "date", withTimezone: true }),
     claimedAt: timestamp("claimed_at", { mode: "date", withTimezone: true }),
+    /** When the last failed attempt ended; the claim waits a backoff after it before retrying. */
+    lastAttemptAt: timestamp("last_attempt_at", { mode: "date", withTimezone: true }),
   },
   (table) => [
     index("notification_outbox_state_created_idx").on(table.state, table.createdAt),
