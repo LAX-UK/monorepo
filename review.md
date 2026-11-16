@@ -146,3 +146,108 @@ still missing.
   10-minute local limit.
 - **CI.** All 38 checks on the head are green or skipped, including web vitest 1-8/8, api vitest,
   static-checks, build (route-JS ratchet ok) and browser-gates.
+
+## Final recheck
+
+Rechecked head `0f151520` (7 commits; base `618ab329`, which adds only a docs commit to `46c9bdac`).
+Review only. The PR branch was not changed.
+
+**Still FIX FIRST.** The code is ready. Every code item from the first review is fixed, route JS
+is back to main or below, and CI is green. Two of the required items are still open: no
+screenshots are committed, and the PR body has not been updated (no "Changes after review"
+section, and the inaccurate claim is still there).
+
+### Blocking items
+
+1. **Route JS: fixed.** CI `build` on `0f151520` (job 133297233596) compared with main's build at
+   `46c9bdac` (job 133192743466). `618ab329` is a docs-only commit, so the comparison holds.
+
+   | Route | main | PR now | Δ |
+   |---|---|---|---|
+   | Home | 394.5 KB | 394.5 KB | 0 |
+   | Sales list | 442.8 KB | 439.1 KB | −3.7 (from main changes merged in, not this PR) |
+   | Sale page | 478.8 KB | 478.8 KB | 0 |
+   | Lot page | 467.4 KB | 467.3 KB | −0.1 |
+   | About | 344.9 KB | 344.9 KB | 0 |
+   | Terms | 341.9 KB | 341.9 KB | 0 |
+   | shared frame | 337.3 KB | 337.3 KB | 0 |
+
+   The +0.3 KB frame growth is gone. `hooks/use-bid-attention.ts` is no longer changed.
+   `ended-lots.ts` is now imported only by the lazily loaded `bid-attention-prompt-chip.tsx` and by
+   `bid-header-signed-in-account.tsx`. The lot page signals a close with a plain window event
+   (`lax:lotEnded`) and does not import the store. No budget or ratchet file is in the diff.
+2. **Screenshots: NOT fixed.** No image files are in the diff, and the PR body still says the
+   1440/375 light/dark before/after shots were "not attached" and asks for them "before merge". Still
+   required: the hero `Live now` badge (live, and paused), the signed-out sale page with no "Could not
+   refresh saleroom status" banner, and the lot page with the outbid chip cleared after close. Each
+   at 375 and 1440, in light and dark, committed or attached to the PR.
+
+### Non-blocking items
+
+- **Event lot id: fixed.** `lot-realtime-provider.tsx` now announces `p.lotId` from the event, not
+  the provider's own `lotId`. Mutation M2 below catches a regression.
+- **Provider wiring test: fixed.** The new `lot-realtime-provider.test.tsx` sends `lotEnded` through
+  a fake realtime port. It also checks that the hard-coded event name matches `LOT_ENDED_SIGNAL`.
+- **`outbidLots` trim: fixed.** It now filters by `outbidLotIds`, so the remaining labels stay with
+  their lots. Payloads without ids fall back to a count-only trim, and a comment says so.
+  `ended-lots.test.ts` covers this (M7).
+- **Leader-label copy: fixed.** It moved to `lib/bid/bid-channel-label.ts`
+  (`formatChannelBidderLabel`, `formatPaddleBidderLabel`), with tests.
+- **Paused reads "Live now": addressed.** This is now deliberate and documented on
+  `isSaleroomHeroLiveNow` (the live lot banner shows the paused state). Product sign-off would still
+  be good, but it does not block.
+- **Ended set never empties: addressed.** There is a comment in `ended-lots.ts`.
+- **Inaccurate PR text: NOT fixed.** The body still says "Every other path is unchanged and still
+  requires a session". It also still lists `hooks/use-bid-attention.ts` under (b), but that file is
+  no longer changed, and it does not mention `ended-lots.ts` moving out of the frame or
+  `lib/realtime/lot-ended-signal.ts`. There is no "Changes after review" section.
+
+### Security (re-verified on the new head)
+
+- `proxy-policy.ts` and `route.ts` are byte-for-byte the same as at `fbc15554`. The anonymous retry
+  is still limited to GET/HEAD and exactly `sales/<id>/lots` or `sales/<id>/saleroom/status`. It
+  runs only after a session-required token-exchange failure, after `isApprovedProxyPath`, with no
+  `authorization` header. Identity outages still return 503. The allowlist has not been widened.
+- Both upstream endpoints serve public data with no per-user fields (see "Verified" above). The
+  API's `public, no-cache` only applies when no user is attached, and the BFF uses `no-store`.
+- The new window event carries only a lot id, and the store ignores anything that is not a string.
+  A page script sending a fake event can only hide this browser's own outbid prompt until reload.
+  No data or request goes anywhere.
+
+### Tests and mutation checks
+
+Run locally on `0f151520`:
+
+- Touched web suites (`src/app/api/bff`, `src/lib/bff`, `src/lib/navigation`, `src/lib/context`
+  provider test, `src/lib/realtime`, `src/components/sections/saleroom/hero`,
+  `src/components/sections/lot-page`, `bid-attention-prompt-chip.test.tsx`,
+  `use-clerk-lot-live-price.test.ts`, `bid-channel-label.test.ts`): 56 files, 533 passed, 0 failed.
+- `tsc -p apps/web/tsconfig.json --noEmit` passes (after building `@auction/api` so that
+  `@auction/api/app` types resolve).
+
+| # | Mutation | Suite | Result |
+|---|---|---|---|
+| M1 | provider stops sending `lax:lotEnded` | `lot-realtime-provider.test.tsx` | 2 fail |
+| M2 | provider announces its own `lotId` | `lot-realtime-provider.test.tsx` | 1 fail |
+| M3 | chip uses unfiltered `useBidAttention()` | `bid-attention-prompt-chip.test.tsx` | 1 fail |
+| M4 | `route.ts` reverted to main | `src/app/api/bff` | 2 fail |
+| M5 | hero copy, meta row and editorial reverted to main | `saleroom/hero` | 2 fail |
+| M6 | `use-clerk-lot-live-price.ts` reverted to main | `use-clerk-lot-live-price.test.ts` | 4 fail |
+| M7 | `outbidLots` trimmed by index, not by id | `ended-lots.test.ts` | 1 fail |
+| M8 | account dot uses unfiltered `useBidAttention()` | `src/components/layout` | **all pass** |
+
+M8 is a small gap that does not block. Nothing tests that the header account dot clears when a
+lot closes. A one-case test in the signed-in account suite would close it.
+
+### CI
+
+38 checks on `0f151520`: all success or skipped. That includes `ci-result`, web vitest 1–8/8,
+api vitest, `static-checks`, `build` (route-JS check ok) and `browser-gates`.
+
+### To ship
+
+1. Commit or attach the screenshots listed in blocking item 2.
+2. Add a "Changes after review" section to the PR body. Correct the "still requires a session"
+   sentence (the API's auth middleware is the real gate; the BFF forwards cookieless requests
+   without a credential), and update the file list for (b).
+3. Optional: add the M8 test.
