@@ -102,6 +102,7 @@ export * from "./workspace-buying.js";
 export * from "./collection-booking.js";
 export * from "./collection-desk.js";
 export * from "./collection-settings.js";
+export * from "./collection-storage.js";
 export * from "./account-search.js";
 export * from "./organisation-team.js";
 export * from "./workspace-selling.js";

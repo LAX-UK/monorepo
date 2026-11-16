@@ -58,6 +58,14 @@
   --spacing-staff-table-header: 36px;
   --spacing-staff-bulk-bar-clearance: 72px;
 
+  /* Field widths. A field is as wide as what it takes, so its size tells staff what to type: a
+     count of up to three digits, an amount up to £9,999.99, a date with its calendar button. They
+     cap the width (`max-w-staff-field-<size>`), so a field still shrinks on a narrow screen.
+     Free text keeps the full width of its column. */
+  --container-staff-field-count: 96px;
+  --container-staff-field-money: 160px;
+  --container-staff-field-date: 208px;
+
   /* Elevation. Level 0 is flat with a hairline (page, cards, tables). xs lifts secondary buttons
      off the surface; md floats menus, popovers and the bulk-action bar; lg holds dialogs, sheets
      and the command palette. Dark mode deepens the shadow and relies on the hairline for edges. */

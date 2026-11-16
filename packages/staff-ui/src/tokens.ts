@@ -99,3 +99,13 @@ export const STAFF_STATUS_TONES = [
   "danger",
 ] as const;
 export type StaffStatusTone = (typeof STAFF_STATUS_TONES)[number];
+
+/**
+ * Field widths in px, as `max-w-staff-field-<size>`: the width a field takes for its longest
+ * expected value, so its size says what it expects. Free text (names, reasons) keeps the column.
+ */
+export const STAFF_FIELD_WIDTH = {
+  count: { px: 96, use: "Whole numbers up to three digits: days, quantities" },
+  money: { px: 160, use: "Amounts up to £9,999.99 with the £ sign" },
+  date: { px: 208, use: "A date with its example and calendar button" },
+} as const;

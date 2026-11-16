@@ -38,6 +38,8 @@ export const ADMIN_ROUTE_AREAS: Readonly<Record<string, Exclude<AdminRouteArea, 
   // finance staff are sent open for them. What each person sees and does is decided by the page.
   "private-sales": "shared",
   "failed-jobs": "shared",
+  // Finance sets a place's storage terms on its Storage tab; the page shows each role its own tabs.
+  collections: "shared",
   kit: "shared",
   "no-access": "shared",
 };

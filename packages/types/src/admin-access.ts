@@ -180,6 +180,28 @@ export const COLLECTIONS_ACCESS: CapabilityRequirement = LOT_FULFILMENT_ACCESS;
 export const COLLECTIONS_READ_ACCESS: CapabilityRequirement = readOrWrite(COLLECTIONS_ACCESS);
 
 /**
+ * A place's storage terms and its "Raise storage invoices" switch (docs/design/storage-terms.md,
+ * ST10): Finance and Administrators. The routes also ask for a recent sign-in.
+ */
+export const COLLECTION_STORAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["finance.platform.write", "platform.admin.full"],
+};
+
+/** The Storage tab: everyone who sees Collections (Fulfilment views it), and Finance. */
+export const COLLECTION_STORAGE_READ_ACCESS: CapabilityRequirement = {
+  anyOf: [
+    ...requirementCapabilities(COLLECTIONS_READ_ACCESS),
+    ...requirementCapabilities(COLLECTION_STORAGE_ACCESS),
+  ],
+};
+
+/**
+ * The Collections page and its list of places: everyone with a tab on it. Finance sees only the
+ * Storage tab; the visits, hours and closures keep `COLLECTIONS_READ_ACCESS`.
+ */
+export const COLLECTIONS_PAGE_ACCESS: CapabilityRequirement = COLLECTION_STORAGE_READ_ACCESS;
+
+/**
  * Record a buyer default: void an unpaid sale and decide where the lot goes. It cancels a sale
  * and releases the lot, so it belongs to the sales managers who run the lot and to finance, who
  * own the invoice. The administrator holds both.

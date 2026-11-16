@@ -1,6 +1,7 @@
 import type { StaffCollectionException } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  collectionTabsFor,
   collectionsHref,
   describeException,
   formatExceptionDays,
@@ -37,6 +38,23 @@ describe("collections view model", () => {
     );
     expect(collectionsHref("hours", "v1")).toBe("/admin/collections?tab=hours&venue=v1");
     expect(collectionsHref("closures", "v1")).toBe("/admin/collections?tab=closures&venue=v1");
+  });
+
+  it("puts Storage beside Hours and rules, and shows each person only their tabs", () => {
+    expect(collectionTabsFor({ settings: true, storage: true })).toEqual([
+      "day",
+      "upcoming",
+      "not_collected",
+      "hours",
+      "storage",
+      "closures",
+    ]);
+    // Finance: the storage terms only.
+    expect(collectionTabsFor({ settings: false, storage: true })).toEqual(["storage"]);
+    expect(parseCollectionTab(undefined, { settings: false, storage: true })).toBe("storage");
+    expect(parseCollectionTab("hours", { settings: false, storage: true })).toBe("storage");
+    expect(parseCollectionTab("storage")).toBe("storage");
+    expect(collectionsHref("storage", "v1")).toBe("/admin/collections?tab=storage&venue=v1");
   });
 
   it("names weekdays and orders a day's ranges", () => {

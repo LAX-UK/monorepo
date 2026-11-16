@@ -10,12 +10,27 @@ import { actorFromContext } from "../../lib/admin-actor-context.js";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
+  requireCollectionsPage,
   requireCollectionsRead,
   requireOperationsFulfilment,
 } from "../../middleware/require-capability.js";
 import type { CollectionSettingsResult } from "../../services/collection-settings/collection-settings.errors.js";
 import type { AdminCollectionSettingsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
+
+/**
+ * The places on the Collections page, for everyone with a tab there. Mounted beside the finance
+ * routes, so Finance, who has no platform shell and sees only the Storage tab, can pick a place.
+ */
+export function attachAdminCollectionPlacesRoutes(
+  app: AdminHono,
+  container: AdminCollectionSettingsRoutesContainer,
+): void {
+  app.get("/collections", requireCollectionsPage, async (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.json({ data: await container.admin.collectionSettings.venues() });
+  });
+}
 
 /**
  * Staff running a place's collection hours, rules and closures. Reading is open to everyone who
@@ -39,11 +54,6 @@ export function attachAdminCollectionSettingsRoutes(
       asHttpStatus(status),
     );
   }
-
-  platform.get("/collections", requireCollectionsRead, async (c) => {
-    c.header("Cache-Control", "no-store");
-    return c.json({ data: await service.venues() });
-  });
 
   platform.get(
     "/collections/:venueId",

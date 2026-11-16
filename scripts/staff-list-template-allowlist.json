@@ -35,8 +35,8 @@
       "reason": "Live sale console"
     },
     {
-      "page": "bid-admin:(platform)/collections/page.tsx",
-      "reason": "Settings: weekly hours, rules and closures for collecting works"
+      "page": "bid-admin:(shared)/collections/page.tsx",
+      "reason": "Settings: weekly hours, rules, storage terms and closures for collecting works"
     },
     {
       "page": "bid-admin:(platform)/settings/security/page.tsx",

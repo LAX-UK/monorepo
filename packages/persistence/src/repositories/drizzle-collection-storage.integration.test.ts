@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { createDb } from "@auction/db";
+import { closeDb, createDb } from "@auction/db";
 import { collectionPlace } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -39,11 +39,35 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
   const db = createDb(process.env.DATABASE_URL!);
   const storage = new DrizzleCollectionStorageRepository(db);
 
+  /**
+   * Waits until `count` transactions for the place are blocked: on the terms table (at their
+   * insert) or on the place's advisory lock. Fails after 10 seconds rather than hanging. It reads
+   * through its own pool: the four calls can take every connection of the shared one.
+   */
+  async function waitForWaiting(watcher: typeof db, count: number, placeId: string): Promise<void> {
+    const key = `collection_place:${placeId}`;
+    for (let tries = 0; tries < 400; tries += 1) {
+      const result = await watcher.execute(sql`
+        select count(*)::int as waiting from pg_locks
+        where not granted
+          and ((locktype = 'relation' and relation = 'collection_storage_terms'::regclass)
+            or (locktype = 'advisory'
+              and ((classid::bigint << 32) | objid::bigint) = hashtextextended(${key}, 0)))`);
+      const [row] = result.rows as { waiting: number }[];
+      if ((row?.waiting ?? 0) >= count) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error(`Fewer than ${count} transactions reached the barrier`);
+  }
+
   beforeAll(async () => {
     const now = new Date();
     await db.execute(sql`
       insert into "user" (id, name, email, email_verified, created_at, updated_at)
       values (${staffId}, 'Staff', ${`${staffId}@integration.test`}, true, ${now}, ${now})`);
+    await db.execute(sql`
+      insert into bid_identity_directory (subject_id, email, name, email_verified, identity_created_at)
+      values (${staffId}, ${`${staffId}@integration.test`}, 'Storage Finance', true, ${now})`);
     await db.execute(sql`
       insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
       values (${entityId}, 'Collection storage IT', 'individual', 'private_collector', ${staffId}, 'approved')`);
@@ -84,6 +108,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       await db.execute(sql`delete from venue where id = ${id}`);
     }
     await db.execute(sql`delete from legal_entity where id = ${entityId}`);
+    await db.execute(sql`delete from bid_identity_directory where subject_id = ${staffId}`);
     await db.execute(sql`delete from "user" where id = ${staffId}`);
   });
 
@@ -95,6 +120,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       expect.objectContaining({
         action: "terms_scheduled",
         actorUserId: staffId,
+        actorName: "Storage Finance",
         createdAt: expect.any(Date),
         before: null,
         after: expect.objectContaining({ freeDays: 14, standardDailyPence: 300 }),
@@ -156,7 +182,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     await storage.scheduleTerms(
       venueId,
       { ...TERMS, effectiveFrom: "2031-06-01", freeDays: 7 },
-      TODAY,
+      "2031-03-11",
       next(),
     );
     expect(await storage.findTermsInForce(venueId, "2031-03-10")).toBeNull();
@@ -171,7 +197,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       storage.scheduleTerms(
         venueId,
         { ...TERMS, effectiveFrom: "2031-07-01", freeDays: 91 },
-        TODAY,
+        "2031-06-01",
         next(),
       ),
     ).rejects.toThrow();
@@ -179,7 +205,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       storage.scheduleTerms(
         venueId,
         { ...TERMS, effectiveFrom: "2031-07-01", reason: "  " },
-        TODAY,
+        "2031-06-01",
         next(),
       ),
     ).rejects.toThrow();
@@ -385,7 +411,7 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
     const future = await storage.scheduleTerms(
       venueId,
       { ...TERMS, effectiveFrom: "2031-09-01", freeDays: 3 },
-      TODAY,
+      "2031-06-01",
       next(),
     );
     const id = future.outcome === "scheduled" ? future.terms.id : "";
@@ -449,6 +475,69 @@ describe.skipIf(!HAS_DB)("collection storage (integration)", () => {
       await db.execute(sql`delete from lot where id = ${lateLot}`);
       await db.execute(sql`delete from sale where id = ${lateSale}`);
     }
+  });
+
+  it("keeps one change waiting at a time, even when two are sent at the same moment", async () => {
+    const racedVenue = randomUUID();
+    await db.execute(sql`
+      insert into venue (id, legal_entity_id, name, address_line1, city, postcode, country)
+      values (${racedVenue}, ${entityId}, 'Collection storage IT raced place', '3 Test Street', 'London', 'W1W 6YW', 'GB')`);
+    try {
+      // A barrier makes the four calls overlap on every run, whatever the pool's state or the
+      // order tests run in. A fifth transaction holds a SHARE lock on the terms table: reads go
+      // on, inserts wait. Every call that gets as far as its insert has made its checks and now
+      // waits there; any other call waits on the place lock. Once all four wait, the barrier
+      // lifts. With the place lock, one call is at its insert and three wait their turn, then
+      // see its row and refuse. Without it, all four have passed the check and all four insert.
+      // The barrier and the watcher have their own pool, so the four calls get a connection each.
+      // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+      const side = createDb(process.env.DATABASE_URL!);
+      let racing: Promise<Awaited<ReturnType<typeof storage.scheduleTerms>>[]> | undefined;
+      try {
+        await side.transaction(async (barrier) => {
+          await barrier.execute(sql`lock table collection_storage_terms in share mode`);
+          racing = Promise.all(
+            ["2031-12-01", "2032-01-01", "2032-02-01", "2032-03-01"].map((effectiveFrom) =>
+              storage.scheduleTerms(racedVenue, { ...TERMS, effectiveFrom }, TODAY, next()),
+            ),
+          );
+          await waitForWaiting(side, 4, racedVenue);
+        });
+      } finally {
+        await closeDb(side);
+      }
+      const results = await (racing ?? Promise.resolve([]));
+      expect(results.filter((r) => r.outcome === "scheduled")).toHaveLength(1);
+      expect(results.filter((r) => r.outcome === "change_already_scheduled")).toHaveLength(3);
+      expect(await storage.listTerms(racedVenue)).toHaveLength(1);
+      expect(await storage.listAudit(racedVenue, 10)).toHaveLength(1);
+      // Once it has started, the next change may wait.
+      expect(
+        (
+          await storage.scheduleTerms(
+            racedVenue,
+            { ...TERMS, effectiveFrom: "2032-06-01" },
+            "2032-05-01",
+            next(),
+          )
+        ).outcome,
+      ).toBe("scheduled");
+    } finally {
+      await db.execute(sql`delete from collection_storage_audit where venue_id = ${racedVenue}`);
+      await db.execute(sql`delete from collection_storage_terms where venue_id = ${racedVenue}`);
+      await db.execute(sql`delete from collection_place where venue_id = ${racedVenue}`);
+      await db.execute(sql`delete from venue where id = ${racedVenue}`);
+    }
+  });
+
+  it("lists the place's own changes without per-lot rows", async () => {
+    const all = await storage.listAudit(venueId, 1000);
+    expect(all.some((row) => row.lotId !== null)).toBe(true);
+    const place = await storage.listPlaceAudit(venueId, 1000);
+    expect(place.length).toBeGreaterThan(0);
+    expect(place.every((row) => row.lotId === null)).toBe(true);
+    expect(place).toEqual(all.filter((row) => row.lotId === null));
+    expect(await storage.listPlaceAudit(venueId, 1)).toHaveLength(1);
   });
 
   it("lists the audit newest first and limited", async () => {

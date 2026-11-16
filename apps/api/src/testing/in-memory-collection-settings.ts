@@ -104,7 +104,6 @@ export class InMemoryCollectionSettings
     check("close_on_sale_days", before.closeOnSaleDays, input.rules.closeOnSaleDays);
     check("undo_hand_over_minutes", before.undoHandOverMinutes, input.rules.undoHandOverMinutes);
     check("max_active_visits", before.maxActiveVisits, input.rules.maxActiveVisits);
-    check("free_storage_days", before.freeStorageDays, input.freeStorageDays);
     check("booking_email", before.bookingEmail, input.bookingEmail);
     const week = normaliseWeeklyHours(input.hours);
     if (JSON.stringify(week) !== JSON.stringify(normaliseWeeklyHours(this.hours))) {
@@ -114,7 +113,7 @@ export class InMemoryCollectionSettings
       ...input.rules,
       venueId: input.venueId,
       onlineBookingEnabled: input.onlineBookingEnabled,
-      freeStorageDays: input.freeStorageDays,
+      freeStorageDays: before.freeStorageDays,
       bookingEmail: input.bookingEmail,
       updatedAt: input.at,
     };

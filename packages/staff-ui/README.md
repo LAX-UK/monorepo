@@ -54,6 +54,7 @@ drift. The shell sets `data-lax-density="staff"`. Use the scales only; no ad-hoc
 | Elevation | flat + hairline; `shadow-staff-xs`; `md`; `lg` | Page, cards, tables; secondary buttons; menus, popovers, bulk bar; dialogs, sheets, ⌘K |
 | Icons | lucide, 1.75 stroke; 14, 16, 20 | Badges and compact controls; controls and nav; empty states |
 | Layout | nav 240 (56 collapsed), top bar 52, content max 1280, panel 480/640 | |
+| Field width | `max-w-staff-field-count` 96, `money` 160, `date` 208 | Cap a field at the width of its longest value (`boxClassName` on the input), so its size says what it expects; free text keeps the column |
 | Sticky layers | `--spacing-staff-top-bar` 52, `table-header` 36, `bulk-bar-clearance` 72 | The page's scroll padding while each is on screen, so focus is never hidden under them (WCAG 2.4.11) |
 
 ### Colour
