@@ -1,12 +1,16 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { OrderDetailView, orderPermissions } from "@/components/orders/order-detail-view";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
+import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { shouldLoadGuestErasure } from "@/server/domain/guest-erasure.vm";
 import { orderNumber } from "@/server/domain/order-list.vm";
+import { presentZohoMirror } from "@/server/domain/zoho-mirror.vm";
+import { failedJobsHref } from "@/server/domain/zoho-sync-health.vm";
 import type {
   AdminGuestErasureState,
   AdminOrderDetail,
   AdminPickAndPack,
+  AdminZohoMirrorStatus,
 } from "@auction/shop-contracts";
 import { notFound, redirect } from "next/navigation";
 
@@ -24,9 +28,13 @@ export default async function OrderDetailPage({
   params: Promise<{ orderId: string }>;
 }) {
   const { orderId } = await params;
-  const [result, session] = await Promise.all([
+  // The Zoho badge is read beside the order, not after it; a failed read leaves the badge out.
+  const [result, session, mirror] = await Promise.all([
     fetchAdminJson<AdminOrderDetail>(`orders/${orderId}`),
     loadAdminSession(),
+    fetchAdminJson<AdminZohoMirrorStatus>(
+      `zoho-mirror/status?entity=order&id=${encodeURIComponent(orderId)}`,
+    ),
   ]);
   if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
   if (result.status === "not_found") notFound();
@@ -51,12 +59,19 @@ export default async function OrderDetailPage({
   const pack = detail.lines.some((line) => line.editionId)
     ? await fetchAdminJson<AdminPickAndPack>(`orders/${orderId}/pick-and-pack`)
     : null;
+  const mirrorStatus = mirror.status === "ok" ? mirror.data : null;
+  // Failed jobs is in Bid admin: linked only for people Bid lets open it (Q7), asked only on failure.
+  const zohoMirror = presentZohoMirror(mirrorStatus, {
+    failedJobsHref:
+      mirrorStatus?.state === "failed" ? failedJobsHref(await loadBidAdminUrl()) : null,
+  });
   return (
     <OrderDetailView
       detail={detail}
       pickAndPack={pack?.status === "ok" ? pack.data : null}
       permissions={permissions}
       guestErasure={erasure?.status === "ok" ? erasure.data : null}
+      zohoMirror={zohoMirror}
     />
   );
 }

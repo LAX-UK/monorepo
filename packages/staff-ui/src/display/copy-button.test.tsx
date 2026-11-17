@@ -155,6 +155,7 @@ describe("CopyButton", () => {
     ["Stripe requirement key", "Copy Stripe requirement key"],
     ["Xero invoice", "Copy Xero invoice"],
     ["Veriff session", "Copy Veriff session"],
+    ["Zoho record ID", "Copy Zoho record ID"],
     ["Order ID", "Copy order ID"],
   ])("names %s as %s", (label, name) => {
     render(<CopyButton value="v" label={label} />);

@@ -1,5 +1,5 @@
 /** Proper nouns that keep their capital when they open a label ("Stripe transfer"). */
-const PROPER_NOUNS = ["Stripe", "Xero", "Veriff", "ATG"];
+const PROPER_NOUNS = ["Stripe", "Xero", "Veriff", "ATG", "Zoho"];
 
 /**
  * "Order ID" → "order ID": the first letter drops so the name reads as a sentence. It stays when
