@@ -17,6 +17,8 @@ export type ConsignmentActionsVm = {
   canWithdraw: boolean;
   /** Add and remove supporting documents. */
   canManageDocuments: boolean;
+  /** Delete a draft never sent (GAP-53): their own, or any for owners and admins. */
+  canDeleteDraft: boolean;
 };
 
 /**
@@ -37,5 +39,6 @@ export function consignmentActionsVm(input: {
     canSubmit: status === "draft" && may("submit"),
     canWithdraw: canTransition(status, "withdraw") && may("withdraw"),
     canManageDocuments: may("attach_document"),
+    canDeleteDraft: status === "draft" && may("delete_draft"),
   };
 }

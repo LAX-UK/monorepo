@@ -6,20 +6,31 @@ import {
   withdrawSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
 import { SUBMISSION_SUBMIT_LABEL } from "@/lib/marketing/sell-flow-copy";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { DELETE_DRAFT_COPY } from "@/lib/seller/delete-draft";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/lax/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DeleteDraftDialog } from "./seller/delete-draft-dialog";
 
 type Props = {
   submissionId: string;
   canSubmit: boolean;
   canWithdraw: boolean;
+  /** A draft this person may delete (GAP-53). */
+  canDeleteDraft?: boolean;
 };
 
-export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw }: Props) {
+export function SubmissionWorkflowActions({
+  submissionId,
+  canSubmit,
+  canWithdraw,
+  canDeleteDraft = false,
+}: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   async function runAction(work: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     if (pending) return;
@@ -37,7 +48,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
     }
   }
 
-  if (!canSubmit && !canWithdraw) {
+  if (!canSubmit && !canWithdraw && !canDeleteDraft) {
     return null;
   }
 
@@ -75,6 +86,25 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
         >
           Withdraw
         </ConfirmActionButton>
+      ) : null}
+      {canDeleteDraft ? (
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pending}
+            onClick={() => setDeleteOpen(true)}
+          >
+            {DELETE_DRAFT_COPY.action}
+          </Button>
+          <DeleteDraftDialog
+            submissionId={submissionId}
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            // The draft is gone: back to the list, which no longer shows it.
+            onDeleted={() => router.push(CLIENT_ROUTES.consignments)}
+          />
+        </>
       ) : null}
     </section>
   );

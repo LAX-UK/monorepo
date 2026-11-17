@@ -26,6 +26,8 @@ export class DrizzleConsignmentStatusCountsReader implements IConsignmentStatusC
         .where(
           and(
             eq(itemSubmission.legalEntityId, scope.legalEntityId),
+            // A draft its client deleted is gone from the account (GAP-53).
+            isNull(itemSubmission.deletedAt),
             submissionSenderSql(scope.visibleTo),
             isNull(lot.id),
           ),

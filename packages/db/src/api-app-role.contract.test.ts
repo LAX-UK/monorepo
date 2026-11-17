@@ -230,6 +230,31 @@ async function withOwnerDocuments<T>(
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
+  it("deletes a draft and purges it: writes deleted_at and deletes the row (0407)", async () => {
+    await withApiClient(async (client) => {
+      for (const privilege of ["SELECT", "UPDATE"]) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_column_privilege(current_user, 'public.item_submission', 'deleted_at', $1) as allowed",
+          [privilege],
+        );
+        expect(result.rows[0]?.allowed, `deleted_at:${privilege}`).toBe(true);
+      }
+      // The probes themselves: the delete and the purge run (on no row) under api_app's grants.
+      await expect(
+        client.query(
+          `update item_submission set deleted_at = now()
+            where id = '00000000-0000-4000-8000-000000000000' and status = 'draft'`,
+        ),
+      ).resolves.toMatchObject({ rowCount: 0 });
+      await expect(
+        client.query(
+          `delete from item_submission
+            where id = '00000000-0000-4000-8000-000000000000' and deleted_at < now()`,
+        ),
+      ).resolves.toMatchObject({ rowCount: 0 });
+    });
+  });
+
   it("declines a delivery quote: writes its reason and the audit event (0406)", async () => {
     await withApiClient(async (client) => {
       for (const privilege of ["SELECT", "UPDATE"]) {

@@ -10,6 +10,10 @@ export class PlatformHygieneCronApplicationService
     return this.hygieneCronService.sendStaleSubmissionDraftReminders(staleDays);
   }
 
+  purgeDeletedSubmissionDrafts() {
+    return this.hygieneCronService.purgeDeletedSubmissionDrafts();
+  }
+
   sendConsignmentAgreementReminders() {
     return this.hygieneCronService.sendConsignmentAgreementReminders();
   }
