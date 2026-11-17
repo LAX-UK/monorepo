@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 Independent review of draft PR #1511, "Seed dispatched and returned Shop orders and a reserved lax.art original in the demo" (head `674f1cdc`, branch `claude/gap-31-demo-seed`, base `main` @ `ac9058a7`). Register item: GAP-31.
 
@@ -97,3 +97,89 @@ I did a trial merge of #1514 into this branch (`git merge --no-commit origin/fix
 ## Bottom line
 
 The states are really seeded through the real handlers, the re-run is idempotent, nothing invents provider ids or real people, and the admin-queue items were already on `main`. Fix finding 1 (the raw packing write is avoidable and leaves print history and the certificate missing) and finding 2 (a re-run resets a sold original to for sale) before merging. Findings 3-7 are small changes to code and docs that should go in the same pass.
+
+## Final recheck
+
+Head rechecked: `3f7d6eb7` on `claude/gap-31-demo-seed`. It adds three commits after the review (`125ca3f3`, `29d0161f`, `3f7d6eb7`) and a normal merge of `main` (`7cc9338b`). There were no force pushes on the branch, and I did not change it.
+
+### How I checked
+
+- **Tests:** on a fresh local Postgres 16 with all migrations and `db:roles` applied, `vitest run src/infrastructure/seed` passes: 12 files, 37 tests. The new files have 10 tests: 6 integration and 4 unit.
+- **Real script, run twice:** I used a new database. I ran `db:migrate`, `db:roles`, `db:seed:mark-demo-target local`, then `seed:catalogue`. Then I ran `pnpm --filter @auction/shop-api seed:demo-full` twice.
+  - Both runs exited 0 and printed `{"dispatchedOrders":1,"returnedOrders":1,"reservedOriginals":1}`.
+  - Row counts were the same after run 1 and run 2: orders 4, returns 1, refunds 2 (both `failed`, "Order missing stripe_payment_intent_id"), original sales 1, parties 12, domain_events 75, shop admin audit 27, email_outbox 0.
+  - The two extra events and two extra audit rows, compared with the first review, are the packing confirmations.
+- **Staff work on the reserved original:** on the same database I set the sale to `assigned` and `quiet-orchard` to `sold`, then ran the script a third time.
+  - The artwork stayed `sold` and the sale stayed `assigned`. `seedDemoFull` reported `original:quiet-orchard: 0`.
+  - The script warned `demo shop state not seeded: reserved original: the seeded reservation of "quiet-orchard" is assigned now; left as is` and exited 0.
+- **Missing preconditions:** on a fresh database that was migrated and marked but had no `seed:catalogue`, the script threw `DemoShopStatesPreconditionError`. The error named all three missing states and said to run `seed:catalogue`. The exit code was 1.
+- **The tests fail without the changes:** I made one mutation at a time and used a fresh database for each run. The unchanged code passes 10/10.
+  - Removing the `not exists` sale check in `seedDemoFull` fails "a re-run leaves a sold original sold".
+  - Removing the `confirmPacking` call fails 5 tests.
+  - Not resuming dispatch from `in_production`/`awaiting_dispatch` fails the resume test and the main test.
+  - Not finishing an existing return fails the resume test and the main test.
+  - Not throwing on a missing precondition fails the "fails loudly" test.
+
+### Findings
+
+1. **Packing goes through the domain service: fixed.**
+   - `confirmPacking` builds `createConfirmPrintService` with the print-fulfilment unit of work, certificates off as in `container.ts`, and `typed_label`. It reads the expected label from `createDrizzlePickListReader(...).forOrder` and `labelOfPrint`.
+   - If the result is not `confirmed`, it throws.
+   - The raw `pack_confirmed_at/by` write is gone.
+   - On the seeded database: 2 `shop_edition_event` rows of kind `pack_confirmed`, 2 of kind `certificate_issued`, 2 `shop.print.pack_confirmed` domain events and 2 `confirm_print` audit rows, all by `seed:demo-shop-states`.
+   - The "label printer" wording is gone from the header, the runbook and the PR body.
+   - The only remaining direct write is the `failed` mark on the cancellation refund. It is in the same transaction and only touches rows that are still `pending` with 0 attempts, as in the queues seed.
+2. **Re-runs never undo staff work on the reserved original: fixed.**
+   - The `ORIGINAL_STATES` update now skips any original with a sale that is not `cancelled`.
+   - `reserveOriginal` does not reserve again once the seed's own sale exists in any status.
+   - It also leaves alone an original with another open sale, or one that is sold.
+   - There is an integration test for each case, and I proved it by hand above.
+3. **The reserved original on lax.art is accurately documented: fixed.** The runbook table row, the coverage table and "What the demo cannot show" all say that lax.art has no reserved state, that the original still shows there as for sale at £1,450, and that the reservation is visible in LAX Admin only. The PR body says the same.
+4. **Part-failed runs resume: fixed.**
+   - Dispatch resumes from `in_production`/`awaiting_dispatch`, and packing skips lines already confirmed.
+   - The return resumes from `requested`/`in_transit`.
+   - Both resume only when the last `shop_admin_audit` actor on that fulfilment or return is the seed. Otherwise the step is reported in `skipped` and printed as a warning.
+   - The integration test stops a run in two places using the real handlers and shows that the next run finishes.
+5. **Missing preconditions fail loudly: fixed.**
+   - Missing orders, a missing fulfilment, a missing print line or a missing original raise `DemoShopStatesPreconditionError`, and the script exits non-zero.
+   - States that staff took over are printed with `console.warn`.
+6. **Orders are chosen by stable key: fixed.** `DISPATCHED_ORDER_KEY` and `RETURNED_ORDER_KEY` are used with `eq(shopOrder.idempotencyKey, …)`. The unit test checks that both are keys made by the edition-orders seed and are never the queues seed's refund or dispute order while those are still paid.
+   - Residual, not blocking: the queues seed still picks by position. If staff fully refund an earlier paid order, its position could move onto a named order. By then that order has been dispatched, and the queues seed leaves it alone. The unit test captures this.
+7. **The runbook is accurate: fixed.**
+   - "To fulfil" now says the orders not dispatched.
+   - "Failed refunds" includes the £280.00 cancellation refund, which matches the seeded data.
+   - The `demo-seed` producer sentence covers only the Bid seeds. The runbook now says the Shop events carry `shop-api` and send no email, and the database shows `email_outbox` at 0.
+   - The "Run it" and part-way sections match the behaviour I saw.
+8. **Nits: fixed.** The buyer is described as "an invented person with no contact details". The script prints its lines in run order.
+
+### Requested checks
+
+- **Admin-queue items:** purchase problem, unapplied money and data request are seeded on `main` by the Bid seed's `packages/db/src/seed/demo/queues/*.seeder.ts`. The runbook has a coverage table that names those files, and the PR body states it honestly.
+- **CI:** all checks on `3f7d6eb7` pass (`ci-result` success, `account-browser-gates` success). Two browser gates were skipped by path filter.
+- **AI footer:** the PR body has no "Generated with/by Claude Code" footer. None of the 5 commits has a `Co-Authored-By` or `Claude-Session` trailer, and all are authored by `mahmoudamrspace`.
+- **Fictional data only:** the buyers are "Demo Original Buyer" and `seed:edition-buyer`, neither with contact details. Also fictional: "Demo Carrier", `DEMO-TRACK-0001`, `shop.example.test`, and the `seed:`-prefixed subjects. No provider ids are invented.
+
+### Conflict with #1514, updated
+
+#1514 (head `1ef49b85`) has changed since the first review. It now moves the Shop script onto `runShopDemoFull(db, env)` in `demo-full-runner.ts`.
+
+A trial merge of #1514 into `3f7d6eb7` now conflicts in **two** files:
+- `apps/shop-api/src/scripts/seed-demo-full.ts` (new conflict)
+- `docs/runbooks/demo-seed.md` (as before)
+
+**How to resolve `seed-demo-full.ts`, whichever PR merges second:**
+- Take #1514's imports and its `runShopDemoFull(db, env)` call.
+- Keep this PR's `seedDemoShopStates` import and call after it, with its `states` log and its `skipped` warnings.
+- Add back the `demo-full seed ${counts}` log line.
+- Do not import `seedDemoStaffQueues` in the script. #1514's `seed-scripts-guard.test.ts` wiring test fails if it is there.
+- Preferably, move `seedDemoShopStates` into `runShopDemoFull` as a third step, so that it also runs behind `assertSeedTarget`. Its own `assertDemoSeedDatabase` check stays as well.
+
+The runbook resolution from the first review is unchanged. Re-run `vitest run src/infrastructure/seed` after the merge.
+
+### Minor, not blocking
+
+The new integration test is not repeatable on the same database. A second run of the file without a fresh database fails 2 tests, because the seeded order and original rows from the first run are still there. CI uses a fresh database for each job, so CI is not affected. A follow-up could reset those rows in `beforeAll`.
+
+### Verdict
+
+**SHIP.** All eight findings are fixed. Each fix is backed by a test that fails without it, and I checked each one against a real migrated database. The only work left is the merge-order step with #1514 described above.
