@@ -7,6 +7,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { consignmentHref } from "@/lib/seller/consignment-records";
+import { sellAnotherLikeThisHref } from "@/lib/seller/sell-another-like-this";
 import { notFound, redirect } from "next/navigation";
 
 export const metadata = { title: "Sent to our specialists" };
@@ -38,6 +39,7 @@ export default async function SubmissionSentPage({
         reference={submission.reference ?? null}
         consignmentHref={consignmentHref(submission.id)}
         sellAnotherHref={CLIENT_ROUTES.sellingNew}
+        sellAnotherLikeThisHref={sellAnotherLikeThisHref(submission.id)}
         responsePromise={SPECIALIST_RESPONSE_PROMISE}
       />
     </DashboardPage>

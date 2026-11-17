@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  MEDIA_CDN_ORIGIN,
+  STRIPE_JS_CONNECT_SOURCES,
+  STRIPE_JS_FRAME_SOURCES,
+  STRIPE_JS_IMG_SOURCES,
+  STRIPE_JS_SCRIPT_SOURCES,
+  STRIPE_LINK_CONNECT_SOURCES,
+  STRIPE_LINK_FRAME_SOURCES,
+  STRIPE_LINK_IMG_SOURCES,
   expressCheckoutContentSecurityPolicy,
   expressCheckoutSecurityHeaders,
   isExpressCheckoutPath,
@@ -7,6 +15,23 @@ import {
 } from "./express-checkout-headers";
 
 const IDENTITY = ["https://identity.lax.bid"];
+const IMAGE_HOSTS = ["https://images.example.com"];
+
+// Every non-self source the policy may carry: the configured app origins plus Stripe's documented
+// sources (https://docs.stripe.com/security/guide#content-security-policy). Anything else fails.
+const ALLOWED_SOURCES = new Set<string>([
+  ...IDENTITY,
+  ...IMAGE_HOSTS,
+  MEDIA_CDN_ORIGIN,
+  ...STRIPE_JS_SCRIPT_SOURCES,
+  ...STRIPE_JS_FRAME_SOURCES,
+  ...STRIPE_JS_CONNECT_SOURCES,
+  ...STRIPE_JS_IMG_SOURCES,
+  ...STRIPE_LINK_FRAME_SOURCES,
+  ...STRIPE_LINK_CONNECT_SOURCES,
+  ...STRIPE_LINK_IMG_SOURCES,
+]);
+const ALLOWED_KEYWORDS = new Set(["'self'", "'none'", "'unsafe-inline'", "data:", "blob:"]);
 
 function csp(pathname: string, enabled = true, development = false): string | undefined {
   return expressCheckoutSecurityHeaders({
@@ -14,6 +39,7 @@ function csp(pathname: string, enabled = true, development = false): string | un
     enabled,
     development,
     identityOrigins: IDENTITY,
+    imageOrigins: IMAGE_HOSTS,
   }).find((header) => header.key === "Content-Security-Policy")?.value;
 }
 
@@ -48,11 +74,12 @@ describe("express checkout security headers", () => {
         "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com;",
       );
       expect(policy).toContain(
-        "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com;",
+        "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com;",
       );
       expect(policy).toContain(
-        "connect-src 'self' https://identity.lax.bid https://api.stripe.com;",
+        "connect-src 'self' https://identity.lax.bid https://api.stripe.com https://link.com https://*.link.com;",
       );
+      expect(policy).toContain("https://*.stripe.com https://*.link.com;");
     }
   });
 
@@ -63,14 +90,17 @@ describe("express checkout security headers", () => {
     expect(policy).toContain("base-uri 'self'");
   });
 
-  it("allows no other third-party origin and no blanket scheme", () => {
+  it("allows only app origins and Stripe's documented sources", () => {
     const policy = csp("/checkout") ?? "";
-    const origins = policy.match(/https:\/\/[^\s;]+/g) ?? [];
-    expect(
-      origins.every((origin) => origin.endsWith("stripe.com") || IDENTITY.includes(origin)),
-    ).toBe(true);
-    expect(policy).not.toMatch(/\shttps:(;|\s|$)/);
-    expect(policy).not.toContain("*.stripe.com ");
+    for (const directive of policy.split("; ")) {
+      const [, ...sources] = directive.split(" ");
+      for (const source of sources) {
+        expect(
+          ALLOWED_KEYWORDS.has(source) || ALLOWED_SOURCES.has(source),
+          `unexpected source ${source} in "${directive}"`,
+        ).toBe(true);
+      }
+    }
   });
 
   it("allows eval and hot-reload sockets in development only", () => {

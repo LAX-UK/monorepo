@@ -86,6 +86,10 @@ GAP-49 (decision pack 2026-11-17, option B). Off by default: `SHOP_EXPRESS_CHECK
 - **Webhook unchanged.** `checkout.session.completed` and `checkout.session.expired` settle and expire express orders exactly as hosted ones (`metadata.orderId`). A session the shopper never confirmed carries no order id and is ignored.
 - **Domains.** Each Shop host must be registered as a payment method domain (Dashboard, Settings, Payment method domains) before wallets show; `test-shop.lax.bid` is registered on the Bid sandbox account.
 
+## Express checkout flag
+
+- `SHOP_EXPRESS_CHECKOUT` (`true` or `false`, default `false`) turns on the wallet row on the basket and Details and allows Stripe.js and Link in those two pages' Content-Security-Policy (sources per <https://docs.stripe.com/security/guide#content-security-policy>). An invalid value (anything but `true` or `false`) fails closed for every Shop page: `loadShopEnv` throws in the middleware, so all pages error until the value is fixed.
+
 ## Local development
 
 - `SHOP_FAKE_CHECKOUT_ENABLED=true` with no Stripe keys enables the fake checkout path (local only).

@@ -1,4 +1,4 @@
-import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
+import { applySaleroomEvent, isOutcomeForCurrentLot } from "@/lib/saleroom/apply-saleroom-event";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import type { SaleroomRealtimePayload } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -79,6 +79,57 @@ describe("applySaleroomEvent", () => {
       status: "paused",
       currentLotId: "lot-1",
       nextLotId: "lot-2",
+    });
+  });
+
+  describe("outcome for a lot that is no longer on the block", () => {
+    const onB: PublicSaleroomSessionStatus = {
+      status: "live",
+      currentLotId: "lot-b",
+      nextLotId: "lot-c",
+    };
+
+    for (const kind of ["hammer", "no_sale"] as const) {
+      it(`keeps lot-b when ${kind} for lot-a arrives after the advance`, () => {
+        expect(
+          applySaleroomEvent(onB, event(kind, { lotId: "lot-a", nextLotId: "lot-c" })),
+        ).toEqual({ status: "live", currentLotId: "lot-b", nextLotId: "lot-c" });
+      });
+
+      it(`keeps lot-b when ${kind} for lot-a says clearedFromBlock: false`, () => {
+        expect(
+          applySaleroomEvent(
+            onB,
+            event(kind, { lotId: "lot-a", clearedFromBlock: false, nextLotId: "lot-c" }),
+          ),
+        ).toEqual({ status: "live", currentLotId: "lot-b", nextLotId: "lot-c" });
+      });
+
+      it(`clears lot-b when ${kind} resolves lot-b itself`, () => {
+        expect(
+          applySaleroomEvent(
+            onB,
+            event(kind, { lotId: "lot-b", clearedFromBlock: true, nextLotId: "lot-c" }),
+          ),
+        ).toEqual({ status: "live", currentLotId: null, nextLotId: "lot-c" });
+      });
+    }
+
+    it("keeps the current lot when the server says it was not cleared, even for the same id", () => {
+      expect(
+        applySaleroomEvent(onB, event("hammer", { lotId: "lot-b", clearedFromBlock: false })),
+      ).toMatchObject({ currentLotId: "lot-b" });
+    });
+
+    it("treats a legacy outcome with no lotId as resolving the current lot", () => {
+      expect(isOutcomeForCurrentLot("lot-b", event("hammer"))).toBe(true);
+      expect(applySaleroomEvent(onB, event("no_sale"))).toMatchObject({ currentLotId: null });
+    });
+
+    it("is false for non-outcome events", () => {
+      expect(isOutcomeForCurrentLot("lot-b", event("advanced_to_lot", { lotId: "lot-b" }))).toBe(
+        false,
+      );
     });
   });
 });

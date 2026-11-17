@@ -16,7 +16,12 @@ import {
   ENQUIRY_QUARANTINE_PURGE_TIME_ZONE,
   purgeEnquiryInboundQuarantine,
 } from "../jobs/purge-enquiry-inbound-quarantine.js";
-import { purgeFailedJobPayloads } from "../jobs/purge-failed-job-payloads.js";
+import {
+  FAILED_JOB_PAYLOADS_PURGE_JOB_ID,
+  FAILED_JOB_PAYLOADS_PURGE_PATTERN,
+  FAILED_JOB_PAYLOADS_PURGE_TIME_ZONE,
+  purgeFailedJobPayloads,
+} from "../jobs/purge-failed-job-payloads.js";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -256,12 +261,22 @@ export function registerPurgeWorkers(
   purgeFailedJobPayloadsWorker.on("failed", (job, err) => {
     reportWorkerJobFailure(PURGE_FAILED_JOB_PAYLOADS_QUEUE_NAME, job, err);
   });
+  // The daily run is now a fixed 02:00 UTC cron. The earlier every-24h repeat is removed so the two
+  // schedules never both run.
+  void purgeFailedJobPayloadsQueue
+    .removeRepeatable("purge", { every: 24 * 60 * 60 * 1000 }, FAILED_JOB_PAYLOADS_PURGE_JOB_ID)
+    .catch((err: unknown) => {
+      log.warn({ err }, "could not remove the every-24h purge-failed-job-payloads repeat");
+    });
   void purgeFailedJobPayloadsQueue.add(
     "purge",
     {},
     {
-      jobId: "purge-failed-job-payloads-daily",
-      repeat: { every: 24 * 60 * 60 * 1000 },
+      jobId: FAILED_JOB_PAYLOADS_PURGE_JOB_ID,
+      repeat: {
+        pattern: FAILED_JOB_PAYLOADS_PURGE_PATTERN,
+        tz: FAILED_JOB_PAYLOADS_PURGE_TIME_ZONE,
+      },
       removeOnComplete: 5,
     },
   );

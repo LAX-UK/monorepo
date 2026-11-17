@@ -7,7 +7,7 @@ import {
 } from "@/features/saleroom/lib/display-bid-ticks";
 import { applyDisplayControlEvent } from "@/features/saleroom/lib/display-overlay-state";
 import { parseBidUpdateEvent } from "@/lib/realtime/parse-bid-update";
-import { applySaleroomEvent } from "@/lib/saleroom/apply-saleroom-event";
+import { applySaleroomEvent, isOutcomeForCurrentLot } from "@/lib/saleroom/apply-saleroom-event";
 import type {
   SaleroomDisplayBidSummary,
   SaleroomDisplayControlPayload,
@@ -83,15 +83,18 @@ export function useDisplaySocket({
       );
       const lotChanged = sessionStatus.currentLotId !== liveSnapshot.currentLotId;
       const nextLotId = sessionStatus.currentLotId;
+      // A late outcome for a lot the room has already moved past must not flash over the live lot.
+      const outcomeOnDisplay = isOutcomeForCurrentLot(liveSnapshot.currentLotId, event);
 
       setState((prev) => {
         if (!prev.snapshot) return prev;
         let flash = prev.flash;
         let lastHammer = prev.lastHammer;
-        if (event.kind === "hammer") {
+        if (outcomeOnDisplay && event.kind === "hammer") {
           flash = "sold";
+          // Hammer figures come from the hammered lot only, never from whatever is on screen now.
           const lot = prev.snapshot.currentLot;
-          if (lot) {
+          if (lot && (event.lotId === undefined || lot.id === event.lotId)) {
             lastHammer = {
               price: lot.currentPrice,
               paddleLabel: formatDisplayLeaderLabel(
@@ -99,9 +102,11 @@ export function useDisplaySocket({
                 lot.leaderPaddleNumber,
               ),
             };
+          } else {
+            lastHammer = null;
           }
         }
-        if (event.kind === "no_sale") flash = "passed";
+        if (outcomeOnDisplay && event.kind === "no_sale") flash = "passed";
 
         return {
           ...prev,
@@ -122,7 +127,7 @@ export function useDisplaySocket({
         handleLotTransition(nextLotId);
       }
 
-      if (event.kind === "hammer" || event.kind === "no_sale") {
+      if (outcomeOnDisplay) {
         if (refs.soldFlashTimerRef.current) clearTimeout(refs.soldFlashTimerRef.current);
         refs.soldFlashTimerRef.current = setTimeout(() => {
           setState((prev) => ({ ...prev, flash: null, lastHammer: null }));

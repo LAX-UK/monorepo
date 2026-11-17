@@ -57,3 +57,12 @@ export type LotLifecycleExecutionPorts = {
   notifications: ILotLifecycleNotifications;
   onLotActivated?: ((lotId: string) => Promise<void>) | null;
 };
+
+/**
+ * Work a clerk outcome caller needs committed atomically with the lot's outcome write. It runs inside
+ * the lot transaction, after the lot row is locked and its status written, and only when the outcome
+ * actually lands (a lot already closed by someone else never reaches it).
+ */
+export type ClerkOutcomeOptions = {
+  inOutcomeTransaction?: (tx: Database) => Promise<void>;
+};

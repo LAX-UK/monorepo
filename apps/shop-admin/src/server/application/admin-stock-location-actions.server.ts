@@ -10,10 +10,9 @@ import { forwardAdminJsonMutation } from "./forward-admin-mutation";
 
 /*
  * LAX Admin's calls for stock location: keep the list of locations (Administrators, with a recent
- * sign-in) and move artworks. `artwork_location.move` is also granted to Gallery staff and
- * Fulfilment, but Move sits on the From Zoho record and list, which only Administrators can open
- * today; until those roles get register access, only Administrators can reach Move. shop-api checks
- * the capability, the sign-in and every rule again.
+ * sign-in) and move artworks. `artwork_location.move` is held by Catalogue editors and
+ * Administrators, who also open the From Zoho record and list where Move sits. shop-api checks the
+ * capability, the sign-in and every rule again.
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
