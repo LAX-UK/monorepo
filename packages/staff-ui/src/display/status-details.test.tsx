@@ -20,10 +20,15 @@ function atWidth(desk: boolean) {
   );
 }
 
-function renderButton() {
+type Holds = "text" | "a button" | "a link";
+
+/** Details holding only a sentence, a sentence and a button, or a sentence and a link. */
+function renderButton(holds: Holds = "text") {
   return render(
     <StatusDetailsButton status={STATUS} name={NAME} data-zoho-mirror="mirrored">
-      <p>Last sent Sat 14 Nov, 16:02 GMT.</p>
+      <p>Last sent 14 Nov 2026, 16:02.</p>
+      {holds === "a button" ? <button type="button">Copy Zoho record ID</button> : null}
+      {holds === "a link" ? <a href="https://bid.example.test/admin/failed-jobs">Open</a> : null}
     </StatusDetailsButton>,
   );
 }
@@ -57,9 +62,9 @@ describe("StatusDetailsButton", () => {
       fireEvent.click(button);
     });
     const dialog = await screen.findByRole("dialog", { name: "Mirrored to Zoho" });
-    expect(dialog).toHaveAccessibleDescription("Last sent Sat 14 Nov, 16:02 GMT.");
+    expect(dialog).toHaveAccessibleDescription("Last sent 14 Nov 2026, 16:02.");
     expect(within(dialog).getByRole("heading", { name: "Mirrored to Zoho" })).toBeInTheDocument();
-    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(button).toHaveAttribute("aria-expanded", "true");
 
     fireEvent.keyDown(document.activeElement ?? dialog, { key: "Escape" });
@@ -77,12 +82,35 @@ describe("StatusDetailsButton", () => {
     });
     const sheet = await screen.findByRole("dialog", { name: "Mirrored to Zoho" });
     expect(sheet).toHaveAttribute("data-side", "bottom");
-    expect(sheet).toHaveAccessibleDescription("Last sent Sat 14 Nov, 16:02 GMT.");
-    await waitFor(() => expect(sheet.contains(document.activeElement)).toBe(true));
+    expect(sheet).toHaveAccessibleDescription("Last sent 14 Nov 2026, 16:02.");
+    await waitFor(() => expect(document.activeElement).toBe(sheet));
     const close = within(sheet).getByRole("button", { name: "Close" });
     expect(close.className).toContain("size-11");
 
     fireEvent.click(close);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(button);
+  });
+
+  // Whatever the details hold, focus lands in the same place: the dialog itself.
+  it.each([
+    ["a desk", "text"],
+    ["a desk", "a button"],
+    ["a desk", "a link"],
+    ["a phone", "text"],
+    ["a phone", "a button"],
+    ["a phone", "a link"],
+  ] as const)("on %s, focus moves to the dialog itself when it holds %s", async (where, holds) => {
+    atWidth(where === "a desk");
+    renderButton(holds);
+    const button = screen.getByRole("button", { name: NAME });
+    await act(async () => {
+      button.focus();
+      fireEvent.click(button);
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Mirrored to Zoho" });
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+    fireEvent.keyDown(dialog, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(document.activeElement).toBe(button);
   });

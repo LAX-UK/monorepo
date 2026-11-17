@@ -12,9 +12,11 @@ import {
 
 /**
  * The "Mirrored to Zoho" badge on the order page (docs/design/staff-gaps-delivery-zoho-alerts.md,
- * Z1–Z3), against whatever orders the environment holds: one batched status read for a page of
- * orders finds an order in each state, and each state found is opened at a desk and on a phone.
- * Literals rather than imports, so the spec does not load the contracts package.
+ * Z1–Z3). It opens an order in each state at a desk and on a phone: the fixture orders the CI stack
+ * seeds (`pnpm --filter @auction/shop-api seed:zoho-mirror-badge`), and otherwise whatever orders
+ * the environment holds, found with one batched status read. In CI a state with no order fails
+ * the run rather than skipping, so the badge cannot pass the gate unopened. Literals rather than
+ * imports, so the spec does not load the contracts package or shop-api.
  */
 const BADGE_LABEL = {
   mirrored: "Mirrored to Zoho",
@@ -24,29 +26,54 @@ const BADGE_LABEL = {
 } as const;
 type BadgeState = keyof typeof BADGE_LABEL;
 
+/** The seeded fixture orders (apps/shop-api/src/infrastructure/seed/zoho-mirror-badge-seed.ts). */
+const FIXTURE_ORDERS = [
+  "2a0e5d00-0000-4000-8000-000000000001",
+  "2a0e5d00-0000-4000-8000-000000000002",
+  "2a0e5d00-0000-4000-8000-000000000003",
+  "2a0e5d00-0000-4000-8000-000000000004",
+  "2a0e5d00-0000-4000-8000-000000000005",
+];
+
+/** A time as Z3 writes it: "16:10", or "14 Nov 2026, 16:02" (the LAX date style, no zone). */
+const TIME = String.raw`(?:\d{1,2} [A-Z][a-z]{2} \d{4}, )?\d{2}:\d{2}`;
+
 /** Z3's sentence that opens each state's details. */
 const SENTENCE_START: Record<BadgeState, RegExp> = {
-  mirrored: /^Last sent /,
-  pending: /^Waiting to send the latest change\./,
+  mirrored: /^Last sent \d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}\./,
+  pending: new RegExp(
+    String.raw`^Waiting to send the latest change\.( Tries again at ${TIME} \(attempt \d+\)\.)?$`,
+  ),
   failed: /^Zoho refused the last change.*Staff in Failed jobs can fix and replay it\.$/,
   dry_run: /^LAX worked out what it would send and wrote nothing to Zoho\.$/,
 };
+
+/** Fail, in CI, where the fixtures are seeded; skip elsewhere, saying what is missing. */
+function requireOrder(orderId: string | undefined, what: string): string {
+  if (orderId) return orderId;
+  if (process.env.CI) {
+    throw new Error(`No order is "${what}": the CI stack must run seed:zoho-mirror-badge first.`);
+  }
+  test.skip(true, `No order in this environment is "${what}"`);
+  return "";
+}
 
 type MirrorStatus = { id: string; state: BadgeState | "not_applicable" };
 
 const account = administratorAccount();
 const themes: readonly StaffTheme[] = ["light", "dark"];
 
-/** One order id per state, from a single batched read of the first page of orders. */
+/** One order id per state, from a single batched read of the fixtures and the first page of orders. */
 async function ordersByState(page: Page): Promise<Map<MirrorStatus["state"], string>> {
   const found = new Map<MirrorStatus["state"], string>();
   const orders = await page.request.get("/api/admin/orders");
-  if (!orders.ok()) return found;
-  const body = (await orders.json()) as { items?: Array<{ orderId?: string }> };
-  const ids = (body.items ?? []).flatMap((item) => (item.orderId ? [item.orderId] : []));
-  if (ids.length === 0) return found;
+  const body = orders.ok()
+    ? ((await orders.json()) as { items?: Array<{ orderId?: string }> })
+    : { items: [] };
+  const listed = (body.items ?? []).flatMap((item) => (item.orderId ? [item.orderId] : []));
+  const ids = [...new Set([...FIXTURE_ORDERS, ...listed])].slice(0, 100);
   const statuses = await page.request.get(
-    `/api/admin/zoho-mirror/statuses?entity=order&ids=${ids.slice(0, 100).join(",")}`,
+    `/api/admin/zoho-mirror/statuses?entity=order&ids=${ids.join(",")}`,
   );
   if (!statuses.ok()) return found;
   for (const status of ((await statuses.json()) as { items: MirrorStatus[] }).items) {
@@ -90,8 +117,7 @@ for (const theme of themes) {
     for (const state of Object.keys(BADGE_LABEL) as BadgeState[]) {
       test(`${BADGE_LABEL[state]}: a button in the header that opens its details`, async () => {
         if (!session) throw new Error("Not signed in");
-        const orderId = byState.get(state);
-        test.skip(!orderId, `No order in this environment is "${BADGE_LABEL[state]}"`);
+        const orderId = requireOrder(byState.get(state), BADGE_LABEL[state]);
         const { page } = session;
 
         // A desk: a popover beside the badge.
@@ -109,7 +135,21 @@ for (const theme of themes) {
         await expect(details).toBeVisible();
         await expect(details.getByRole("heading", { name: BADGE_LABEL[state] })).toBeVisible();
         await expect(details.locator("p").first()).toHaveText(SENTENCE_START[state]);
-        await expect(details.locator(":focus")).toHaveCount(1);
+        // Focus moves to the details themselves for every state, whatever they hold (Z3).
+        await expect(details).toBeFocused();
+        // Each time in the sentence names its moment.
+        for (const time of await details.locator("time").all()) {
+          await expect(time).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
+        }
+        // Failed jobs only from a failure, and only where Bid says the person can open its Zoho rows.
+        const failedJobs = details.getByRole("link", { name: /^Open in Failed jobs/ });
+        if (state !== "failed") await expect(failedJobs).toHaveCount(0);
+        else if ((await failedJobs.count()) > 0) {
+          await expect(failedJobs).toHaveAttribute(
+            "href",
+            /\/admin\/failed-jobs\?source=integrations$/,
+          );
+        }
         await expectNoSeriousAxeViolations(page, `/orders/${orderId} (Zoho details)`);
         await page.keyboard.press("Escape");
         await expect(details).toBeHidden();
@@ -123,6 +163,7 @@ for (const theme of themes) {
         const sheet = page.getByRole("dialog", { name: BADGE_LABEL[state] });
         await expect(sheet).toBeVisible();
         await expect(sheet).toHaveAttribute("data-side", "bottom");
+        await expect(sheet).toBeFocused();
         const close = sheet.getByRole("button", { name: "Close" });
         const box = await close.boundingBox();
         expect(box?.width).toBeGreaterThanOrEqual(44);
@@ -137,8 +178,7 @@ for (const theme of themes) {
 
     test("an order with nothing to mirror has no Zoho badge", async () => {
       if (!session) throw new Error("Not signed in");
-      const orderId = byState.get("not_applicable");
-      test.skip(!orderId, "No order in this environment is not mirrored");
+      const orderId = requireOrder(byState.get("not_applicable"), "not mirrored");
       await session.page.setViewportSize({ width: 1440, height: 1000 });
       await openStaffPage(session.page, `/orders/${orderId}`);
       await expect(session.page.getByRole("button", { name: /^Zoho: / })).toHaveCount(0);

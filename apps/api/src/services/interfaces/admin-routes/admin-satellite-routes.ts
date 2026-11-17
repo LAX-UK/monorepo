@@ -161,7 +161,10 @@ export type AdminStaffSecurityRouteServices = {
   staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">;
   staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "cancel" | "kycRecord">;
-  staffAccess: Pick<StaffAccessAdminService, "summaries" | "detail" | "myTools">;
+  staffAccess: Pick<
+    StaffAccessAdminService,
+    "summaries" | "detail" | "myTools" | "myFailedJobSources"
+  >;
   /** A staff member's Bid roles, role changes and the access review. */
   staffRoles: Pick<StaffRolesAdminService, "overview" | "assign" | "remove" | "accessReview">;
   /** A person's LAX Admin roles on the same staff record, and changes to them. */

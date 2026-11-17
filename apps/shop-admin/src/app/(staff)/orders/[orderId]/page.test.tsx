@@ -1,20 +1,29 @@
+import type { StaffToolsAnswer } from "@/server/ports/staff-tools-access";
 import { describe, expect, it, vi } from "vitest";
 
-const { fetchAdminJson, loadAdminSession, loadBidAdminUrl, redirect, notFound } = vi.hoisted(
-  () => ({
-    fetchAdminJson: vi.fn(),
-    loadAdminSession: vi.fn(),
-    loadBidAdminUrl: vi.fn(),
-    redirect: vi.fn((to: string) => {
-      throw new Error(`redirect:${to}`);
-    }),
-    notFound: vi.fn(() => {
-      throw new Error("not-found");
-    }),
+const { fetchAdminJson, loadAdminSession, toolsFor, redirect, notFound } = vi.hoisted(() => ({
+  fetchAdminJson: vi.fn(),
+  loadAdminSession: vi.fn(),
+  toolsFor: vi.fn(),
+  redirect: vi.fn((to: string) => {
+    throw new Error(`redirect:${to}`);
   }),
-);
+  notFound: vi.fn(() => {
+    throw new Error("not-found");
+  }),
+}));
 vi.mock("@/server/application/load-admin-data", () => ({ fetchAdminJson, loadAdminSession }));
-vi.mock("@/server/application/load-bid-admin-url", () => ({ loadBidAdminUrl }));
+// The real "may this person open Failed jobs" path, down to Bid's answer for the session.
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: () => ({ value: "session-1" }) }),
+}));
+vi.mock("@/server/container", () => ({
+  getShopAdminContainer: () => ({
+    config: { NODE_ENV: "test", bidPublicUrl: "https://bid.example.test" },
+    sessions: { get: async () => ({ subject: "staff-1", idToken: "id-token" }) },
+    staffTools: { toolsFor },
+  }),
+}));
 vi.mock("next/navigation", () => ({ redirect, notFound }));
 vi.mock("@/components/orders/order-detail-view", () => ({
   OrderDetailView: () => null,
@@ -49,10 +58,41 @@ function mirror(state: string) {
   };
 }
 
+const BID_ANSWER = {
+  administrator: {
+    status: "ok",
+    tools: ["bid-admin", "lax-admin"],
+    failedJobSources: [
+      "background_jobs",
+      "integrations.xero",
+      "integrations.zoho",
+      "integrations.books",
+      "integrations.other",
+    ],
+  },
+  read_only: {
+    status: "ok",
+    tools: ["bid-admin", "lax-admin"],
+    failedJobSources: [
+      "background_jobs",
+      "integrations.xero",
+      "integrations.zoho",
+      "integrations.other",
+    ],
+  },
+  finance: {
+    status: "ok",
+    tools: ["bid-admin", "lax-admin"],
+    failedJobSources: ["integrations.xero", "integrations.books"],
+  },
+  specialist: { status: "ok", tools: ["bid-admin", "lax-admin"], failedJobSources: [] },
+  shopOnly: { status: "ok", tools: ["lax-admin"], failedJobSources: [] },
+} satisfies Record<string, StaffToolsAnswer>;
+
 function respond(status: { status: string; data?: unknown }) {
   vi.clearAllMocks();
   loadAdminSession.mockResolvedValue({ status: "ok", data: { capabilities: [] } });
-  loadBidAdminUrl.mockResolvedValue("https://bid-admin.example.test/");
+  toolsFor.mockResolvedValue(BID_ANSWER.administrator);
   fetchAdminJson.mockImplementation(async (path: string) =>
     path === STATUS_PATH ? status : { status: "ok", data: DETAIL },
   );
@@ -83,20 +123,34 @@ describe("Order page, the Zoho badge", () => {
     expect(await zohoMirrorProp()).toMatchObject({ state: "mirrored", failedJobsHref: null });
     expect(seenWhileOrderInFlight).toContain(STATUS_PATH);
     expect(fetchAdminJson.mock.calls.filter(([path]) => path === STATUS_PATH)).toHaveLength(1);
-    expect(loadBidAdminUrl).not.toHaveBeenCalled();
+    expect(toolsFor).not.toHaveBeenCalled();
   });
 
-  it("links a failure to Failed jobs in Bid admin when Bid says the person can open it", async () => {
+  // One case per kind of person: what Bid answers for them (its `myFailedJobSources`, from the
+  // Failed jobs access table) and whether "Open in Failed jobs" is drawn (Q7, PRM-1).
+  it.each([
+    ["a Bid administrator", "administrator", true],
+    ["a Bid read-only staff member", "read_only", true],
+    ["Bid finance, who opens Failed jobs for Xero and Books only", "finance", false],
+    ["a Bid specialist, who opens Bid admin but not Failed jobs", "specialist", false],
+    ["LAX Admin staff with no Bid role", "shopOnly", false],
+  ] as const)("for %s, the link is drawn: %s", async (_who, role, linked) => {
     respond({ status: "ok", data: mirror("failed") });
+    toolsFor.mockResolvedValue(BID_ANSWER[role]);
     expect(await zohoMirrorProp()).toMatchObject({
       state: "failed",
-      failedJobsHref: "https://bid-admin.example.test/admin/failed-jobs",
+      failedJobsHref: linked
+        ? "https://bid.example.test/admin/failed-jobs?source=integrations"
+        : null,
     });
+    expect(toolsFor).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the link out when Bid gives no Bid admin for the person", async () => {
+  it("leaves the link out when Bid cannot say what the person may open", async () => {
     respond({ status: "ok", data: mirror("failed") });
-    loadBidAdminUrl.mockResolvedValue(null);
+    toolsFor.mockResolvedValue({ status: "unavailable" });
+    expect(await zohoMirrorProp()).toMatchObject({ state: "failed", failedJobsHref: null });
+    toolsFor.mockRejectedValue(new Error("Bid is down"));
     expect(await zohoMirrorProp()).toMatchObject({ state: "failed", failedJobsHref: null });
   });
 

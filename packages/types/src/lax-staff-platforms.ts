@@ -1,4 +1,5 @@
 import type { LaxStaffAccessProduct } from "./domain-event-catalog/lax-staff-access-payload-schemas.js";
+import type { FailedJobSource } from "./failed-jobs.js";
 import { type UserStaffRole, normalizeUserStaffRole, userStaffRoles } from "./user.js";
 
 /**
@@ -172,7 +173,14 @@ export const STAFF_TOOL_IDS = ["bid-admin", "lax-admin"] as const;
 export type StaffToolId = (typeof STAFF_TOOL_IDS)[number];
 
 /** The Bid API's answer to "which staff tools can this person open?". */
-export type StaffToolsAccess = { tools: StaffToolId[] };
+export type StaffToolsAccess = {
+  tools: StaffToolId[];
+  /**
+   * The Failed jobs sources the person can read in Bid admin (`failedJobSourcesFor`), so a link
+   * into Failed jobs from another product is drawn only for people Bid shows the rows to.
+   */
+  failedJobSources: FailedJobSource[];
+};
 
 /**
  * Maps the roles a person holds on each platform to the staff tools they can open. Bid admin

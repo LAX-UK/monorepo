@@ -1,11 +1,10 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { OrderDetailView, orderPermissions } from "@/components/orders/order-detail-view";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
-import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
+import { loadZohoFailedJobsHref } from "@/server/application/load-zoho-failed-jobs-href";
 import { shouldLoadGuestErasure } from "@/server/domain/guest-erasure.vm";
 import { orderNumber } from "@/server/domain/order-list.vm";
 import { presentZohoMirror } from "@/server/domain/zoho-mirror.vm";
-import { failedJobsHref } from "@/server/domain/zoho-sync-health.vm";
 import type {
   AdminGuestErasureState,
   AdminOrderDetail,
@@ -60,10 +59,10 @@ export default async function OrderDetailPage({
     ? await fetchAdminJson<AdminPickAndPack>(`orders/${orderId}/pick-and-pack`)
     : null;
   const mirrorStatus = mirror.status === "ok" ? mirror.data : null;
-  // Failed jobs is in Bid admin: linked only for people Bid lets open it (Q7), asked only on failure.
+  // Failed jobs is in Bid admin: linked only for people Bid shows the Zoho rows to (Q7, PRM-1),
+  // and Bid is asked only on failure.
   const zohoMirror = presentZohoMirror(mirrorStatus, {
-    failedJobsHref:
-      mirrorStatus?.state === "failed" ? failedJobsHref(await loadBidAdminUrl()) : null,
+    failedJobsHref: mirrorStatus?.state === "failed" ? await loadZohoFailedJobsHref() : null,
   });
   return (
     <OrderDetailView

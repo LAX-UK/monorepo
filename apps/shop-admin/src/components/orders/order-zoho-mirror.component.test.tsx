@@ -18,7 +18,7 @@ const { presentZohoMirror } = await import("@/server/domain/zoho-mirror.vm");
 
 const ORDER_ID = "0f0e0d0c-0b0a-4908-8706-050403020100";
 const NOW = new Date("2026-11-14T15:30:00.000Z");
-const FAILED_JOBS = "https://bid-admin.example.test/admin/failed-jobs";
+const FAILED_JOBS = "https://bid.example.test/admin/failed-jobs?source=integrations";
 
 const DETAIL = {
   orderId: ORDER_ID,
@@ -116,8 +116,11 @@ describe("the order page's Zoho badge", () => {
     expect(badge.tagName).toBe("BUTTON");
     expect(dialog).toHaveAccessibleName("Mirrored to Zoho");
     expect(dialog).toHaveTextContent(
-      "Mirrored to ZohoLast sent Sat 14 Nov, 16:02 GMT. Dispatch record LAX-S-10482.",
+      "Mirrored to ZohoLast sent 14 Nov 2026, 16:02. Dispatch record LAX-S-10482.",
     );
+    const sent = dialog.querySelector("time");
+    expect(sent).toHaveTextContent("14 Nov 2026, 16:02");
+    expect(sent).toHaveAttribute("datetime", "2026-11-14T16:02:00.000Z");
     expect(within(dialog).getByRole("button", { name: "Copy Zoho record ID" })).toBeVisible();
     expect(within(dialog).queryByRole("link")).not.toBeInTheDocument();
 
@@ -130,8 +133,9 @@ describe("the order page's Zoho badge", () => {
     renderOrder(status({ state: "pending", nextRetryAt: "2026-11-14T16:10:00.000Z" }));
     const { dialog } = await openDetails("Zoho: Sending to Zoho, details");
     expect(dialog).toHaveTextContent(
-      "Sending to ZohoWaiting to send the latest change. Tries again at 16:10 GMT (attempt 2).",
+      "Sending to ZohoWaiting to send the latest change. Tries again at 16:10 (attempt 2).",
     );
+    expect(dialog.querySelector("time")).toHaveAttribute("datetime", "2026-11-14T16:10:00.000Z");
   });
 
   it("links a failure to Failed jobs for someone who can open it", async () => {
@@ -157,6 +161,25 @@ describe("the order page's Zoho badge", () => {
       "Zoho dry runLAX worked out what it would send and wrote nothing to Zoho.",
     );
   });
+
+  // Z3: the details are a dialog that takes focus in whatever it holds, and Esc gives it back.
+  it.each([
+    ["Mirrored", status({ providerReference: "LAX-S-10482" }), "Zoho: Mirrored to Zoho, details"],
+    ["Sending", status({ state: "pending" }), "Zoho: Sending to Zoho, details"],
+    ["Not in Zoho", status({ state: "failed" }), "Zoho: Not in Zoho, details"],
+    ["Not in Zoho with its link", status({ state: "failed" }), "Zoho: Not in Zoho, details"],
+    ["Zoho dry run", status({ state: "dry_run" }), "Zoho: Zoho dry run, details"],
+  ] as const)(
+    "moves focus to the %s details and back to the badge on Esc",
+    async (who, mirror, name) => {
+      renderOrder(mirror, who === "Not in Zoho with its link" ? FAILED_JOBS : null);
+      const { badge, dialog } = await openDetails(name);
+      await waitFor(() => expect(document.activeElement).toBe(dialog));
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(document.activeElement).toBe(badge);
+    },
+  );
 
   it("draws no badge for an order that is not mirrored, or when the read failed", () => {
     renderOrder(status({ state: "not_applicable", notApplicableReason: "not_paid", mode: null }));

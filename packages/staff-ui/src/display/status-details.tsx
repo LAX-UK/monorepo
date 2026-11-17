@@ -25,6 +25,17 @@ export type StatusDetailsButtonProps = {
   className?: string;
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children" | "type" | "aria-label">;
 
+/**
+ * Focus goes to the details themselves when they open, whatever they hold, so every state reads
+ * the same way: the dialog's name and sentence are announced, and Tab then reaches a copy button,
+ * a link or the close. Radix would otherwise focus the first button, or the dialog only when there
+ * is none (it skips links), so the place focus lands would change with the state.
+ */
+function focusDetails(event: Event) {
+  event.preventDefault();
+  if (event.target instanceof HTMLElement) event.target.focus({ preventScroll: true });
+}
+
 const TITLE_CLASS = "font-staff text-staff-sm font-semibold text-staff-fg";
 const BODY_CLASS = "flex flex-col gap-2 text-staff-sm text-staff-muted";
 
@@ -32,7 +43,7 @@ const BODY_CLASS = "flex flex-col gap-2 text-staff-sm text-staff-muted";
  * A status badge that opens a few lines of detail about that status. It is a button, never a
  * hover-only tooltip, so a phone and a keyboard reach it too: from `md` up the details are a
  * popover beside the badge, below `md` a bottom sheet with a 44px close. Either is a dialog that
- * takes focus in and gives it back to the badge on Esc or close. The badge keeps its 20px size; its
+ * takes focus itself when it opens and gives it back to the badge on Esc or close. The badge keeps its 20px size; its
  * hit area grows to 44px tall around it.
  */
 export function StatusDetailsButton({
@@ -82,8 +93,9 @@ export function StatusDetailsButton({
         <SheetContent
           {...STAFF_LAYER}
           side="bottom"
+          onOpenAutoFocus={focusDetails}
           overlayClassName="bg-staff-scrim"
-          className="border-t border-staff-line bg-staff-surface text-staff-fg shadow-staff-lg"
+          className="border-t border-staff-line bg-staff-surface text-staff-fg shadow-staff-lg outline-none"
         >
           <div className="flex flex-col gap-2 px-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
             <SheetTitle className={TITLE_CLASS}>{status.label}</SheetTitle>
@@ -103,6 +115,7 @@ export function StatusDetailsButton({
         {...STAFF_LAYER}
         align="start"
         sideOffset={6}
+        onOpenAutoFocus={focusDetails}
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-staff-md border border-staff-line bg-staff-raised p-3 text-staff-fg shadow-staff-md"

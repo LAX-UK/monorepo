@@ -29,7 +29,11 @@ describe("loadStaffProducts", () => {
   });
 
   it("offers Bid admin to a person Bid says can open it", async () => {
-    toolsFor.mockResolvedValue({ status: "ok", tools: ["bid-admin", "lax-admin"] });
+    toolsFor.mockResolvedValue({
+      status: "ok",
+      tools: ["bid-admin", "lax-admin"],
+      failedJobSources: [],
+    });
 
     const products = await loadStaffProducts();
 
@@ -39,7 +43,7 @@ describe("loadStaffProducts", () => {
   });
 
   it("hides Bid admin from a person without a Bid staff role", async () => {
-    toolsFor.mockResolvedValue({ status: "ok", tools: ["lax-admin"] });
+    toolsFor.mockResolvedValue({ status: "ok", tools: ["lax-admin"], failedJobSources: [] });
 
     expect(ids(await loadStaffProducts())).toEqual(["lax-admin"]);
   });

@@ -1,4 +1,4 @@
-import type { StaffRoles } from "@auction/types";
+import type { StaffRoles, StaffToolsAccess } from "@auction/types";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Result } from "neverthrow";
@@ -41,7 +41,9 @@ function respond<T>(c: Context, result: Result<T, StaffAccessError>, status: 200
  * The signed-in person's own staff tools, for the product switcher. It answers only about the
  * caller, so it takes no subject id. It is mounted outside the platform shell gate because
  * finance staff, who fail it, still open Bid admin and need the answer, and it also accepts the
- * read-only `lax.staff.tools.read` token LAX Admin exchanges for on the person's behalf.
+ * read-only `lax.staff.tools.read` token LAX Admin exchanges for on the person's behalf. With the
+ * tools come the Failed jobs sources the person can read, so LAX Admin links to Failed jobs only
+ * for people Bid shows the rows to.
  */
 export function createAdminMyStaffToolsRoutes(
   container: ContainerAdminMyStaffToolsRoutesSlice,
@@ -54,9 +56,14 @@ export function createAdminMyStaffToolsRoutes(
   const routes = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
-  routes.get("/", requireStaffToolsRead, async (c) =>
-    c.json({ data: { tools: await container.admin.staffAccess.myTools(actorOf(c)) } }),
-  );
+  routes.get("/", requireStaffToolsRead, async (c) => {
+    const actor = actorOf(c);
+    const data: StaffToolsAccess = {
+      tools: await container.admin.staffAccess.myTools(actor),
+      failedJobSources: container.admin.staffAccess.myFailedJobSources(actor),
+    };
+    return c.json({ data });
+  });
   return routes;
 }
 
