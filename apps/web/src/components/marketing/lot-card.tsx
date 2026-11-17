@@ -165,9 +165,7 @@ export function LotCardGrid({
             ) : null}
           </AdaptiveMediaFrameContainer>
         </LotCardNavLink>
-        {extras?.quickLook ? (
-          <Fragment key={lotId ? `${lotId}-quick-look` : "quick-look"}>{extras.quickLook}</Fragment>
-        ) : null}
+        {extras?.quickLook}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3 md:p-5">
         {extras?.save || lotLabel ? <LotCardLotLine label={lotLabel} save={extras?.save} /> : null}

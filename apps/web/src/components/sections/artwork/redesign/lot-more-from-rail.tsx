@@ -126,7 +126,6 @@ export function LotMoreFromRail({
                             watchedLotIds,
                             loginNextPath: c.href,
                           }}
-                          inset="compact"
                           topRightAddon={
                             <OwnerBadge
                               owned={Boolean(currentUserId && c.sellerId === currentUserId)}

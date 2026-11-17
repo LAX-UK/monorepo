@@ -8,6 +8,7 @@ import type {
 } from "@/components/marketing/lot-quick-look/types";
 import { usePrefersHover } from "@/hooks/use-prefers-hover";
 import { LOT_CARD_COPY } from "@/lib/lot-card/lot-card-copy";
+import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui/lib/utils";
 import { type MouseEvent, useRef } from "react";
 
@@ -40,17 +41,14 @@ export function LotCardQuickLook({ vm, options, className }: Props) {
     <button
       ref={ref}
       type="button"
-      data-testid="lot-card-quick-look"
       aria-label={LOT_CARD_COPY.quickLookAt(vm.title)}
       onClick={onClick}
       onPointerEnter={() => void preloadLotQuickLookDialog()}
       onFocus={() => void preloadLotQuickLookDialog()}
       className={cn(
-        "absolute bottom-3 left-1/2 z-10 hidden -translate-x-1/2 items-center rounded-full border border-outline-variant/30 bg-surface-container-lowest/95 px-3 py-1.5 font-label text-sm font-medium text-on-surface shadow-sm",
-        "[@media(hover:hover)_and_(pointer:fine)]:inline-flex",
-        "opacity-0 transition-opacity duration-[var(--lax-motion-hover)] ease-[var(--lax-ease-out)] motion-reduce:transition-none",
-        "group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        "absolute bottom-3 left-1/2 z-10 inline-flex -translate-x-1/2 rounded-full border border-outline-variant/30 bg-surface-container-lowest/95 px-3 py-1.5 font-label text-sm font-medium text-on-surface shadow-sm",
+        "opacity-0 transition-opacity duration-[var(--lax-motion-hover)] focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none",
+        FOCUS_RING,
         className,
       )}
     >

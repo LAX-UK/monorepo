@@ -20,7 +20,8 @@ export function catalogLotCardExtras(lot: CatalogLotVM, viewer: Viewer): LotCard
         initialWatching={viewer.watchedLotIds.includes(lot.id)}
         isAuthenticated={viewer.isAuthenticated}
         loginNextPath={viewer.loginNextPath}
-        layout="line"
+        layout="inline"
+        surface="inline"
       />
     ),
     quickLook: <LotCardQuickLook vm={lotQuickLookFromLot(lot)} options={viewer} />,

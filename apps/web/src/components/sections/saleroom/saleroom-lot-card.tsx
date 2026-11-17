@@ -22,7 +22,7 @@ import {
 import { Skeleton } from "@auction/ui/lax/skeleton";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
@@ -187,9 +187,7 @@ export function SaleroomLotCard({
             />
           )}
         </Link>
-        {extras?.quickLook ? (
-          <Fragment key={`${lot.id}-quick-look`}>{extras.quickLook}</Fragment>
-        ) : null}
+        {extras?.quickLook}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">

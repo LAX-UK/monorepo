@@ -135,12 +135,16 @@ describe("sale page lot card: clean picture", () => {
     expect(pictureBox().box).not.toContainElement(heart);
   });
 
-  it("is an outline heart with a 44px tap target when not saved", () => {
+  it("is a quiet outline heart with a 44px tap target when not saved", () => {
     renderSaleCard(true);
     const heart = screen.getByRole("button", { name: "Add Still Life to your watchlist" });
     expect(heart).toHaveAttribute("aria-pressed", "false");
-    expect(heart.className).toContain("size-[var(--tap-target-min,44px)]");
+    expect(heart.className).toContain("min-h-[var(--tap-target-min,44px)]");
+    expect(heart.className).toContain("min-w-[var(--tap-target-min,44px)]");
     expect(heart.querySelector("svg")?.getAttribute("class")).toContain("fill-transparent");
+    // The line strips the toolbar heart's round chrome.
+    const slot = heart.closest("[class*='[&_button]:bg-transparent']");
+    expect(screen.getByTestId("lot-card-lot-line")).toContainElement(slot as HTMLElement);
   });
 
   it("is filled in the Bid accent when saved, and toggles the watchlist", async () => {
@@ -148,9 +152,11 @@ describe("sale page lot card: clean picture", () => {
     renderSaleCard(true, { ...saleLot, viewerIsWatching: true });
     const heart = screen.getByRole("button", { name: "Remove Still Life from your watchlist" });
     expect(heart).toHaveAttribute("aria-pressed", "true");
-    const icon = heart.querySelector("svg")?.getAttribute("class") ?? "";
-    expect(icon).toContain("fill-product-accent");
-    expect(icon).not.toContain("fill-live-red");
+    // The saved heart is filled; on the Lot line the fill is the Bid accent, not live red.
+    expect(heart.querySelector("svg")?.getAttribute("class")).toContain("fill-live-red");
+    const slot = heart.closest("[class*='[&_.fill-live-red]:fill-product-accent']");
+    expect(slot).not.toBeNull();
+    expect(slot?.className).toContain("[&_.fill-live-red]:stroke-product-accent");
     await userEvent.click(heart);
     expect(watch.toggle).toHaveBeenCalledTimes(1);
   });
@@ -253,7 +259,8 @@ describe("search lot card: the same card", () => {
     const heart = screen.getByRole("button", {
       name: "Remove Harbour at Dusk from your watchlist",
     });
-    expect(heart.querySelector("svg")?.getAttribute("class")).toContain("fill-product-accent");
+    expect(heart).toHaveAttribute("aria-pressed", "true");
+    expect(heart.closest("[class*='[&_.fill-live-red]:fill-product-accent']")).not.toBeNull();
     const trigger = screen.getByRole("button", { name: "Quick look at Harbour at Dusk" });
     expect(screen.getByTestId("img").closest("a")).not.toContainElement(trigger);
   });

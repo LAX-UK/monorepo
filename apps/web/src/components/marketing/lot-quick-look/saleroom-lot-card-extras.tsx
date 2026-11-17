@@ -14,7 +14,8 @@ export function saleroomLotCardExtras(lot: SaleLotCardVM, isAuthenticated: boole
         initialWatching={lot.viewerIsWatching}
         isAuthenticated={isAuthenticated}
         loginNextPath={lot.href}
-        layout="line"
+        layout="inline"
+        surface="inline"
       />
     ),
     quickLook: (

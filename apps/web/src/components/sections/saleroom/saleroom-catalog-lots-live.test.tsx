@@ -165,14 +165,17 @@ describe("SaleroomCatalogLotsLive view switching", () => {
       />,
     );
 
-    // Grid: the heart sits on the "Lot N" line.
-    expect(screen.getByTestId("watchlist-lot-1")).toHaveAttribute("data-layout", "line");
+    // Grid: the heart sits on the "Lot N" line, not on the picture.
+    expect(screen.getByTestId("lot-card-lot-line")).toContainElement(
+      screen.getByTestId("watchlist-lot-1"),
+    );
 
     act(() => {
       replaceMarketingViewUrl("/sales/test/sale-1?view=list", "list");
     });
 
     expect(screen.getByTestId("watchlist-lot-1")).toHaveAttribute("data-layout", "inline");
+    expect(screen.queryByTestId("lot-card-lot-line")).not.toBeInTheDocument();
   });
 });
 
