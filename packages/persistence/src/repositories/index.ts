@@ -301,6 +301,7 @@ export {
   DrizzlePurchaseProblemDeskRepository,
   DrizzlePurchaseProblemNoteRepository,
 } from "./drizzle-purchase-problem-desk.repository.js";
+export { DrizzleAdminDeliveriesReader } from "./drizzle-admin-deliveries.reader.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
 export { DrizzleNeedsYouFactsReader } from "./drizzle-needs-you-facts.reader.js";
 export {
