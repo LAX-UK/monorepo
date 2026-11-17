@@ -8,7 +8,7 @@ import {
 } from "@/components/from-zoho/use-queue-frame.client";
 import { useRegisterRowActions } from "@/components/from-zoho/use-register-row-actions.client";
 import { MoveArtworksDialog } from "@/components/stock-location/move-artworks-dialog.client";
-import { locationFilterOptions } from "@/server/domain/stock-location.vm";
+import { LOCATION_NOT_RECORDED, locationFilterOptions } from "@/server/domain/stock-location.vm";
 import {
   type ZohoQueueQuery,
   hasActiveZohoFilters,
@@ -49,7 +49,9 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     header: "Location",
     width: "180px",
     mobile: "meta",
-    cell: (row) => row.location?.label ?? <span className="text-staff-muted">Not recorded</span>,
+    // Says "Location" itself, since on a phone the column header is gone and this reads as meta.
+    cell: (row) =>
+      row.location?.label ?? <span className="text-staff-muted">{LOCATION_NOT_RECORDED}</span>,
   },
   {
     id: "kind",

@@ -23,6 +23,7 @@
     "report:lax-admin-roles": "tsx src/scripts/report-lax-admin-roles.ts",
     "seed:local-admin-staff": "tsx src/scripts/seed-local-admin-staff.ts",
     "seed:zoho-mirror-badge": "tsx src/scripts/seed-zoho-mirror-badge.ts",
+    "seed:stock-location": "tsx src/scripts/seed-stock-location-e2e.ts",
     "sale-authority": "tsx src/scripts/sale-authority.ts",
     "shop-ops": "tsx src/scripts/shop-ops.ts",
     "print:test-policy-env": "tsx src/scripts/print-test-policy-env.ts"

@@ -216,6 +216,7 @@ describe("adding and renaming a location", () => {
       ok: false,
       kind: "conflict",
       message: "Another location already has this name.",
+      code: "shop.conflict",
     });
     show(LOCATIONS);
     fireEvent.click(screen.getByRole("button", { name: "Add location" }));
@@ -226,6 +227,25 @@ describe("adding and renaming a location", () => {
       await dialog.findByText("Name: Another location already has this name."),
     ).toBeInTheDocument();
     expect(dialog.queryByRole("button", { name: "Reload" })).toBeNull();
+  });
+
+  it("shows a reused key's 409 as the action's error, not as a name in use", async () => {
+    addStockLocation.mockResolvedValue({
+      ok: false,
+      kind: "conflict",
+      message: "This request was already made with different details.",
+      code: "shop.idempotency_conflict",
+    });
+    show(LOCATIONS);
+    fireEvent.click(screen.getByRole("button", { name: "Add location" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Add location" }));
+    fireEvent.change(dialog.getByLabelText(/^Name/), { target: { value: "Basement" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Add location" }));
+    expect(
+      await dialog.findByText("This request was already made with different details."),
+    ).toBeInTheDocument();
+    expect(dialog.queryByText(/Another location already has this name/)).toBeNull();
+    expect(dialog.getByLabelText(/^Name/)).not.toHaveAttribute("aria-invalid", "true");
   });
 });
 

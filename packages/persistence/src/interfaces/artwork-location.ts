@@ -14,8 +14,6 @@ export interface IStockLocationReader {
   /** Active locations by name; retired ones after them when asked for. */
   listLocations(options?: { includeRetired?: boolean }): Promise<StockLocation[]>;
   findLocation(id: string): Promise<StockLocation | null>;
-  /** The artwork's latest move, or null when none is recorded. */
-  currentLocation(registerId: string): Promise<CurrentLocation | null>;
   /** The current location of each artwork that has one; artworks without one are left out. */
   currentLocations(registerIds: readonly string[]): Promise<Map<string, CurrentLocation>>;
   /** The artwork's moves, newest first, each with where it came from. */
@@ -90,7 +88,8 @@ export interface IStockLocationWriter {
   /**
    * Renames a location or changes its note. Moves keep pointing at it, so history reads the new
    * name. Publishes `location_changed` (`location_updated`) for every artwork at it. Saving the
-   * name and note it already has changes nothing: no version bump, no event, `changed: false`.
+   * name and note it already has, at the version it has, changes nothing: no version bump, no
+   * event, `changed: false`. At an older version it is `stale`, like any other edit.
    */
   updateLocation(input: UpdateLocationInput): Promise<LocationWriteResult>;
   /**

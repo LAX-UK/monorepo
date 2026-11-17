@@ -70,10 +70,6 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
     return row ? toLocation(row) : null;
   }
 
-  async currentLocation(registerId: string): Promise<CurrentLocation | null> {
-    return (await this.currentLocations([registerId])).get(registerId) ?? null;
-  }
-
   async currentLocations(registerIds: readonly string[]): Promise<Map<string, CurrentLocation>> {
     const ids = [...new Set(registerIds)];
     const result = new Map<string, CurrentLocation>();
@@ -176,7 +172,11 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
       return await this.db.transaction(async (tx) => {
         const current = await this.lockLocation(tx, input.id);
         if (!current) return { ok: false, reason: "not_found" } as const;
-        // Saved as it was: nothing changes, so no version bump, no event for its artworks.
+        // Saved as it was, at the version it is: nothing changes, so no version bump, no event
+        // for its artworks. Saved from an older version, someone else changed it in between, so
+        // it is stale even when the values match again.
+        if (current.version !== input.expectedVersion)
+          return { ok: false, reason: "stale" } as const;
         if (current.name === input.name && current.note === input.note) {
           return { ok: true, changed: false, location: toLocation(current) } as const;
         }

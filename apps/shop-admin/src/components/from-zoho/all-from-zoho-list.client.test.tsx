@@ -228,7 +228,7 @@ describe("AllFromZohoList: where each artwork physically is", () => {
     expect(screen.getByRole("columnheader", { name: "Location" })).toBeInTheDocument();
     expect(rowOf("Work 1").getByText("Store room")).toBeInTheDocument();
     expect(rowOf("Work 2").getByText("Framer (retired)")).toBeInTheDocument();
-    expect(rowOf("Work 3").getByText("Not recorded")).toBeInTheDocument();
+    expect(rowOf("Work 3").getByText("Location not recorded")).toBeInTheDocument();
   });
 
   it("shows the location filter as a removable chip, by name or as not recorded", () => {

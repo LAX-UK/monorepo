@@ -178,8 +178,8 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
   describe("moving artworks", () => {
     it("reads Location not recorded (null) until the first move", async () => {
       const work = await artwork(1);
-      expect(await store.currentLocation(work.id)).toBeNull();
       expect(await store.listMoves(work.id, 10)).toEqual([]);
+      expect((await store.currentLocations([work.id])).has(work.id)).toBe(false);
     });
 
     it("records a move with its history entry and one location_changed event", async () => {
@@ -198,10 +198,11 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
         unchanged: [],
         notFound: [],
       });
-      expect(await store.currentLocation(work.id)).toEqual({
-        location: { id: room.id, name: "Gallery main room", status: "active" },
+      expect((await store.listMoves(work.id, 1))[0]).toMatchObject({
+        to: { id: room.id, name: "Gallery main room", status: "active" },
         movedAt: T1,
         movedBy: STAFF,
+        note: "Hung for the winter show",
       });
       expect(await historyTypes(work.id)).toContain("location_moved");
       expect(await locationEvents(work.id)).toEqual([
@@ -234,7 +235,7 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
       ]);
       // The window runs before the limit, so the newest move still knows where it came from.
       expect((await store.listMoves(work.id, 1))[0]?.from?.name).toBe("Framer");
-      expect((await store.currentLocation(work.id))?.location.name).toBe("Store room");
+      expect(moves[0]?.to.name).toBe("Store room");
       expect((await locationEvents(work.id)).map((e) => e.from_id)).toEqual([
         null,
         store1.id,
@@ -306,8 +307,9 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
           now: T1,
         });
       }
-      expect((await store.currentLocation(work.id))?.location.id).toBe(two.id);
-      expect((await store.currentLocation(work.id))?.movedAt).toEqual(new Date(T1.getTime() + 1));
+      const [latest] = await store.listMoves(work.id, 1);
+      expect(latest?.to.id).toBe(two.id);
+      expect(latest?.movedAt).toEqual(new Date(T1.getTime() + 1));
     });
 
     it("refuses a retired or unknown location and records nothing", async () => {
@@ -357,7 +359,7 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
         status: "retired",
         now: T1,
       });
-      expect((await store.currentLocation(work.id))?.location).toEqual({
+      expect((await store.listMoves(work.id, 1))[0]?.to).toEqual({
         id: old.id,
         name: "Basement",
         status: "retired",
@@ -538,6 +540,36 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
           now: T1,
         }),
       ).toEqual({ ok: false, reason: "not_found" });
+    });
+
+    it("refuses a save from an older version as stale, even when the values match again", async () => {
+      const room = await add("Store room");
+      // Someone else renames it and back again (version 3), while this edit opened at version 1.
+      const renamed = await store.updateLocation({
+        id: room.id,
+        expectedVersion: room.version,
+        name: "Framer",
+        note: null,
+        now: T1,
+      });
+      if (!renamed.ok) throw new Error(renamed.reason);
+      await store.updateLocation({
+        id: room.id,
+        expectedVersion: renamed.location.version,
+        name: "Store room",
+        note: null,
+        now: T1,
+      });
+      expect(
+        await store.updateLocation({
+          id: room.id,
+          expectedVersion: room.version,
+          name: "Store room",
+          note: null,
+          now: T2,
+        }),
+      ).toEqual({ ok: false, reason: "stale" });
+      expect((await store.findLocation(room.id))?.version).toBe(room.version + 2);
     });
 
     it("keeps a caller's transaction usable after refusing a taken name", async () => {
