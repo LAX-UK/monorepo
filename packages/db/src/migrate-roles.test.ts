@@ -35,6 +35,8 @@ import {
   LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
   SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+  SHOP_ARTWORK_LOCATION_MOVE_TABLES,
+  SHOP_ARTWORK_LOCATION_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
   SHOP_ARTWORK_REGISTER_OFFER_TABLES,
@@ -806,6 +808,21 @@ describe("migrate-roles invariants", () => {
       "email_suppression",
       "newsletter_signup_log",
     ]);
+  });
+
+  it("lets LAX Admin keep the location list and only add moves, which are append-only", () => {
+    expect([...SHOP_ARTWORK_LOCATION_TABLES]).toEqual(["artwork_location"]);
+    expect([...SHOP_ARTWORK_LOCATION_MOVE_TABLES]).toEqual(["artwork_location_move"]);
+    expect([...SHOP_ARTWORK_LOCATION_TABLES]).not.toContain("artwork_location_move");
+    for (const table of [...SHOP_ARTWORK_LOCATION_TABLES, ...SHOP_ARTWORK_LOCATION_MOVE_TABLES]) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("keeps the Bid API away from stock locations, so it cannot change or truncate the moves", () => {
+    for (const table of [...SHOP_ARTWORK_LOCATION_TABLES, ...SHOP_ARTWORK_LOCATION_MOVE_TABLES]) {
+      expect([...API_DENY_TABLES]).toContain(table);
+    }
   });
 
   it("lets Shop move an original's offer through the register", () => {

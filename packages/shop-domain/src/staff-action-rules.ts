@@ -37,7 +37,8 @@ export function checkSeparateApprover(input: {
 /**
  * Capabilities only the Administrator holds, whatever other roles are added later: correcting a
  * run's edition facts after sales, approving hors commerce proofs, moving a sold print to a print another party owns, settings, and erasing a
- * guest's personal data, and reopening a sale made in the gallery.
+ * guest's personal data, reopening a sale made in the gallery, and keeping the list of
+ * locations an artwork can be in.
  */
 export const ADMINISTRATOR_ONLY_CAPABILITIES = [
   "edition_facts.correct",
@@ -46,4 +47,5 @@ export const ADMINISTRATOR_ONLY_CAPABILITIES = [
   "settings.write",
   "lead.erase",
   "artwork_register.reopen_sold",
+  "artwork_location.manage",
 ] as const satisfies readonly ShopStaffCapability[];

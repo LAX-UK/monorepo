@@ -2766,6 +2766,13 @@
       "when": 1813060800000,
       "tag": "0403_notification_outbox_retry_backoff",
       "breakpoints": true
+    },
+    {
+      "idx": 396,
+      "version": "7",
+      "when": 1813147200000,
+      "tag": "0404_artwork_stock_location",
+      "breakpoints": true
     }
   ]
 }

@@ -1398,6 +1398,17 @@ export type {
   SoldAttentionRecord,
 } from "./artwork-register-sold-attention.js";
 export type {
+  AddLocationInput,
+  IStockLocationReader,
+  IStockLocationStore,
+  IStockLocationWriter,
+  LocationWriteResult,
+  MoveArtworksInput,
+  MoveArtworksResult,
+  SetLocationStatusInput,
+  UpdateLocationInput,
+} from "./artwork-location.js";
+export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
   IOpenLotPlaceReader,
