@@ -8,7 +8,11 @@ import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/sa
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
-import { type LotCardBidViewer, lotCardBidAction } from "@/lib/lot-card/lot-card-bid-action";
+import {
+  type LotCardBidViewer,
+  lotCardBidAction,
+  saleMayShowLotCardAction,
+} from "@/lib/lot-card/lot-card-bid-action";
 import { withLiveCardFields } from "@/lib/marketing/saleroom/card-live-state";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
 import {
@@ -129,12 +133,17 @@ export function SaleroomCatalogLotsLive({
         renderExtras={(lot) => saleroomLotCardExtras(lot, isAuthenticated)}
         renderActions={(lot) => {
           if (!canParticipate) return null;
+          const sale = saleForLifecycle ? { ...saleForLifecycle, registrationOffered } : null;
+          // One rule for both pending paths (the live read and the viewer read): keep the
+          // button's place only when this sale can ever show a button; otherwise no slot at all.
           const action = lot.pending
-            ? ({ kind: "pending" } as const)
+            ? saleMayShowLotCardAction(sale)
+              ? ({ kind: "pending" } as const)
+              : null
             : lotCardBidAction({
                 lotStatus: lot.status,
                 lotHref: lot.href,
-                sale: saleForLifecycle ? { ...saleForLifecycle, registrationOffered } : null,
+                sale,
                 viewer: bidViewer,
               });
           if (!action) return null;

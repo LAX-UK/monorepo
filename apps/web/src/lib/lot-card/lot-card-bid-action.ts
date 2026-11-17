@@ -99,3 +99,16 @@ export function lotCardBidAction(input: LotCardBidActionInput): LotCardBidAction
   }
   return null;
 }
+
+/**
+ * Whether this sale can ever show a card button, before a lot's own state or the viewer is known
+ * (the live read or the viewer read is still in flight). `false` means no slot from the first
+ * paint, so nothing is drawn and then removed. It asks `lotCardBidAction` itself, with the
+ * placeholder status and no viewer, plus the open lot a live sale may carry.
+ */
+export function saleMayShowLotCardAction(sale: LotCardBidSale | null): boolean {
+  if (!sale) return false;
+  const base = { lotHref: "", sale, viewer: null } as const;
+  if (lotCardBidAction({ ...base, lotStatus: "scheduled" }) !== null) return true;
+  return sale.status === "active" && lotCardBidAction({ ...base, lotStatus: "active" }) !== null;
+}

@@ -51,6 +51,23 @@ async function settled(page: Page) {
 const SEEDED_ONLINE_SALE = "e1000010-0000-4000-8000-000000000010";
 const SCHEDULED_SALE = "e1000099-0000-4000-8000-000000000099";
 const SCHEDULED_LOT = "b1000999-0000-4000-8000-000000000999";
+const ONSITE_SALE = "e1000098-0000-4000-8000-000000000098";
+const ONSITE_LOT = "b1000998-0000-4000-8000-000000000998";
+type ScheduledFixture = {
+  saleId: string;
+  lotId: string;
+  deliveryMode: "online" | "onsite";
+};
+const ONLINE_FIXTURE: ScheduledFixture = {
+  saleId: SCHEDULED_SALE,
+  lotId: SCHEDULED_LOT,
+  deliveryMode: "online",
+};
+const ONSITE_FIXTURE: ScheduledFixture = {
+  saleId: ONSITE_SALE,
+  lotId: ONSITE_LOT,
+  deliveryMode: "onsite",
+};
 
 /**
  * An online sale that opens tomorrow, with one lot: its card's button depends on who is looking
@@ -59,14 +76,16 @@ const SCHEDULED_LOT = "b1000999-0000-4000-8000-000000000999";
  * lots under new ids with tomorrow's times, and removes them afterwards. It is a sale of its own,
  * so no other spec's sale or lot changes. Needs `DATABASE_URL` (the e2e stack's database).
  */
-async function withScheduledOnlineSale(): Promise<{ path: string; remove: () => Promise<void> }> {
+async function withScheduledSale(
+  fixture: ScheduledFixture,
+): Promise<{ path: string; remove: () => Promise<void> }> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return { path: "", remove: async () => {} };
   const client = new pg.Client({ connectionString });
   await client.connect();
   const remove = async () => {
-    await client.query("delete from lot where id = $1", [SCHEDULED_LOT]);
-    await client.query("delete from sale where id = $1", [SCHEDULED_SALE]);
+    await client.query("delete from lot where id = $1", [fixture.lotId]);
+    await client.query("delete from sale where id = $1", [fixture.saleId]);
   };
   await remove();
   await client.query("begin");
@@ -75,10 +94,11 @@ async function withScheduledOnlineSale(): Promise<{ path: string; remove: () => 
     [SEEDED_ONLINE_SALE],
   );
   await client.query(
-    `update e2e_sale set id = $1, title = 'Lot card e2e: opens tomorrow', status = 'scheduled',
+    `update e2e_sale set id = $1, title = 'Lot card e2e: opens tomorrow (${fixture.deliveryMode})', status = 'scheduled',
        start_time = now() + interval '1 day', end_time = now() + interval '8 days',
-       preview_start_time = now() - interval '1 day', home_pin_order = null`,
-    [SCHEDULED_SALE],
+       preview_start_time = now() - interval '1 day', home_pin_order = null,
+       delivery_mode = '${fixture.deliveryMode}'`,
+    [fixture.saleId],
   );
   await client.query("insert into sale select * from e2e_sale");
   await client.query(
@@ -89,12 +109,12 @@ async function withScheduledOnlineSale(): Promise<{ path: string; remove: () => 
     `update e2e_lot set id = $1, sale_id = $2, status = 'scheduled', artwork_register_id = null,
        start_time = now() + interval '1 day', end_time = now() + interval '8 days',
        current_price = starting_price, winner_id = null, buyer_legal_entity_id = null`,
-    [SCHEDULED_LOT, SCHEDULED_SALE],
+    [fixture.lotId, fixture.saleId],
   );
   await client.query("insert into lot select * from e2e_lot");
   await client.query("commit");
   return {
-    path: `/sales/sale/${SCHEDULED_SALE}`,
+    path: `/sales/sale/${fixture.saleId}`,
     remove: async () => {
       await remove();
       await client.end();
@@ -105,7 +125,9 @@ async function withScheduledOnlineSale(): Promise<{ path: string; remove: () => 
 let salePath = "";
 let artistPath = "";
 let scheduledSalePath = "";
+let onsiteSalePath = "";
 let removeScheduledSale: () => Promise<void> = async () => {};
+let removeOnsiteSale: () => Promise<void> = async () => {};
 
 test.beforeAll(async ({ playwright }) => {
   if (!enabled) return;
@@ -115,13 +137,17 @@ test.beforeAll(async ({ playwright }) => {
   salePath = sale?.path ?? "";
   artistPath = artist?.path ?? "";
   await request.dispose();
-  const scheduled = await withScheduledOnlineSale();
+  const scheduled = await withScheduledSale(ONLINE_FIXTURE);
   scheduledSalePath = scheduled.path;
   removeScheduledSale = scheduled.remove;
+  const onsite = await withScheduledSale(ONSITE_FIXTURE);
+  onsiteSalePath = onsite.path;
+  removeOnsiteSale = onsite.remove;
 });
 
 test.afterAll(async () => {
   await removeScheduledSale();
+  await removeOnsiteSale();
 });
 
 test.beforeEach(async ({ page }) => {
@@ -313,5 +339,30 @@ test.describe("lot card button before the lot opens @smoke", () => {
     await expect(button).toHaveText("Leave a bid");
     const pictureHref = await pictureBox(card).locator("a").first().getAttribute("href");
     expect(await button.getAttribute("href")).toBe(withBidOpen(pictureHref));
+  });
+});
+
+test.describe("scheduled onsite sale: no card button is possible, so nothing is drawn @smoke", () => {
+  test("no action slot or skeleton at any moment", async ({ page }) => {
+    test.skip(!onsiteSalePath, "Set DATABASE_URL (the e2e stack's database)");
+    // Watch every card from the first frame: a skeleton or action slot that shows and is then
+    // removed is a layout shift of the whole row below it.
+    await page.addInitScript(() => {
+      const w = window as unknown as { __slotSeen: number };
+      w.__slotSeen = 0;
+      const look = () => {
+        if (document.querySelector("[data-testid='lot-card-action']")) w.__slotSeen += 1;
+      };
+      new MutationObserver(look).observe(document, { childList: true, subtree: true });
+    });
+    await page.goto(`${onsiteSalePath}?view=grid`);
+    await expect(lotCards(page).first()).toBeVisible();
+    await settled(page);
+    await page.waitForTimeout(1000);
+    expect(await page.locator("[data-testid='lot-card-action']").count()).toBe(0);
+    const seen = await page.evaluate(
+      () => (window as unknown as { __slotSeen: number }).__slotSeen,
+    );
+    expect(seen).toBe(0);
   });
 });

@@ -210,6 +210,39 @@ describe("SaleroomCatalogLotsLive before and after the live read", () => {
     expect(container.textContent).not.toContain("Current bid");
   });
 
+  it.each(["scheduled", "draft"] as const)(
+    "draws no action slot and no skeleton while pending on an onsite %s sale",
+    (status) => {
+      const { container } = render(
+        <SaleroomCatalogLotsLive
+          view="grid"
+          rows={[{ kind: "lot", key: lot.id, lot: pending }]}
+          saleForLifecycle={{ status, deliveryMode: "onsite" }}
+          isAuthenticated
+          canParticipate
+          live={live}
+        />,
+      );
+      expect(screen.getByTestId("lot-card-line-pending")).toBeInTheDocument();
+      expect(container.querySelector("[data-testid='lot-card-action']")).toBeNull();
+      expect(container.querySelector(".lax-skeleton[class*='control']")).toBeNull();
+    },
+  );
+
+  it("keeps the action's place while pending on a sale that can show a button", () => {
+    const { container } = render(
+      <SaleroomCatalogLotsLive
+        view="grid"
+        rows={[{ kind: "lot", key: lot.id, lot: pending }]}
+        saleForLifecycle={hybridSaleForLifecycle}
+        isAuthenticated
+        canParticipate
+        live={live}
+      />,
+    );
+    expect(container.querySelector("[data-testid='lot-card-action'] .lax-skeleton")).not.toBeNull();
+  });
+
   it("fills the card from the live read", () => {
     liveCards.current = new Map([[lot.id, liveCardFields(lot)]]);
     render(
