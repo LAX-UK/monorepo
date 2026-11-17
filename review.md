@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 Review of PR #1513 "Quick look: Back closes it and View lot sits at the top" at head `b7e58845`. I did not change the PR branch.
 
@@ -73,3 +73,62 @@ The design is right and most of it works. In a real Next 15.5.21 app-router buil
 - Opening a link with a modifier key or in a new tab still steps back, because `navigatesHere` is false for it.
 - Focus returns to the trigger on Back on desktop: the e2e asserts it, and Radix `onCloseAutoFocus` is unchanged.
 - Escape and scroll lock are unchanged.
+
+## Final recheck
+
+Rechecked at head `75690335` after the fixer's commit. The PR branch is unchanged by me. Verdict: **SHIP**.
+
+### Findings 1–7
+
+1. **Back after a reload: fixed.** Entry ids are now `${pageLoadId}:${seq}`, where `pageLoadId` comes from `Date.now()` and random characters. An entry left over from before a reload, at the same `href`, is taken over with `replaceState` rather than having a new one stacked on it (`use-quick-look-history.ts`, `claim()`). The unit test "keeps closing on Back after a reload left its entry behind" fails when the reuse is removed. It also fails when the ids are reverted to the per-load counter. The e2e "after a reload, Back still closes the next quick look" covers it in a real browser.
+2. **Dead step: fixed, with one case documented.**
+   - Forward after Back: the `popstate` handler reopens the lot recorded on the entry, and steps back over the entry if that lot is gone. Pinned by a unit test and by an e2e.
+   - Reload then open: cleared by the fix in 1.
+   - Reload then Back with nothing opened: still one dead step. It is listed under residual risk in the PR body, which is option (a) from the review. Fixing it would need an eager check in the shell. Accepted.
+3. **In-dialog navigation: fixed, with no extra entries.**
+   - Conditions of Sale: goes through `handleCtaNavigate` with `replace`.
+   - Signed-out heart: its click is caught in `onClickCapture` on the footer and sent through `router.replace`. The URL matches `useWatchlistToggle`'s `/login?next=…`, and the shared heart component is unchanged.
+   - View lot and Bid: `replace`.
+   - Any other navigation: a pathname check closes the quick look without stepping back.
+   - The unit tests assert, for each of these, that history length does not change, that `push` is not called, and that Back from the next page lands on the list with no quick-look key.
+4. **Tests pin "Back from the lot page returns to the list": fixed, and proved by reverting.** I ran `vitest run src/components/marketing/lot-quick-look`: 34/34 pass. I then removed each fix in turn and re-ran the file:
+
+   | Mutation | Result |
+   |---|---|
+   | Hook stubbed to a no-op | 14 history tests fail, including the View lot, Bid and Conditions cases "…so Back from the next page returns to the list" |
+   | No reuse after reload | only the reload test fails |
+   | Ids not unique across loads | only the reload test fails |
+   | `replace` removed from View lot | only its test fails |
+   | `replace` removed from Bid | only its test fails |
+   | `replace` removed from Conditions of Sale | only its test fails |
+   | Conditions without `onCtaNavigate` | only its test fails |
+   | No sign-in intercept | only the heart test fails |
+   | No pathname check | only the "anything else navigates" test fails |
+   | No Forward reopen | only the Forward test fails |
+   | No refresh fallback | only the refresh test fails |
+   | No stale/loading check | only that test fails |
+
+   History is reset in `beforeEach`/`afterEach` and spies are restored per test.
+
+   One gap remains. Removing `releaseHistoryForNavigation()` from `handleCtaNavigate` fails no unit test: the `next/link` stand-in navigates synchronously, and the pathname and href checks then hide the missing release. In the real router the e2e "Back from the lot page returns to the list" goes through that path, because View lot navigates asynchronously. I couldn't run the e2e here, since it needs the seeded stack. Nice to have: a unit test where the stand-in navigates in a later tick.
+5. **E2E: fixed.** `e2e/quick-look-back.spec.ts` (`@smoke`) has 6 tests. Each starts on `/sales?tab=live` and covers one journey:
+   - hard load;
+   - client navigation (clicks the sale link);
+   - X close;
+   - View lot then Back;
+   - reload then open;
+   - Forward after Back.
+
+   Each one ends with an extra `goBack()` to the start page, which proves exactly one entry was added and none was left. `playwright test --list --grep "@smoke|@roles"` includes all 6. In CI, `test:e2e:pr` ran 75 tests: 69 passed, 6 skipped, with no flaky or retry marks. The previous head had 70 (64 passed, 6 skipped). The skip count is unchanged, so the 5 new tests ran and passed.
+6. **`router.refresh` and server actions: fixed.** When the key is gone, closing still steps back if `location.href` equals the href recorded at push. Pinned by the unit test "steps back over its entry on close after a router refresh rewrote it without the key", which fails without the fallback.
+7. **Light status chip and 375×667: fixed.**
+   - The quick look now passes `pillSurfaceClassName="bg-brand-900/85 backdrop-blur-none"`. In the new `quick-look-1440-light.png`, "Thu 17 Dec" is white on a solid dark pill and reads clearly.
+   - `quick-look-375x667-light.png` (750×1334 at 2x): View lot ends at about 523px and the sticky footer's top border is at about 534px, so View lot clears the footer. The dark variant matches.
+   - All 6 screenshots are on `pr-assets/quick-look-back@034baea6`.
+
+### Other checks
+
+- **Route JS: not grown.** `use-quick-look-history.ts`, `quick-look-footer.tsx` and `quick-look-dialog-sections.tsx` are imported only by `lot-quick-look-dialog.tsx`. That file loads only through `lot-quick-look-dialog.lazy.tsx` (`import()`), which the shell mounts after the first open. In the CI `build` job, the route-js compare shows the sale, lot and search pages at +1 byte and 76 other routes at −3 bytes; shop, art, account and shop-admin are byte-identical. This is chunk-manifest noise, and the budget/ratchet step passed.
+- **No budget, baseline or allowance changes.** The 7 changed files are the e2e spec, 5 quick-look files, and the `replace?: boolean` type on `ButtonLink`.
+- **CI: green.** All 38 check runs on `75690335` passed or were skipped by path (`ci-result` success), including `build`, `browser-gates`, static checks and all vitest shards.
+- **No AI footer.** The PR body and all 4 commit messages have no AI footer or trailer.
