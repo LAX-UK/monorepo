@@ -1155,6 +1155,7 @@ export {
 } from "./bidding-limit-refusal.js";
 export {
   OPERATOR_CAP_ERROR_CODES,
+  SALE_REGISTRATION_LIMIT_ERROR_CODE,
   STAFF_BID_LIMIT_KINDS,
   staffBidLimitRefusalFrom,
   type StaffBidLimitKind,

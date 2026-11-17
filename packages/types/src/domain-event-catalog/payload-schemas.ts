@@ -175,21 +175,51 @@ const moneyMajorString = z.string().regex(/^\d+(\.\d{1,2})?$/);
  * A bid staff placed on a client's behalf (saleroom paddle or telephone line) that a limit
  * refused. Audit only: which limit, how much it allows and what was asked; the clerk is the
  * actor and the lot the aggregate. No names or contact details.
+ *
+ * - `request_key` is the bid request's idempotency key. A transport retry of the same request
+ *   carries the same key, so readers count distinct keys, not rows.
+ * - The organisation's own limit is never recorded, only the room left on this lot (`available`):
+ *   the total, and the exposure it implies across other lots and sales, are not needed to audit
+ *   the refusal.
  */
 export const bidStaffBidRefusedAtLimitPayloadSchemaV1 = z
   .object({
     channel: z.enum(["saleroom", "telephone"]),
-    limit_kind: z.enum(["paddle", "telephone", "per_lot", "authorisation_total", "organisation"]),
-    limit: moneyMajorString,
+    limit_kind: z.enum([
+      "paddle",
+      "telephone",
+      "registration",
+      "per_lot",
+      "authorisation_total",
+      "organisation",
+    ]),
+    limit: moneyMajorString.optional(),
     available: moneyMajorString.optional(),
     amount: moneyMajorString,
     sale_id: z.string().min(1),
     lot_id: z.string().min(1),
     bidder_user_id: z.string().min(1),
+    request_key: z.string().min(1).max(256),
     paddle_number: z.number().int().positive().optional(),
     telephone_booking_id: z.string().min(1).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((payload, ctx) => {
+    if (payload.limit_kind === "organisation") {
+      if (payload.limit !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["limit"],
+          message: "The organisation's own limit is not recorded; record the room left",
+        });
+      }
+      if (payload.available === undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["available"], message: "Required" });
+      }
+    } else if (payload.limit === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["limit"], message: "Required" });
+    }
+  });
 
 export const bidLotWonPayloadSchemaV1 = z.object({
   lotId: z.string().uuid(),

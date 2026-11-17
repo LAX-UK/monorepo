@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BidError } from "../../lib/errors.js";
 import { AdminLiveBiddingApplicationService } from "./admin-live-bidding-application.service.js";
 import type { AdminLiveBiddingApplicationServiceDeps } from "./admin-live-bidding-application.service.js";
+import { clerkBidErrorBody } from "./clerk-bid-error-body.js";
 import { StaffBidLimitRefusalRecorder } from "./staff-bid-limit-refusal.recorder.js";
 
 const SALE_ID = "00000000-0000-4000-8000-000000000002";
@@ -53,7 +54,7 @@ function buildService(overrides: Partial<AdminLiveBiddingApplicationServiceDeps>
 
 describe("AdminLiveBiddingApplicationService", () => {
   it("placeClerkPaddleBid publishes summary and records ok telemetry", async () => {
-    const { service, publishClerkPaddleBidSummary, recordOutcome } = buildService();
+    const { service, publishClerkPaddleBidSummary, recordOutcome, publish } = buildService();
     const out = await service.placeClerkPaddleBid({
       saleId: SALE_ID,
       lotId: LOT_ID,
@@ -71,6 +72,60 @@ describe("AdminLiveBiddingApplicationService", () => {
       leaderPaddleNumber: 142,
     });
     expect(recordOutcome).toHaveBeenCalledWith("ok");
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("audits nothing when a paddle bid replays", async () => {
+    const { service, publish, recordOutcome } = buildService({
+      bidPlacer: {
+        placeBidWithIdempotency: vi.fn().mockResolvedValue({
+          type: "replay",
+          body: { data: { id: "bid-1", amount: "500.00" } },
+        }),
+      },
+    });
+
+    const out = await service.placeClerkPaddleBid({
+      saleId: SALE_ID,
+      lotId: LOT_ID,
+      paddleNumber: 142,
+      amount: 500,
+      clerkUserId: "clerk-1",
+      idempotencyKey: "clerk-key-0001",
+    });
+
+    expect(out.httpStatus).toBe(201);
+    expect(recordOutcome).toHaveBeenCalledWith("replay");
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("audits nothing when a telephone bid is placed or replays", async () => {
+    for (const type of ["ok", "replay"] as const) {
+      const { service, publish } = buildService({
+        findLotById: vi.fn().mockResolvedValue({ id: LOT_ID, saleId: SALE_ID }),
+        telephoneBookings: {
+          assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(ok({})),
+        },
+        bidPlacer: {
+          placeBidWithIdempotency: vi.fn().mockResolvedValue({
+            type,
+            body: { data: { id: "bid-1", amount: "500.00" } },
+          }),
+        },
+      });
+
+      const out = await service.placeTelephoneBid({
+        lotId: LOT_ID,
+        buyerUserId: "buyer-2",
+        buyerLegalEntityId: "le-2",
+        amount: 500,
+        clerkUserId: "clerk-1",
+        telephoneBookingId: "00000000-0000-4000-8000-000000000003",
+      });
+
+      expect(out.type).toBe(type);
+      expect(publish).not.toHaveBeenCalled();
+    }
   });
 
   it("placeClerkPaddleBid maps on-block rejection to HTTP error", async () => {
@@ -165,6 +220,7 @@ describe("AdminLiveBiddingApplicationService", () => {
           sale_id: SALE_ID,
           lot_id: LOT_ID,
           bidder_user_id: "buyer-1",
+          request_key: `paddle:${SALE_ID}:142:${LOT_ID}:6000`,
           paddle_number: 142,
         },
         actorUserId: "clerk-1",
@@ -217,13 +273,14 @@ describe("AdminLiveBiddingApplicationService", () => {
             limit: "8000.00",
             amount: "9000.00",
             bidder_user_id: "buyer-2",
+            request_key: `telephone-booking:${LOT_ID}:${BOOKING_ID}:9000`,
             telephone_booking_id: BOOKING_ID,
           }),
         }),
       );
     });
 
-    it("audits a telephone bid the organisation's own limit stopped, with the room left", async () => {
+    it("audits a telephone bid the organisation's own limit stopped with the room left only", async () => {
       const { service, publish } = buildService({
         findLotById: vi.fn().mockResolvedValue({ id: LOT_ID, saleId: SALE_ID }),
         telephoneBookings: {
@@ -249,15 +306,152 @@ describe("AdminLiveBiddingApplicationService", () => {
         telephoneBookingId: BOOKING_ID,
       });
 
-      expect(publish).toHaveBeenCalledWith(
-        expect.objectContaining({
-          payload: expect.objectContaining({
-            limit_kind: "organisation",
-            limit: "50000.00",
-            available: "2000.00",
-          }),
+      expect(publish).toHaveBeenCalledTimes(1);
+      const payload = (publish.mock.calls[0]?.[0] as { payload: Record<string, unknown> }).payload;
+      expect(payload).toMatchObject({ limit_kind: "organisation", available: "2000.00" });
+      expect(payload).not.toHaveProperty("limit");
+      expect(JSON.stringify(payload)).not.toContain("50000");
+    });
+
+    it("tells the clerk only the room left on this lot for the organisation's limit", async () => {
+      const { service } = buildService({
+        bidPlacer: {
+          placeBidWithIdempotency: refusedBy(
+            new BidError("Past the limit", 403, "organisation_limit_exceeded", {
+              limitKind: "organisation",
+              limit: "50000.00",
+              available: "2000.00",
+            }),
+          ),
+        },
+      });
+
+      const out = await service.placeClerkPaddleBid({
+        saleId: SALE_ID,
+        lotId: LOT_ID,
+        paddleNumber: 142,
+        amount: 4000,
+        clerkUserId: "clerk-1",
+      });
+
+      expect(out.body).toEqual({
+        error: "Past the limit",
+        code: "organisation_limit_exceeded",
+        refusal: { kind: "organisation", limit: null, available: "2000.00" },
+      });
+      expect(JSON.stringify(out.body)).not.toContain("50000");
+    });
+
+    it("reports and audits a telephone bid over the buyer's approved sale registration limit", async () => {
+      const placeBidWithIdempotency = refusedBy(
+        new BidError("Bid exceeds your approved limit for this sale", 403, "bid_limit_exceeded", {
+          limitKind: "registration",
+          limit: "5000.00",
+          available: "5000.00",
         }),
       );
+      const assertBookingAllowsTelephoneBid = vi.fn();
+      const { service, publish } = buildService({
+        findLotById: vi.fn().mockResolvedValue({ id: LOT_ID, saleId: SALE_ID }),
+        telephoneBookings: { assertBookingAllowsTelephoneBid },
+        bidPlacer: { placeBidWithIdempotency },
+      });
+
+      // No booking: the operator bypass does not apply, so the registration gate's cap does.
+      const out = await service.placeTelephoneBid({
+        lotId: LOT_ID,
+        buyerUserId: "buyer-2",
+        buyerLegalEntityId: "le-2",
+        amount: 9000,
+        clerkUserId: "clerk-1",
+      });
+
+      expect(assertBookingAllowsTelephoneBid).not.toHaveBeenCalled();
+      expect(out.type).toBe("err");
+      if (out.type === "err") {
+        expect(clerkBidErrorBody(out.error)).toEqual({
+          error: "Bid exceeds your approved limit for this sale",
+          code: "bid_limit_exceeded",
+          refusal: { kind: "registration", limit: "5000.00", available: null },
+        });
+      }
+      expect(publish).toHaveBeenCalledTimes(1);
+      expect(publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorUserId: "clerk-1",
+          actingLegalEntityId: "le-2",
+          payload: {
+            channel: "telephone",
+            limit_kind: "registration",
+            limit: "5000.00",
+            amount: "9000.00",
+            sale_id: SALE_ID,
+            lot_id: LOT_ID,
+            bidder_user_id: "buyer-2",
+            request_key: `telephone-clerk:${LOT_ID}:clerk-1:buyer-2:9000`,
+          },
+        }),
+      );
+    });
+
+    it("audits what a paddle bid committed to: its maximum when above the bid", async () => {
+      const { service, publish } = buildService({
+        bidPlacer: {
+          placeBidWithIdempotency: refusedBy(
+            new BidError("Bid exceeds authorized limit", 403, "bid_limit_exceeded", {
+              limitKind: "paddle",
+              limit: "5000.00",
+            }),
+          ),
+        },
+      });
+
+      await service.placeClerkPaddleBid({
+        saleId: SALE_ID,
+        lotId: LOT_ID,
+        paddleNumber: 142,
+        amount: 6000,
+        maxAutoBidAmount: 7000,
+        clerkUserId: "clerk-1",
+      });
+
+      expect(publish).toHaveBeenCalledWith(
+        expect.objectContaining({ payload: expect.objectContaining({ amount: "7000.00" }) }),
+      );
+    });
+
+    it("keys each audit row by the request, so a retried request can be collapsed", async () => {
+      const { service, publish } = buildService({
+        bidPlacer: {
+          placeBidWithIdempotency: refusedBy(
+            new BidError("Bid exceeds authorized limit", 403, "bid_limit_exceeded", {
+              limitKind: "paddle",
+              limit: "5000.00",
+            }),
+          ),
+        },
+      });
+      const request = {
+        saleId: SALE_ID,
+        lotId: LOT_ID,
+        paddleNumber: 142,
+        amount: 6000,
+        clerkUserId: "clerk-1",
+        idempotencyKey: "clerk-console-attempt-1",
+      };
+
+      await service.placeClerkPaddleBid(request);
+      await service.placeClerkPaddleBid(request);
+      await service.placeClerkPaddleBid({ ...request, idempotencyKey: "clerk-console-attempt-2" });
+
+      const keys = publish.mock.calls.map(
+        (call) => (call[0] as { payload: { request_key: string } }).payload.request_key,
+      );
+      expect(keys).toEqual([
+        "clerk-console-attempt-1",
+        "clerk-console-attempt-1",
+        "clerk-console-attempt-2",
+      ]);
     });
 
     it("records nothing for a refusal that is not a limit", async () => {
@@ -281,9 +475,44 @@ describe("AdminLiveBiddingApplicationService", () => {
 
     it("still tells the clerk the limit when the audit write fails", async () => {
       const failing = { publish: vi.fn().mockRejectedValue(new Error("down")), withTx: vi.fn() };
+      const countFailure = vi.fn();
       const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
       const { service } = buildService({
-        limitRefusals: new StaffBidLimitRefusalRecorder(failing as never),
+        limitRefusals: new StaffBidLimitRefusalRecorder(failing as never, countFailure),
+        bidPlacer: {
+          placeBidWithIdempotency: refusedBy(
+            new BidError("Bid exceeds authorized limit", 403, "bid_limit_exceeded", {
+              limitKind: "paddle",
+              limit: "5000.00",
+            }),
+          ),
+        },
+      });
+
+      const out = await service.placeClerkPaddleBid({
+        saleId: SALE_ID,
+        lotId: LOT_ID,
+        paddleNumber: 142,
+        amount: 6000,
+        clerkUserId: "clerk-1",
+      });
+
+      expect(out.httpStatus).toBe(403);
+      expect(out.body).toMatchObject({ refusal: { kind: "paddle", limit: "5000.00" } });
+      expect(failing.publish).toHaveBeenCalled();
+      expect(countFailure).toHaveBeenCalledTimes(1);
+      expect(countFailure).toHaveBeenCalledWith("staff_bid_refusal_audit_failed");
+      expect(error).toHaveBeenCalled();
+      error.mockRestore();
+    });
+
+    it("still answers the clerk when counting the failed write also fails", async () => {
+      const failing = { publish: vi.fn().mockRejectedValue(new Error("down")), withTx: vi.fn() };
+      const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { service } = buildService({
+        limitRefusals: new StaffBidLimitRefusalRecorder(failing as never, () => {
+          throw new Error("metrics down");
+        }),
         bidPlacer: {
           placeBidWithIdempotency: refusedBy(
             new BidError("Bid exceeds authorized limit", 403, "bid_limit_exceeded", {
@@ -303,7 +532,6 @@ describe("AdminLiveBiddingApplicationService", () => {
       });
 
       expect(out.body).toMatchObject({ refusal: { kind: "paddle", limit: "5000.00" } });
-      expect(failing.publish).toHaveBeenCalled();
       error.mockRestore();
     });
   });

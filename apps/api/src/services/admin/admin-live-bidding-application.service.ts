@@ -152,6 +152,7 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
         lotId: input.lotId,
         amount: committedAmount(input),
         paddleNumber: input.paddleNumber,
+        requestKey: idempotencyKey,
         error: out.error,
       });
       return out;
@@ -190,6 +191,12 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
       return { type: "err", error: onBlock.error };
     }
 
+    const idempotencyKey =
+      input.idempotencyKey ??
+      (input.telephoneBookingId
+        ? `telephone-booking:${input.lotId}:${input.telephoneBookingId}:${input.amount}`
+        : `telephone-clerk:${input.lotId}:${input.clerkUserId}:${input.buyerUserId}:${input.amount}`);
+
     if (input.telephoneBookingId) {
       const bookingCheck = await this.deps.telephoneBookings.assertBookingAllowsTelephoneBid({
         bookingId: input.telephoneBookingId,
@@ -203,16 +210,12 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
       if (bookingCheck.isErr()) {
         const e = bookingCheck.error;
         const error = new BidError(e.message, e.status, e.code, e.details);
-        await this.deps.limitRefusals.record(telephoneRefusal(input, lotRow.saleId, error));
+        await this.deps.limitRefusals.record(
+          telephoneRefusal(input, lotRow.saleId, idempotencyKey, error),
+        );
         return { type: "err", error };
       }
     }
-
-    const idempotencyKey =
-      input.idempotencyKey ??
-      (input.telephoneBookingId
-        ? `telephone-booking:${input.lotId}:${input.telephoneBookingId}:${input.amount}`
-        : `telephone-clerk:${input.lotId}:${input.clerkUserId}:${input.buyerUserId}:${input.amount}`);
 
     const out = await this.deps.bidPlacer.placeBidWithIdempotency({
       placedByUserId: input.buyerUserId,
@@ -226,7 +229,9 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
       idempotencyKey,
     });
     if (out.type === "err") {
-      await this.deps.limitRefusals.record(telephoneRefusal(input, lotRow.saleId, out.error));
+      await this.deps.limitRefusals.record(
+        telephoneRefusal(input, lotRow.saleId, idempotencyKey, out.error),
+      );
     }
     return out;
   }
@@ -270,6 +275,7 @@ function telephoneRefusal(
     telephoneBookingId?: string | undefined;
   },
   saleId: string,
+  requestKey: string,
   error: BidError,
 ): StaffPlacedBidRefusal {
   return {
@@ -281,6 +287,7 @@ function telephoneRefusal(
     lotId: input.lotId,
     amount: committedAmount(input),
     telephoneBookingId: input.telephoneBookingId,
+    requestKey,
     error,
   };
 }

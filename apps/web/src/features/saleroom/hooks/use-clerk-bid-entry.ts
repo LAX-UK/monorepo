@@ -4,7 +4,8 @@ import { bidIncrementOptions, validateBidAmount } from "@/features/saleroom/lib/
 import {
   type ClerkBidLimitRefusal,
   readClerkBidLimitRefusal,
-} from "@/features/saleroom/lib/clerk-bid-refusal-copy";
+} from "@/features/saleroom/lib/clerk-bid-refusal";
+import { CLERK_BID_REFUSAL_COPY } from "@/features/saleroom/lib/clerk-command-copy";
 import {
   clerkPlacePaddleBid,
   clerkPlaceTelephoneBid,
@@ -117,7 +118,9 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
   const [pending, startTransition] = useTransition();
   const [limitRefusal, setLimitRefusal] = useState<ClerkBidLimitRefusalState | null>(null);
   // A limit refusal is a definite answer: nothing was placed. It stays by its form, with the
-  // limit and what to do, until the clerk changes that bid or the lot moves on.
+  // limit and what to do, until the clerk changes that bid, places another or the lot moves on.
+  // Clearing it when a bid is placed means a repeat refusal mounts a fresh alert, so screen
+  // readers announce it again.
   const clearRefusal = useCallback((channel: ClerkBidChannel) => {
     setLimitRefusal((prev) => (prev?.channel === channel ? null : prev));
   }, []);
@@ -261,6 +264,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
       return;
     }
     const parsedPaddle = Number.parseInt(state.paddleNumber, 10);
+    setLimitRefusal(null);
     startTransition(async () => {
       const result = await placePaddleBid({
         saleId,
@@ -281,7 +285,6 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         await settleUnknownOutcome(recheckRoom, result.error, PADDLE_BID_TOAST);
         return;
       }
-      setLimitRefusal(null);
       notify.success(`Paddle ${parsedPaddle} bid placed`);
       setState((prev) => ({ ...prev, paddleAmount: "" }));
     });
@@ -308,6 +311,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
       notify.error(amountError);
       return;
     }
+    setLimitRefusal(null);
     startTransition(async () => {
       const result = await placeTelephoneBid({
         lotId: currentLotId,
@@ -321,7 +325,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
           setLimitRefusal({
             channel: "telephone",
             refusal: result.refusal,
-            bidder: selectedBooking.userName ?? "The telephone bidder",
+            bidder: selectedBooking.userName ?? CLERK_BID_REFUSAL_COPY.unnamedTelephoneBidder,
             amount: parsedAmount,
           });
           return;
@@ -329,7 +333,6 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         await settleUnknownOutcome(recheckRoom, result.error, TELEPHONE_BID_TOAST);
         return;
       }
-      setLimitRefusal(null);
       notify.success("Telephone bid placed");
       setState((prev) => ({ ...prev, telephoneAmount: "" }));
     });

@@ -48,9 +48,22 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       sale_id: "11111111-1111-4111-8111-111111111111",
       lot_id: "22222222-2222-4222-8222-222222222222",
       bidder_user_id: "user_1",
+      request_key: "paddle:sale:142:lot:6000",
       paddle_number: 142,
     };
     expect(parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, payload).ok).toBe(true);
+    const { request_key: _key, ...withoutKey } = payload;
+    expect(parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, withoutKey).ok).toBe(false);
+    const { limit: _limit, ...withoutLimit } = payload;
+    expect(parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, withoutLimit).ok).toBe(
+      false,
+    );
+    expect(
+      parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, {
+        ...payload,
+        limit_kind: "registration",
+      }).ok,
+    ).toBe(true);
     expect(
       parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, {
         ...payload,
@@ -58,6 +71,30 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       }).ok,
     ).toBe(false);
     expect(DOMAIN_EVENT_REGISTRY["bid.staff_bid_refused_at_limit"]?.piiClassification).toBe("none");
+  });
+
+  it("records only the room left on the lot for an organisation's limit, never its total", () => {
+    const payload = {
+      channel: "telephone",
+      limit_kind: "organisation",
+      available: "2000.00",
+      amount: "6000.00",
+      sale_id: "11111111-1111-4111-8111-111111111111",
+      lot_id: "22222222-2222-4222-8222-222222222222",
+      bidder_user_id: "user_1",
+      request_key: "telephone-booking:lot:booking:6000",
+    };
+    expect(parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, payload).ok).toBe(true);
+    expect(
+      parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, {
+        ...payload,
+        limit: "50000.00",
+      }).ok,
+    ).toBe(false);
+    const { available: _available, ...withoutRoom } = payload;
+    expect(parseDomainEventPayload("bid.staff_bid_refused_at_limit", 1, withoutRoom).ok).toBe(
+      false,
+    );
   });
 
   it("records Zoho catalogue changes for the audit trail, with the before and after of each field", () => {

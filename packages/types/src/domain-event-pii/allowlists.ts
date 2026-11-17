@@ -400,6 +400,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "limit",
     "available",
     "paddle_number",
+    "request_key",
   ]),
   /** Automatic or self-service status progression (Stripe, KYC, org submit, etc.). */
   "legal_entity.lifecycle_progressed": new Set([
