@@ -92,8 +92,8 @@ export class XeroOAuthService {
     tenantName: string | null;
     expiresAt: string | null;
   }> {
-    const row = await this.connections.findLatest();
-    if (!row) {
+    const row = await this.connections.findLatestSummary();
+    if (!row?.tokensReadable) {
       return { connected: false, tenantId: null, tenantName: null, expiresAt: null };
     }
     return {
