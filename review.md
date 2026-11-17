@@ -58,3 +58,70 @@ The read itself is sound and in scope. The blocker is narrow: two of the claims 
 ## To flip to SHIP
 
 Fix findings 1 and 2: two small test changes, each confirmed by rerunning the mutation above so that it now fails. Then make the PR-body correction in 3(a). Findings 3(b) and 3(c), and 4 to 7, can go into the follow-up migration PR.
+
+## Final recheck
+
+Recheck of PR #1519 at head `237a1e05` (the fixer's commit `10c2ad77` "Keep release-alert send log counts, kind and publisher on the announcement", then a merge of `origin/main` at `5e8a086d` that pushed while this recheck ran; its tree matches my local merge of `10c2ad77` with main, except for whitespace in `_journal.json`, so every result below holds for the head), against findings 1 to 7 above and design section 3 (L1 to L6, Q8 to Q10). Everything below was run locally on Postgres 16 with `db:migrate` and `db:roles`, with the integration suites running as `shop_app`. Each mutation was applied to the PR code, the suite was rerun, and the code was restored.
+
+### Findings 1 to 7: all fixed, each pinned by a test that fails without the fix
+
+| # | Finding | What the PR does now | Mutation applied | Result |
+| --- | --- | --- | --- | --- |
+| 1 | Cursor tie never on a page boundary | Three releases (`sent`, `tie`, `tie2`) share one instant as rows 1 to 3. The test asserts this, then pages at `limit` 1 and 2 and requires exactly the unpaged order: no skip, no repeat, no page over the limit (`...store.integration.test.ts:282`) | predicate `(announced_at, item_key) < cursor` cut to `announced_at < cursor` | 1 failed (the tie test) |
+| 2 | 24h stuck threshold untested | Digests unsent 23h and 25h: `sending` and `not_sent_yet`, both `waiting: 1` (`:301`) | delete `AND d.created_at < stuckBefore` | 1 failed (23h case) |
+| | | | force `stuck: false` | 2 failed (25h case and main listing) |
+| 3 | Shrinking counts read as a confident "Sent" | Counts kept on `shop_alert_announcement` (Q10), written in the same statement as `markExpanded`, `markSent` and `drop`. A match whose subscriber was removed reads as not sent, with reason `removed_before_sending`. Rows from before 0405 read `countsKept: false` and `counts_not_kept`, never `sent` | ignore kept counts (always live) | 3 failed |
+| | | | report old rows as kept | 2 failed |
+| | | | skip the `removed_before_sending` reason | 1 failed |
+| | | | no `matched_count` on expansion | 7 failed |
+| | | | drop the `sent_at IS NULL` "once" guard in `markSent` | 1 failed |
+| | | | drop the `dropped_reason IS NULL` "once" guard in `drop` | 1 failed |
+| | | | drop the topic filter in `drop` / in `markSent` | 3 failed / 3 failed |
+| 4 | Audit table scanned per page | `announced_by` written at publish, backfilled once in the migration. The page joins `shop_user_profile` by primary key. The test asserts 2 queries at sizes 1 and 50, and that no query mentions `shop_admin_audit` | add an audit query per page | 2 failed |
+| | | | stop writing `announced_by` at publish | 1 failed |
+| 5 | Release vanishes when flags change | Listed by `kind` kept at publish. Tests move a work to `art`/non-edition (it stays) and keep an `art_original` with edition-looking flags (it stays out) | filter by current flags | 2 failed |
+| | | | stop writing `kind` at publish | 2 failed |
+| 6 | `pageOf` imported from a sibling reader | Moved to `admin-created-at-keyset.ts` with its own unit test. Work-lists, people-lists and the send log all import it from there | structural (checked by reading) | OK |
+| 7 | Hand cast on the query | `app.get<{ Querystring: AdminReleaseAlertSendsQuery }>` with `querystring: AdminReleaseAlertSendsQuerySchema` (Fastify validates it at runtime: the route tests get 400 for `limit` over 50 and for a bad cursor). `tsc --noEmit` is clean | type-only | OK |
+
+Shrinking counts, checked directly: the test "hold after the matches are pruned and their subscribers deleted" deletes every match and every subscriber of a settled release, and the row is unchanged (`sent`, matched 5, emailed 2, not sent 3). "count a subscriber removed before sending" deletes a waiting subscriber and gets `removed_before_sending: 1`. A pre-0405 pruned release reads `counts_not_kept`, never `sent`. The PR body's "Counts" section describes this accurately, including the deploy-overlap caveat.
+
+### Migration 0405
+
+- **Number.** 0405 (`idx` 397, `when` 1813233600000) sorts after main's `0404_artwork_stock_location` (`idx` 396, `when` 1813147200000). 0404 touches no table that 0405 uses. The PR body's renumber note ("number provisional ... renumbered at ship time if needed") is present. 0405 is correct as it stands, so no renumber is needed.
+- **Merge with main.** At `10c2ad77`, GitHub reported `mergeable_state: dirty`. The only conflict was `packages/db/drizzle/meta/_journal.json`. The head `237a1e05` resolves it to 0404 (idx 396) then 0405 (idx 397), and GitHub now reports `blocked` (awaiting review), not `dirty`. On that tree, `db:migrate` on a fresh database applied 397 entries, and `db:verify-migration-pair` verified both `0404_artwork_stock_location` and `0405_shop_alert_send_log`. These all pass: the 0405 unit and integration migration tests (the "is the last journal entry" check still holds), the role contract (21/21 with the migration tests), the send-log and catalogue integration suites with the route tests (30/30), and `tsc --noEmit`.
+- **Rollback.** `0405_rollback.sql` drops the index, both checks and the six columns, and deletes its own ledger row (`created_at = 1813233600000`). The integration test rolls back and reapplies.
+- **Grants.** No new grants. The new columns inherit `shop_app`-only table grants. The probe checks SELECT, INSERT and UPDATE on each column for `shop_app` (true) and `api_app`, `worker_app` and `auth_app` (false). To prove the probe works, I temporarily granted `api_app` SELECT on `kind`: the probe failed with `api_app kind:SELECT: expected true to be false`. Then I revoked the grant.
+- **Defaults** are set after `ADD COLUMN`, so old rows keep NULL counters (the integration test checks this). The `lock_timeout` is 30s. The `(item_key, topic)` index is plain, as in 0321.
+
+### Other checks
+
+- **Counts only.** The contract has `additionalProperties: false` and no subscriber field. "never carries a subscriber's address" passes. `publishedByName` is the staff publisher, which L2 asks for.
+- **Scope.** No `apps/web`, `apps/shop` or `apps/shop-admin` change, so route JS has not grown. No budget, baseline or allowance file is touched.
+- **Commits.** All 5 (including the merge `237a1e05`) are authored by `mahmoudamrspace <mahmoudamr.space@gmail.com>`, with no trailers.
+- **Design.** The L3 recommendation was to read the publisher from the audit row. The PR uses the L3 alternative (`announced_by`), which finding 4 asked for. It rides on the Q10 migration (decided "Yes"), so it is in scope.
+
+### New findings
+
+A. **Blocking: the PR body ends with an AI footer.** The last lines of the description are `---` and `_Generated by [Claude Code](https://claude.ai/code)_`. That breaks the no-AI-footer rule. Remove them from the PR description.
+
+B. **Resolved during this recheck: the journal conflict with main.** `237a1e05` merges main with a normal merge commit, with 0404 then 0405. See the migration section.
+
+C. **Should fix, test evidence overstated: 3 of the 6 topic filters are not covered.** The PR body says that mutations which "drop the topic filters each fail the suite". These still pass 15/15 (or 30/30):
+   - removing `topic = 'shop.releases'` from `matched_count` in `markExpanded` (`shop-alert-ledgers.ts`). The other-topic fixture matches are inserted after `markExpanded`, so they never reach the count.
+   - removing `eq(m.topic, RELEASE_TOPIC)` from `liveCounts` (`release-alert-send-log.store.ts:217`). The other-topic fixtures are one emailed and one dropped, never waiting, so `waiting` and `stuck` don't change. A waiting back-in-stock match on a restocked edition would turn a finished release back to "Sending" or "Not sent yet".
+   - removing the topic filter from the pre-0405 `dropReasons` query (`:245`).
+
+   *Fix:* in the "sending" fixture, insert the `shop.back_in_stock` matches before `markExpanded`. Add one waiting other-topic match, ideally in a digest unsent for more than 24h, to a release that is otherwise `sent`, and assert it stays `sent` with `waiting: 0`. Give a legacy row an other-topic dropped match. Rerun the three mutations. Alternatively, correct the PR body's claim.
+
+D. **Minor, not blocking: a release published during the deploy overlap never appears in the log.** The running release inserts announcements without `kind`. Once 0405 is applied, its one-off `kind` backfill has already run, so a work published by the old release in that window keeps `kind = NULL` and `eq(kind, 'shop_release')` hides it permanently. The same goes for its `announced_by`. The PR body describes only the uncounted-digest side of the overlap. *Fix (pick one):* read `kind IS NULL` rows through the current-flags rule as a fallback, or add a line to the PR body and the migration comment saying an overlap publish needs the backfill `UPDATE` rerun.
+
+E. **Nit:** the `Math.max(matched_count, emailed + dropped + waiting)` guard in `keptCounts` is untested (the mutation passes). It is defensive, so nothing is needed beyond awareness.
+
+### CI on head `237a1e05`
+
+Finished on head `237a1e05`: 41 check runs, 40 `success` and 1 `skipped` (`art-browser-gates`, path-filtered). None failed. These include `ci-result`, `test`, `build`, `static-checks`, shop-api vitest 1-4/4, api vitest 1-2/2, web vitest 1-8/8, all four `shop-v1-phase-smoke` jobs (contracts, integration, admin-routes, shop-build), `worker-role-contract`, `auth-role-contract`, `browser-gates` and `account-browser-gates`.
+
+### To flip to SHIP
+
+Do A (remove the footer from the PR description) and C (three small test changes, each confirmed by rerunning its mutation). D can be a one-line PR-body note. Findings 1 to 7 need nothing more.
