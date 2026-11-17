@@ -22,7 +22,6 @@ import {
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
   DATA_REQUESTS_MANAGE_ACCESS,
-  DELIVERIES_READ_ACCESS,
   ENQUIRIES_ACCESS,
   FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
   FINANCE_ACCESS,
@@ -70,7 +69,6 @@ import {
   MonitorPlay,
   MoreHorizontal,
   Package,
-  PackageCheck,
   PackageX,
   PartyPopper,
   Plug,
@@ -293,16 +291,6 @@ function buildStaffNavGroupSpecs(
           match: (pathname) => pathname.startsWith("/admin/lot-fulfilment"),
           requirement: LOT_FULFILMENT_ACCESS,
           ...navBadge(navCounts.lotFulfilmentPending, "warning"),
-        },
-        {
-          id: "deliveries",
-          href: "/admin/deliveries",
-          label: "Deliveries",
-          icon: PackageCheck,
-          match: (pathname) => pathname.startsWith("/admin/deliveries"),
-          requirement: DELIVERIES_READ_ACCESS,
-          // Buyers waiting for a price (NAV-3); the same number as the Waiting for a price tab.
-          ...navBadge(navCounts.deliveriesWaiting, "warning"),
         },
         {
           id: "collections",

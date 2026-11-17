@@ -33,8 +33,6 @@ export type AdminNavCounts = {
   privateSalesUrgent: number;
   /** Background jobs waiting for review on Failed jobs (from the shared cache). */
   failedJobsNeedsReview: number;
-  /** Buyers waiting for a delivery price (shared by everyone who may open Deliveries). */
-  deliveriesWaiting: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -65,5 +63,4 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   privateSalesAttention: 0,
   privateSalesUrgent: 0,
   failedJobsNeedsReview: 0,
-  deliveriesWaiting: 0,
 };
