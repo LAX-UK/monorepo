@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Independent review of PR #1526: Stock location per artwork, part 3 (LAX Admin screens)
 
@@ -126,3 +126,80 @@ All six are done.
 ## To ship
 
 Fix finding 1, and preferably finding 2. Get CI green on the new head. Then this is ready to ship. Findings 3 to 7 can go in follow-ups.
+
+## Final recheck
+
+I rechecked head `f9cbd619`, which adds `fae7aaf8` (the review fixes), merge `a331e288` (`origin/main`) and `f9cbd619` (one sign-in for the move and axe checks). I ran the stores and suites on local Postgres 16, migrated to head, with `db:roles` and `SHOP_V1_INTEGRATION_REQUIRED=true`. I ran the browser checks on a local CI stack: auth, `start-lax-admin-stack.sh`, `CI=true`, and the CI job's env from `e2e-pr.yml`. Each mutation was one change at a time, then restored.
+
+**Verdict: SHIP.** All seven findings are handled, finding 1 is proved in CI and by a mutation, and CI is green on the head.
+
+### Finding 1: the browser gate moves artworks (fixed)
+
+- **Seed in CI:** `e2e-pr.yml` runs "Seed the stock location fixture artworks" (`pnpm --filter @auction/shop-api seed:stock-location`) after the Zoho badge seed and before "Run LAX Admin accessibility and role checks".
+  - The `browser-gates` log for this head (job 133965070997) shows `seed-stock-location-e2e.ts` printing `"ok": true` with `created: [artwork:firstMove, artwork:toMove, artwork:alreadyThere, location, move:alreadyThere]`.
+  - Then `test:e2e:a11y` ran with `e2e/stock-location.spec.ts`. The result was 87 passed and 1 flaky: the dark axe check failed once at `openLocations` and passed on retry, as the PR body says.
+  - The move test ("moves an artwork from its record, then a selection from All artworks") passed on its first try.
+- **Idempotent, through the stores:**
+  - Locally, the first run created the three artworks, the location and the seeded move. The second run printed `created: []`.
+  - The fixture records hold 3 `created` and 1 `location_moved` register events, all written through `DrizzleArtworkRegisterRepository` and `DrizzleStockLocationStore`.
+  - The new `stock-location-e2e-seed.integration.test.ts` passes. `seed-scripts-guard.test.ts` covers the hermetic-only guard.
+- **The spec, as an Administrator:**
+  - On the record, it checks "Location not recorded" and "No moves recorded yet" (first try), and the empty-submit error.
+  - It moves to "E2E stock room" with a note and checks the toast "Moved to E2E stock room", "Now at", the move history row (`First recorded at …`) with its note, and "Location changed" in the record's History.
+  - On All artworks, it uses Move selected on two rows and checks the toast "1 artwork moved to E2E stock room; 1 artwork already there" and the Location column of both rows.
+  - It runs axe in light and dark on the Locations tab, on All artworks with the fixture rows, and on a fixture record with its panel.
+  - As the read-only role, it checks the record has no Move… and All artworks has no checkboxes.
+- **Fails, not skips, without the fixture:** I ran the spec on the local stack with `CI=true` before seeding. The four fixture tests failed with "The stock location fixture artworks are missing: the CI stack must run seed:stock-location first.", and none were skipped.
+- **Mutation:** I changed the move action's `bffPath` from `artwork-location-moves` to `artwork-location-movez`, rebuilt LAX Admin and ran the spec on fresh fixtures.
+  - The move test failed: the dialog never closed (`toBeHidden`), and no move was written. The other 5 tests passed.
+  - After restoring and rebuilding, the move test passed.
+- **Note (non-blocking):** on my local stack, the "Now at" check right after the record move failed its first try 3 times in 9 runs.
+  - With a 30 s wait in a temporary copy of the spec (not committed), "Now at" always updated. It took about 10 ms usually and about 5.9 s on the slow run, just past Playwright's 5 s default.
+  - So the panel does refresh, and this is timing on my machine. CI passed it on the first try, and the spec's retry path covers it.
+  - Consider a longer timeout on that one assertion if it shows up in CI.
+
+### Finding 2: 409s told apart by code (fixed)
+
+- `mapAdminMutationErrorBody` now carries the API `code`. `refusalOf` returns `stale` for a 409 with `currentVersion` and `name_taken` only for `shop.conflict`, which is what `conflict("Another location already has this name.")` sends.
+- `shop.idempotency_conflict` (`with-admin-idempotency`) and any other 409 fall through to `action.error`.
+- **Mutation:** making `refusalOf` return `name_taken` for every non-stale 409 failed "shows a reused key's 409 as the action's error, not as a name in use" (`locations-list.client.test.tsx`).
+- **Mutation:** dropping `code` from the mapped 409 failed `admin-mutation-result.test.ts` ("carries the error code…").
+
+### Finding 3: roles (owner decision; comment reworded only)
+
+- The comment in `admin-stock-location-actions.server.ts` now says that only Administrators can reach Move today.
+- No role, capability or route-access file is in the diff, and `lint:admin-capability-drift` passes.
+
+### Finding 4: stale no-op rename (fixed)
+
+- `updateLocation` locks the row, returns `stale` when `current.version !== expectedVersion`, and only then makes the no-op check.
+- **Mutation:** removing the version check failed "refuses a save from an older version as stale, even when the values match again".
+
+### Findings 5 to 7 (fixed)
+
+- **5:** the Location cell, which is also the phone meta, renders `LOCATION_NOT_RECORDED` ("Location not recorded"), and the component test asserts it.
+- **6:** `currentLocation` is gone from `IStockLocationReader` and the store. Nothing in `apps` or `packages` calls it now.
+- **7:** I opened `06-record-location-panel-light` on `pr-1526-screenshots` (`cc289d48`). It is the seeded "Location fixture: already there", and History reads "Location changed" in step with the panel's move. The image URL from the PR body returns 200 `image/png`.
+
+### The six #1522 follow-ups still hold
+
+Each was re-mutated on this head:
+
+- **No-op rename:** the store's no-op check → `if (false)` was caught ("changes nothing when a location is saved with the name and note it has").
+- **History cap:** `listMoves(…, LIMIT + 1)` → `LIMIT` was caught (2 tests).
+- **Add savepoint:** `addLocation` run without its own `db.transaction` was caught ("keeps a caller's transaction usable after refusing a taken name").
+- **Idempotency hash:** dropping `note` from the move `requestPayload` was caught (1 test).
+- **TypeBox body:** dropping `AdminArtworkLocationMoveBodySchema` from the route was caught (1 test).
+- **One read:** the panel's "now" is still `shown[0]` of the one `listMoves` read.
+
+### Suites, lints and hygiene
+
+- **Suites:**
+  - persistence `stock-location.integration.test.ts`: 23 passed.
+  - shop-api: stock-location service unit and integration, routes, `drizzle-register-overview`, `seed-scripts-guard` and the new seed integration test: 130 passed.
+  - shop-admin: `components/stock-location/*` and `admin-mutation-result.test.ts` passed.
+- **Lints:** `lint:deps` (no new cycles), `lint:route-js-budget`, `lint:layers`, `lint:client-boundary` and `lint:admin-capability-drift` all pass.
+- **No raised budgets:** no budget, baseline, allowance, lockfile, `.env` or `dump.rdb` file is in the PR diff (51 files, all source, tests, the workflow and `package.json` scripts).
+- **CI on `f9cbd619`:** all checks succeed. `art-browser-gates` was skipped by its path filter.
+- **Commits:** every PR commit and merge is by `mahmoudamrspace <mahmoudamr.space@gmail.com>`, with no trailers.
+- **PR body:** no AI footer.
