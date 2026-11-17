@@ -4,6 +4,9 @@ import type { PortalPayeeConnectSurface } from "@auction/shop-contracts";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
+// `/pure` loads Stripe's script only when payout setup opens. The bare entry injects it as soon as
+// the module is evaluated, and this panel is re-exported from the `react` barrel every lax.art
+// page imports, so every page would fetch connect-js.stripe.com and hold its `load` event on it.
 import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js/pure";
 import {
   ConnectAccountManagement,
