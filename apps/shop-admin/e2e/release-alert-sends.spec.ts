@@ -1,9 +1,6 @@
-import { execFileSync } from "node:child_process";
-import { join } from "node:path";
 import { type Locator, type Page, expect, test } from "@playwright/test";
 import { expectNoSeriousAxeViolations } from "./support/axe.js";
 import {
-  type StaffAccount,
   type StaffSession,
   type StaffTheme,
   administratorAccount,
@@ -12,6 +9,11 @@ import {
   openStaffPage,
   openStaffSession,
 } from "./support/page-session.js";
+import {
+  RELEASE_ALERTS_PATH,
+  releaseAlertPrerequisite,
+  seedReleaseAlertFixtures,
+} from "./support/release-alert-fixtures.js";
 
 /**
  * Leads › Release alerts, the release-alert send log (docs/design/staff-gaps-delivery-zoho-
@@ -19,8 +21,11 @@ import {
  * per status (`pnpm --filter @auction/shop-api seed:release-alert-sends`, insert-once, hermetic
  * local databases only). In CI a missing database, account or release fails the run; it never
  * skips. Literals rather than imports, so the spec does not load the contracts package or shop-api.
+ *
+ * The account manager's view (reads the log, no artwork link) is checked in `staff-roles.spec.ts`,
+ * inside the session that spec already opens for that role, so it costs no sign-in of its own.
  */
-const PATH = "/leads/release-alerts";
+const PATH = RELEASE_ALERTS_PATH;
 
 /** The Sending fixture's long title (`RELEASE_ALERT_LONG_FIXTURE_TITLE` in the seed). */
 const LONG_TITLE =
@@ -62,37 +67,8 @@ const FIXTURES = [
   },
 ] as const;
 
-const ROLE_PASSWORD = process.env.LAX_ADMIN_ROLES_PASSWORD ?? "Password123!";
-const rolesEnabled = process.env.LAX_ADMIN_ROLES_E2E === "1";
 const account = administratorAccount();
 const themes: readonly StaffTheme[] = ["light", "dark"];
-
-/** In CI, where the gate must run, a missing prerequisite fails; elsewhere it skips, saying why. */
-function prerequisite(ready: boolean, what: string) {
-  if (ready) return;
-  if (process.env.CI) throw new Error(`Release alerts e2e cannot run: ${what}`);
-  test.skip(true, what);
-}
-
-/** Writes the fixture releases through the guarded seed; a second run changes nothing. */
-function seedFixtures() {
-  prerequisite(
-    Boolean(process.env.DATABASE_URL),
-    "DATABASE_URL (a hermetic local database) is needed to seed the fixture releases",
-  );
-  // The stack's scheduler runs the alert digest task. Under any mode but "off" it would send the
-  // Sending and Not sent yet fixtures' digests and both would read as Sent (see the seed).
-  prerequisite(
-    (process.env.ALERTS_SEND_MODE ?? "off") === "off",
-    `ALERTS_SEND_MODE must be "off" for the fixture releases to hold still (it is "${process.env.ALERTS_SEND_MODE}")`,
-  );
-  if (!process.env.DATABASE_URL) return;
-  execFileSync("pnpm", ["--filter", "@auction/shop-api", "seed:release-alert-sends"], {
-    cwd: join(import.meta.dirname, "..", "..", ".."),
-    stdio: "inherit",
-    env: process.env,
-  });
-}
 
 const grid = (page: Page) => page.getByRole("grid", { name: "Release alerts" });
 const rowOf = (page: Page, title: string): Locator =>
@@ -126,10 +102,13 @@ test.describe("LAX Admin release alerts @a11y", () => {
   let session: StaffSession | undefined;
 
   test.beforeAll(async ({ browser, baseURL }) => {
-    prerequisite(e2eEnabled, "Set PLAYWRIGHT_E2E=1 against a running LAX Admin stack");
-    prerequisite(account !== null && Boolean(baseURL), "administrator credentials are missing");
+    releaseAlertPrerequisite(e2eEnabled, "Set PLAYWRIGHT_E2E=1 against a running LAX Admin stack");
+    releaseAlertPrerequisite(
+      account !== null && Boolean(baseURL),
+      "administrator credentials are missing",
+    );
     if (!account || !baseURL) return;
-    seedFixtures();
+    seedReleaseAlertFixtures();
     session = await openStaffSession({
       browser,
       baseURL,
@@ -308,47 +287,5 @@ test.describe("LAX Admin release alerts @a11y", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page).toHaveURL(new RegExp(`${PATH}$`));
-  });
-});
-
-/** Signs one of the demo top-up's single-role accounts in (scripts/ci/start-lax-admin-stack.sh). */
-async function asRole(
-  browser: Parameters<typeof openStaffSession>[0]["browser"],
-  baseURL: string,
-  email: string,
-) {
-  const role: StaffAccount = { email, password: ROLE_PASSWORD };
-  return openStaffSession({
-    browser,
-    baseURL,
-    account: role,
-    theme: "light",
-    viewport: { width: 1440, height: 1000 },
-  });
-}
-
-test.describe("LAX Admin release alerts by role @roles", () => {
-  test.setTimeout(120_000);
-
-  test("an account manager reads the log but is not offered artworks it cannot open", async ({
-    browser,
-    baseURL,
-  }) => {
-    prerequisite(e2eEnabled && rolesEnabled, "Set PLAYWRIGHT_E2E=1 and LAX_ADMIN_ROLES_E2E=1");
-    if (!baseURL) throw new Error("baseURL is required");
-    seedFixtures();
-    const session = await asRole(browser, baseURL, "lax-accounts@lax.bid");
-    try {
-      const { page } = session;
-      await openStaffPage(page, "/leads");
-      await page.getByRole("link", { name: "Release alerts", exact: true }).click();
-      await expect(page).toHaveURL(new RegExp(`${PATH}$`));
-      await rowOf(page, "Tidal study").getByRole("link", { name: "Tidal study" }).click();
-      const panel = page.getByRole("dialog", { name: /Tidal study/ });
-      await expect(panel).toBeVisible();
-      await expect(panel.getByRole("link", { name: "Open artwork" })).toHaveCount(0);
-    } finally {
-      await closeStaffSession(session);
-    }
   });
 });
