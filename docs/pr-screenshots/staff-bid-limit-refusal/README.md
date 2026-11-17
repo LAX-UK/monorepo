@@ -6,7 +6,7 @@ at 1440 px and 375 px, light and dark. File names read `{theme}-{width}-{case}.p
 | Case | Shows |
 | --- | --- |
 | `paddle` | Paddle 142 bids £6,000.00 over its £5,000.00 limit for the sale |
-| `organisation-limit` | A telephone bid of £9,000.00 stopped at the organisation's £50,000.00 limit, with £5,200.00 left |
+| `organisation-limit` | A bid of £9,000.00 on an unnamed phone line stopped at the organisation's £50,000.00 limit, with £5,200.00 left |
 
 Taken from the real panel, hook and command transport on a local dev server. The panel was mounted
 on a temporary page (not committed) inside the staff density, and the browser's call to the Bid BFF
