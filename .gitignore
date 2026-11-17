@@ -42,3 +42,6 @@ docs/reports/*
 **/*reconciliation*.json
 **/*reconciliation*.csv
 **/*snapshot*.csv
+
+# Redis dumps written by a local redis-server started in the repo root.
+dump.rdb
