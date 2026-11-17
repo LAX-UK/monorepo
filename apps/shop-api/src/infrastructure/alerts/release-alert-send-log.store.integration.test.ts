@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import {
-  shopAdminAudit,
   shopAlertAnnouncement,
   shopAlertDigest,
   shopAlertMatch,
@@ -19,6 +18,11 @@ import {
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
 import { ReleaseAlertSendLogStore } from "./release-alert-send-log.store.js";
+import {
+  ShopAlertAnnouncementStore,
+  ShopAlertDigestLedger,
+  ShopAlertMatchLedger,
+} from "./shop-alert-ledgers.js";
 
 let pools: { ownerPool: pg.Pool; shopPool: pg.Pool } | null = null;
 
@@ -56,79 +60,98 @@ async function subscriber(db: Database) {
   return row.id;
 }
 
-async function digest(db: Database, subscriberId: string, opts: { sent: boolean; madeAt: Date }) {
+/** An unsent digest made at `madeAt`, as the digest run claims one before it sends. */
+async function digest(db: Database, subscriberId: string, madeAt: Date) {
   const [row] = await db
     .insert(shopAlertDigest)
     .values({
       subscriberId,
       product: "shop",
-      localDate: opts.madeAt.toISOString().slice(0, 10),
+      localDate: madeAt.toISOString().slice(0, 10),
       itemCount: 1,
       outboxIdempotencyKey: `send-log-${subscriberId}`,
-      sentAt: opts.sent ? opts.madeAt : null,
-      createdAt: opts.madeAt,
+      createdAt: madeAt,
     })
     .returning({ id: shopAlertDigest.id });
   if (!row) throw new Error("digest fixture missing");
   return row.id;
 }
 
-type MatchKind = "emailed" | "waiting" | "stuck" | { dropped: string };
+/**
+ * How one person's match ends up: emailed (its digest marked sent), waiting for a digest, in an
+ * unsent digest made `unsentFor` ago, or dropped with an engine reason.
+ */
+type MatchKind = "emailed" | "waiting" | { unsentFor: number } | { dropped: string };
 
-/** One person matched to the release, in the state named. */
-async function match(db: Database, itemKey: string, kind: MatchKind, topic = "shop.releases") {
-  const subscriberId = await subscriber(db);
-  const digestId =
-    kind === "emailed"
-      ? await digest(db, subscriberId, { sent: true, madeAt: ago(2 * HOUR) })
-      : kind === "stuck"
-        ? await digest(db, subscriberId, { sent: false, madeAt: ago(30 * HOUR) })
-        : null;
-  await db.insert(shopAlertMatch).values({
-    subscriberId,
-    topic,
-    itemKey,
-    snapshot: { title: "fixture", path: "/artworks/fixture" },
-    matchedAt: ago(3 * HOUR),
-    digestId,
-    droppedReason: typeof kind === "object" ? kind.dropped : null,
-  });
-}
+type Fixture = { subscriberId: string; matchId: string; digestId: string | null; kind: MatchKind };
 
-async function announce(
+/** Matches are recorded, then the release expands, then each settles through the real ledgers. */
+async function release(
   db: Database,
   artworkId: string,
   at: Date,
-  opts: { announce?: boolean; expanded?: boolean } = {},
-) {
+  kinds: readonly MatchKind[],
+  opts: { announce?: boolean; expanded?: boolean; kind?: string; by?: string; topic?: string } = {},
+): Promise<Fixture[]> {
+  const itemKey = artworkItemKey(artworkId);
   await db.insert(shopAlertAnnouncement).values({
-    itemKey: artworkItemKey(artworkId),
+    itemKey,
     announcedAt: at,
     announce: opts.announce ?? true,
-    expandedAt: opts.expanded === false ? null : at,
+    kind: opts.kind ?? "shop_release",
+    announcedBy: opts.by ?? null,
   });
-}
-
-async function publishAudit(db: Database, artworkId: string, actor: string, at: Date) {
-  await db.insert(shopAdminAudit).values({
-    actorSubjectId: actor,
-    capability: "catalogue.publish",
-    action: "publish_artwork",
-    targetType: "shop_artwork",
-    targetId: artworkId,
-    createdAt: at,
-  });
+  const made: Fixture[] = [];
+  for (const kind of kinds) {
+    const subscriberId = await subscriber(db);
+    const digestId =
+      kind === "emailed"
+        ? await digest(db, subscriberId, ago(2 * HOUR))
+        : typeof kind === "object" && "unsentFor" in kind
+          ? await digest(db, subscriberId, ago(kind.unsentFor))
+          : null;
+    const [row] = await db
+      .insert(shopAlertMatch)
+      .values({
+        subscriberId,
+        topic: opts.topic ?? "shop.releases",
+        itemKey,
+        snapshot: { title: "fixture", path: "/artworks/fixture" },
+        matchedAt: at,
+        digestId,
+      })
+      .returning({ id: shopAlertMatch.id });
+    if (!row) throw new Error("match fixture missing");
+    made.push({ subscriberId, matchId: row.id, digestId, kind });
+  }
+  if (opts.expanded !== false) await new ShopAlertAnnouncementStore(db).markExpanded(itemKey, at);
+  for (const fixture of made) {
+    if (fixture.kind === "emailed" && fixture.digestId) {
+      await new ShopAlertDigestLedger(db).markSent(fixture.digestId, ago(HOUR));
+    }
+    if (typeof fixture.kind === "object" && "dropped" in fixture.kind) {
+      await new ShopAlertMatchLedger(db).drop([fixture.matchId], fixture.kind.dropped, NOW);
+    }
+  }
+  return made;
 }
 
 describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)", () => {
   let db: Database;
   let shopPool: pg.Pool;
   const ids: Record<string, string> = {};
+  const fixtures: Record<string, Fixture[]> = {};
+  let publisher = "";
 
   const clearAlerts = async () =>
     (await ensurePools()).ownerPool.query(
       "TRUNCATE shop_alert_match, shop_alert_digest, shop_alert_topic, shop_alert_subscriber, shop_alert_announcement CASCADE",
     );
+
+  const artwork = async (label: string) => {
+    ids[label] = (await importTestArtwork(db, `send-log-${label}`)).artworkId;
+    return ids[label] as string;
+  };
 
   // Left behind, the queued release would be picked up by another suite's matching run.
   afterEach(clearAlerts);
@@ -137,48 +160,56 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
     shopPool = (await ensurePools()).shopPool;
     await clearAlerts();
     db = createShopDb(shopPool);
-    for (const label of ["quiet", "queued", "sending", "stuck", "sent", "tie"]) {
-      ids[label] = (await importTestArtwork(db, `send-log-${label}`)).artworkId;
-    }
-    const original = await importTestArtwork(db, "send-log-not-edition");
-    ids.notEdition = original.artworkId;
+    publisher = `send-log-publisher-${Date.now()}`;
     await db
-      .update(shopArtwork)
-      .set({ eligibleForEditionAllocation: false })
-      .where(eq(shopArtwork.id, original.artworkId));
+      .insert(shopUserProfile)
+      .values({ identitySubjectId: publisher, email: `${publisher}@example.com`, name: " Sam " });
 
-    const key = (label: string) => artworkItemKey(ids[label] as string);
-    // Newest first: sent, tie (same instant as sent), stuck, sending, queued, quiet.
-    await announce(db, ids.quiet as string, ago(60 * HOUR), { announce: false });
-    await announce(db, ids.queued as string, ago(50 * HOUR), { expanded: false });
-    await announce(db, ids.sending as string, ago(40 * HOUR));
-    await announce(db, ids.stuck as string, ago(35 * HOUR));
-    await announce(db, ids.sent as string, ago(20 * HOUR));
-    await announce(db, ids.tie as string, ago(20 * HOUR));
-    await announce(db, ids.notEdition as string, ago(10 * HOUR));
-
-    await match(db, key("sending"), "emailed");
-    await match(db, key("sending"), "waiting");
-    await match(db, key("sending"), { dropped: "topic_off" });
-    // Another topic's match for the same work is not part of the release alert.
-    await match(db, key("sending"), "emailed", "shop.back_in_stock");
-    await match(db, key("stuck"), "stuck");
-    await match(db, key("stuck"), "emailed");
-    await match(db, key("sent"), "emailed");
-    await match(db, key("sent"), "emailed");
-    await match(db, key("sent"), { dropped: "withdrawn" });
-    await match(db, key("sent"), { dropped: "topic_off" });
-    await match(db, key("sent"), { dropped: "topic_off" });
-
-    const subject = `send-log-publisher-${Date.now()}`;
-    const other = `send-log-republisher-${Date.now()}`;
-    await db.insert(shopUserProfile).values([
-      { identitySubjectId: subject, email: `${subject}@example.com`, name: " Sam Example " },
-      { identitySubjectId: other, email: `${other}@example.com`, name: "Alex Example" },
+    // Newest first: sent, tie, tie2 (all three at one instant), stuck, sending, queued, quiet.
+    fixtures.quiet = await release(db, await artwork("quiet"), ago(60 * HOUR), [], {
+      announce: false,
+    });
+    fixtures.queued = await release(db, await artwork("queued"), ago(50 * HOUR), [], {
+      expanded: false,
+    });
+    fixtures.sending = await release(
+      db,
+      await artwork("sending"),
+      ago(40 * HOUR),
+      ["emailed", "waiting", { dropped: "topic_off" }],
+      { by: publisher },
+    );
+    // Another topic's matches for the same work, one emailed and one dropped, are not part of
+    // the release alert: neither the kept counts nor the live ones count them.
+    for (const settle of ["emailed", "dropped"] as const) {
+      const subscriberId = await subscriber(db);
+      const digestId = settle === "emailed" ? await digest(db, subscriberId, ago(2 * HOUR)) : null;
+      const [other] = await db
+        .insert(shopAlertMatch)
+        .values({
+          subscriberId,
+          topic: "shop.back_in_stock",
+          itemKey: artworkItemKey(ids.sending as string),
+          snapshot: { title: "fixture", path: "/artworks/fixture" },
+          digestId,
+        })
+        .returning({ id: shopAlertMatch.id });
+      if (digestId) await new ShopAlertDigestLedger(db).markSent(digestId, ago(HOUR));
+      else await new ShopAlertMatchLedger(db).drop([other?.id ?? ""], "withdrawn", NOW);
+    }
+    fixtures.stuck = await release(db, await artwork("stuck"), ago(35 * HOUR), [
+      { unsentFor: 30 * HOUR },
+      "emailed",
     ]);
-    await publishAudit(db, ids.sending as string, subject, ago(40 * HOUR));
-    // A later republish by someone else does not replace who published the release.
-    await publishAudit(db, ids.sending as string, other, ago(5 * HOUR));
+    fixtures.sent = await release(db, await artwork("sent"), ago(20 * HOUR), [
+      "emailed",
+      "emailed",
+      { dropped: "withdrawn" },
+      { dropped: "topic_off" },
+      { dropped: "topic_off" },
+    ]);
+    fixtures.tie = await release(db, await artwork("tie"), ago(20 * HOUR), []);
+    fixtures.tie2 = await release(db, await artwork("tie2"), ago(20 * HOUR), []);
   });
 
   const store = () =>
@@ -188,13 +219,15 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
       () => NOW,
     );
 
-  it("lists published edition releases newest first with counts and a status each", async () => {
+  const row = async (label: string) =>
+    (await store().list({ limit: 50 })).items.find((item) => item.artworkId === ids[label]);
+
+  it("lists shop releases newest first with kept counts and a status each", async () => {
     const { items, nextCursor } = await store().list({});
     expect(nextCursor).toBeNull();
     const byId = new Map(items.map((item) => [item.artworkId, item]));
-    expect(items).toHaveLength(6);
-    expect(byId.has(ids.notEdition as string)).toBe(false);
-    expect(items.slice(2).map((i) => i.artworkId)).toEqual([
+    expect(items).toHaveLength(7);
+    expect(items.slice(3).map((i) => i.artworkId)).toEqual([
       ids.stuck,
       ids.sending,
       ids.queued,
@@ -205,17 +238,19 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
       status: "not_announced",
       toldSubscribers: false,
       matched: 0,
+      countsKept: true,
     });
     expect(byId.get(ids.queued as string)).toMatchObject({ status: "queued", matched: 0 });
     expect(byId.get(ids.sending as string)).toMatchObject({
       status: "sending",
       toldSubscribers: true,
+      countsKept: true,
       matched: 3,
       emailed: 1,
       waiting: 1,
       notSent: 1,
       notSentReasons: [{ reason: "topic_off", count: 1 }],
-      publishedByName: "Sam Example",
+      publishedByName: "Sam",
     });
     expect(byId.get(ids.stuck as string)).toMatchObject({
       status: "not_sent_yet",
@@ -226,6 +261,7 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
     });
     expect(byId.get(ids.sent as string)).toMatchObject({
       status: "sent",
+      countsKept: true,
       matched: 5,
       emailed: 2,
       waiting: 0,
@@ -243,31 +279,201 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
     expect(JSON.stringify(page)).not.toContain("@example.com");
   });
 
-  it("pages by cursor without skipping or repeating a release, ties included", async () => {
-    const seen: string[] = [];
-    let cursor: string | undefined;
-    for (let round = 0; round < 10; round += 1) {
-      const page = await store().list({ cursor, limit: 2 });
-      expect(page.items.length).toBeLessThanOrEqual(2);
-      seen.push(...page.items.map((i) => i.artworkId));
-      if (!page.nextCursor) break;
-      cursor = page.nextCursor;
-    }
+  it("pages through releases tied on the same instant across a page boundary", async () => {
     const all = (await store().list({})).items.map((i) => i.artworkId);
-    expect(seen).toEqual(all);
-    expect(new Set(seen).size).toBe(6);
+    // The three tied releases are rows 1 to 3: with one or two a page, a boundary falls between
+    // two of them, so the cursor has to break the tie on the item to neither skip nor repeat.
+    expect(new Set(all.slice(0, 3))).toEqual(new Set([ids.sent, ids.tie, ids.tie2]));
+    for (const limit of [1, 2]) {
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      for (let round = 0; round < 20; round += 1) {
+        const page = await store().list({ cursor, limit });
+        expect(page.items.length).toBeLessThanOrEqual(limit);
+        seen.push(...page.items.map((i) => i.artworkId));
+        if (!page.nextCursor) break;
+        cursor = page.nextCursor;
+      }
+      expect(seen, `limit ${limit}`).toEqual(all);
+    }
   });
 
-  it("costs the same number of queries whatever the page size", async () => {
+  describe("the 24-hour stuck threshold", () => {
+    beforeEach(async () => {
+      await release(db, await artwork("fresh"), ago(30 * HOUR), [{ unsentFor: 23 * HOUR }]);
+      await release(db, await artwork("overdue"), ago(30 * HOUR), [{ unsentFor: 25 * HOUR }]);
+    });
+
+    it("reads a digest unsent for under a day as still sending", async () => {
+      expect(await row("fresh")).toMatchObject({ status: "sending", waiting: 1, emailed: 0 });
+    });
+
+    it("reads a digest unsent for over a day as not sent yet", async () => {
+      expect(await row("overdue")).toMatchObject({
+        status: "not_sent_yet",
+        waiting: 1,
+        emailed: 0,
+      });
+    });
+  });
+
+  describe("counts kept on the release", () => {
+    it("hold after the matches are pruned and their subscribers deleted", async () => {
+      const before = await row("sent");
+      // The 90-day prune removes settled matches; pruning or erasing a subscriber cascades too.
+      await db
+        .delete(shopAlertMatch)
+        .where(eq(shopAlertMatch.itemKey, artworkItemKey(ids.sent as string)));
+      for (const fixture of fixtures.sent ?? []) {
+        await db
+          .delete(shopAlertSubscriber)
+          .where(eq(shopAlertSubscriber.id, fixture.subscriberId));
+      }
+      expect(await row("sent")).toEqual(before);
+      expect(before).toMatchObject({ status: "sent", matched: 5, emailed: 2, notSent: 3 });
+    });
+
+    it("count a subscriber removed before sending as not sent, with the reason", async () => {
+      const waiting = (fixtures.sending ?? []).find((f) => f.kind === "waiting");
+      await db
+        .delete(shopAlertSubscriber)
+        .where(eq(shopAlertSubscriber.id, waiting?.subscriberId ?? ""));
+      expect(await row("sending")).toMatchObject({
+        status: "sent",
+        countsKept: true,
+        matched: 3,
+        emailed: 1,
+        waiting: 0,
+        notSent: 2,
+        notSentReasons: [
+          { reason: "removed_before_sending", count: 1 },
+          { reason: "topic_off", count: 1 },
+        ],
+      });
+    });
+
+    it("count each match once when a digest is marked sent or a match dropped again", async () => {
+      const emailed = (fixtures.sent ?? []).find((f) => f.kind === "emailed");
+      const dropped = (fixtures.sent ?? []).find(
+        (f) => typeof f.kind === "object" && "dropped" in f.kind,
+      );
+      await new ShopAlertDigestLedger(db).markSent(emailed?.digestId ?? "", NOW);
+      await new ShopAlertMatchLedger(db).drop([dropped?.matchId ?? ""], "withdrawn", NOW);
+      expect(await row("sent")).toMatchObject({ matched: 5, emailed: 2, notSent: 3 });
+    });
+
+    it("leave other topics' matches out of the kept counts", async () => {
+      const [kept] = await db
+        .select({
+          matched: shopAlertAnnouncement.matchedCount,
+          emailed: shopAlertAnnouncement.emailedCount,
+          dropped: shopAlertAnnouncement.droppedCount,
+          reasons: shopAlertAnnouncement.droppedReasons,
+        })
+        .from(shopAlertAnnouncement)
+        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(ids.sending as string)));
+      expect(kept).toEqual({ matched: 3, emailed: 1, dropped: 1, reasons: { topic_off: 1 } });
+    });
+
+    it("are not claimed for a release from before they were kept", async () => {
+      const legacy = await artwork("legacy");
+      await release(db, legacy, ago(80 * HOUR), ["emailed", { dropped: "withdrawn" }]);
+      await db
+        .update(shopAlertAnnouncement)
+        .set({ matchedCount: null, emailedCount: null, droppedCount: null, droppedReasons: null })
+        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(legacy)));
+      const legacyWaiting = await artwork("legacy-waiting");
+      await release(db, legacyWaiting, ago(70 * HOUR), ["waiting"]);
+      await db
+        .update(shopAlertAnnouncement)
+        .set({ matchedCount: null, emailedCount: null, droppedCount: null, droppedReasons: null })
+        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(legacyWaiting)));
+
+      expect(await row("legacy")).toMatchObject({
+        status: "counts_not_kept",
+        countsKept: false,
+        matched: 2,
+        emailed: 1,
+        notSent: 1,
+        notSentReasons: [{ reason: "withdrawn", count: 1 }],
+      });
+      // Pruned, it matched nobody as far as the rows go: still not a confident "Sent".
+      await db.delete(shopAlertMatch).where(eq(shopAlertMatch.itemKey, artworkItemKey(legacy)));
+      expect(await row("legacy")).toMatchObject({ status: "counts_not_kept", matched: 0 });
+      // Still going out, it reads as sending like any other.
+      expect(await row("legacy-waiting")).toMatchObject({
+        status: "sending",
+        countsKept: false,
+        waiting: 1,
+      });
+    });
+  });
+
+  describe("which releases are listed", () => {
+    it("keeps a release listed after the work's edition flags change", async () => {
+      await db
+        .update(shopArtwork)
+        .set({ eligibleForEditionAllocation: false, salesChannel: "art" })
+        .where(eq(shopArtwork.id, ids.sent as string));
+      expect(await row("sent")).toMatchObject({ status: "sent", matched: 5 });
+    });
+
+    it("leaves out works announced as lax.art originals, whatever their flags say now", async () => {
+      const original = await artwork("original");
+      await release(db, original, ago(HOUR), [], { kind: "art_original" });
+      const unknown = await artwork("unknown");
+      await release(db, unknown, ago(HOUR), []);
+      await db
+        .update(shopAlertAnnouncement)
+        .set({ kind: null })
+        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(unknown)));
+      const listed = (await store().list({ limit: 50 })).items.map((i) => i.artworkId);
+      expect(listed).not.toContain(original);
+      expect(listed).not.toContain(unknown);
+      expect(listed).toHaveLength(7);
+    });
+  });
+
+  it("names the publisher kept on the release, and no one when none is kept", async () => {
+    expect((await row("sending"))?.publishedByName).toBe("Sam");
+    expect((await row("sent"))?.publishedByName).toBeNull();
+    await db
+      .update(shopAlertAnnouncement)
+      .set({ announcedBy: "subject-without-profile" })
+      .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(ids.sent as string)));
+    expect((await row("sent"))?.publishedByName).toBeNull();
+  });
+
+  it("costs a fixed number of queries whatever the page size, and never reads the audit log", async () => {
     const spy = vi.spyOn(shopPool, "query");
+    const sqlOf = () =>
+      spy.mock.calls.map((call) => {
+        const first = call[0] as unknown;
+        return typeof first === "string" ? first : ((first as { text?: string }).text ?? "");
+      });
     await store().list({ limit: 1 });
     const small = spy.mock.calls.length;
+    const smallSql = sqlOf();
     spy.mockClear();
     await store().list({ limit: 50 });
     const large = spy.mock.calls.length;
+    const largeSql = sqlOf();
     spy.mockRestore();
-    // The page, then counts, drop reasons and publishers for the whole page: never one per row.
-    expect(small).toBe(4);
-    expect(large).toBe(4);
+    // The page with its publisher, then the open matches for the whole page: never one per row.
+    expect(small).toBe(2);
+    expect(large).toBe(2);
+    for (const text of [...smallSql, ...largeSql]) expect(text).not.toContain("shop_admin_audit");
+  });
+
+  it("adds one query for drop reasons only when the page holds rows from before 0405", async () => {
+    await db
+      .update(shopAlertAnnouncement)
+      .set({ emailedCount: null, droppedCount: null })
+      .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(ids.sent as string)));
+    const spy = vi.spyOn(shopPool, "query");
+    await store().list({ limit: 50 });
+    const calls = spy.mock.calls.length;
+    spy.mockRestore();
+    expect(calls).toBe(3);
   });
 });

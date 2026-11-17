@@ -12,16 +12,20 @@ export type ReleaseAlertSendFacts = {
   waiting: number;
   /** Whether any of its matches sits in a digest unsent for longer than the stuck threshold. */
   stuck: boolean;
+  /** Whether its counts were kept as each match settled; false for releases from before that. */
+  countsKept: boolean;
 };
 
 /**
  * Where a release's alert stands (design LA-3, L2). A stuck digest outranks one still sending, so
- * staff see the one that needs them; a release with nothing waiting has finished.
+ * staff see the one that needs them; a release with nothing waiting has finished. A finished
+ * release whose counts were not kept says so instead of "sent": what is left of its matches may be
+ * fewer than went out.
  */
 export function releaseAlertSendStatus(facts: ReleaseAlertSendFacts): AdminReleaseAlertSendStatus {
   if (!facts.announce) return "not_announced";
   if (!facts.expanded) return "queued";
   if (facts.stuck) return "not_sent_yet";
   if (facts.waiting > 0) return "sending";
-  return "sent";
+  return facts.countsKept ? "sent" : "counts_not_kept";
 }

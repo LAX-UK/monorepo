@@ -2766,6 +2766,13 @@
       "when": 1813060800000,
       "tag": "0403_notification_outbox_retry_backoff",
       "breakpoints": true
+    },
+    {
+      "idx": 397,
+      "version": "7",
+      "when": 1813233600000,
+      "tag": "0405_shop_alert_send_log",
+      "breakpoints": true
     }
   ]
 }

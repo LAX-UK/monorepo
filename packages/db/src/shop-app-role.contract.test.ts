@@ -172,6 +172,35 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
     });
   });
 
+  it("alone reads and writes the release-alert send log's kept columns (0405)", async () => {
+    const columns = [
+      "kind",
+      "announced_by",
+      "matched_count",
+      "emailed_count",
+      "dropped_count",
+      "dropped_reasons",
+    ];
+    await withShopClient(async (client) => {
+      for (const column of columns) {
+        for (const privilege of ["SELECT", "INSERT", "UPDATE"]) {
+          const probe = async (role: string) =>
+            (
+              await client.query<{ allowed: boolean }>(
+                `select has_column_privilege($1, 'public.shop_alert_announcement', $2, $3) as allowed`,
+                [role, column, privilege],
+              )
+            ).rows[0]?.allowed;
+          expect(await probe("shop_app"), `shop_app ${column}:${privilege}`).toBe(true);
+          // The other application roles stay denied the alert tables as a whole.
+          for (const role of ["api_app", "worker_app", "auth_app"]) {
+            expect(await probe(role), `${role} ${column}:${privilege}`).toBe(false);
+          }
+        }
+      }
+    });
+  });
+
   it("can enqueue shop transactional email outbox rows", async () => {
     await withShopClient(async (client) => {
       for (const table of SHOP_EMAIL_OUTBOX_TABLES) {

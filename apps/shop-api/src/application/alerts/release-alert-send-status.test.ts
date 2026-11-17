@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { releaseAlertSendStatus } from "./release-alert-send-status.js";
 
-const base = { announce: true, expanded: true, waiting: 0, stuck: false };
+const base = { announce: true, expanded: true, waiting: 0, stuck: false, countsKept: true };
 
 describe("releaseAlertSendStatus", () => {
   it("reads a release the publisher kept quiet as not announced, whatever else is true", () => {
@@ -27,5 +27,16 @@ describe("releaseAlertSendStatus", () => {
 
   it("is sent when nothing waits, including a release that matched nobody", () => {
     expect(releaseAlertSendStatus(base)).toBe("sent");
+  });
+
+  it("says the counts were not kept, not sent, when a finished release predates kept counts", () => {
+    expect(releaseAlertSendStatus({ ...base, countsKept: false })).toBe("counts_not_kept");
+  });
+
+  it("still reports a release without kept counts as sending or stuck while it goes out", () => {
+    expect(releaseAlertSendStatus({ ...base, countsKept: false, waiting: 1 })).toBe("sending");
+    expect(releaseAlertSendStatus({ ...base, countsKept: false, waiting: 1, stuck: true })).toBe(
+      "not_sent_yet",
+    );
   });
 });

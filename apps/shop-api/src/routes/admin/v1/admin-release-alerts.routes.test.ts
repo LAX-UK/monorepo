@@ -41,6 +41,7 @@ const SENT: AdminReleaseAlertSend = {
   publishedByName: "Sam Example",
   toldSubscribers: true,
   status: "sent",
+  countsKept: true,
   matched: 412,
   emailed: 398,
   waiting: 0,

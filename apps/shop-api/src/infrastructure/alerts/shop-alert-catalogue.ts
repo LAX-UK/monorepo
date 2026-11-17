@@ -13,12 +13,9 @@ import { publicArtworkVisible } from "../artwork-visibility-sql.js";
 
 type ResolveMediaUrl = (value: string | null | undefined) => string | null;
 
-/** An edition released in LAX Shop: the SQL twin of `isShopEditionRelease`. */
-export const shopEditionReleaseSql = sql`(${shopArtwork.salesChannel} = 'shop' AND ${shopArtwork.eligibleForEditionAllocation})`;
-
 /** The published editions and originals alerts are sent for; the same rule the migration seeds. */
 const alertWorthy = sql`(
-  ${shopEditionReleaseSql}
+  (${shopArtwork.salesChannel} = 'shop' AND ${shopArtwork.eligibleForEditionAllocation})
   OR (${shopArtwork.salesChannel} = 'art' AND ${shopArtwork.sourceOriginalArtworkId} IS NULL)
 )`;
 

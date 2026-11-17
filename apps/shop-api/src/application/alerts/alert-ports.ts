@@ -40,7 +40,13 @@ export interface ArtistFollowerReader {
 export interface ShopAlertAnnouncer {
   recordPublished(
     tx: unknown,
-    input: { artworkId: string; kind: AlertArtwork["kind"]; announce: boolean },
+    input: {
+      artworkId: string;
+      kind: AlertArtwork["kind"];
+      announce: boolean;
+      /** The staff member publishing, kept as the release's publisher in the send log. */
+      actorSubjectId: string;
+    },
   ): Promise<{ queued: number }>;
 }
 

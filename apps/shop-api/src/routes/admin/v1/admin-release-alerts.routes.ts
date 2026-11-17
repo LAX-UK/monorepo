@@ -1,5 +1,6 @@
 import {
   AdminReleaseAlertSendListSchema,
+  type AdminReleaseAlertSendsQuery,
   AdminReleaseAlertSendsQuerySchema,
   AdminReleaseAlertSummarySchema,
   ShopApiErrorBodySchema,
@@ -33,7 +34,7 @@ export async function registerAdminReleaseAlertRoutes(
     },
   );
 
-  app.get(
+  app.get<{ Querystring: AdminReleaseAlertSendsQuery }>(
     "/release-alerts/sends",
     {
       schema: {
@@ -48,8 +49,8 @@ export async function registerAdminReleaseAlertRoutes(
     },
     async (request) => {
       requireShopStaffCapability(request, "lead.read");
-      const query = request.query as { cursor?: string; limit?: number };
-      return readers.sends.list({ cursor: query.cursor, limit: query.limit });
+      const { cursor, limit } = request.query;
+      return readers.sends.list({ cursor, limit });
     },
   );
 }

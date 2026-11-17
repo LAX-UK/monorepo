@@ -1,12 +1,14 @@
 import { shopOrder } from "@auction/db/schema";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
+import { decodeCatalogueCursor } from "../application/catalogue-cursor.js";
 import {
   createdAtMicros,
   keysetAfterRaw,
   keysetBeforeCreatedAtId,
   msTimestamp,
   orderByRawTimestampId,
+  pageOf,
 } from "./admin-created-at-keyset.js";
 
 const dialect = new PgDialect();
@@ -96,5 +98,31 @@ describe("admin created-at keyset paging", () => {
       "00000000-0000-4000-8000-000000000002",
       "00000000-0000-4000-8000-000000000001",
     ]);
+  });
+});
+
+describe("pageOf, shared by every keyset list", () => {
+  const rows = [1, 2, 3].map((n) => ({
+    id: `00000000-0000-4000-8000-00000000000${n}`,
+    at: new Date("2024-06-01T12:00:00.123Z"),
+    micros: "2024-06-01T12:00:00.123456Z",
+  }));
+  const keyOf = (row: (typeof rows)[number]) => ({
+    createdAt: row.at,
+    id: row.id,
+    createdAtMicros: row.micros,
+  });
+
+  it("returns the first `limit` rows and a cursor at the last one shown", () => {
+    const page = pageOf(rows, 2, keyOf, (row) => row.id);
+    expect(page.items).toEqual([rows[0]?.id, rows[1]?.id]);
+    expect(decodeCatalogueCursor(page.nextCursor ?? undefined)).toMatchObject({
+      id: rows[1]?.id,
+      createdAtMicros: "2024-06-01T12:00:00.123456Z",
+    });
+  });
+
+  it("has no next cursor when the extra row is absent", () => {
+    expect(pageOf(rows, 3, keyOf, (row) => row.id).nextCursor).toBeNull();
   });
 });

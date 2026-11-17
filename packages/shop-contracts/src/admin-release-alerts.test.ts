@@ -14,6 +14,7 @@ const row = {
   publishedByName: null,
   toldSubscribers: true,
   status: "sending",
+  countsKept: true,
   matched: 3,
   emailed: 1,
   waiting: 1,
@@ -35,8 +36,15 @@ describe("release-alert send log contract", () => {
     );
   });
 
-  it("knows only the five statuses and never a negative count", () => {
-    for (const status of ["not_announced", "queued", "sending", "sent", "not_sent_yet"]) {
+  it("knows only the six statuses and never a negative count", () => {
+    for (const status of [
+      "not_announced",
+      "queued",
+      "sending",
+      "sent",
+      "not_sent_yet",
+      "counts_not_kept",
+    ]) {
       expect(
         Value.Check(AdminReleaseAlertSendListSchema, {
           items: [{ ...row, status }],
@@ -55,6 +63,13 @@ describe("release-alert send log contract", () => {
         items: [{ ...row, waiting: -1 }],
         nextCursor: null,
       }),
+    ).toBe(false);
+  });
+
+  it("always says whether the counts were kept", () => {
+    const { countsKept: _, ...unsaid } = row;
+    expect(
+      Value.Check(AdminReleaseAlertSendListSchema, { items: [unsaid], nextCursor: null }),
     ).toBe(false);
   });
 
