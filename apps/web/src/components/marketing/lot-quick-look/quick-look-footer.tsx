@@ -11,9 +11,11 @@ type Props = {
   vm: LotQuickLookVM;
   options: LotQuickLookOpenOptions;
   onCtaNavigate: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Navigates to `href` replacing the quick look's history entry, and closes it. */
+  onSignInNavigate: (href: string) => void;
 };
 
-export function QuickLookFooter({ vm, options, onCtaNavigate }: Props) {
+export function QuickLookFooter({ vm, options, onCtaNavigate, onSignInNavigate }: Props) {
   const loginNextPath = options.loginNextPath ?? vm.href;
   const showBid = isLotQuickLookBiddable(vm.status);
   const bidHref = `${vm.href}#lot-bid-entry`;
@@ -24,16 +26,33 @@ export function QuickLookFooter({ vm, options, onCtaNavigate }: Props) {
 
   return (
     <div className="sticky bottom-0 flex shrink-0 flex-col gap-3 border-t border-outline-variant/20 bg-surface-container-lowest p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:p-5">
-      <div className="flex items-center gap-2">
-        <MarketingWatchlistHeart
-          lotId={vm.id}
-          lotTitle={vm.title}
-          initialWatching={options.watchedLotIds.includes(vm.id)}
-          isAuthenticated={options.isAuthenticated}
-          loginNextPath={loginNextPath}
-          layout="inline"
-          surface="inline"
-        />
+      <div
+        className="flex items-center gap-2"
+        onClickCapture={
+          options.isAuthenticated
+            ? undefined
+            : (event) => {
+                // The signed-out heart pushes the sign-in page. Send it the way View lot goes
+                // instead, so the quick look closes and sign-in takes its history entry.
+                const heart = (event.target as Element).closest("[data-quick-look-sign-in]");
+                if (!heart) return;
+                event.preventDefault();
+                event.stopPropagation();
+                onSignInNavigate(`/login?next=${encodeURIComponent(loginNextPath)}`);
+              }
+        }
+      >
+        <span data-quick-look-sign-in className="contents">
+          <MarketingWatchlistHeart
+            lotId={vm.id}
+            lotTitle={vm.title}
+            initialWatching={options.watchedLotIds.includes(vm.id)}
+            isAuthenticated={options.isAuthenticated}
+            loginNextPath={loginNextPath}
+            layout="inline"
+            surface="inline"
+          />
+        </span>
         <ShareButton url={shareUrl} title={vm.title} className="min-h-10" />
       </div>
       {showBid ? (
