@@ -328,6 +328,7 @@ export type {
 // Panels
 export {
   BesidePanelInset,
+  useBesidePanelWidth,
   DetailPanel,
   OPEN_FULL_PAGE_LABEL,
   PanelSection,

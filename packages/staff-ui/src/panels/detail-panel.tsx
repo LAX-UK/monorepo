@@ -131,7 +131,7 @@ export function DetailPanel<L extends string = string>({
   children,
 }: DetailPanelProps<L>) {
   const [confirmingClose, setConfirmingClose] = React.useState(false);
-  const wide = useBesideWidth();
+  const wide = useBesidePanelWidth();
   // Beside the list only where there is room for both; a narrower screen gets the usual panel.
   const docked = beside && wide && size === "md";
   const titleRef = React.useRef<HTMLHeadingElement>(null);
@@ -233,7 +233,15 @@ export function DetailPanel<L extends string = string>({
                 ) : null}
               </div>
               {actions ? (
-                <div className="order-3 -ml-2 flex basis-full items-center gap-1 sm:order-2 sm:-mt-1 sm:ml-0 sm:basis-auto">
+                <div
+                  data-staff-panel-actions=""
+                  className={cn(
+                    "order-3 -ml-2 flex basis-full items-center gap-1",
+                    // Beside a list the panel is narrow: as in the mockup, the actions take their
+                    // own row above the title, so the title and its facts keep the width.
+                    docked ? "order-first -mt-1" : "sm:order-2 sm:-mt-1 sm:ml-0 sm:basis-auto",
+                  )}
+                >
                   {queue ? <QueueStepButtons queue={queue} /> : null}
                   {fullPage ? (
                     <StaffButton
@@ -413,7 +421,7 @@ function besideWidthNow(): boolean {
 }
 
 /** Whether the screen is wide enough for a panel beside its list. False on the server. */
-function useBesideWidth(): boolean {
+export function useBesidePanelWidth(): boolean {
   return React.useSyncExternalStore(subscribeBesideWidth, besideWidthNow, () => false);
 }
 

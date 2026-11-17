@@ -7,9 +7,10 @@ import { shoot } from "./helpers/collection-journeys";
 /**
  * Bid admin › Operations › Deliveries (docs/design/staff-gaps-delivery-zoho-alerts.md, D1–D6):
  * a buyer's request for a delivery price reaches the list, staff find it by search, open it in
- * the queue panel and step with J and K, and every view tab answers. The journey adds its own
- * made-up requests on won lots (and takes them away again), so it never depends on demo data.
- * Each state is shot at 1440 and 375 wide, light and dark.
+ * the queue panel (focus on its title), step with J and K, and Escape returns them to the row.
+ * The journey makes its own made-up sale, two won lots and their requests, and removes them
+ * afterwards, so it never depends on demo data and never skips for want of it. Each state is
+ * shot at 1440 and 375 wide, light and dark.
  */
 
 const SIZES = [
@@ -31,45 +32,89 @@ async function shootAll(page: Page, testInfo: TestInfo, name: string) {
   await page.setViewportSize({ width: 1440, height: 1000 });
 }
 
-/** Two won lots with no delivery request yet get one each, to a made-up address. */
-async function addRequests(): Promise<string[]> {
-  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+type Seeded = { userId: string; entityIds: string[]; saleId: string; lotIds: string[] };
+
+function database(): pg.Client {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) throw new Error("DATABASE_URL is required to add the journey's requests");
+  return new pg.Client({ connectionString });
+}
+
+/**
+ * A made-up buyer and seller, a closed sale, and two lots the buyer won, each with a request for
+ * a delivery price to a made-up address carrying the journey's tag.
+ */
+async function seedRequests(): Promise<Seeded> {
+  const client = database();
   await client.connect();
+  const userId = `e2e-deliveries-${randomUUID().slice(0, 8)}`;
+  const [seller, buyer] = [randomUUID(), randomUUID()];
+  const saleId = randomUUID();
+  const lotIds = [randomUUID(), randomUUID()];
   try {
-    const won = await client.query<{ id: string; buyer: string }>(
-      `select l.id, l.buyer_legal_entity_id as buyer
-         from lot l
-        where l.buyer_legal_entity_id is not null
-          and not exists (select 1 from delivery_quote q where q.lot_id = l.id)
-          and not exists (
-            select 1 from lot_fulfilment f
-             where f.lot_id = l.id and f.status in ('in_transit', 'delivered', 'cancelled')
-          )
-        order by l.id
-        limit 2`,
+    await client.query("begin");
+    await client.query(
+      `insert into "user" (id, name, email, email_verified, created_at, updated_at)
+       values ($1, $1, $2, true, now(), now())`,
+      [userId, `${userId}@example.test`],
     );
-    for (const [index, lot] of won.rows.entries()) {
+    await client.query(
+      "insert into bid_user_profile (user_id, created_at, updated_at) values ($1, now(), now())",
+      [userId],
+    );
+    for (const [id, name] of [
+      [seller, `Example Seller ${TAG}`],
+      [buyer, `Example Buyer ${TAG}`],
+    ] as const) {
+      await client.query(
+        `insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
+         values ($1, $2, 'organisation', 'gallery', $3, 'approved')`,
+        [id, name, userId],
+      );
+    }
+    await client.query(
+      `insert into sale (id, title, start_time, end_time, created_by_legal_entity_id)
+       values ($1, $2, now() - interval '2 days', now() - interval '1 day', $3)`,
+      [saleId, `Example sale ${TAG}`, seller],
+    );
+    for (const [index, lotId] of lotIds.entries()) {
+      await client.query(
+        `insert into lot (id, seller_legal_entity_id, sale_id, lot_number, title, auction_type,
+           starting_price, current_price, start_time, end_time, status, winner_id,
+           buyer_legal_entity_id)
+         values ($1, $2, $3, $4, $5, 'english', 100, 1250, now() - interval '2 days',
+           now() - interval '1 day', 'ended', $6, $7)`,
+        [lotId, seller, saleId, 900 + index, `Harbour study ${index + 1}`, userId, buyer],
+      );
       await client.query(
         `insert into delivery_quote (lot_id, buyer_legal_entity_id, status, destination, requested_at)
          values ($1, $2, 'requested', $3, now() - ($4 || ' hours')::interval)`,
-        [lot.id, lot.buyer, `${index + 1} Example Lane, ${TAG}, France`, String(index + 2)],
+        [lotId, buyer, `${index + 1} Example Lane, ${TAG}, France`, String(index + 2)],
       );
     }
-    return won.rows.map((lot) => lot.id);
+    await client.query("commit");
+    return { userId, entityIds: [buyer, seller], saleId, lotIds };
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
   } finally {
     await client.end();
   }
 }
 
-async function removeRequests(lotIds: string[]) {
-  if (lotIds.length === 0) return;
-  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+async function removeRequests(seeded: Seeded | null) {
+  if (!seeded) return;
+  const client = database();
   await client.connect();
   try {
-    await client.query(
-      "delete from delivery_quote where lot_id = any($1::uuid[]) and destination like $2",
-      [lotIds, `%${TAG}%`],
-    );
+    await client.query("delete from delivery_quote where lot_id = any($1::uuid[])", [
+      seeded.lotIds,
+    ]);
+    await client.query("delete from lot where id = any($1::uuid[])", [seeded.lotIds]);
+    await client.query("delete from sale where id = $1", [seeded.saleId]);
+    await client.query("delete from legal_entity where id = any($1::uuid[])", [seeded.entityIds]);
+    await client.query("delete from bid_user_profile where user_id = $1", [seeded.userId]);
+    await client.query('delete from "user" where id = $1', [seeded.userId]);
   } finally {
     await client.end();
   }
@@ -77,24 +122,23 @@ async function removeRequests(lotIds: string[]) {
 
 test.describe("deliveries @journey", () => {
   test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
-  test.skip(!process.env.DATABASE_URL, "DATABASE_URL is needed to add the journey's requests");
   test.describe.configure({ retries: 0 });
 
-  let lotIds: string[] = [];
+  let seeded: Seeded | null = null;
   test.beforeAll(async () => {
-    lotIds = await addRequests();
+    seeded = await seedRequests();
   });
   test.afterAll(async () => {
-    await removeRequests(lotIds);
+    await removeRequests(seeded);
   });
 
   test("finds a buyer's request, opens it in the queue panel and steps through", async ({
     page,
   }, testInfo) => {
     test.setTimeout(180_000);
-    test.skip(lotIds.length < 2, "the seed has fewer than two won lots without a delivery");
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto("/admin/deliveries");
+    const grid = page.getByRole("grid", { name: "Deliveries" });
 
     await test.step("Operations › Deliveries opens on Waiting for a price", async () => {
       await expect(page.getByRole("heading", { level: 1, name: "Deliveries" })).toBeVisible();
@@ -103,10 +147,10 @@ test.describe("deliveries @journey", () => {
         "/admin/deliveries",
       );
       const views = page.getByRole("navigation", { name: "Views" });
-      await expect(views.getByRole("link", { name: /Waiting for a price/ })).toHaveAttribute(
-        "aria-current",
-        "page",
-      );
+      const waiting = views.getByRole("link", { name: /Waiting for a price/ });
+      await expect(waiting).toHaveAttribute("aria-current", "page");
+      // The count is said with what it means (NAV-3): "Waiting for a price, 2 waiting".
+      await expect(waiting).toHaveAccessibleName(/\d+ waiting/);
       for (const label of ["Quoted", "To dispatch", "On the way", "Delivered", "Closed"]) {
         await expect(views.getByRole("link", { name: new RegExp(label) })).toBeVisible();
       }
@@ -117,20 +161,24 @@ test.describe("deliveries @journey", () => {
       await search.fill(TAG);
       await search.press("Enter");
       await expect(page).toHaveURL(/q=E2E/);
-      const grid = page.getByRole("grid", { name: "Deliveries" });
       await expect(grid.getByText(TAG, { exact: false })).toHaveCount(2);
       await expect(grid.getByText("Waiting for a price").first()).toBeVisible();
       await shootAll(page, testInfo, "1-waiting");
     });
 
-    await test.step("a row opens the queue panel, J and K step, Escape closes", async () => {
-      const grid = page.getByRole("grid", { name: "Deliveries" });
-      await grid.getByRole("row").nth(1).getByRole("link").first().click();
+    await test.step("a row opens the panel on its title; J and K step; Escape returns to the row", async () => {
+      const firstRow = grid.getByRole("row").nth(1);
+      await firstRow.getByRole("link").first().click();
       const panel = page.getByRole("dialog");
       await expect(panel).toBeVisible();
       await expect(page).toHaveURL(/record=/);
+      await expect(panel.getByRole("heading", { level: 2 })).toBeFocused();
       await expect(panel.getByText("1 of 2")).toBeVisible();
       await expect(panel.getByText("Buyer asked for a delivery price")).toBeVisible();
+      // Beside the list at 1440 (D3): the Status, Price and Waiting columns stay in view.
+      for (const column of ["Status", "Price", "Waiting"]) {
+        await expect(grid.getByRole("columnheader", { name: column })).toBeInViewport();
+      }
       await shootAll(page, testInfo, "2-panel");
       await page.keyboard.press("j");
       await expect(panel.getByText("2 of 2")).toBeVisible();
@@ -138,16 +186,29 @@ test.describe("deliveries @journey", () => {
       await expect(panel.getByText("1 of 2")).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(panel).toHaveCount(0);
+      await expect(firstRow).toBeFocused();
     });
 
-    await test.step("every view answers, and an empty one says so", async () => {
-      await page.goto(`/admin/deliveries?view=closed&q=${encodeURIComponent(TAG)}`);
+    await test.step("a lot with no delivery says so, with a way back", async () => {
+      await page.goto(`/admin/deliveries?record=${randomUUID()}`);
+      const panel = page.getByRole("dialog");
+      await expect(panel.getByText("This delivery could not be found")).toBeVisible();
+      await panel.getByRole("button", { name: "Back to the list" }).click();
+      await expect(panel).toHaveCount(0);
+    });
+
+    await test.step("an empty view says so, and a search that matches nothing offers to clear it", async () => {
+      // The journey's requests are all waiting, so their sale has nothing on the way. A search or
+      // sale is a filter, so an empty filtered view is "no results" with Clear filters (D6).
+      await page.goto(`/admin/deliveries?view=on_the_way&q=${encodeURIComponent(TAG)}`);
       await expect(
-        page.getByRole("navigation", { name: "Views" }).getByRole("link", { name: /Closed/ }),
+        page.getByRole("navigation", { name: "Views" }).getByRole("link", { name: /On the way/ }),
       ).toHaveAttribute("aria-current", "page");
       await expect(page.getByText("No deliveries match")).toBeVisible();
+      await expect(grid.getByText(TAG, { exact: false })).toHaveCount(0);
       await page.goto("/admin/deliveries?q=nothing-matches-this-search");
       await expect(page.getByText("No deliveries match")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Clear filters" }).first()).toBeVisible();
       await shootAll(page, testInfo, "3-no-results");
     });
   });

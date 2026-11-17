@@ -242,6 +242,31 @@ describe("DeliveriesList queue panel", () => {
     expect(inset()).toHaveClass("xl:pr-[480px]");
   });
 
+  it("keeps Lot, Status, Price and Waiting in view beside the panel at 1280px and up (D3)", () => {
+    const original = window.matchMedia;
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === "(min-width: 80rem)",
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList;
+    try {
+      renderList();
+      const headers = () =>
+        within(screen.getByRole("grid", { name: "Deliveries" }))
+          .getAllByRole("columnheader")
+          .map((cell) => cell.textContent);
+      expect(headers()).toEqual(expect.arrayContaining(["Buyer", "Destination"]));
+      fireEvent.click(screen.getAllByText("Lot 42 · Harbour at dusk")[0] as HTMLElement);
+      expect(headers()).toEqual(expect.arrayContaining(["Lot", "Status", "Price", "Waiting"]));
+      expect(headers()).not.toContain("Buyer");
+      expect(headers()).not.toContain("Destination");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("closes on Back", async () => {
     renderList();
     fireEvent.click(screen.getAllByText("Lot 42 · Harbour at dusk")[0] as HTMLElement);

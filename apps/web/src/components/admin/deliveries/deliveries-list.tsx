@@ -35,6 +35,7 @@ import {
   PrimaryCell,
   StatusBadge,
   TableSearch,
+  useBesidePanelWidth,
 } from "@auction/staff-ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,6 +59,9 @@ export type DeliveriesListProps = {
 };
 
 const lotIdOf = (row: DeliveryView) => row.lotId;
+
+/** Columns the panel beside the list already shows (header and summary), set aside while open. */
+const BESIDE_PANEL_HIDDEN = new Set(["buyer", "destination"]);
 
 /**
  * Every won lot a buyer wants delivered, on the staff list template (D1–D6): one tab per delivery
@@ -197,6 +201,12 @@ export function DeliveriesList(props: DeliveriesListProps) {
   // The list loaded, a lot is open in the URL, and no delivery was found for it.
   const missing = page !== null && queue.openId !== null && queue.record === null && !pending;
   const panelOpen = queue.panelProps.open || missing;
+  // Beside the panel (from 1280px) the list keeps Lot, Status, Price and Waiting in view (D3).
+  const besideWide = useBesidePanelWidth();
+  const shownColumns =
+    panelOpen && besideWide
+      ? columns.filter((column) => !BESIDE_PANEL_HIDDEN.has(column.id))
+      : columns;
 
   // Back on the tab with a panel open: read the list again, so a request the buyer changed in
   // the meantime shows as changed (D6) rather than as it was.
@@ -297,7 +307,7 @@ export function DeliveriesList(props: DeliveriesListProps) {
           }}
           noResults={{ noun: DELIVERIES_COPY.noResultsNoun }}
           table={{
-            columns,
+            columns: shownColumns,
             ...queue.table,
             label: DELIVERIES_COPY.listLabel,
             getRowId: lotIdOf,
