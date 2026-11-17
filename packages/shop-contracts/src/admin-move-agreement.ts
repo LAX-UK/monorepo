@@ -7,9 +7,11 @@ import { ConsignmentPlaceSchema } from "./admin-consignor-agreement.js";
  * out the state and the outcome; the dialog only words them.
  *
  * The consignor's name and the agreement's terms are sent only to people who may read that
- * client's agreements (`consignor_agreement.read`, and a broker only for their own clients).
- * Anyone who can move the work gets the state, the outcome and the lowest price, which the move
- * itself is checked against.
+ * client's agreements (`consignor_agreement.manage`, or `consignor_agreement.read` for a client
+ * they can open: a broker only for their own clients). Anyone who can check the work gets the
+ * state and the outcome. The lowest price goes to people who may read the agreement and to people
+ * who hold every capability the move itself requires (the capabilities its POST route checks),
+ * since the dialog compares the starting price with it; for everyone else it is null.
  */
 
 export const AdminMoveAgreementStateSchema = Type.Union([
@@ -60,7 +62,10 @@ export const AdminMoveAgreementSchema = Type.Object(
       }),
       Type.Null(),
     ]),
-    /** The lowest price agreed, in pence, for an agreement in force that sets one. */
+    /**
+     * The lowest price agreed, in pence, for an agreement in force that sets one. Null as well for
+     * someone who may neither read the agreement nor make the move.
+     */
     lowestPricePence: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     /** Whether this person may add an agreement for the consignor (the "Add agreement" link). */
     canAddAgreement: Type.Boolean(),

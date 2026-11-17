@@ -16,6 +16,7 @@ const SALE_ID = "55555555-5555-4555-8555-555555555555";
 const LOT_ID = "66666666-6666-4666-8666-666666666666";
 const PARTY_ID = "77777777-7777-4777-8777-777777777777";
 const AGREEMENT_ID = "88888888-8888-4888-8888-888888888888";
+const ARTWORK_ID = "99999999-9999-4999-8999-999999999999";
 
 const ALL_ROLES: ShopStaffRole[] = [
   "shop_admin",
@@ -93,6 +94,7 @@ async function buildApp(role: ShopStaffRole) {
   const invalidateCatalogue = vi.fn(async () => undefined);
   deps.admin.inventoryMoves = {
     ...deps.admin.inventoryMoves,
+    assess: vi.fn(async () => ({ ...assessment, artworkId: ARTWORK_ID }) as never),
     assessRegister: vi.fn(async () => assessment as never),
     listSales: vi.fn(async () => ({ connected: true, sales: [] })),
     offerRegisterAtAuction,
@@ -197,17 +199,38 @@ describe("Offer at auction from a From Zoho record: routes", () => {
     },
   );
 
-  it("hides the consignor and the agreement from someone who cannot read agreements", async () => {
-    const { app } = await buildApp("read_only");
-    const response = await app.inject({ method: "GET", url, headers });
-    expect(response.json().consignorAgreement).toEqual({
-      ...assessment.consignorAgreement,
-      consignor: null,
-      agreement: null,
-      canAddAgreement: false,
-    });
-    await app.close();
-  });
+  it.each([
+    ["a From Zoho record", url],
+    ["a lax.art original", `/admin/v1/artworks/${ARTWORK_ID}/auction-offer`],
+  ])(
+    "hides the consignor, the agreement and the lowest price from Read-only, for %s",
+    async (_name, checkUrl) => {
+      const { app } = await buildApp("read_only");
+      const response = await app.inject({ method: "GET", url: checkUrl, headers });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().consignorAgreement).toEqual({
+        ...assessment.consignorAgreement,
+        consignor: null,
+        agreement: null,
+        lowestPricePence: null,
+        canAddAgreement: false,
+      });
+      await app.close();
+    },
+  );
+
+  it.each([
+    ["a From Zoho record", url],
+    ["a lax.art original", `/admin/v1/artworks/${ARTWORK_ID}/auction-offer`],
+  ])(
+    "keeps the lowest price for someone who can make the move, for %s",
+    async (_name, checkUrl) => {
+      const { app } = await buildApp("catalogue_editor");
+      const response = await app.inject({ method: "GET", url: checkUrl, headers });
+      expect(response.json().consignorAgreement.lowestPricePence).toBe(200_000);
+      await app.close();
+    },
+  );
 
   it("refreshes lax.art when a live listing was taken down", async () => {
     const { app, offerRegisterAtAuction, invalidateCatalogue } = await buildApp("shop_admin");

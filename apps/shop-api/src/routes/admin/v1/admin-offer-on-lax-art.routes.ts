@@ -5,6 +5,7 @@ import {
   AdminLaxArtOfferResponseSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
+import type { ShopStaffCapability } from "@auction/shop-domain";
 import { type Static, Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -23,6 +24,12 @@ const ERRORS = {
   404: ShopApiErrorBodySchema,
   409: ShopApiErrorBodySchema,
 } as const;
+
+/** What making the lax.art draft needs (`POST .../lax-art-offer`). */
+const LAX_ART_MOVE = [
+  "catalogue.write",
+  "artwork_register.review",
+] as const satisfies readonly ShopStaffCapability[];
 
 /**
  * "Offer on lax.art" for a From Zoho record. Checking needs `artwork_register.read`. Making the
@@ -52,6 +59,7 @@ export async function registerAdminOfferOnLaxArtRoutes(
           request,
           deps,
           assessment.consignorAgreement,
+          LAX_ART_MOVE,
         ),
       };
     },
@@ -68,8 +76,7 @@ export async function registerAdminOfferOnLaxArtRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
-      requireShopStaffCapability(request, "artwork_register.review");
+      for (const capability of LAX_ART_MOVE) requireShopStaffCapability(request, capability);
       const { registerId } = request.params as Static<typeof RegisterParams>;
       return deps.offerOnLaxArt.offer({
         registerId,
