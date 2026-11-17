@@ -4,6 +4,7 @@ import {
   AdminLaxArtListingSchema,
   AdminLaxArtOfferBlockerSchema,
 } from "./admin-offer-on-lax-art.js";
+import { AdminLocationRefSchema } from "./admin-stock-location.js";
 import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
 
 /**
@@ -26,6 +27,9 @@ export const REGISTER_GAP_VALUES = ["image", "size", "medium"] as const;
 const GapSchema = Type.Union(REGISTER_GAP_VALUES.map((gap) => Type.Literal(gap)));
 
 export const ADMIN_REGISTER_PAGE_SIZE = 25;
+
+/** The All tab's location filter value for artworks with no location recorded. */
+export const REGISTER_LOCATION_NONE = "none";
 
 /** One artwork in the register, as the queues list it. */
 export const AdminRegisterArtworkSummarySchema = Type.Object({
@@ -50,6 +54,13 @@ export const AdminRegisterQueueQuerySchema = Type.Object({
   missing: Type.Optional(GapSchema),
   /** The All tab only: where the artwork is. */
   place: Type.Optional(PlaceSchema),
+  /**
+   * The All tab only: where the artwork physically is, by location id, or `none` for artworks
+   * whose location is not recorded.
+   */
+  location: Type.Optional(
+    Type.Union([Type.String({ format: "uuid" }), Type.Literal(REGISTER_LOCATION_NONE)]),
+  ),
   page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
 });
 
@@ -74,10 +85,16 @@ export const AdminRegisterNewListSchema = Type.Object({
   ...PagingSchema,
 });
 
-/** One artwork in the All tab: the summary and where it is, as the record draws it. */
+/**
+ * One artwork in the All tab: the summary, where it is offered, as the record draws it, and
+ * where it physically is (null when no location is recorded).
+ */
 export const AdminRegisterAllItemSchema = Type.Composite([
   AdminRegisterArtworkSummarySchema,
-  Type.Object({ whereItIs: Type.Pick(AdminWhereItIsSchema, ["key", "chip"]) }),
+  Type.Object({
+    whereItIs: Type.Pick(AdminWhereItIsSchema, ["key", "chip"]),
+    location: Type.Union([AdminLocationRefSchema, Type.Null()]),
+  }),
 ]);
 
 export const AdminRegisterAllListSchema = Type.Object({
