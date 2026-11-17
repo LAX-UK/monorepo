@@ -161,7 +161,8 @@ test.describe("deliveries @journey", () => {
       await search.fill(TAG);
       await search.press("Enter");
       await expect(page).toHaveURL(/q=E2E/);
-      await expect(grid.getByText(TAG, { exact: false })).toHaveCount(2);
+      // Each row names the tag more than once (buyer, sale and destination), so count rows.
+      await expect(grid.getByRole("row").filter({ hasText: TAG })).toHaveCount(2);
       await expect(grid.getByText("Waiting for a price").first()).toBeVisible();
       await shootAll(page, testInfo, "1-waiting");
     });
@@ -179,14 +180,24 @@ test.describe("deliveries @journey", () => {
       for (const column of ["Status", "Price", "Waiting"]) {
         await expect(grid.getByRole("columnheader", { name: column })).toBeInViewport();
       }
-      await shootAll(page, testInfo, "2-panel");
+      const first = page.url();
       await page.keyboard.press("j");
       await expect(panel.getByText("2 of 2")).toBeVisible();
+      // Each step is a URL (PRD-7): wait for it, as the other queue journeys do.
+      await expect(page).not.toHaveURL(first);
       await page.keyboard.press("k");
       await expect(panel.getByText("1 of 2")).toBeVisible();
+      await expect(page).toHaveURL(first);
       await page.keyboard.press("Escape");
       await expect(panel).toHaveCount(0);
       await expect(firstRow).toBeFocused();
+      // Shot last: going from 1440 to 375 and back turns the side panel into the modal one and
+      // back, which hands focus to the list, so the keyboard steps above come first.
+      await firstRow.getByRole("link").first().click();
+      await expect(panel.getByText("1 of 2")).toBeVisible();
+      await shootAll(page, testInfo, "2-panel");
+      await page.keyboard.press("Escape");
+      await expect(panel).toHaveCount(0);
     });
 
     await test.step("a lot with no delivery says so, with a way back", async () => {
@@ -205,7 +216,7 @@ test.describe("deliveries @journey", () => {
         page.getByRole("navigation", { name: "Views" }).getByRole("link", { name: /On the way/ }),
       ).toHaveAttribute("aria-current", "page");
       await expect(page.getByText("No deliveries match")).toBeVisible();
-      await expect(grid.getByText(TAG, { exact: false })).toHaveCount(0);
+      await expect(grid.getByRole("row").filter({ hasText: TAG })).toHaveCount(0);
       await page.goto("/admin/deliveries?q=nothing-matches-this-search");
       await expect(page.getByText("No deliveries match")).toBeVisible();
       await expect(page.getByRole("button", { name: "Clear filters" }).first()).toBeVisible();
