@@ -231,7 +231,10 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminCatalogueChangeRoutes(adminScope, options.deps.admin);
         void registerAdminZohoLinkRoutes(adminScope, options.deps.admin);
         void registerAdminStockLocationRoutes(adminScope, options.deps.admin);
-        void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
+        void registerAdminReleaseAlertRoutes(adminScope, {
+          summary: options.deps.admin.releaseAlertSummary,
+          sends: options.deps.admin.releaseAlertSends,
+        });
         void registerAdminPrintPartyRoutes(adminScope, options.deps.admin.printParties);
         void registerAdminArtistApplicationRoutes(
           adminScope,

@@ -155,7 +155,7 @@ jobs:
         run: pnpm --filter @auction/identity-contracts build
 
       - name: CI script unit tests
-        run: node --test scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/pipeline-stats.test.mjs scripts/ci/deploy-component-paths.test.mjs scripts/ci/resolve-affected-deploy-components.test.mjs scripts/ci/build-expected-releases.test.mjs scripts/ci/patch-app-platform-image-tags.test.mjs scripts/ci/report-deploy-failure.test.mjs scripts/ci/resolve-live-app-image-tags.test.mjs scripts/ci/digitalocean-app-rollback-api.test.mjs scripts/ci/staging-deploy-smoke.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/e2e-sign-out.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/verify-reusable-workflow-permissions.test.mjs
+        run: node --test scripts/ci/verify-staging-migrate-contract.test.mjs scripts/ci/verify-auth-terraform-env.test.mjs scripts/ci/assert-app-platform-spec.test.mjs scripts/ci/pipeline-stats.test.mjs scripts/ci/deploy-component-paths.test.mjs scripts/ci/resolve-affected-deploy-components.test.mjs scripts/ci/build-expected-releases.test.mjs scripts/ci/patch-app-platform-image-tags.test.mjs scripts/ci/report-deploy-failure.test.mjs scripts/ci/resolve-live-app-image-tags.test.mjs scripts/ci/digitalocean-app-rollback-api.test.mjs scripts/ci/staging-deploy-smoke.test.mjs scripts/ci/verify-identity-boundary.test.mjs scripts/ci/verify-terraform-plan-safe.test.mjs scripts/ci/oidc-authorize-response.test.mjs scripts/ci/provision-identity-acceptance-users.test.mjs scripts/ci/staff-totp-at-rest-bootstrap.test.mjs scripts/ci/http-diagnostics.test.mjs scripts/ci/e2e-session-state.test.mjs scripts/ci/e2e-sign-out.test.mjs scripts/ci/require-node-version.test.mjs scripts/ci/verify-reusable-workflow-permissions.test.mjs scripts/ci/verify-build-memory.test.mjs
 
       - name: Reusable workflow permission contracts
         run: node scripts/ci/verify-reusable-workflow-permissions.mjs
@@ -1002,6 +1002,15 @@ jobs:
     env:
       # The Sentry build plugin makes the Bid app build need more than Node's default heap.
       NODE_OPTIONS: --max-old-space-size=6144
+      # How many turbo build tasks run at once, here and in the route JavaScript base and self-check
+      # builds (scripts/route-js-size-build-base.sh). Every task gets the heap above, and one Next
+      # app build alone peaks at about 4.5 GB. A PR that touches a package every app depends on
+      # (packages/db, shop-contracts) makes all five Next apps affected; turbo's default runs them
+      # all at once, which overruns the 16 GB runner, and the kernel's OOM killer then takes the
+      # runner itself: the Build step goes silent, no log is uploaded, and the job hangs until
+      # GitHub gives up on the runner. Two at a time stays inside the runner's memory
+      # (scripts/ci/verify-build-memory.test.mjs keeps this and the heap within it).
+      BUILD_CONCURRENCY: "2"
       NEXT_PUBLIC_SENTRY_DSN_WEB: https://budget@sentry.invalid/1
       NEXT_PUBLIC_SENTRY_DSN_SHOP: https://budget@sentry.invalid/2
       NEXT_PUBLIC_SENTRY_DSN_ART: https://budget@sentry.invalid/3
@@ -1043,7 +1052,7 @@ jobs:
 
       # Uses the size-measurement settings in the job's env (see above).
       - name: Build
-        run: pnpm turbo run build --affected
+        run: pnpm turbo run build --affected --concurrency="$BUILD_CONCURRENCY"
 
       # Reads the .next output the Build step just produced; it never rebuilds. Apps the affected
       # build skipped are reported and left out. Groups with `enforce: true` fail the job when a

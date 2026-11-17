@@ -7,8 +7,8 @@ import { NOTIFICATION_TYPES } from "./schema/notifications.js";
 const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
 const read = (name: string) => readFileSync(join(drizzleDir, name), "utf8");
 const TAG = "0406_delivery_quote_decline";
-/** The migration before this one on main. If 0405 lands first, this PR is renumbered after it. */
-const PREVIOUS = "0404_artwork_stock_location";
+/** The migration before this one. */
+const PREVIOUS = "0405_shop_alert_send_log";
 const migration = read(`${TAG}.sql`);
 const rollback = read("0406_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {

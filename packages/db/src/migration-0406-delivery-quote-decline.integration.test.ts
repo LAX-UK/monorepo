@@ -11,8 +11,8 @@ import { laterRollbackSql } from "./testing/later-rollbacks.js";
 import { withTemporaryDatabase } from "./testing/temporary-database.js";
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
-/** The journal time of 0404, the migration before 0406 on main. */
-const THROUGH_0404 = 1813147200000;
+/** The journal time of 0405, the migration before 0406. */
+const THROUGH_0405 = 1813233600000;
 /** This migration's journal time, which its rollback removes from the ledger. */
 const WHEN_0406 = 1813320000000;
 const CHECK_VIOLATION = "23514";
@@ -73,7 +73,7 @@ const hasColumn = async (pool: pg.Pool) =>
 describe.skipIf(!url)("migration 0406 delivery quote decline", { timeout: 180_000 }, () => {
   it("keeps existing quotes, holds the reason rules, rolls back and applies again", async () => {
     await withTemporaryDatabase(async (pool) => {
-      await runMigrationsPerTransactionThrough(pool, THROUGH_0404);
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0405);
       const { userId, quote } = await seed(pool);
       const existing = await quote("withdrawn");
 

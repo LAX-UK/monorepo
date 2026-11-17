@@ -22,6 +22,7 @@ import {
   type ArtworkMatchers,
 } from "../../application/alerts/alert-matching.service.js";
 import type {
+  ReleaseAlertSendLogReader,
   ReleaseAlertSummaryReader,
   ShopAlertAnnouncer,
 } from "../../application/alerts/alert-ports.js";
@@ -45,6 +46,7 @@ import type { ShopDomainEventPublisherMode } from "../shop-domain-event-publishe
 import { type BackInStockLinks, createBackInStockLinks } from "./back-in-stock-links.js";
 import { ShopBackInStockStopTimes } from "./back-in-stock-stop-times.js";
 import { createWaitingAlertCanceller } from "./back-in-stock-waiting.js";
+import { ReleaseAlertSendLogStore } from "./release-alert-send-log.store.js";
 import { ShopAlertCatalogue } from "./shop-alert-catalogue.js";
 import { publishAlertConfirmed } from "./shop-alert-confirmed.js";
 import {
@@ -97,6 +99,8 @@ export type ShopAlertRuntime = {
   /** Written inside the publish transaction. */
   announcer: ShopAlertAnnouncer;
   summary: ReleaseAlertSummaryReader;
+  /** One row per published edition release and what its alert did, for LAX Admin. */
+  sendLog: ReleaseAlertSendLogReader;
   /** Turns announced works into matches. */
   matching: AlertMatchingService;
   /** The engine's stop link for a back-in-stock email. */
@@ -230,6 +234,7 @@ export function createShopAlertRuntime(input: {
     followAlerts: new FollowAlertsService({ subscribe, subscribers, log }),
     announcer: new ShopAlertPublishRecorder(),
     summary: new ReleaseAlertSummaryStore(db),
+    sendLog: new ReleaseAlertSendLogStore(db, input.resolveMediaUrl, clock.now),
     matching: new AlertMatchingService({ queue: catalogue, artworks: catalogue, matchers, log }),
     backInStock: createBackInStockLinks({
       subscribers,
