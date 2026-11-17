@@ -1,3 +1,5 @@
+import { FULFILMENT_TRIGGER_KINDS, ORDER_EVENTS_THAT_SET_PRINTS } from "@auction/types";
+
 /** What a domain event asks the fulfilment mirror to bring into line. */
 export type FulfilmentTrigger =
   /** A prints listing: its print group, ledger and register row. The id is the listing's artwork. */
@@ -8,34 +10,12 @@ export type FulfilmentTrigger =
    */
   | { kind: "order"; orderId: string; reportsProblems: boolean };
 
-type TriggerKind = FulfilmentTrigger["kind"];
-
 /**
- * The events the fulfilment mirror hears, and what each one is about. A table, so a new event is
- * one more line and nothing else changes.
+ * The table of events the fulfilment mirror hears and the events that set an order's prints live in
+ * `@auction/types`, beside the skip reasons, so LAX Admin's "Mirrored to Zoho" read uses the same
+ * lists. Re-exported here for the worker.
  */
-export const FULFILMENT_TRIGGER_KINDS: Readonly<Record<string, TriggerKind>> = {
-  "shop.editions.allocated": "group",
-  "shop.artwork.updated": "group",
-  "shop.order.paid": "order",
-  "shop.edition.sold": "order",
-  "shop.edition.released": "order",
-  "shop.fulfilment.dispatched": "order",
-  "shop.fulfilment.status_changed": "order",
-  "shop.print.pack_confirmed": "order",
-  "shop.print.swapped": "order",
-  "shop.framing.status_changed": "order",
-};
-
-/**
- * The order events that set which prints are on the order: payment (raised with every print's
- * `shop.edition.sold`) and a swap. A print that cannot be mirrored fails these for staff; the
- * pick, dispatch and refund steps after them log it instead of failing the same order again.
- */
-export const ORDER_EVENTS_THAT_SET_PRINTS: ReadonlySet<string> = new Set([
-  "shop.order.paid",
-  "shop.print.swapped",
-]);
+export { FULFILMENT_TRIGGER_KINDS, ORDER_EVENTS_THAT_SET_PRINTS };
 
 export type FulfilmentEvent = { eventType: string; aggregateId?: string; payload?: unknown };
 

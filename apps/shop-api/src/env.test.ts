@@ -354,3 +354,25 @@ describe("loadShopApiEnv email alerts", () => {
     expect(empty.ALERT_LINK_PREVIOUS_SECRET).toBeUndefined();
   });
 });
+
+describe("loadShopApiEnv Zoho mirror modes", () => {
+  it("leaves the modes unknown when they are not set", () => {
+    const env = loadShopApiEnv(productionNodeBase());
+    expect(env.ZOHO_FULFILMENT_MIRROR_MODE).toBeUndefined();
+    expect(env.ZOHO_ARTWORK_WRITEBACK_MODE).toBeUndefined();
+  });
+
+  it("reads the worker's modes and refuses any other value", () => {
+    const env = loadShopApiEnv(
+      productionNodeBase({
+        ZOHO_FULFILMENT_MIRROR_MODE: "off",
+        ZOHO_ARTWORK_WRITEBACK_MODE: "live",
+      }),
+    );
+    expect(env.ZOHO_FULFILMENT_MIRROR_MODE).toBe("off");
+    expect(env.ZOHO_ARTWORK_WRITEBACK_MODE).toBe("live");
+    expect(() =>
+      loadShopApiEnv(productionNodeBase({ ZOHO_FULFILMENT_MIRROR_MODE: "on" })),
+    ).toThrow();
+  });
+});
