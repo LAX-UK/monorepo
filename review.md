@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 Independent review of #1518 "Stock location per artwork, part 1: locations, moves and permissions" at head `5d72277a`, checked against `docs/design/stock-location.md` on `origin/main`. The owner approved the recommended option, including a new read-only Zoho field `LAX_Location` kept separate from `LAX_Listing`.
 
@@ -78,3 +78,78 @@ Verified locally against Postgres 16, migrated to head with roles applied:
 10. **Owner question stays open.** The design names "Gallery staff" and "Fulfilment" roles, which don't exist. The PR maps them to `account_manager` and `operations`, and it correctly raises this under "Needs owner". Keep the PR 2 Location panel reachable for these roles without `artwork_register.read`, as the third capability test asserts.
 
 11. **Ship-time renumbering.** When 0404 is renumbered, update the `created_at` literal in `0404_rollback.sql:36` together with the journal `when`. `migration-0404-artwork-stock-location.test.ts` pins the pair, so CI will catch a mismatch. Also rename both test files and the `TAG` constant.
+
+## Final recheck
+
+Rechecked at head `ff1d05d2` after the fixer's commits `a94ffff0` and `d35d9778`. I ran everything locally against Postgres 16, migrated to the head with roles applied. **Findings 1–7 are fixed, and each fix is pinned by a test that fails without it. Findings 8–11 are carried in the PR body. Verdict: SHIP.**
+
+**1. `api_app` least privilege: fixed.**
+- `artwork_location` and `artwork_location_move` are in `API_DENY_TABLES` (`migrate-roles.ts:175`). The grant loop revokes everything on them.
+- `has_table_privilege` for SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES and TRIGGER:
+  - `api_app`, `worker_app` and `auth_app`: all false on both tables.
+  - `shop_app`: SELECT, INSERT and UPDATE on `artwork_location`; SELECT and INSERT on `artwork_location_move`.
+- `TRUNCATE artwork_location_move` fails as `api_app` and as `shop_app` with "permission denied". As the owner, the new `artwork_location_move_no_truncate` statement trigger refuses it ("append-only (TRUNCATE refused)").
+- Mutation: I took the two tables out of `API_DENY_TABLES` and reapplied the roles. Both the `migrate-roles` invariant and the `api_app` grants probe failed, so the probe really runs (`DATABASE_URL_API` is set in CI's role-contract job).
+
+**Move history is append-only: fixed.**
+- A row trigger refuses UPDATE and DELETE, and a statement trigger refuses TRUNCATE.
+- Mutation: I dropped the TRUNCATE trigger in the database. The 0404 integration test failed. I then restored the trigger and the test passed again.
+
+**2. Concurrency tests now prove the locks: fixed.** There are four deterministic tests. Each holds a lock on its own connection and uses `pg_blocking_pids` to confirm the store is waiting before it releases.
+- Removing `.for("no key update")` fails 2 tests: "second move waits" and "waiting move records nothing".
+- Removing `.for("share")` fails 1 test: "move into a location being retired waits, then is refused".
+- Removing the status events fails the "retiring waits for a move" test, along with 2 others.
+- Unmutated, the suite passed 20/20 in 3 runs out of 3.
+- Note (no change needed): removing the explicit `.for("update")` in `setLocationStatus` still passes. The versioned `UPDATE` takes the same conflicting row lock, so the guarantee holds either way.
+
+**3. `location_changed` on list changes: fixed.**
+- `updateLocation` publishes `location_updated` for every artwork currently at the location, in the same transaction.
+- `setLocationStatus` publishes `location_retired` or `location_restored` the same way.
+- Mutations: removing the rename publish fails 1 test, and removing the status publish fails 3.
+- The payload schema has a `reason` enum, and a refine rule: a move changes location, a list change names the same location twice.
+
+**6. Typed payloads: fixed.** Every event goes through `insertLocationChanged(payloads: readonly ArtworkRegisterLocationChangedPayloadV1[])`. Mutations: a bad `reason` value and a renamed key (`stock_code`) both fail `tsc`.
+
+**4. `MOVE_BATCH_MAX`: fixed.**
+- `planMoveBatch` runs before the transaction opens, and `moveArtworksRequestSchema` applies the same limit.
+- `LocationMoveRefusal` includes `too_many`.
+- Mutation: removing the store check fails the integration test. Contract unit tests cover the plan rule and the schema.
+
+**5. Retiring again is a no-op: fixed.** It reads the row under lock and returns `changed: false` without bumping the version, overwriting `retired_at` or publishing an event. Mutation: disabling the check fails 1 test.
+
+**7. Drizzle schema matches the migration: fixed.**
+- All five `artwork_location` checks and the note check on `artwork_location_move` are mirrored.
+- Index names, the RESTRICT foreign keys, column types and defaults match.
+- The 0404 unit test compares each check's name and normalised body. Mutation: dropping `artwork_location_version_check` from the schema fails it.
+
+**Migration, rollback and numbering: consistent.**
+- The rollback's `created_at` is `1813147200000`, which equals the journal `when`.
+- The integration test passes 8/8: the rollback runs twice, the migration reapplies, and the rollback refuses while moves exist.
+- `scripts/ci/verify-migration-pairs.mjs` exits 0.
+- `origin/main` (now `59b3411d`, which was force-updated) still ends at `0403_notification_outbox_retry_backoff`, idx 395. So 0404 / idx 396 does not collide, and the PR merges cleanly into current main.
+- 11 still applies: renumber at ship. Change the rollback `created_at`, the journal `when`, both test file names and `TAG` together.
+
+**PR body:**
+- "For later PRs" (8: the audit row in the same transaction and a server-side recent sign-in; 9: SELECT for `worker_app` and the consumer) is present.
+- "Needs owner" (`LAX_Location` field creation and rollout; the "Gallery staff" and "Fulfilment" mapping, 10) is present.
+- There is no AI footer.
+
+**Zoho:** nothing in the diff calls or writes to Zoho. The event has `consumers: []`.
+
+**Route JS, budgets and baselines:**
+- No budget, baseline or allowance file changed.
+- The only `apps/web` change is one label line in `domain-event-labels.ts`. It came in the original commit `136e1c80`, not from the fixer, and an existing test requires a label for every event type.
+
+**Commits:** all are by mahmoudamrspace, with no Co-Authored-By or Claude trailers.
+
+**CI:** 41 check runs on `ff1d05d2`. All succeeded, apart from `art-browser-gates`, which was skipped as not affected. They include `ci-result`, `test`, `build`, `static-checks`, `browser-gates`, the auth and worker role contracts, the shop-api and web shards, and shop-v1 integration.
+
+**Also passing locally:**
+- db: the 0404 unit and integration tests, `migrate-roles`, and the `shop_app` and `api_app` contracts (126 tests).
+- persistence `stock-location.integration` (20).
+- The artwork-register-contracts and shop-domain test suites, and the types domain-event catalog tests.
+- `turbo typecheck` for db, types, contracts, persistence and shop-domain (15/15 tasks).
+
+**Polish for PR 2 (not blocking):**
+- `updateLocation` bumps the version and publishes even when the name and note are unchanged. The route can skip a no-op edit.
+- The audit label "Artwork moved to another location" now also covers renames and retirements. Word it by `reason` when the Location panel lands.
