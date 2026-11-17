@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1554: Consignor agreements, part 4 (ZI-5): move dialogs read the agreement
 
@@ -176,3 +176,61 @@ Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_
 - **Typecheck:** shop-api, shop-admin and shop-contracts pass.
 - **Guards:** `lint:datetime`, `ui-guardrails`, `admin-capability-drift`, `client-boundary`, `layers`, `client-copy` and `test-mocks` pass. `biome check` on the changed files is clean.
 - **Not run:** a full `next build`.
+
+## Final recheck
+
+Rechecked head `8b3d484a` (unchanged since the fixes). The PR branch was not changed. Verdict: SHIP.
+
+### Blocking 1: resolved
+
+- **The rule:** `moveAgreementForViewer` (`move-agreement-viewer.ts:19-42`) keeps the full view only for manage, or for read plus `requireClientPartyReadAccess` on the consignor.
+  - Everyone else gets `consignor: null` and `agreement: null`.
+  - They get `lowestPricePence` only when they hold every capability of the matching POST.
+- **The capability lists are shared** by each GET and its POST:
+  - `ARTWORK_MOVE` = `catalogue.write`;
+  - `REGISTER_MOVE` and `LAX_ART_MOVE` = `catalogue.write` + `artwork_register.review`.
+  - Read-only holds neither, so it gets null.
+- **Tests:** Read-only tests cover all three assessment GETs.
+  - The two auction-offer GETs: `admin-offer-at-auction.routes.test.ts:208`, a `test.each` over both.
+  - The lax-art-offer GET: `admin-offer-on-lax-art.routes.test.ts:164`.
+  - A mover keeps the price (`:224`), and the four `move-agreement-viewer` unit tests pass.
+
+### Copy and the Set consignor link
+
+- **Copy matches decision pack section 1:**
+  - "Covered by agreement with {consignor}, signed {date}, {places}, until {date}."
+  - "Below the lowest price agreed (£2,000).": whole pounds, with pence only when set.
+  - "No agreement covers {place} for {consignor}." with no reason suffix, and "Add agreement".
+  - "Set who consigned this work first." with "Set consignor".
+  - LAX owns the work: no line.
+  - Dates use `formatStaffDate`, the house style, so the current year shows a weekday and no year. This was the agreed follow-through on review item 6.
+- **"Set consignor"** is built only when `canAddAgreement` is true, which shop-api sets from `consignor_agreement.manage` (`move-agreement-line.ts:42-43`). It links to `/from-zoho/{id}#consignor`, and #1553 now carries that id. The dialog tests cover the link hidden without manage.
+
+### Merges
+
+- **With current `origin/main` (`bf18b243`):** clean.
+- **With #1553:** clean. The combined tree builds, and shop-api and shop-admin typecheck. The shared route suites pass (`admin-artwork-consignor`, `admin-offer-at-auction`, `admin-offer-on-lax-art`, `admin-artwork-register`: 155 tests).
+
+### Tests run
+
+Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_INTEGRATION_REQUIRED=true`, `--maxWorkers=2`. Everything passed:
+
+- **shop-api, 175 tests (8 files):**
+  - `original-move.service`
+  - `offer-on-lax-art.service`
+  - `artwork-register-review.service`
+  - `drizzle-lax-art-offer.integration`
+  - `drizzle-register-overview.integration`
+  - `admin-offer-at-auction.routes`
+  - `admin-offer-on-lax-art.routes`
+  - `move-agreement-viewer`
+- **shop-admin, 173 tests (8 files):** the offer-at-auction and lax.art dialogs and form, `zoho-register.vm`, `move-agreement`, `agreements-section` and `consignor-agreement`.
+- **Contracts:** shop-contracts 128 and artwork-register-contracts 339.
+- **Typecheck:** shop-api and shop-admin pass.
+- **Not run:** a full `next build`.
+
+### Later (not blocking)
+
+1. The race between reading the agreement and recording the move (review item 1) is still open. Soften the "Read again here" comment when it is picked up.
+2. Item 4 (history wording for new entries) and item 5 (ids in raw history payloads) are unchanged.
+3. Consolidating the duplicate reads with #1553 is still open, as planned.
