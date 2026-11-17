@@ -180,6 +180,14 @@ export const COLLECTIONS_ACCESS: CapabilityRequirement = LOT_FULFILMENT_ACCESS;
 export const COLLECTIONS_READ_ACCESS: CapabilityRequirement = readOrWrite(COLLECTIONS_ACCESS);
 
 /**
+ * Deliveries (docs/design/staff-gaps-delivery-zoho-alerts.md, D5): courier quotes buyers asked
+ * for on won lots, from the price to the door. Pricing them is the Fulfilment role's work, as lot
+ * fulfilment is; read-only staff see the list and its panel without the actions.
+ */
+export const DELIVERIES_ACCESS: CapabilityRequirement = LOT_FULFILMENT_ACCESS;
+export const DELIVERIES_READ_ACCESS: CapabilityRequirement = readOrWrite(DELIVERIES_ACCESS);
+
+/**
  * A place's storage terms and its "Raise storage invoices" switch (docs/design/storage-terms.md,
  * ST10): Finance and Administrators. The routes also ask for a recent sign-in.
  */

@@ -10,11 +10,12 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireOperationsFulfilment } from "../../middleware/require-capability.js";
 import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 export function attachAdminLotFulfilmentRoutes(
   platform: AdminHono,
   container: AdminCatalogSupportRoutesContainer,
+  guards: Pick<AdminStaffMutationGuards, "idempotent">,
 ): void {
   platform.get(
     "/lot-fulfilment",
@@ -159,10 +160,14 @@ export function attachAdminLotFulfilmentRoutes(
     },
   );
 
-  /** Price the courier quote a buyer asked for; the buyer is told it is ready to accept. */
+  /**
+   * Price the courier quote a buyer asked for; the buyer is told it is ready to accept. It needs
+   * an Idempotency-Key, so a double submit prices it once and emails the buyer once.
+   */
   platform.put(
     "/lot-fulfilment/:lotId/delivery-quote",
     requireOperationsFulfilment,
+    guards.idempotent("fulfilment.delivery-quote"),
     zValidator("param", adminLotFulfilmentLotIdParamSchema),
     zValidator("json", staffDeliveryQuoteSchema),
     async (c) => {

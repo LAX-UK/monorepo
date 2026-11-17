@@ -24,6 +24,7 @@ import {
   CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
   DATA_REQUESTS_MANAGE_ACCESS,
+  DELIVERIES_READ_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
@@ -156,6 +157,8 @@ export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_M
 export const requireEnquiryWork = createRequireAccess(ENQUIRY_ASSIGN_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireCollectionsRead = createRequireAccess(COLLECTIONS_READ_ACCESS);
+/** The Deliveries list and panel: Fulfilment, Administrators and read-only staff. */
+export const requireDeliveriesRead = createRequireAccess(DELIVERIES_READ_ACCESS);
 /** The Collections page's list of places: everyone with a tab on it, Finance included. */
 export const requireCollectionsPage = createRequireAccess(COLLECTIONS_PAGE_ACCESS);
 export const requireCollectionStorageRead = createRequireAccess(COLLECTION_STORAGE_READ_ACCESS);

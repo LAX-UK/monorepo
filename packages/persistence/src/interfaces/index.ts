@@ -1199,6 +1199,13 @@ export type {
   PurchaseProblemStatusCounts,
 } from "./purchase-problem-desk.repository.js";
 export type {
+  AdminDeliveriesFilters,
+  AdminDeliveriesQuery,
+  AdminDeliveryRecord,
+  AdminDeliveryStatusCounts,
+  IAdminDeliveriesReader,
+} from "./admin-deliveries.reader.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,

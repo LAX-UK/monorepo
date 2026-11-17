@@ -782,6 +782,14 @@ export {
   type DeliveryQuoteStatus,
 } from "./delivery-quote.js";
 export {
+  DELIVERY_STATUSES,
+  deliveryStatusOf,
+  type DeliveryClosedReason,
+  type DeliveryStatus,
+  type DeliveryStatusFacts,
+  type DeliveryStatusResult,
+} from "./delivery-status.js";
+export {
   purchaseDeliveryStage,
   type FulfilmentFacts,
   type PurchaseDeliveryFacts,
