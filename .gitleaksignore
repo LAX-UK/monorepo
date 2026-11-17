@@ -22,3 +22,4 @@ b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:gene
 b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:16
 b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:18
 b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:generic-api-key:19
+455c2080b6f91641e08441b0141c52a1014d8d9e:apps/shop-api/src/routes/admin/v1/admin-artwork-consignor.routes.test.ts:generic-api-key:20

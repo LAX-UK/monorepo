@@ -17,7 +17,8 @@ const TOKEN = "admin-token-placeholder-minimum-length";
 const REGISTER_ID = "44444444-4444-4444-8444-444444444444";
 const PARTY_ID = "22222222-2222-4222-8222-222222222222";
 const CHANGE_ID = "66666666-6666-4666-8666-666666666666";
-const KEY = "consignor-key-0001";
+// The Idempotency-Key header these requests send.
+const IDEMPOTENCY = "consignor-0001";
 
 /** The From Zoho record is read by these roles; of them, these also read and set consignors. */
 const CAN_READ: ShopStaffRole[] = ["shop_admin", "catalogue_editor"];
@@ -69,7 +70,7 @@ async function buildApp(role: ShopStaffRole, options: { authTime?: number } = {}
   return { app, artworkConsignors };
 }
 
-const headers = { authorization: `Bearer ${TOKEN}`, "idempotency-key": KEY };
+const headers = { authorization: `Bearer ${TOKEN}`, "idempotency-key": IDEMPOTENCY };
 const url = `/admin/v1/artwork-register/${REGISTER_ID}/consignor`;
 const body = { consignor: { kind: "client", partyId: PARTY_ID }, expectedCurrentId: null };
 
@@ -119,7 +120,7 @@ describe("artwork consignor routes", () => {
     expect(response.statusCode).toBe(200);
     expect(artworkConsignors.set).toHaveBeenCalledWith({
       actorSubjectId: "catalogue_editor-subject",
-      idempotencyKey: KEY,
+      idempotencyKey: IDEMPOTENCY,
       registerId: REGISTER_ID,
       consignor: { kind: "lax" },
       reason: "Bought outright",
