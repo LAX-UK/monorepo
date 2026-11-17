@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1512: "Fix connectivity banner overlapping sale page; solid Up next pill"
 
@@ -107,3 +107,70 @@ Reviewed head `9a9c6b00f8fe07b04073e4f5165f93a41ac4570d` (`fix/banner-overlap-up
 - The diagnosis that `bg-brand-600` is not a real token is correct: there is no `--color-brand-600` in `apps/web/src/app/globals.css:24-33`. The pill did render with no background.
 - The a11y semantics, the z-index token, and the banner's tone colours are unchanged.
 - There is no growth in route JS and no change to budgets or baselines.
+
+## Final recheck
+
+Rechecked head `df724b3fcc5f49abe7ac4945e5acb6ad0accbf5c` (5 commits, 46 files) after the fixer's changes. This time I ran the real seeded stack locally, the same way the CI `browser-gates` job runs it: local Postgres 16 and Redis, `db:migrate` + `db:seed:dev` + roles + OIDC clients, production builds of api, auth-app and web, `scripts/ci/start-e2e-web.mjs`, and `prepare-e2e-auth-states.mjs`. The PR branch was not modified.
+
+| # | Finding | Status | Evidence |
+|---|---|---|---|
+| 1 | Tabs covered while scrolled | **Fixed** | See "Sale tabs" below. |
+| 2 | Global offline banner regresses other pages | **Fixed** | The banner is `fixed` again and reserves no space. Staff `/admin` and `/admin/saleroom/<hybrid>`, offline: the top bar stays at 0–52 at 1440 and 375, and `scrollHeight` is unchanged (PR e2e). |
+| 3 | Staff saleroom banner uses the marketing offset | **Fixed** | `--connectivity-banner-top: var(--spacing-staff-top-bar)` on the staff root. Measured on `/admin/saleroom/<hybrid>`: banner top is 52 = staff bar bottom (1440: 52–85, 375: 52–101). `--staff-sticky-top` becomes `calc(52px + 33px/49px)`. The saleroom live notice uses the same shell, so it gets the same placement. |
+| 4 | Up next differs from Sold / In saleroom in the grid | **Fixed** | The `tone === "muted"` gate is removed. The unit test asserts identical class lists for Up next, In saleroom and Sold with `useOverlayChrome`. The PR screenshots `after-pills-*` show the same pill for Sold, Unsold and Up next in light and dark. |
+| 5 | Copied pill tokens | **Fixed** | `lot-timer/pill-surface.ts` (`PILL_SHELL`, `PILL_SURFACE_LIVE`, `PILL_SURFACE_MUTED`) is imported by both `lot-timer-pill.tsx` and `saleroom-lot-catalog-overlay.tsx`. The local copies are deleted and no `brand-600` remains. |
+| 6 | Tests pin class strings | **Fixed** | Bounding-box Playwright specs plus real-resolver unit tests. Proven to fail without the fix (below). |
+| 7 | No screenshots | **Fixed** | 26 real PNGs in `docs/pr-screenshots/pr-1512/`, embedded in the PR body: before/after × 1440/375 × light/dark for the top of the page, scrolled, and the grid pills, plus staff at 1440/375. I opened several. They are real app captures from the seeded stack, not mock-ups, and they show the tabs under the banner on `main` and clear of it on the PR. |
+| 8 | Layout jump while scrolled | **Fixed in Chromium** | `publishBannerHeight` compensates explicitly with `scrollBy` and does not rely on `overflow-anchor`. The PR's no-jump e2e passes at 1440 and 375. WebKit was not exercised (not available here either). |
+
+### Sale tabs: never covered at any scroll position (1440 and 375)
+
+My own Playwright sweep on the PR build covered two seeded sales (hybrid and timed), the browser offline and online (the "Reconnecting to the saleroom…" live notice), and every ~40–65px from the top to the bottom of the page: about 900 samples.
+
+- **Banner position:** in every sample the banner top equals the header bottom (±1px).
+- **Tabs and toolbar, 1440:** 0 overlaps.
+- **Tabs and toolbar, 375:** the only flags are the last 2–3 samples at the very bottom of the page, where the sticky tabs leave with their containing block. This happens at the same scroll y (5080) with and without a banner: with no banner the tabs also pass under the header (top 40 vs 57). It is normal sticky release, not a defect.
+- **Pinned positions:**
+  - offline at 1440: banner 73–106, tabs from 106;
+  - offline at 375: banner 57–106, tabs from 106;
+  - live notice at 375: banner 57–90, tabs from 90.
+- **No other sticky bar** sits within 200px of the top except the tabs. The faded "On the block … Bid now" visible behind the banner in the PR's 1440 "after" shots is non-sticky hero content scrolling under the 95%-opaque chrome, as it does under the header.
+- **Anchor landing** (`scrollIntoView` on `#catalog` and `#overview`) moves down by exactly the banner height: 375 from 73 to 122 (+49), 1440 from 125 to 158 (+33). Relative to the tabs it is identical to the no-banner case, so the banner adds no overlap. The 29px under-tabs landing at 375 is the same with no banner, and it is already on `main`.
+
+### The tests fail without the fix (proved by reverting)
+
+I reverted only the 10 source files to merge-base `730028c9`, kept `pill-surface.ts` so the test imports resolve, and kept all tests and specs.
+
+- **Unit tests:** 3 fail:
+  - banner height not published (`expected [] to include <div role="status">`);
+  - grid Up next ≠ In saleroom/Sold;
+  - off-image Up next is missing `bg-brand-900/85`.
+  - `header-offset.test.ts` / `use-header-chrome.test.tsx` fail as well (63/66).
+  - With the PR source restored, 7/7 and 66/66 pass.
+- **E2E**, on a web production build of the reverted source with a fresh server and `--retries=0`. Four fail:
+  - `1440: sale tabs…` fails with `pinned sale tabs under the banner (top 73 vs 106)`;
+  - `375: sale tabs…` fails with `top 57 vs 106`;
+  - staff 1440 fails with `banner off the bar's bottom by 57`;
+  - staff 375 fails with `off by 5`.
+  - The two "does not move the content" tests pass on `main`, as the PR body says, because `main` has no shift to compensate.
+- **E2E on the PR build:** all 6 pass. The 4 non-staff runs passed first time.
+  - The 2 staff tests failed once on a cold server and then passed on retry. With `--retries=0` they then passed 3/3.
+  - The cold failure was `scrollHeight` 900 vs 1792: the spec reads the "online" `scrollHeight` before the admin dashboard has finished loading.
+- **CI:** CI's `test:e2e:pr` grep (`@smoke|@roles`) includes all six specs. In the CI log, 69 passed, 6 skipped, 0 failed and nothing flaky. The skipped positions are not the connectivity specs.
+
+### Other gates
+
+- **Route JS:** I ran `route-js-size-report.mjs` on local builds of the reverted source and of the PR. All 114 `apps/web` routes **shrink**, by −44 to −129 B gzip. The sale page is −129 B.
+- **Budgets, baselines, allowances:** the diff touches no `scripts/route-js-*`, `route-js-budgets.json`, `route-js-baseline.json`, `budgets.json` or any allowance file.
+- **CI:** all 38 check runs on `df724b3f` are success, plus 1 path-gated skip (`shop-v1-phase-smoke`). These include `ci-result`, `build`, `static-checks`, `ui-chromium`, `browser-gates`, `account-browser-gates`, `art-browser-gates` and all vitest shards. The PR is `mergeable_state: clean`.
+- **AI footer / trailers:** none in the PR body or in any of the 5 commit messages.
+- **a11y:** `role="status"` and `aria-live="polite"` are kept, and a unit test asserts them.
+
+### Non-blocking follow-ups
+
+1. **Staff pages:** the banner overlays the first ~33/49px of non-sticky staff content under the top bar (for example the saleroom breadcrumb). The staff shell does not add `--connectivity-banner-height` to its content padding or to `scroll-padding-top`. This is no worse than `main`, where the banner floated at 57/109px and covered content too. It is an optional polish.
+2. **Dark-mode grid pills:** in dark mode the grid pills keep `dark:bg-black/70` from `PILL_SURFACE_MUTED`, which wins over the adaptive `--overlay-bg`. All three labels are still identical, which is what the brief asks for. This is the same behaviour Sold/In saleroom had on `main`.
+3. **Admin spec:** wait for the dashboard to settle (for example `networkidle`, or a known heading) before taking the "online" `scrollHeight`, so the spec cannot flake on a cold server.
+4. **WebKit:** the no-jump behaviour has not been run on WebKit. The compensation is explicit, so the risk is low.
+
+**Verdict: SHIP.** All 8 findings are resolved, with evidence from the real seeded stack at 1440 and 375. CI is green and route JS goes down.
