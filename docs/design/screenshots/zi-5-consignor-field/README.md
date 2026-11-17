@@ -8,8 +8,9 @@ are made up. The page is read on 17 November 2026.
 - `record`: a client consignor with an agreement in force, changed from LAX with a reason.
 - `lax-owns`: LAX owns the work, so there is no agreement line.
 - `no-agreement`: a client with no current agreement, linked to their page to add one.
-- `empty` (no consignor set), `loading` (section skeleton while it streams in), `error` (Try
-  again) and `no-permission` (Read-only, who cannot read consignor agreements).
+- `empty` (no consignor set), `loading` (section skeleton while it streams in) and `error` (Try
+  again). People who cannot read consignor agreements get no Consignor section at all, so there
+  is no no-permission view.
 - `change-dialog-errors`: Change consignor submitted unchanged and without a reason: two
   problems, listed at the top and beside each field.
 - `set-dialog-one-error`: Set consignor with "A client" and no client chosen: one problem,
@@ -64,13 +65,6 @@ None of the shots scrolls sideways.
 ![error-1440-dark](error-1440-dark.png)
 ![error-375-light](error-375-light.png)
 ![error-375-dark](error-375-dark.png)
-
-### no-permission
-
-![no-permission-1440-light](no-permission-1440-light.png)
-![no-permission-1440-dark](no-permission-1440-dark.png)
-![no-permission-375-light](no-permission-375-light.png)
-![no-permission-375-dark](no-permission-375-dark.png)
 
 ### change-dialog-errors
 

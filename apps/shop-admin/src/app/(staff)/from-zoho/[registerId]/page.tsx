@@ -8,7 +8,7 @@ import {
   LocationPanelSection,
   LocationPanelSkeleton,
 } from "@/components/stock-location/location-panel-section";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { loadZohoFailedJobsHref } from "@/server/application/load-zoho-failed-jobs-href";
 import { getShopAdminContainer } from "@/server/container";
@@ -31,18 +31,23 @@ export default async function FromZohoRecordPage({
 }) {
   const { registerId } = await params;
   // The Zoho badge is read beside the record, not after it; a failed read leaves the badge out.
-  const [result, mirror] = await Promise.all([
+  const [result, mirror, session] = await Promise.all([
     fetchAdminJson<AdminRegisterDetail>(`artwork-register/${registerId}`),
     fetchAdminJson<AdminZohoMirrorStatus>(
       `zoho-mirror/status?entity=artwork&id=${encodeURIComponent(registerId)}`,
     ),
+    loadAdminSession(),
   ]);
-  if (result.status === "unauthorized") redirect("/login");
+  if (result.status === "unauthorized" || session.status === "unauthorized") redirect("/login");
   if (result.status === "not_found") notFound();
   if (result.status !== "ok") {
     return <AdminFailedPage title="Artwork from Zoho" status={result.status} />;
   }
   const mirrorStatus = mirror.status === "ok" ? mirror.data : null;
+  // Who consigned a work is for people who can read consignor agreements; others never see the
+  // section (PRM-1), as on a client's page.
+  const canReadConsignor =
+    session.status === "ok" && session.data.capabilities.includes("consignor_agreement.read");
   // Failed jobs is in Bid admin: linked only for people Bid shows the Zoho rows to (Q7, PRM-1),
   // and Bid is asked only on failure.
   const zohoMirror = presentZohoMirror(mirrorStatus, {
@@ -65,7 +70,7 @@ export default async function FromZohoRecordPage({
       }
       consignorPanel={
         // Who consigned a work is recorded for originals; a print is LAX's own edition.
-        result.data.kind === "original" ? (
+        result.data.kind === "original" && canReadConsignor ? (
           <Suspense fallback={<ConsignorSectionSkeleton />}>
             <ConsignorSectionLoader registerId={result.data.registerId} title={result.data.title} />
           </Suspense>

@@ -6,7 +6,7 @@ import type {
   AdminConsignorChange,
 } from "@auction/shop-contracts";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const setArtworkConsignor = vi.fn();
@@ -159,10 +159,12 @@ describe("the Consignor section", () => {
     expect(screen.queryByRole("button", { name: "Change consignor…" })).toBeNull();
   });
 
-  it("says who can see it when the person cannot read consignors", () => {
-    show({ kind: "forbidden" }, ["artwork_register.read"]);
-    expect(screen.getByText(/Administrator and Catalogue editor roles/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /consignor…/ })).toBeNull();
+  it("is the #consignor anchor that a Set consignor link opens the record at", () => {
+    const { container } = show(loaded(view()));
+    expect(container.querySelector("section#consignor")).toHaveAccessibleName("Consignor");
+    cleanup();
+    const failed = show({ kind: "failed" });
+    expect(failed.container.querySelector("section#consignor")).not.toBeNull();
   });
 
   it("says the consignor did not load, with Try again", () => {

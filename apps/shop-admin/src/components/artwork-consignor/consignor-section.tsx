@@ -5,8 +5,10 @@ import { ConsignorSection, type ConsignorSectionState } from "./consignor-sectio
 
 /**
  * The Consignor section's data, read on the server beside the record and streamed in on its own,
- * so a slow or failed read shows in the section without holding up or failing the record. shop-api
- * answers 403 to people who cannot read consignor agreements; the section says so.
+ * so a slow or failed read shows in the section without holding up or failing the record. The
+ * page renders it only for people who can read consignor agreements; a 403 still (a broker on a
+ * work consigned by a client not assigned to them) leaves the section out, as the client's page
+ * would be refused.
  */
 export async function ConsignorSectionLoader({
   registerId,
@@ -18,12 +20,9 @@ export async function ConsignorSectionLoader({
   const result = await fetchAdminJson<AdminArtworkConsignor>(
     `artwork-register/${encodeURIComponent(registerId)}/consignor`,
   );
+  if (result.status === "forbidden") return null;
   const state: ConsignorSectionState =
-    result.status === "ok"
-      ? { kind: "loaded", consignor: result.data }
-      : result.status === "forbidden"
-        ? { kind: "forbidden" }
-        : { kind: "failed" };
+    result.status === "ok" ? { kind: "loaded", consignor: result.data } : { kind: "failed" };
   return <ConsignorSection registerId={registerId} title={title} state={state} />;
 }
 

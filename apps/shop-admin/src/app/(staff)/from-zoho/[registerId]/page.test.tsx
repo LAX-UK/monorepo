@@ -1,8 +1,9 @@
 import type { StaffToolsAnswer } from "@/server/ports/staff-tools-access";
 import { describe, expect, it, vi } from "vitest";
 
-const { fetchAdminJson, toolsFor, redirect, notFound } = vi.hoisted(() => ({
+const { fetchAdminJson, loadAdminSession, toolsFor, redirect, notFound } = vi.hoisted(() => ({
   fetchAdminJson: vi.fn(),
+  loadAdminSession: vi.fn(),
   toolsFor: vi.fn(),
   redirect: vi.fn((to: string) => {
     throw new Error(`redirect:${to}`);
@@ -11,7 +12,7 @@ const { fetchAdminJson, toolsFor, redirect, notFound } = vi.hoisted(() => ({
     throw new Error("not-found");
   }),
 }));
-vi.mock("@/server/application/load-admin-data", () => ({ fetchAdminJson }));
+vi.mock("@/server/application/load-admin-data", () => ({ fetchAdminJson, loadAdminSession }));
 vi.mock("@/server/application/load-bid-admin-url", () => ({ loadBidAdminUrl: async () => null }));
 // The real "may this person open Failed jobs" path, down to Bid's answer for the session.
 vi.mock("next/headers", () => ({
@@ -70,9 +71,12 @@ const SPECIALIST: StaffToolsAnswer = {
   failedJobSources: [],
 };
 
+const session = (capabilities: string[]) => ({ status: "ok", data: { capabilities } });
+
 function respond(status: { status: string; data?: unknown }) {
   vi.clearAllMocks();
   toolsFor.mockResolvedValue(ADMINISTRATOR);
+  loadAdminSession.mockResolvedValue(session(["artwork_register.read"]));
   fetchAdminJson.mockImplementation(async (path: string) =>
     path === STATUS_PATH ? status : { status: "ok", data: DETAIL },
   );
@@ -146,5 +150,40 @@ describe("From Zoho record page, the Zoho badge", () => {
   it("draws no badge for an artwork with nothing to mirror", async () => {
     respond({ status: "ok", data: mirror("not_applicable") });
     expect(await zohoMirrorProp()).toBeNull();
+  });
+});
+
+describe("From Zoho record page, the Consignor section", () => {
+  async function consignorPanel(kind: string, capabilities: string[]) {
+    respond({ status: "ok", data: mirror("mirrored") });
+    fetchAdminJson.mockImplementation(async (path: string) =>
+      path === STATUS_PATH
+        ? { status: "ok", data: mirror("mirrored") }
+        : { status: "ok", data: { ...DETAIL, kind } },
+    );
+    loadAdminSession.mockResolvedValue(session(capabilities));
+    const element = (await FromZohoRecordPage({
+      params: Promise.resolve({ registerId: REGISTER_ID }),
+    })) as { props: { consignorPanel: unknown } };
+    return element.props.consignorPanel;
+  }
+
+  it("shows the section on an original to people who can read consignor agreements", async () => {
+    expect(
+      await consignorPanel("original", ["artwork_register.read", "consignor_agreement.read"]),
+    ).not.toBeNull();
+  });
+
+  it("leaves the section out for people who cannot read consignor agreements", async () => {
+    expect(await consignorPanel("original", ["artwork_register.read"])).toBeNull();
+    expect(fetchAdminJson.mock.calls.map(([path]) => path)).not.toContain(
+      `${DETAIL_PATH}/consignor`,
+    );
+  });
+
+  it("leaves the section out on a print", async () => {
+    expect(
+      await consignorPanel("print", ["artwork_register.read", "consignor_agreement.read"]),
+    ).toBeNull();
   });
 });

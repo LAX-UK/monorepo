@@ -14,7 +14,6 @@ import {
 } from "@/server/domain/artwork-consignor.vm";
 import type { AdminArtworkConsignor } from "@auction/shop-contracts";
 import {
-  AccessDeniedState,
   EmptyState,
   ErrorState,
   KeyValueList,
@@ -32,18 +31,18 @@ import { SetConsignorDialog } from "./set-consignor-dialog.client";
 
 export type ConsignorSectionState =
   | { kind: "loaded"; consignor: AdminArtworkConsignor }
-  /** The person cannot read consignor agreements. */
-  | { kind: "forbidden" }
   | { kind: "failed" };
 
 const TITLE = "Consignor";
+/** The anchor a "Set consignor" link elsewhere in LAX Admin opens the record at. */
+const ANCHOR = "consignor";
 const DESCRIPTION = "Who consigned this work to LAX. Changes are kept in its history.";
 
 /**
  * Who consigned the artwork, on its From Zoho record (ZI-5): a client, with whether one of their
  * agreements is in force today, or LAX itself. People who keep consignor agreements set it and
  * change it, with a reason after the first time; everyone who can read agreements reads it and
- * its history.
+ * its history. People who cannot read it never get the section (the page leaves it out).
  */
 export function ConsignorSection({
   registerId,
@@ -60,21 +59,9 @@ export function ConsignorSection({
 }) {
   const [editing, setEditing] = useState(false);
 
-  if (state.kind === "forbidden") {
-    return (
-      <Section title={TITLE}>
-        <AccessDeniedState
-          headingLevel="h3"
-          resource="Who consigned a work"
-          requiredRoles={["Administrator", "Catalogue editor"]}
-        />
-      </Section>
-    );
-  }
-
   if (state.kind === "failed") {
     return (
-      <Section title={TITLE}>
+      <Section id={ANCHOR} title={TITLE}>
         <ErrorState
           size="compact"
           headingLevel="h3"
@@ -102,7 +89,7 @@ export function ConsignorSection({
 
   return (
     <>
-      <Section title={TITLE} description={DESCRIPTION} action={setButton}>
+      <Section id={ANCHOR} title={TITLE} description={DESCRIPTION} action={setButton}>
         {current ? (
           <div className="flex flex-col gap-4">
             <KeyValueList
