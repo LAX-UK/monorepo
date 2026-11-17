@@ -136,6 +136,15 @@ test.describe("admin a11y smoke @a11y", () => {
     await assertMainContentA11y(page, "/admin/lot-fulfilment");
   });
 
+  test("deliveries page has no serious axe violations in main", async ({ page }) => {
+    await assertMainContentA11y(page, "/admin/deliveries");
+  });
+
+  test("deliveries list at mobile has no serious axe violations in main", async ({ page }) => {
+    await page.setViewportSize(mobileViewport);
+    await assertMainContentA11y(page, "/admin/deliveries");
+  });
+
   test("finance hub has no serious axe violations in main", async ({ page }) => {
     await assertMainContentA11y(page, "/admin/finance");
   });
