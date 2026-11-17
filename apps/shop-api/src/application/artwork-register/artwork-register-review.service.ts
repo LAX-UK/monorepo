@@ -189,7 +189,7 @@ export class ArtworkRegisterReviewService {
   async listAll(query: AdminRegisterQueueQuery): Promise<AdminRegisterAllList> {
     const { page, limit, offset } = pageOf(query);
     const [all, artists, placeCounts, counts] = await Promise.all([
-      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }),
+      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort),
       this.deps.overview.listArtists(),
       this.deps.overview.countPlaces(query.artist),
       this.counts(),

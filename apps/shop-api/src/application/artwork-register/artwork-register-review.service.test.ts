@@ -251,8 +251,15 @@ describe("ArtworkRegisterReviewService", () => {
     expect(deps.overview.listAll).toHaveBeenCalledWith(
       { artistCode: "PH", place: "sold", location: "none" },
       { limit: 25, offset: 25 },
+      undefined,
     );
     expect(deps.overview.countPlaces).toHaveBeenCalledWith("PH");
+  });
+
+  it("passes the order by Zoho's price to the overview, so it holds across pages", async () => {
+    const { service: s, deps } = service();
+    await s.listAll({ sort: "zohoPrice", page: 3 });
+    expect(deps.overview.listAll).toHaveBeenCalledWith({}, { limit: 25, offset: 50 }, "zohoPrice");
   });
 
   it("reports both queue sizes for the Overview", async () => {

@@ -11,6 +11,7 @@ import { type SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
 import type {
   ArtworkRegisterOverview,
   RegisterOverviewFilter,
+  RegisterOverviewSort,
 } from "../application/ports/artwork-register-review.ports.js";
 
 /** A lax.art listing made from the record exists and buyers cannot see it (not published, or archived). */
@@ -59,6 +60,23 @@ function conditionOf(filter: RegisterOverviewFilter): SQL | undefined {
 }
 
 /**
+ * The order of the All list. By price, zero reads as unset (as `zohoPriceMinor` does in Admin), so
+ * every unpriced work sorts after the priced ones in both directions; the id breaks ties, so
+ * offset paging never repeats or skips a row.
+ */
+function orderOf(sort: RegisterOverviewSort | undefined): SQL[] {
+  const price = sql`NULLIF(${register.zohoPrice}, 0)`;
+  switch (sort) {
+    case "zohoPrice":
+      return [sql`${price} ASC NULLS LAST`, asc(register.id)];
+    case "-zohoPrice":
+      return [sql`${price} DESC NULLS LAST`, asc(register.id)];
+    default:
+      return [sql`${register.zohoModifiedAt} DESC NULLS LAST`, asc(register.id)];
+  }
+}
+
+/**
  * The register joined to the lax.art listing made from each record, so the All list can say
  * "Draft on lax.art" and filter by it in one query, and to the location of each record's latest
  * move, for its Location column and filter.
@@ -68,7 +86,7 @@ export function createDrizzleRegisterOverviewReader(
   toEntry: (row: typeof register.$inferSelect) => ArtworkRegisterEntry,
 ): ArtworkRegisterOverview {
   return {
-    async listAll(filter, page) {
+    async listAll(filter, page, sort) {
       const where = conditionOf(filter);
       const [rows, [counted]] = await Promise.all([
         db
@@ -83,7 +101,7 @@ export function createDrizzleRegisterOverviewReader(
           .leftJoin(shopArtwork, LISTING_JOIN)
           .leftJoin(artworkLocation, eq(artworkLocation.id, CURRENT_LOCATION_ID))
           .where(where)
-          .orderBy(sql`${register.zohoModifiedAt} DESC NULLS LAST`, asc(register.id))
+          .orderBy(...orderOf(sort))
           .limit(page.limit)
           .offset(page.offset),
         db

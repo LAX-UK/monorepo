@@ -9,7 +9,6 @@ import {
 import { useRegisterRowActions } from "@/components/from-zoho/use-register-row-actions.client";
 import { ZohoPriceValue } from "@/components/from-zoho/zoho-price-value";
 import { MoveArtworksDialog } from "@/components/stock-location/move-artworks-dialog.client";
-import { zohoPriceMinor } from "@/lib/zoho-price";
 import { LOCATION_NOT_RECORDED, locationFilterOptions } from "@/server/domain/stock-location.vm";
 import {
   type ZohoQueueQuery,
@@ -17,6 +16,8 @@ import {
   kindLabel,
   pageLinks,
   pageSummary,
+  zohoAllSortHref,
+  zohoAllSortState,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
 import type {
@@ -65,7 +66,8 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     cell: (row) => kindLabel(row.kind),
   },
   {
-    // Information only, hidden by default (TBL-12). Sorting groups the unpriced works together.
+    // Information only, hidden by default (TBL-12). The server sorts it across every page, with
+    // the unpriced works together at the end either way.
     id: "zohoPrice",
     header: "Price in Zoho",
     width: "140px",
@@ -74,7 +76,6 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     defaultSortDirection: "asc",
     mobile: "hidden",
     truncate: false,
-    sortValue: (row) => zohoPriceMinor(row.zohoPrice),
     cell: (row) => <ZohoPriceValue zohoPrice={row.zohoPrice} />,
   },
   {
@@ -228,6 +229,9 @@ export function AllFromZohoList({
           getRowId: (row) => row.registerId,
           defaultDensity: "comfortable",
           defaultHiddenColumns: [HIDDEN_BY_DEFAULT],
+          // Sorted by the server across every page; the order is in the URL so Back keeps it.
+          sort: zohoAllSortState(query),
+          onSortChange: (next) => navigate(zohoAllSortHref(query, next)),
           onRowOpen: (row) => navigate(`/from-zoho/${row.registerId}`),
           rowActions: {
             label: (row) => `Actions for ${row.title}`,
