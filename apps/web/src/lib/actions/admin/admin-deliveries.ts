@@ -2,11 +2,13 @@
 
 import { DELIVERIES_COPY } from "@/lib/admin/deliveries/deliveries-copy";
 import { DELIVERIES_PATH } from "@/lib/admin/deliveries/deliveries.vm";
+import { deliveryDeclineErrorMessage } from "@/lib/admin/deliveries/delivery-decline";
 import {
   QUOTE_NOTE_MAX_LENGTH,
   quoteDrift,
   quoteRequestBody,
 } from "@/lib/admin/deliveries/delivery-quote-form";
+import { idempotencyHeader } from "@/lib/admin/finance/idempotency-key";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import { stepUpRequiredFailure } from "@/lib/auth/step-up/step-up-failure";
@@ -15,6 +17,7 @@ import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { DELIVERIES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { adminDeliveryDeclineBodySchema, adminDeliveryLotIdParamSchema } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -44,6 +47,16 @@ export type SendDeliveryQuoteInput = z.input<typeof inputSchema>;
 
 /** The API's refusals that mean the quote moved on under the dialog. */
 const STALE_CODES = new Set(["quote_changed", "quote_step_not_allowed", "purchase_not_found"]);
+
+/**
+ * The code a refusal carries. The route's own errors are `{error: <code>, message}`; the shared
+ * idempotency middleware's are `{error: <sentence>, code}`, so `code` is read first.
+ */
+async function errorCodeOf(res: Response): Promise<string | undefined> {
+  const body = (await res.json().catch(() => null)) as { error?: unknown; code?: unknown } | null;
+  if (typeof body?.code === "string") return body.code;
+  return typeof body?.error === "string" ? body.error : undefined;
+}
 
 function refused(code: SendQuoteRefusal, message: string, status: number, meta?: object) {
   return actionFailure(message, undefined, status, code, meta as Record<string, unknown>);
@@ -107,7 +120,7 @@ export async function sendDeliveryQuoteAction(
       `/admin/lot-fulfilment/${encodeURIComponent(lotId)}/delivery-quote`,
       {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        headers: { "Content-Type": "application/json", ...idempotencyHeader(idempotencyKey) },
         body: JSON.stringify(body),
       },
     ).catch(() => null);
@@ -117,9 +130,8 @@ export async function sendDeliveryQuoteAction(
       return actionSuccess({ lotId });
     }
     if (await isStaffStepUpResponse(res)) return stepUpRequiredFailure();
-    const answer = (await res.json().catch(() => ({}))) as { error?: unknown; code?: unknown };
-    const code = typeof answer.code === "string" ? answer.code : answer.error;
-    if (typeof code === "string" && STALE_CODES.has(code)) {
+    const code = await errorCodeOf(res);
+    if (code !== undefined && STALE_CODES.has(code)) {
       revalidatePath(DELIVERIES_PATH);
       return refused("quote_changed", COPY.stale.title, 409);
     }
@@ -131,5 +143,52 @@ export async function sendDeliveryQuoteAction(
       return refused("invalid", COPY.errors.priceInvalid, 400);
     }
     return refused("unavailable", COPY.failed.unavailable, res.status >= 500 ? res.status : 502);
+  });
+}
+
+/**
+ * "Can't deliver" (D8): declines the request staff were looking at (`quoteId` in
+ * `expectedStatus`) with the reason the buyer is emailed. One decline per `idempotencyKey`, so a
+ * double submit sends one email. A request that moved on answers `quote_changed` or
+ * `quote_step_not_allowed`, which the dialog shows as the D6 stale Notice.
+ */
+export async function declineDeliveryAction(
+  lotId: string,
+  input: unknown,
+  idempotencyKey: string,
+): Promise<ActionResult> {
+  return instrumentServerAction("declineDeliveryAction", async () => {
+    const denied = await denyUnlessAdminCapability(DELIVERIES_ACCESS);
+    if (denied) return denied;
+    const param = adminDeliveryLotIdParamSchema.safeParse({ lotId });
+    const body = adminDeliveryDeclineBodySchema.safeParse(input);
+    if (!param.success || !body.success) {
+      return actionFailure(
+        body.error?.issues[0]?.message ?? deliveryDeclineErrorMessage(undefined, 400),
+        undefined,
+        400,
+      );
+    }
+    const res = await authedServerFetch(
+      `/admin/deliveries/${encodeURIComponent(param.data.lotId)}/decline`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...idempotencyHeader(idempotencyKey) },
+        body: JSON.stringify(body.data),
+      },
+    ).catch(() => null);
+    if (!res)
+      return actionFailure(deliveryDeclineErrorMessage(undefined, undefined), undefined, 503);
+    if (!res.ok) {
+      const code = await errorCodeOf(res);
+      return actionFailure(
+        deliveryDeclineErrorMessage(code, res.status),
+        undefined,
+        res.status,
+        code,
+      );
+    }
+    revalidatePath(DELIVERIES_PATH);
+    return actionSuccess();
   });
 }

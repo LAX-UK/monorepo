@@ -7,6 +7,7 @@ import {
   leadListApiQuery,
   leadListHref,
   leadsCsv,
+  leadsViews,
   parseLeadListQuery,
   presentLeadStatus,
 } from "./lead-list.vm";
@@ -100,5 +101,37 @@ describe("lead list view model", () => {
       "First seen through Shop guest checkout",
       "Reached checkout as a guest",
     ]);
+  });
+});
+
+describe("the Leads page's view tabs", () => {
+  it("adds Release alerts after the lead tabs, with no count, for roles that can read it", () => {
+    const views = leadsViews({ q: "ana" }, { all: 12, ordered: 3 }, ["lead.read"]);
+    expect(views.map((view) => view.label)).toEqual([
+      "All",
+      "Ordered",
+      "Abandoned checkout",
+      "Enquired",
+      "Joined LAX",
+      "Release alerts",
+    ]);
+    expect(views.at(-1)).toEqual({
+      id: "release-alerts",
+      label: "Release alerts",
+      href: "/leads/release-alerts",
+    });
+    expect(views[0]).toMatchObject({ href: "/leads?q=ana", count: 12 });
+    expect(views[2]).toMatchObject({ count: 0 });
+  });
+
+  it("leaves the tab out for a role the send log's read refuses", () => {
+    const views = leadsViews({}, { all: 1 }, ["enquiry.read", "order.read"]);
+    expect(views.map((view) => view.id)).not.toContain("release-alerts");
+  });
+
+  it("shows no number on the lead tabs when their counts were not read, never a false zero", () => {
+    for (const view of leadsViews({}, null, ["lead.read"])) {
+      expect(view).not.toHaveProperty("count");
+    }
   });
 });

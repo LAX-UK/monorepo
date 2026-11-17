@@ -1129,6 +1129,7 @@ export type {
   AccountPurchaseFactsRow,
   AccountRecordsScope,
   AccountRegistrationRow,
+  DeliveryQuoteDeclineWrite,
   DeliveryQuoteRow,
   DeliveryQuoteWrite,
   IAccountPurchaseFactsReader,

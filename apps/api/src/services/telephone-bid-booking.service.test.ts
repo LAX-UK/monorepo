@@ -366,6 +366,8 @@ describe("TelephoneBidBookingService", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("authorized_max_exceeded");
+      // The maximum travels with the refusal so the clerk is told it.
+      expect(result.error.details).toEqual({ limitKind: "telephone", limit: "1000.00" });
     }
   });
 

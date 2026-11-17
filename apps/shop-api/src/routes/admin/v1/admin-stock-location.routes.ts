@@ -1,8 +1,10 @@
 import { moveArtworksRequestSchema } from "@auction/artwork-register-contracts";
 import {
+  AdminArtworkLocationMoveBodySchema,
   AdminArtworkLocationMoveResultSchema,
   AdminArtworkLocationParamsSchema,
   AdminArtworkLocationSchema,
+  AdminStockLocationConflictSchema,
   type AdminStockLocationCreateBody,
   AdminStockLocationCreateBodySchema,
   type AdminStockLocationListQuery,
@@ -13,6 +15,7 @@ import {
   AdminStockLocationStatusBodySchema,
   type AdminStockLocationUpdateBody,
   AdminStockLocationUpdateBodySchema,
+  AdminStockLocationValidationSchema,
   AdminStockLocationWriteResultSchema,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
@@ -39,12 +42,15 @@ const MOVE_BODY_LIMIT = 16_384;
 const LIST_BODY_LIMIT = 4_096;
 
 const READ_ERRORS = { 403: ShopApiErrorBodySchema, 404: ShopApiErrorBodySchema } as const;
+/** A 400 from the service names each field at fault (`issues`). */
 const WRITE_ERRORS = {
-  400: ShopApiErrorBodySchema,
+  400: AdminStockLocationValidationSchema,
   403: ShopApiErrorBodySchema,
   404: ShopApiErrorBodySchema,
   409: ShopApiErrorBodySchema,
 } as const;
+/** List writes: a stale version's 409 also says the version, so the page can offer to reload. */
+const LIST_WRITE_ERRORS = { ...WRITE_ERRORS, 409: AdminStockLocationConflictSchema } as const;
 
 /**
  * Stock location in LAX Admin (docs/design/stock-location.md).
@@ -92,7 +98,7 @@ export async function registerAdminStockLocationRoutes(
       schema: {
         tags,
         body: AdminStockLocationCreateBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -112,7 +118,7 @@ export async function registerAdminStockLocationRoutes(
         tags,
         params: AdminStockLocationParamsSchema,
         body: AdminStockLocationUpdateBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -138,7 +144,7 @@ export async function registerAdminStockLocationRoutes(
         tags,
         params: AdminStockLocationParamsSchema,
         body: AdminStockLocationStatusBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -158,7 +164,7 @@ export async function registerAdminStockLocationRoutes(
         tags,
         params: AdminStockLocationParamsSchema,
         body: AdminStockLocationStatusBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -173,8 +179,9 @@ export async function registerAdminStockLocationRoutes(
 
   /**
    * "Move" on a record and "Move selected" alike. Kept outside `/artwork-locations` so moving
-   * needs no recent sign-in. The body is parsed with the shared `moveArtworksRequestSchema`, so
-   * the batch limit is one rule for the route and the store.
+   * needs no recent sign-in. The schema describes the body; it is then parsed with the shared
+   * `moveArtworksRequestSchema`, so the batch limit (distinct ids) is one rule for the route and
+   * the store.
    */
   app.post(
     "/artwork-location-moves",
@@ -182,6 +189,7 @@ export async function registerAdminStockLocationRoutes(
       bodyLimit: MOVE_BODY_LIMIT,
       schema: {
         tags,
+        body: AdminArtworkLocationMoveBodySchema,
         response: { 200: AdminArtworkLocationMoveResultSchema, ...WRITE_ERRORS },
       },
     },

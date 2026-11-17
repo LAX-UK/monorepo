@@ -46,6 +46,8 @@ export const deliveryViewSchema = z.object({
     requestedAt: z.string(),
     quotedAt: z.string().nullable(),
     decidedAt: z.string().nullable(),
+    /** Why the team declined it ("Can't deliver", D8), as the buyer was told; null otherwise. */
+    declineReason: z.string().nullable(),
   }),
   lot: z.object({
     title: z.string(),

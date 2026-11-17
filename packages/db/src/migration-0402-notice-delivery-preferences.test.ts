@@ -60,9 +60,13 @@ describe("migration 0402 notice delivery preferences", () => {
     expect(checkTypes(migration)).toEqual([...checkTypes(previousList), ...NEW_TYPES]);
   });
 
-  it("allows every type the schema declares", () => {
+  it("allows every type the schema declares up to its own", () => {
     const allowed = new Set(checkTypes(migration));
-    expect(NOTIFICATION_TYPES.filter((type) => !allowed.has(type))).toEqual([]);
+    // Later migrations add their own types; notification-type-check.test.ts keeps the final list whole.
+    const LATER = ["delivery_quote_declined"];
+    expect(
+      NOTIFICATION_TYPES.filter((type) => !allowed.has(type) && !LATER.includes(type)),
+    ).toEqual([]);
   });
 
   it("rolls back by deleting the two notices, dropping the columns and restoring the 0392 list", () => {

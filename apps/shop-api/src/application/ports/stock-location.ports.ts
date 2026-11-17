@@ -1,5 +1,4 @@
 import type {
-  CurrentLocation,
   LocationMove,
   LocationMoveRefusal,
   LocationStatus,
@@ -12,8 +11,7 @@ export type StockLocationReads = {
   listLocations(options?: { includeRetired?: boolean }): Promise<StockLocation[]>;
   /** Whether the artwork is on the register, so an unknown id reads as not found. */
   registerExists(registerId: string): Promise<boolean>;
-  currentLocation(registerId: string): Promise<CurrentLocation | null>;
-  /** Newest first. */
+  /** Newest first; the first is where the artwork is now. */
   listMoves(registerId: string, limit: number): Promise<LocationMove[]>;
 };
 

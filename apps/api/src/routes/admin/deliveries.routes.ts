@@ -1,18 +1,24 @@
-import { adminDeliveriesListQuerySchema, adminDeliveryLotIdParamSchema } from "@auction/validators";
+import {
+  adminDeliveriesListQuerySchema,
+  adminDeliveryDeclineBodySchema,
+  adminDeliveryLotIdParamSchema,
+} from "@auction/validators";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireDeliveriesRead } from "../../middleware/require-capability.js";
+import { requireDeliveries, requireDeliveriesRead } from "../../middleware/require-capability.js";
 import type { AdminDeliveriesRoutesContainer } from "../../services/interfaces/admin-routes/index.js";
-import type { AdminHono } from "./_shared.js";
+import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 /**
- * The staff Deliveries screen (docs/design/staff-gaps-delivery-zoho-alerts.md, D7): reads only.
- * Whoever can read Lot fulfilment may read it (D5: Fulfilment and Administrators). Pricing a
- * quote stays on `PUT /admin/lot-fulfilment/:lotId/delivery-quote`, which keeps its own guard.
- * Every answer carries the buyer's destination, so none is cached.
+ * The staff Deliveries screen (docs/design/staff-gaps-delivery-zoho-alerts.md, D7): its reads,
+ * and declining a request (D8). Whoever can read Lot fulfilment may read it (D5: Fulfilment and
+ * Administrators), and the same roles may decline. Pricing a quote stays on
+ * `PUT /admin/lot-fulfilment/:lotId/delivery-quote`, which keeps its own guard. Every answer
+ * carries the buyer's destination, so none is cached.
  */
 export function attachAdminDeliveriesRoutes(
   platform: AdminHono,
   container: AdminDeliveriesRoutesContainer,
+  guards: Pick<AdminStaffMutationGuards, "idempotent">,
 ): void {
   platform.use("/deliveries", requireDeliveriesRead);
   platform.use("/deliveries/*", requireDeliveriesRead);
@@ -40,6 +46,36 @@ export function attachAdminDeliveriesRoutes(
       if (!data) return c.json({ error: "delivery_not_found" }, 404);
       c.header("Cache-Control", "no-store");
       return c.json({ data });
+    },
+  );
+
+  /**
+   * POST /admin/deliveries/:lotId/decline — "Can't deliver" (D8): ends a requested or quoted
+   * quote as withdrawn and tells the buyer the reason. One decline per Idempotency-Key, so a double
+   * submit sends one email; a stale screen (another request, or one
+   * no longer in `expectedStatus`) gets `quote_changed`. Errors from this handler are
+   * `{error: <code>, message}`; the shared idempotency middleware answers `{error: <sentence>, code}`.
+   */
+  platform.post(
+    "/deliveries/:lotId/decline",
+    requireDeliveries,
+    guards.idempotent("deliveries.decline"),
+    zValidator("param", adminDeliveryLotIdParamSchema),
+    zValidator("json", adminDeliveryDeclineBodySchema),
+    async (c) => {
+      const body = c.req.valid("json");
+      const result = await container.admin.deliveryQuotes.decline({
+        staffUserId: c.get("userId") as string,
+        lotId: c.req.valid("param").lotId,
+        quoteId: body.quoteId,
+        expectedStatus: body.expectedStatus,
+        reason: body.reason,
+      });
+      c.header("Cache-Control", "no-store");
+      return result.match(
+        (data) => c.json({ data }),
+        (e) => c.json({ error: e.code, message: e.message }, e.status),
+      );
     },
   );
 }

@@ -1,6 +1,7 @@
 import {
   BOOKED_UNPAID,
   COLLECTED,
+  DECLINED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
   QUOTED,
@@ -25,6 +26,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/actions/admin/admin-deliveries", () => ({
   sendDeliveryQuoteAction: vi.fn(),
+  declineDeliveryAction: vi.fn(),
 }));
 
 const LOT_42 = "10700000-0000-4000-8000-000000000042";
@@ -277,6 +279,63 @@ describe("DeliveriesList", () => {
 });
 
 describe("DeliveriesList queue panel", () => {
+  it("offers Can't deliver in the panel footer for Waiting for a price and Quote sent, to write roles only", () => {
+    const cases = [
+      { row: WAITING_DELIVERIES[0], canWork: true, offered: true },
+      { row: WAITING_DELIVERIES[0], canWork: false, offered: false },
+      {
+        row: { ...BOOKED_UNPAID, lotId: "10700000-0000-4000-8000-000000000099" },
+        canWork: true,
+        offered: false,
+      },
+      { row: COLLECTED, canWork: true, offered: false },
+    ];
+    for (const { row, canWork, offered } of cases) {
+      if (!row) throw new Error("fixture");
+      const { unmount } = renderList({
+        canWork,
+        search: { record: row.lotId },
+        selected: row,
+      });
+      const panel = within(screen.getByRole("dialog"));
+      expect(
+        panel.queryByRole("button", { name: "Can't deliver" }) !== null,
+        `${row.status} canWork=${canWork}`,
+      ).toBe(offered);
+      unmount();
+    }
+  });
+
+  it("puts Can't deliver before Send or Change quote in the panel footer, and neither on a declined request", () => {
+    const cases = [
+      { row: WAITING_DELIVERIES[0], primary: "Send quote" },
+      // Lot ids of their own, so the panel shows them rather than the waiting row on the page.
+      {
+        row: { ...QUOTED, lotId: "10700000-0000-4000-8000-000000000098" },
+        primary: "Change quote",
+      },
+      { row: { ...DECLINED, lotId: "10700000-0000-4000-8000-000000000097" }, primary: null },
+    ];
+    for (const { row, primary } of cases) {
+      if (!row) throw new Error("fixture");
+      const { unmount } = renderList({
+        canWork: true,
+        search: { record: row.lotId },
+        selected: row,
+      });
+      const footer = screen.getByRole("dialog").querySelector("[data-staff-panel-footer]");
+      if (primary === null) {
+        expect(footer).toBeNull();
+      } else {
+        const names = within(footer as HTMLElement)
+          .getAllByRole("button")
+          .map((button) => button.textContent?.trim());
+        expect(names).toEqual(["Can't deliver", primary]);
+      }
+      unmount();
+    }
+  });
+
   it("opens a row into the URL, shows its place and steps with J and K", () => {
     renderList();
     fireEvent.click(screen.getAllByText("Lot 7 · Still life, blue jug")[0] as HTMLElement);

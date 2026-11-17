@@ -57,6 +57,8 @@ export type DeliveryQuoteRow = {
   quotedAt: Date | null;
   decidedByUserId: string | null;
   decidedAt: Date | null;
+  /** Why the team declined it ("Can't deliver"), as the buyer was told; `null` unless declined. */
+  declineReason: string | null;
 };
 
 /** One lot won for the account, with everything its row and export need. */
@@ -160,4 +162,22 @@ export interface IDeliveryQuoteRepository {
     from: DeliveryQuoteStatus,
     write: DeliveryQuoteWrite,
   ): Promise<DeliveryQuoteRow | null>;
+  /**
+   * Staff decline a quote still in `from` ("Can't deliver"): it ends as withdrawn with the reason
+   * the buyer is told, and the decision is audited in the same transaction. `null` when it is no
+   * longer in `from`, and then nothing is written.
+   */
+  decline(
+    id: string,
+    from: DeliveryQuoteStatus,
+    write: DeliveryQuoteDeclineWrite,
+  ): Promise<DeliveryQuoteRow | null>;
 }
+
+export type DeliveryQuoteDeclineWrite = {
+  /** Always `withdrawn`, from the domain's `decline` step. */
+  status: DeliveryQuoteStatus;
+  actorUserId: string;
+  /** Trimmed, 1 to 500 characters. */
+  reason: string;
+};

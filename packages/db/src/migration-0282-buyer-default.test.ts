@@ -48,6 +48,7 @@ describe("migration 0282 buyer default and payment reminders", () => {
         "collection_reminder",
         "sale_registration_decided",
         "bidding_limit_changed",
+        "delivery_quote_declined",
       ].includes(t),
   );
 

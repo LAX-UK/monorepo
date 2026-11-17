@@ -199,6 +199,7 @@ describe("the collect-by notice follows the reminder email's exclusions", () => 
         quotedAt: new Date("2026-11-11T10:00:00Z"),
         decidedByUserId: null,
         decidedAt: null,
+        declineReason: null,
       },
     });
     expect(purchaseView(quoted, actor, now).delivery.collectBy).toBeNull();

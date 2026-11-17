@@ -26,6 +26,7 @@ export function deliveryFixture(overrides: Partial<DeliveryView> = {}): Delivery
       requestedAt: "2026-11-14T10:12:00.000Z",
       quotedAt: null,
       decidedAt: null,
+      declineReason: null,
     },
     lot: {
       title: "Harbour at dusk",
@@ -188,3 +189,23 @@ export function deliveriesPageFixture(overrides: Partial<DeliveriesPage> = {}): 
     ...overrides,
   };
 }
+
+/** A request the team declined ("Can't deliver", D8): closed, with the reason the buyer was told. */
+export const DECLINED = deliveryFixture({
+  lotId: "10700000-0000-4000-8000-000000000063",
+  quoteId: "40070000-0000-4000-8000-000000000063",
+  status: "closed",
+  closedReason: "withdrawn",
+  statusSince: "2026-11-15T16:00:00.000Z",
+  quote: {
+    ...deliveryFixture().quote,
+    status: "withdrawn",
+    decidedAt: "2026-11-15T16:00:00.000Z",
+    declineReason: "We can't insure a framed work of this size to Lyon.",
+  },
+  lot: { ...deliveryFixture().lot, title: "Estuary at noon", lotNumber: 63 },
+  history: [
+    { kind: "requested", at: "2026-11-14T10:12:00.000Z", by: "buyer" },
+    { kind: "withdrawn", at: "2026-11-15T16:00:00.000Z", by: "staff" },
+  ],
+});

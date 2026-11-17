@@ -99,6 +99,38 @@ describe("paddle admin routes", () => {
     );
   });
 
+  it.each([
+    ["too short", "short"],
+    ["too long", "k".repeat(129)],
+  ])(
+    "POST /admin/saleroom/paddle-bids refuses an Idempotency-Key header that is %s",
+    async (_, key) => {
+      const { app, placeClerkPaddleBid } = buildPaddleApp();
+      const res = await app.request("http://test/admin/saleroom/paddle-bids", {
+        method: "POST",
+        headers: { "content-type": "application/json", "idempotency-key": key },
+        body: JSON.stringify({ saleId: SALE_ID, lotId: LOT_ID, paddleNumber: 142, amount: 500 }),
+      });
+
+      expect(res.status).toBe(400);
+      expect(placeClerkPaddleBid).not.toHaveBeenCalled();
+    },
+  );
+
+  it("POST /admin/saleroom/paddle-bids passes a valid Idempotency-Key header through", async () => {
+    const { app, placeClerkPaddleBid } = buildPaddleApp();
+    const res = await app.request("http://test/admin/saleroom/paddle-bids", {
+      method: "POST",
+      headers: { "content-type": "application/json", "Idempotency-Key": "clerk-confirm-abc123" },
+      body: JSON.stringify({ saleId: SALE_ID, lotId: LOT_ID, paddleNumber: 142, amount: 500 }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(placeClerkPaddleBid).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: "clerk-confirm-abc123" }),
+    );
+  });
+
   it("POST /admin/sales/:saleId/registrations/:registrationId/paddle assigns paddle", async () => {
     const { app, assignPaddle } = buildPaddleApp();
     const res = await app.request(

@@ -119,6 +119,52 @@ describe("POST /admin/saleroom/telephone-bids", () => {
     );
   });
 
+  it.each([
+    ["too short", "short"],
+    ["too long", "k".repeat(129)],
+  ])("refuses an Idempotency-Key header that is %s, as it would the body key", async (_, key) => {
+    const placeTelephoneBid = vi.fn();
+    const { app } = buildTelephoneBidApp(placeTelephoneBid);
+    const res = await app.request("http://test/admin/saleroom/telephone-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": key },
+      body: JSON.stringify({
+        lotId: LOT_ID,
+        buyerUserId: BUYER_ID,
+        buyerLegalEntityId: BUYER_ENTITY,
+        amount: 500,
+        telephoneBookingId: BOOKING_ID,
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(placeTelephoneBid).not.toHaveBeenCalled();
+  });
+
+  it("accepts an Idempotency-Key header of 128 characters", async () => {
+    const placeTelephoneBid = vi.fn().mockResolvedValue({
+      type: "ok",
+      body: { data: { id: "bid-1", amount: "500.00" } },
+    });
+    const { app } = buildTelephoneBidApp(placeTelephoneBid);
+    const key = "k".repeat(128);
+    const res = await app.request("http://test/admin/saleroom/telephone-bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Idempotency-Key": key },
+      body: JSON.stringify({
+        lotId: LOT_ID,
+        buyerUserId: BUYER_ID,
+        buyerLegalEntityId: BUYER_ENTITY,
+        amount: 500,
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(placeTelephoneBid).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: key }),
+    );
+  });
+
   it("derives clerk idempotency key when telephone booking id is absent", async () => {
     const placeTelephoneBid = vi.fn().mockResolvedValue({
       type: "ok",

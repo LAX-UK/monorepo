@@ -46,6 +46,7 @@ function isSitePath(path: string | null | undefined): path is string {
 /** Notices about the organisation itself open the page where the person acts on them. */
 const PAGE_BY_TYPE: Readonly<Record<string, string>> = {
   delivery_quote_ready: "/purchases",
+  delivery_quote_declined: "/purchases",
   access_requested: "/team",
   organisation_member_left: "/team",
   payout_problem: "/organisation/payouts",

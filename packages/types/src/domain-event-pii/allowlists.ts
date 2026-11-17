@@ -393,6 +393,15 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** proxy ceiling cleared — reason is operational (e.g. entity_archived, member_removed). */
   "bid.proxy_cancelled": new Set(["reason"]),
+  /** a staff-placed bid refused at a limit: the channel, which limit and money only. */
+  "bid.staff_bid_refused_at_limit": new Set([
+    "channel",
+    "limit_kind",
+    "limit",
+    "available",
+    "paddle_number",
+    "request_key",
+  ]),
   /** Automatic or self-service status progression (Stripe, KYC, org submit, etc.). */
   "legal_entity.lifecycle_progressed": new Set([
     "from_status",
@@ -698,6 +707,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "cancelledBookings",
     "affectedHandling",
   ]),
+  /** Ids and the status it left; never the reason, which is written to the buyer. */
+  "delivery_quote.declined": new Set(["quoteId", "lotId", "legalEntityId", "fromStatus"]),
   "collection.booking.hand_over_undone": new Set(["bookingId", "reference", "legalEntityId"]),
   "collection.booking.not_collected": new Set([
     "bookingId",

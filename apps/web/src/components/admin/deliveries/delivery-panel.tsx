@@ -31,7 +31,7 @@ import {
 } from "@auction/staff-ui";
 import { PencilLine, Send } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { DeliveryQuoteDialog, type QuoteDialogOutcome } from "./delivery-quote-dialog";
 
 const COPY = DELIVERIES_COPY.panel;
@@ -57,6 +57,16 @@ export type DeliveryPanelProps = {
   onQuoteOpenChange?: (open: boolean) => void;
   /** The server action that sends the quote; injectable for tests. */
   sendQuote?: typeof sendDeliveryQuoteAction;
+  /**
+   * The footer's secondary actions for this delivery (D5), e.g. "Can't deliver", shown before the
+   * Send or Change quote primary; the caller decides who sees which. Nothing for read-only staff.
+   */
+  footerActions?: ReactNode;
+  /**
+   * A state the person just moved this delivery to themselves (`lotId` and its
+   * `deliveryStateKey`), so their own change is not announced as the buyer's.
+   */
+  ownChange?: { lotId: string; key: string } | null;
 };
 
 /**
@@ -74,8 +84,9 @@ export type DeliveryPanelProps = {
  * request that moves on while its panel is open (the list refreshed and its status or quote
  * changed) says the buyer changed it.
  *
- * Fulfilment and Administrators price it from the footer (D5, PRD-2): Send quote while the buyer
- * waits, Change quote once one is sent. Read-only staff get no footer (PRM-3).
+ * Fulfilment and Administrators work it from the footer (D5, PRD-2): Send quote while the buyer
+ * waits, Change quote once one is sent, with the caller's "Can't deliver" (D8) beside it for the
+ * same two states. Read-only staff get no footer (PRM-3).
  */
 export function DeliveryPanel(props: DeliveryPanelProps) {
   const {
@@ -87,8 +98,10 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
     loadFailed = false,
     onRetry,
     sendQuote = sendDeliveryQuoteAction,
+    footerActions,
+    ownChange = null,
   } = props;
-  const { changed, expect } = useChangedWhileOpen(row);
+  const { changed, expect } = useChangedWhileOpen(row, ownChange);
   const [ownQuoteOpen, setOwnQuoteOpen] = useState(false);
   const quoteOpen = props.quoteOpen ?? ownQuoteOpen;
   const setQuoteOpen = props.onQuoteOpenChange ?? setOwnQuoteOpen;
@@ -184,9 +197,15 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
     <DetailPanel
       {...panelProps}
       beside
-      {...(quoteAction
+      {...(quoteAction || footerActions
         ? {
-            footer: <DeliveryPanelFooter action={quoteAction} onQuote={() => setQuoteOpen(true)} />,
+            footer: (
+              <DeliveryPanelFooter
+                action={quoteAction}
+                onQuote={() => setQuoteOpen(true)}
+                secondary={footerActions}
+              />
+            ),
           }
         : {})}
       title={deliveryLotTitle(row.lot)}
@@ -252,6 +271,11 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
         ) : (
           <p className="text-staff-sm text-staff-muted">{COPY.quote.none}</p>
         )}
+        {row.quote.declineReason ? (
+          <KeyValueList
+            items={[{ label: COPY.quote.declineReason, value: row.quote.declineReason }]}
+          />
+        ) : null}
       </PanelSection>
       {booked ? (
         <PanelSection title={COPY.delivery.title}>
@@ -307,7 +331,10 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
  * another lot starts again from what that one shows. `expect` takes a state the panel itself
  * caused (a quote it sent) as the new starting point, so its own change is not the buyer's.
  */
-function useChangedWhileOpen(row: DeliveryView | null): {
+function useChangedWhileOpen(
+  row: DeliveryView | null,
+  ownChange: { lotId: string; key: string } | null,
+): {
   changed: boolean;
   expect: (lotId: string, key: string) => void;
 } {
@@ -316,7 +343,9 @@ function useChangedWhileOpen(row: DeliveryView | null): {
   // rendering) and reset when another lot opens, React's "adjust state when a prop changes".
   const [seen, setSeen] = useState(current);
   const expect = (lotId: string, key: string) => setSeen({ lotId, key });
-  if (current?.lotId !== seen?.lotId) {
+  const mine =
+    current !== null && current.lotId === ownChange?.lotId && current.key === ownChange.key;
+  if (current?.lotId !== seen?.lotId || (mine && seen?.key !== current.key)) {
     setSeen(current);
     return { changed: false, expect };
   }
@@ -324,27 +353,31 @@ function useChangedWhileOpen(row: DeliveryView | null): {
 }
 
 /**
- * The panel's footer (PRD-2: the state's primary action last). Part 3 of D9 (#1528, "Can't
- * deliver", D8) adds its secondary action here, before the primary, for the same two states.
+ * The panel's footer (PRD-2: the state's primary action last): the caller's secondary actions
+ * ("Can't deliver", D8) first, then Send quote or Change quote.
  */
 function DeliveryPanelFooter({
   action,
   onQuote,
+  secondary,
 }: {
-  action: "send" | "change";
+  action: "send" | "change" | null;
   onQuote: () => void;
+  secondary?: ReactNode;
 }) {
   return (
     <>
-      {/* Seam for D8 "Can't deliver" (part 3): its button goes here, before the primary. */}
-      <StaffButton
-        variant="primary"
-        className="max-sm:flex-1"
-        icon={action === "send" ? <Send aria-hidden /> : <PencilLine aria-hidden />}
-        onClick={onQuote}
-      >
-        {action === "send" ? DELIVERIES_COPY.quote.send : DELIVERIES_COPY.quote.change}
-      </StaffButton>
+      {secondary}
+      {action ? (
+        <StaffButton
+          variant="primary"
+          className="max-sm:flex-1"
+          icon={action === "send" ? <Send aria-hidden /> : <PencilLine aria-hidden />}
+          onClick={onQuote}
+        >
+          {action === "send" ? DELIVERIES_COPY.quote.send : DELIVERIES_COPY.quote.change}
+        </StaffButton>
+      ) : null}
     </>
   );
 }

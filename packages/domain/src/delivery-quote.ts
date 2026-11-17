@@ -6,13 +6,16 @@
  *       │  ▲                │ ▲ requote
  *       │  └────request─────┼─┘
  *       └──withdraw──▶ withdrawn ◀──withdraw──┘
+ *       └──decline───▶ withdrawn ◀──decline───┘
  *
- * An accepted quote is final: the delivery is booked and the price joins what the buyer owes.
+ * The buyer withdraws; the team declines ("Can't deliver", with a reason the buyer is told). Both
+ * end the quote as withdrawn, and the buyer may ask again. An accepted quote is final: the
+ * delivery is booked and the price joins what the buyer owes.
  */
 export const DELIVERY_QUOTE_STATUSES = ["requested", "quoted", "accepted", "withdrawn"] as const;
 export type DeliveryQuoteStatus = (typeof DELIVERY_QUOTE_STATUSES)[number];
 
-export type DeliveryQuoteAction = "request" | "quote" | "accept" | "withdraw";
+export type DeliveryQuoteAction = "request" | "quote" | "accept" | "withdraw" | "decline";
 
 /** Who takes each step: the buyer's payers, or the saleroom team. */
 export type DeliveryQuoteActor = "buyer" | "staff";
@@ -29,7 +32,11 @@ const STEPS: Record<DeliveryQuoteAction, Step> = {
   quote: { actor: "staff", from: ["requested", "quoted"], to: "quoted" },
   accept: { actor: "buyer", from: ["quoted"], to: "accepted" },
   withdraw: { actor: "buyer", from: ["requested", "quoted"], to: "withdrawn" },
+  decline: { actor: "staff", from: ["requested", "quoted"], to: "withdrawn" },
 };
+
+/** The longest reason staff may give the buyer when they decline (the Shop uses the same). */
+export const DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH = 500;
 
 export type DeliveryQuoteRefusal =
   /** The step is not open from the quote's current state. */
@@ -64,14 +71,9 @@ export function deliveryQuoteActionsFor(
 }
 
 /**
- * The Shop's gallery team can also turn a request down: it cannot deliver there. This is a step
- * beside the saleroom's four, not one of them, so Bid's own transitions and the steps it offers
- * are untouched. It is open to staff while a quote is requested or quoted, and always ends the
- * quote as withdrawn; an accepted quote is final.
+ * The team turns a request down: it cannot deliver there. The `decline` step of the one table,
+ * named for the Shop's gallery team, whose callers have no actor to pass.
  */
 export function deliveryQuoteDecline(current: DeliveryQuoteStatus | null): DeliveryQuoteDecision {
-  if (current !== "requested" && current !== "quoted") {
-    return { allowed: false, reason: "quote_step_not_allowed" };
-  }
-  return { allowed: true, next: "withdrawn" };
+  return deliveryQuoteTransition(current, "decline", "staff");
 }
