@@ -8,7 +8,9 @@ vi.mock("@auction/auth/token-verifier", () => ({
 }));
 
 import { createShopApiApp } from "../../../app.js";
+import { OriginalMoveService } from "../../../application/admin/original-move.service.js";
 import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
+import { moveAgreementsOver } from "../../../test-support/move-agreement-fixtures.js";
 
 const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 const REGISTER_ID = "44444444-4444-4444-8444-444444444444";
@@ -262,4 +264,96 @@ describe("Offer at auction from a From Zoho record: routes", () => {
     expect(response.statusCode).toBe(400);
     await app.close();
   });
+});
+
+/**
+ * The real move service behind the routes, with no consignor set on the record and the clock at
+ * `now`: the checkbox transition ends on 31 January 2027, a London day.
+ */
+async function buildAppWithClock(now: Date) {
+  vi.mocked(verifyBearerToken).mockResolvedValue({
+    subject: "catalogue_editor-subject",
+    payload: {
+      scope: "shop.admin",
+      acr: OIDC_ACR_SILVER,
+      auth_time: Math.floor(Date.now() / 1000),
+    },
+  } as never);
+  const deps = createMinimalShopApiTestDeps({
+    env: { ...createMinimalShopApiTestDeps().env, SHOP_ADMIN_ENABLED: true },
+    staffReader: {
+      findActiveByIdentitySubject: async (subject: string) => ({
+        roles: ["catalogue_editor"],
+        identitySubjectId: subject,
+      }),
+      brokerCanAccessClientParty: async () => false,
+    },
+  });
+  const createDraftLot = vi.fn(async () => ({ lotId: LOT_ID, saleId: SALE_ID, created: true }));
+  const register = {
+    id: REGISTER_ID,
+    zohoProductId: "z-1",
+    kind: "original",
+    stockCode: "LAX-ORI-AR-TM-26-0004",
+    title: "Tidal margin IV",
+    artist: { zohoArtistId: "7", name: "Ada Rowe", code: "AR" },
+    medium: "Oil on linen",
+    dimensions: "40 x 30 cm",
+    year: 2024,
+    imageRefs: ["z1.jpg"],
+    catalogueStatus: "Available",
+    offer: { state: "held", ref: null },
+  };
+  const service = new OriginalMoveService({
+    originals: { findById: async () => null, findByZohoProductId: async () => null },
+    register: {
+      findById: async () => register as never,
+      findByZohoProductId: async () => register as never,
+    },
+    history: { recordMoveConfirmed: vi.fn(async () => ({ status: "recorded" })) as never },
+    auction: {
+      listSales: async () => [
+        { id: SALE_ID, title: "Spring sale", startsAt: "2027-03-01T10:00:00.000Z" },
+      ],
+      createDraftLot: createDraftLot as never,
+      findDraftLot: async () => null,
+      findLotCatalogue: async () => null,
+      updateLotCatalogue: async () => {
+        throw new Error("not used");
+      },
+    } as never,
+    agreements: moveAgreementsOver({ consignor: null, now: () => now }),
+    withdrawFromLaxArt: async () => undefined,
+    resolveImageUrl: (value) => value ?? null,
+    now: () => now,
+  });
+  deps.admin.inventoryMoves = service as never;
+  const built = createShopApiApp({ deps, logger: false });
+  await built.ready();
+  return { app: built, createDraftLot };
+}
+
+describe("Offer at auction with no consignor set, on the London clock", () => {
+  it.each([
+    // 31 Jan 2027 in London: the last day the checkbox is the fallback.
+    ["2027-01-31T23:30:00Z", "checkbox_fallback", 200],
+    // 1 Feb 2027 in London: refused until a consignor is set.
+    ["2027-02-01T00:30:00Z", "blocked", 409],
+    ["2027-02-01T12:00:00Z", "blocked", 409],
+  ] as const)(
+    "at %s the check says %s and the move answers %i",
+    async (instant, outcome, status) => {
+      const { app, createDraftLot } = await buildAppWithClock(new Date(instant));
+      const check = await app.inject({ method: "GET", url, headers });
+      expect(check.json().consignorAgreement).toMatchObject({ state: "no_consignor", outcome });
+
+      const response = await app.inject({ method: "POST", url: offerUrl, headers, payload: body });
+      expect(response.statusCode).toBe(status);
+      if (status !== 200) {
+        expect(response.json().message).toBe("Set who consigned this work first.");
+      }
+      expect(createDraftLot).toHaveBeenCalledTimes(status === 200 ? 1 : 0);
+      await app.close();
+    },
+  );
 });

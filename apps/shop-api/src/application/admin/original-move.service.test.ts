@@ -77,6 +77,8 @@ type Setup = {
   withdraw?: () => Promise<void>;
   consignor?: Consignor | null;
   agreements?: ConsignorAgreement[];
+  /** The clock, for the agreement's London day and the end of the checkbox transition. */
+  now?: Date;
 };
 
 function setup(over: Setup = {}) {
@@ -116,11 +118,11 @@ function setup(over: Setup = {}) {
     agreements: moveAgreementsOver({
       consignor: over.consignor === undefined ? { kind: "lax" } : over.consignor,
       agreements: over.agreements ?? [],
-      now: () => NOW,
+      now: () => over.now ?? NOW,
     }),
     withdrawFromLaxArt,
     resolveImageUrl: (value) => (value ? `https://media.example/${value}` : null),
-    now: () => NOW,
+    now: () => over.now ?? NOW,
   });
   return { service, withdrawFromLaxArt, createDraftLot, recordMoveConfirmed };
 }
@@ -643,6 +645,72 @@ describe("OriginalMoveService and the consignor agreement", () => {
       consignorAgreement: { place: "lax_bid", state: "no_consignor" },
     });
   });
+
+  it("refuses a work with no consignor once the transition is over, even with the checkbox", async () => {
+    const { service, createDraftLot, recordMoveConfirmed } = setup({
+      consignor: null,
+      now: new Date("2027-02-01T12:00:00Z"),
+    });
+    expect((await service.assessRegister(REGISTER_ID)).consignorAgreement).toMatchObject({
+      state: "no_consignor",
+      outcome: "blocked",
+    });
+    await expect(
+      service.offerRegisterAtAuction({ ...registerCommand, consignorAgreed: true }),
+    ).rejects.toThrow("Set who consigned this work first.");
+    expect(createDraftLot).not.toHaveBeenCalled();
+    expect(recordMoveConfirmed).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    // 31 Jan 2027 in London (GMT): the last day of the transition.
+    ["2027-01-31T23:30:00Z", "checkbox_fallback"],
+    // 1 Feb 2027 in London: the transition is over.
+    ["2027-02-01T00:30:00Z", "blocked"],
+  ] as const)(
+    "reads the transition's last day on the London clock: at %s it is %s",
+    async (instant, outcome) => {
+      const { service, createDraftLot } = setup({ consignor: null, now: new Date(instant) });
+      expect((await service.assessRegister(REGISTER_ID)).consignorAgreement?.outcome).toBe(outcome);
+      const offer = service.offerRegisterAtAuction({ ...registerCommand, consignorAgreed: true });
+      if (outcome === "blocked") {
+        await expect(offer).rejects.toThrow("Set who consigned this work first.");
+        expect(createDraftLot).not.toHaveBeenCalled();
+      } else {
+        await offer;
+        expect(createDraftLot).toHaveBeenCalledTimes(1);
+      }
+    },
+  );
+
+  it.each([
+    // 23:30 BST on 24 Oct 2026: still the agreement's last day in London.
+    ["2026-10-24T22:30:00Z", { endsOn: "2026-10-24" }, "in_force"],
+    // 00:30 BST on 25 Oct 2026: the day after it ends in London, though UTC still says 24 Oct.
+    ["2026-10-24T23:30:00Z", { endsOn: "2026-10-24" }, "expired"],
+    // 23:30 BST on 31 May 2026: the day before it starts.
+    ["2026-05-31T22:30:00Z", { startsOn: "2026-06-01" }, "not_started"],
+    // 00:30 BST on 1 Jun 2026: its first day in London, though UTC still says 31 May.
+    ["2026-05-31T23:30:00Z", { startsOn: "2026-06-01" }, "in_force"],
+  ] as const)(
+    "reads the agreement's dates on the London clock in summer time: at %s it is %s",
+    async (instant, dates, state) => {
+      const { service, createDraftLot } = setup({
+        consignor: client,
+        agreements: [consignorAgreement(dates)],
+        now: new Date(instant),
+      });
+      expect((await service.assessRegister(REGISTER_ID)).consignorAgreement?.state).toBe(state);
+      const offer = service.offerRegisterAtAuction(registerCommand);
+      if (state === "in_force") {
+        await offer;
+        expect(createDraftLot).toHaveBeenCalledTimes(1);
+      } else {
+        await expect(offer).rejects.toThrow("No agreement covers LAX Bid");
+        expect(createDraftLot).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   it("has no agreement line for an artwork outside the register", async () => {
     const assessment = await setup({ entry: null }).service.assess(ARTWORK_ID);
