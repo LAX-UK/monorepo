@@ -1,34 +1,50 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
-# Review of #1537: LA-4 "Price in Zoho"
+# Final recheck of #1537: LA-4 "Price in Zoho"
 
-Reviewed at `39d88a90` against `docs/design/decision-pack-2026-11-17.md` §2, option A (approved 2026-11-17).
+Rechecked at `6252dbfd` (base `bd5ad5f5`) against `docs/design/decision-pack-2026-11-17.md` §2, option A. The earlier review's blocking finding (the sort ran only on the current page) is fixed. No defects remain that block.
 
 ## What was run
 
-- `apps/shop-admin`: `vitest run src/components/from-zoho src/lib/zoho-price.test.ts`. 12 files, 144 tests passed.
-- `apps/shop-api`: `vitest run src/application/artwork-register`. 13 files passed (1 skipped), 172 tests passed.
-- `turbo run typecheck` for shop-admin, shop-api and shop-contracts. Passed.
+- `apps/shop-admin`: `vitest run src/components/from-zoho src/lib/zoho-price.test.ts src/server/domain/zoho-register.vm.test.ts`. 13 files, 193 tests passed.
+- `apps/shop-api`: `vitest run src/application/artwork-register src/routes/admin/v1/admin-artwork-register src/infrastructure/drizzle-register-overview`. 14 files and 231 tests passed. The 2 integration files were skipped in this run because it had no DB.
+- **Postgres 16** (migrated with `db:migrate` and `db:roles`, as CI does): `drizzle-register-overview.integration.test.ts`, 3 passed.
+  - **The test fails against the old ordering.** I temporarily restored `zoho_modified_at DESC, id` in `listAll`, and "orders by Zoho's price across pages, with every unpriced work last either way" failed. I then reverted the change; the PR branch is untouched.
+- `turbo run typecheck` for shop-admin, shop-api and shop-contracts. 30 tasks passed.
 - `biome check` on the changed TS/TSX files. Clean.
+- An independent pass against §2 and the staff design standard found no blocking defects. Its notes are below.
 
-## Blocking
+## Blocking finding from the last review: fixed
 
-1. **The sort runs only on the current page, so it can't group unpriced works.**
-   `apps/shop-admin/src/components/from-zoho/all-from-zoho-list.client.tsx:77` gives the column a `sortValue`. In staff-ui that means `DataTable` sorts the rows it already has, on the client (`packages/staff-ui/src/data/sort-rows.ts`, `types.ts:31`). The All list is paginated on the server at `ADMIN_REGISTER_PAGE_SIZE = 25` (`packages/shop-contracts/src/admin-artwork-register.ts:29`), always ordered by `zoho_modified_at DESC` (`apps/shop-api/src/infrastructure/drizzle-register-overview.ts:85`).
-   - **What goes wrong:** with 300 works and 60 unpriced, clicking "Price in Zoho" only reorders the 25 rows on screen. Page 2 starts again with its own priced and unpriced works. Staff still can't get the list the pack's problem statement asks for ("list the works Zoho has not priced").
-   - **Also:** the sort isn't in the URL, which the standard requires ("Filters, sort, view and page live in the URL", `staff-design-standard.md:177`). It's lost on reload and on Back from a record.
-   - **Fix:** add a `sort` param (for example `zohoPrice` / `-zohoPrice`) to `AdminRegisterQueueQuerySchema` and `zohoQueueHref`. Order in `listAll` by `NULLIF(zoho_price, 0) ASC|DESC NULLS LAST, id`, so zero reads as unset (as in `zohoPriceMinor`). Pass `sort` / `onSortChange` to the table instead of `sortValue`. Add an API or repository test that unpriced works come last across a page boundary.
+- **The sort runs on the server across every page.**
+  - `orderOf` (`apps/shop-api/src/infrastructure/drizzle-register-overview.ts:67-77`) orders by `NULLIF(zoho_price, 0) ASC|DESC NULLS LAST, id ASC`, so unpriced works (null or 0) come last in both directions.
+  - The `id` tie-break keeps offset paging stable.
+  - The default order (`zoho_modified_at DESC NULLS LAST, id`) is unchanged.
+  - `zoho_price` is `numeric(12,2)`, so `NULLIF(…, 0)` is well-typed.
+- **A test proves the order across pages.** `drizzle-register-overview.integration.test.ts:224` inserts seven works out of price order, including null and `0.00`, and walks them in pages of three, ascending and descending.
+- **Contract.** `sort` is an optional `zohoPrice | -zohoPrice` on `AdminRegisterQueueQuerySchema` (`packages/shop-contracts/src/admin-artwork-register.ts:35,72`). An unknown value is a 400, which the route test covers. The /new and /conflicts routes ignore it.
+- **The sort is in the URL**, as the staff design standard requires (filters, sort, view and page in the URL).
+  - `parseZohoQueueQuery` takes the price sorts only on `tab=all` (`apps/shop-admin/src/server/domain/zoho-register.vm.ts:116-119`), so the Link tab keeps `sort=artist`.
+  - `zohoQueueApiQuery` forwards the sort to the API (`:174`).
+  - `zohoAllSortHref` builds the link through `zohoQueueHref`, which drops `page`, so a new sort starts at page one.
+  - Reload and Back keep the sort.
+- **The table is wired with `sort` and `onSortChange`.** `apps/shop-admin/src/components/from-zoho/all-from-zoho-list.client.tsx:232-234` passes them, and `sortValue` is gone. When `onSortChange` is set, staff-ui `DataTable` uses the controlled sort and keeps the server's row order. `aria-sort` is drawn on the header, and the component test checks it.
 
-## Checked and fine
+## Non-blocking finding from the last review: fixed
 
-- **Information only.** `ZohoPriceValue` (`apps/shop-admin/src/components/from-zoho/zoho-price-value.tsx:11-15`) renders `StaffMoney` or "Not set in Zoho" in `text-staff-muted`, with no tone, badge or warning. Nothing is added to `CATALOGUE_GAPS` or `REGISTER_GAP_VALUES`, the Missing filter, or "Still missing". The record test checks there's no "Still missing" (`from-zoho-record.client.test.tsx:151-156`).
-- **Record row.** "Price in Zoho" sits in "What Zoho says" (`from-zoho-record.client.tsx:289`), and the detail already carried `zohoPrice`.
-- **Hidden by default (TBL-12).** `defaultHiddenColumns: ["zohoPrice"]` (`all-from-zoho-list.client.tsx:230`). Staff who saved column choices before this change also get it hidden, because `columns-menu.tsx:96-98` hides default-hidden ids missing from `known`. The test covers both the hidden default and the shown state.
-- **Formatting.** `zohoPriceLabel` now goes through `zohoPriceMinor` (`apps/shop-admin/src/lib/zoho-price.ts:5-15`), so the dialogs, the record and the column all format the same way. Zero, empty and non-numeric values read as unset, as the worker does. Unit tests cover these cases.
-- **Contract and read model.** `zohoPrice: string | null` is added to `AdminRegisterAllItemSchema` (`packages/shop-contracts/src/admin-artwork-register.ts:98`), the service maps it (`artwork-register-review.service.ts:202`), and the Fastify response schema is the same typed schema. The test validates the value against the schema (`artwork-register-review.service.test.ts:216-230`). The only consumers are shop-admin and shop-api, and both typecheck.
-- **Kit reuse.** Uses `StaffMoney`, `formatStaffMoney` and staff-ui `DataColumn` options. No local styling beyond the `text-staff-muted` token.
-- **Light and dark.** The 1440 screenshots read correctly in both themes, and the column is right-aligned as a number.
+- **The 375 record screenshots show the row.**
+  - All four 375 record PNGs now differ from each other.
+  - `record-unpriced-375-light.png` shows "Price in Zoho / Not set in Zoho" in muted text.
+  - `record-priced-375-light.png` shows "£4,800.00".
+- **The README says the column is desktop-only.** The list column is `mobile: "hidden"`, and `docs/design/screenshots/la-4-zoho-price/README.md` now says so.
+
+## Still fine
+
+The following are unchanged from the last review: information only (no tone, no "Still missing", no filter), hidden by default (TBL-12), the shared `zohoPriceMinor` formatting, and the kit components.
 
 ## Non-blocking
 
-- **375 screenshots don't show the row.** `record-priced-375-*.png` and `record-unpriced-375-*.png` are byte-identical, and the crop ends at "Size", above the new row. Please re-crop so the 375 evidence shows "Price in Zoho". Likewise `list-column-shown-375-*` is identical to `list-default-375-*`, because the column is `mobile: "hidden"` (`all-from-zoho-list.client.tsx:75`). That's acceptable for an optional column, but the README should say the price is a desktop-only column on the list.
+1. **No header control returns to the default order.** The default order (newest Zoho edit) belongs to "Zoho last edited", which isn't sortable. After staff sort by price, clicking the header only flips the direction. The way back is "Clear filters", which is shown only when a filter is active, or re-opening the tab. Making the edited column server-sortable would fix this, but that goes beyond option A, so it's a follow-up.
+2. **The sort stays applied when its column is hidden.** If staff hide the price column after sorting, or view the list on a phone where the column is always hidden, the list stays in price order with no sort indicator.
+3. **"Clear filters" also clears the sort.** `all-from-zoho-list.client.tsx:217` navigates to `{ tab: "all" }`. That's reasonable, but nothing says so.
+4. **No index for the price sort.** `NULLIF(zoho_price, 0)` has no index, so a price sort sorts the filtered register in memory. That's fine at register scale.
