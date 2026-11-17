@@ -124,7 +124,7 @@ function QuoteDialogSession({ row, action, open, onOpenChange, send, onOutcome }
     setStep({ kind: "confirm", pence: values.pence });
   }
 
-  async function confirm(pence: number) {
+  async function sendQuote(pence: number) {
     if (!expected || busy) return;
     setBusy(true);
     setFailure(null);
@@ -189,7 +189,7 @@ function QuoteDialogSession({ row, action, open, onOpenChange, send, onOutcome }
         variant="primary"
         loading={busy}
         icon={<Send aria-hidden />}
-        onClick={() => void confirm(step.pence)}
+        onClick={() => void sendQuote(step.pence)}
       >
         {COPY.submit[action]}
       </StaffButton>

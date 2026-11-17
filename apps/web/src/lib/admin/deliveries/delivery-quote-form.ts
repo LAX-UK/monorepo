@@ -1,6 +1,6 @@
 import type { DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { minorUnitsToMoneyString } from "@auction/domain";
-import type { ParsedPence } from "@auction/ui";
+import type { ParsedPence } from "@auction/ui/lib/money";
 import { DELIVERIES_COPY } from "./deliveries-copy";
 
 const COPY = DELIVERIES_COPY.quote;
