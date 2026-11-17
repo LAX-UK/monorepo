@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1527: the Zoho mirror badge on the artwork record and an optional Orders column
 
@@ -123,3 +123,102 @@ One thing blocks the merge. For any staff member who had already saved a column 
 - Both commits are by `mahmoudamrspace <mahmoudamr.space@gmail.com>` and have no trailers.
 - The PR body has no AI footer.
 - The seed stays hermetic-only (`assertSeedTarget` plus the `hermetic` check), is insert-once, and uses made-up names.
+
+## Final recheck
+
+Rechecked at head `05b67df7` (commits `7e09cd41`, `88937be2` and `05b67df7` on top of the reviewed `44dddd38` and a merge of `main`). All three findings are fixed and pinned by tests that fail without the fix. Both notes are handled. **Ship it.**
+
+### 1. Older saved column choices (blocking): fixed in staff-ui
+
+**How it works now**
+- `useColumnVisibility` (`packages/staff-ui/src/data/columns-menu.tsx`) saves `{ hidden, known }`.
+- `readStoredColumnVisibility` still accepts the old plain array:
+  - With `legacyColumnIds`, it reads the array as `known = legacyColumnIds`.
+  - Without them, it reads the array as covering every column, which is how it was always read.
+  - Anything else is ignored.
+- `resolveHiddenColumns` adds each default-hidden column missing from `known`. A default-visible column missing from `known` is shown.
+- `ListPage` passes `columnIds` and an optional `table.legacyColumnIds`.
+
+**Orders**
+- Orders passes `LEGACY_COLUMN_IDS = order, status, buyer, total, created`.
+- These match the column ids of `order-list.client.tsx` at base `ab2ca97c` exactly.
+
+**Storage keys**
+- The key is still `staff.columns.<listKey>`.
+- Returning to the defaults still removes the key.
+- An old array is rewritten in the new form on the next change, and a test covers this.
+
+**Other callers**
+- The only direct caller is `ListPage`. It serves 13 `apps/web` admin lists and 5 shop-admin lists.
+- None of the other lists passes `legacyColumnIds`, so their saved arrays read exactly as before. That includes someone who had shown Payments' Xero, which has a test.
+- Suites run locally, all green:
+  - staff-ui: 86 files, 717 tests.
+  - `apps/web` admin list components (sales, submissions, finance, disputes, lots, categories, event-rsvps, lot-fulfilment, payments, payouts, venues, people): 41 files, 329 tests.
+  - shop-admin orders, zoho, disputes, leads and payouts: 90 tests.
+
+**The Orders test**
+- `order-zoho-column.component.test.tsx` "stays hidden, with no read, for someone who saved a column choice before it existed" starts from `localStorage['staff.columns.orders'] = '["buyer"]'`.
+- It asserts there is no Zoho header, Buyer is still hidden, and `load` is never called.
+- It passes.
+
+**Mutations** (shop-admin resolves staff-ui from `dist`, so I rebuilt staff-ui for the cross-package ones)
+
+| Mutation | Result |
+|---|---|
+| A. Drop "default for columns not in `known`" | Killed: 4 staff-ui tests, and the Orders `'["buyer"]'` test |
+| B. Ignore `legacyColumnIds` (old array → `known: null`) | Killed: 3 staff-ui tests |
+| C. Orders stops passing `legacyColumnIds` | Killed: the Orders `'["buyer"]'` test |
+| D. Save the plain array again | Killed: 2 staff-ui tests |
+| E. Stop reading the new form | Killed: 4 staff-ui tests |
+| I. `ListPage` stops passing `columnIds` | Killed: Orders "can be shown from Display…" (the saved `known`) |
+| J. A save forgets earlier `known` and the current columns | Killed: 2 staff-ui tests |
+
+**CI**
+- The e2e "stays hidden for someone who saved a column choice before it existed" passed in light and dark.
+
+### 2. Phone "own line": pinned
+
+- The DataTable phone card now has `data-mobile-slot="detail"` and `"meta"` hooks. The staff-ui test asserts the detail one.
+- A new phone-width component test checks the badge is alone in a detail line, between the order number and the meta line.
+- The e2e at 375 checks the slot and the box order (badge below the order link, above the meta line).
+- Mutation F, `mobile: "detail"` → `"meta"`, is killed by the component test. CI does not run that mutation; the author says the e2e also catches it on a local stack.
+- The 375 screenshot shows the badge on its own line under the order number.
+
+### 3. Loading placeholder: tested
+
+- With a loader that never settles, the Zoho cell shows `.lax-skeleton` and no "—".
+- Mutation G (drop `|| cells.status === "loading"`) is killed.
+
+### Notes
+
+- **Seed date:** the seed now dates fixtures 29 days back. A seed test checks that every fixture order date falls inside `ukDayKeys(now, ORDER_SUMMARY_DAYS)`. Mutation H (back to 30 days) is killed. The retaken shots read Paid £625.00 · Orders placed 5.
+- **e2e independence:** the Orders column e2e is no longer serial. Each test sets `staff.columns.orders` itself (`openWithColumnShown`), or the old array.
+
+### CI, budgets, hygiene
+
+**CI**
+- In the `browser-gates` log for head `05b67df7` (job 133941615261, success), `seed:zoho-mirror-badge` runs.
+- Then the a11y step runs `axe`, `staff-roles`, `zoho-mirror-badge` and `zoho-mirror-orders-column`.
+- 28 Zoho checks show ✓: 20 badge and 8 column, light and dark.
+- The step ends "100 passed" with no skipped count. It was 98 before the two new checks.
+- All other check runs are green, and `ci-result` is success.
+
+**Budgets and dependencies**
+- No route-JS budget, baseline or allowance file changed.
+- The only workflow change is the renamed seed step in `e2e-pr.yml`.
+- `pnpm lint:deps`: circular deps ok (46 allowlisted), freeze ok (47/47), undeclared imports ok.
+
+**Commits and PR body**
+- All PR commits are by `mahmoudamrspace <mahmoudamr.space@gmail.com>` and have no trailers.
+- The PR body has no AI footer.
+
+**Screenshots**
+- The six retaken `orders-column-*` PNGs are valid 2x images (2880×2000/1800 and 750×1624).
+- The README gallery links them with `<img>` tags.
+- I viewed 1440 light and 375 dark: they show the badge column and the phone detail line.
+
+**Non-blocking: committed Redis dump**
+- `88937be2` committed a 41 KB `dump.rdb` and `05b67df7` deleted it, so the net diff is clean.
+- The file is still in this public branch's history. It holds local-stack session and `id-token-continuity` blobs, which look encrypted. I found no emails, URLs or plaintext secrets in it.
+- They come from the hermetic stack, so the risk is low.
+- Squash-merging keeps it out of `main`. Add `dump.rdb` to `.gitignore` in a follow-up.
