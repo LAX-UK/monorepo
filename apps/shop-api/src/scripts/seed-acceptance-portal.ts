@@ -1,15 +1,9 @@
 import { createShopApiContainer } from "../container.js";
 import { loadShopApiEnv } from "../env.js";
-import {
-  SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE,
-  seedAcceptancePortalFixtures,
-} from "../infrastructure/seed/acceptance-portal-seed.js";
+import { SHOP_ACCEPTANCE_OWNED_ARTWORK_TITLE } from "../infrastructure/seed/acceptance-portal-seed.js";
+import { seedAcceptancePortal } from "../infrastructure/seed/acceptance-seed-target.js";
 
 const env = loadShopApiEnv();
-if (env.NODE_ENV === "production" && !process.argv.includes("--force")) {
-  console.error("Refusing to seed acceptance portal in production without --force");
-  process.exit(1);
-}
 
 const identitySubjectId = process.env.SHOP_ACCEPTANCE_PORTAL_SUBJECT_ID?.trim();
 if (!identitySubjectId) {
@@ -20,8 +14,9 @@ if (!identitySubjectId) {
 const container = createShopApiContainer(env);
 
 try {
-  await seedAcceptancePortalFixtures(
+  await seedAcceptancePortal(
     container.db,
+    env.DATABASE_URL_SHOP,
     (command) => container.grantSaleAuthority(command),
     {
       identitySubjectId,

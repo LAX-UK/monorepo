@@ -2,14 +2,14 @@
 
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
+import {
+  clerkClose,
+  clerkGoLive,
+  clerkPause,
+  clerkResume,
+} from "@/features/saleroom/lib/clerk-commands.client";
 import type { ClerkLivePhase } from "@/features/saleroom/lib/clerk-live-phase";
 import { resolveClerkSessionControls } from "@/features/saleroom/lib/clerk-session-controls";
-import {
-  adminSaleroomCloseAction,
-  adminSaleroomGoLiveAction,
-  adminSaleroomPauseAction,
-  adminSaleroomResumeAction,
-} from "@/lib/actions/admin";
 import type { ActionResult } from "@/lib/forms/form-result";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { StaffButton, cn } from "@auction/staff-ui";
@@ -80,7 +80,7 @@ export function ClerkSessionToolbar({
               variant="primary"
               size="lg"
               disabled={!canGoLive}
-              onRun={() => runControl(() => adminSaleroomGoLiveAction({ saleId }))}
+              onRun={() => runControl(() => clerkGoLive({ saleId }))}
             >
               Go live
             </SaleroomPendingSubmit>
@@ -89,7 +89,7 @@ export function ClerkSessionToolbar({
                 pendingLabel="Resuming…"
                 variant="secondary"
                 size="lg"
-                onRun={() => runControl(() => adminSaleroomResumeAction({ saleId }))}
+                onRun={() => runControl(() => clerkResume({ saleId }))}
               >
                 Resume
               </SaleroomPendingSubmit>
@@ -102,7 +102,7 @@ export function ClerkSessionToolbar({
             variant="primary"
             size="lg"
             disabled={!canResume}
-            onRun={() => runControl(() => adminSaleroomResumeAction({ saleId }))}
+            onRun={() => runControl(() => clerkResume({ saleId }))}
           >
             Resume
           </SaleroomPendingSubmit>
@@ -113,7 +113,7 @@ export function ClerkSessionToolbar({
             variant="secondary"
             size="lg"
             disabled={!canPause}
-            onRun={() => runControl(() => adminSaleroomPauseAction({ saleId }))}
+            onRun={() => runControl(() => clerkPause({ saleId }))}
           >
             Pause
           </SaleroomPendingSubmit>
@@ -134,7 +134,7 @@ export function ClerkSessionToolbar({
                 tone: concluded ? "default" : "danger",
                 success: "Saleroom session closed",
                 run: async () => {
-                  const result = await runControl(() => adminSaleroomCloseAction({ saleId }));
+                  const result = await runControl(() => clerkClose({ saleId }));
                   return result.ok ? { ok: true } : { ok: false, error: result.error };
                 },
               })

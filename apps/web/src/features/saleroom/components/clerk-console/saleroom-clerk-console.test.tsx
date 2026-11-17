@@ -5,6 +5,10 @@ import type { Lot } from "@auction/types";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+const { resyncFromServer } = vi.hoisted(() => ({
+  resyncFromServer: vi.fn(async () => true),
+}));
+
 vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
   SaleroomLiveShell: ({
     children,
@@ -18,6 +22,7 @@ vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
       };
       activityLog: unknown[];
       liveFeed: unknown[];
+      resyncFromServer: () => Promise<boolean>;
     }) => React.ReactNode;
     initial: { status: string; currentLotId: string | null };
   }) =>
@@ -29,6 +34,7 @@ vi.mock("@/features/saleroom/components/saleroom-live-shell", () => ({
       },
       activityLog: [],
       liveFeed: [],
+      resyncFromServer,
     }),
 }));
 
@@ -65,9 +71,18 @@ vi.mock("@/features/saleroom/components/clerk-console/clerk-session-bar", () => 
 vi.mock("@/features/saleroom/components/clerk-console/display-control-panel", () => ({
   DisplayControlPanel: () => <div data-testid="display-control-panel" />,
 }));
-vi.mock("@/features/saleroom/components/clerk-console/lot-on-block-panel", () => ({
-  LotOnBlockPanel: () => <div data-testid="lot-on-block-panel" />,
-}));
+/** The recheck the console hands its command controls (hammer, pass, advance, bids …). */
+const provided = vi.hoisted(() => ({ recheck: null as null | (() => Promise<unknown>) }));
+vi.mock("@/features/saleroom/components/clerk-console/lot-on-block-panel", async () => {
+  const { useContext } = await import("react");
+  const { ClerkRoomRecheckContext } = await import("@/features/saleroom/lib/clerk-room-recheck");
+  return {
+    LotOnBlockPanel: () => {
+      provided.recheck = useContext(ClerkRoomRecheckContext);
+      return <div data-testid="lot-on-block-panel" />;
+    },
+  };
+});
 vi.mock("@/features/saleroom/components/clerk-console/lot-runway-panel", () => ({
   LotRunwayPanel: () => <div data-testid="lot-runway-panel" />,
 }));
@@ -89,15 +104,18 @@ vi.mock("@/hooks/use-clerk-lot-live-price", () => ({
     placeBid: vi.fn(),
   }),
 }));
-const { replace } = vi.hoisted(() => ({
-  replace: vi.fn(),
-}));
+const { replace, refresh, router } = vi.hoisted(() => {
+  const replace = vi.fn();
+  const refresh = vi.fn();
+  // One router for the life of the page, as Next.js gives.
+  return { replace, refresh, router: { replace, refresh } };
+});
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
+  useRouter: () => router,
 }));
 vi.mock("@/lib/ui/notify", () => ({
-  notify: { error: vi.fn(), success: vi.fn() },
+  notify: { error: vi.fn(), success: vi.fn(), loading: vi.fn() },
 }));
 
 const lots: Lot[] = [
@@ -211,5 +229,56 @@ describe("SaleroomClerkConsole phase layout", () => {
     await waitFor(() => {
       expect(notify.error).toHaveBeenCalledWith("Saleroom must be live to advance lots");
     });
+  });
+
+  it("re-reads the room from the API when it mounts, and refetches the page when it remounts", async () => {
+    resyncFromServer.mockClear();
+
+    const { unmount } = render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+
+    await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(1));
+    refresh.mockClear();
+
+    // The error boundary's Try again remounts the console: it reads the room and the page again.
+    unmount();
+    render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+    await waitFor(() => expect(resyncFromServer).toHaveBeenCalledTimes(2));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives its command controls a recheck that refetches the page and re-reads the session", async () => {
+    provided.recheck = null;
+    render(
+      <SaleroomClerkConsole
+        saleId="sale-1"
+        saleTitle="Evening sale"
+        initial={sessionSnapshot("live", "lot-1")}
+        lots={lots}
+      />,
+    );
+    await waitFor(() => expect(resyncFromServer).toHaveBeenCalled());
+    resyncFromServer.mockClear();
+    refresh.mockClear();
+
+    const recheck = provided.recheck as (() => Promise<unknown>) | null;
+    expect(recheck).toBeTypeOf("function");
+    await recheck?.();
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(resyncFromServer).toHaveBeenCalledTimes(1);
   });
 });

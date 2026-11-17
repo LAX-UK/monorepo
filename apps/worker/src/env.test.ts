@@ -156,3 +156,86 @@ describe("worker XERO_TOKEN_DEK_KEY", () => {
     expect(issues({})).toEqual([]);
   });
 });
+
+describe("worker on a test stack", () => {
+  // Built from parts so no complete key-shaped string sits in the source.
+  const liveKey = (prefix: string) => `${prefix}_live_${"x".repeat(16)}`;
+  const issuesFor = (path: string, env: Record<string, unknown>): string[] => {
+    const result = envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...env });
+    if (result.success) return [];
+    return result.error.issues
+      .filter((issue) => issue.path[0] === path)
+      .map((issue) => issue.message);
+  };
+
+  it("refuses a live Stripe secret key when APP_ENV=test", () => {
+    expect(
+      issuesFor("STRIPE_SECRET_KEY", { APP_ENV: "test", STRIPE_SECRET_KEY: liveKey("sk") }),
+    ).toEqual([
+      "STRIPE_SECRET_KEY must use a test key (sk_test_… or rk_test_…) unless APP_ENV=production",
+    ]);
+  });
+
+  it("refuses live Stripe keys when APP_ENV is unset (it defaults to development)", () => {
+    expect(issuesFor("STRIPE_SECRET_KEY", { STRIPE_SECRET_KEY: liveKey("sk") })).toHaveLength(1);
+    expect(
+      issuesFor("STRIPE_BOOKS_READ_KEYS", { STRIPE_BOOKS_READ_KEYS: liveKey("rk") }),
+    ).toHaveLength(1);
+  });
+
+  it("refuses an APP_ENV that is set but not production, test or development", () => {
+    expect(issuesFor("APP_ENV", { APP_ENV: "Test" })).toHaveLength(1);
+    expect(issuesFor("APP_ENV", { APP_ENV: "staging" })).toHaveLength(1);
+  });
+
+  it("refuses live Stripe read keys when APP_ENV=test", () => {
+    expect(
+      issuesFor("STRIPE_BOOKS_READ_KEYS", {
+        APP_ENV: "test",
+        STRIPE_BOOKS_READ_KEYS: `rk_test_abc,${liveKey("rk")}`,
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("accepts Stripe test keys on test and leaves production keys to production", () => {
+    expect(
+      issuesFor("STRIPE_SECRET_KEY", { APP_ENV: "test", STRIPE_SECRET_KEY: "sk_test_abc" }),
+    ).toEqual([]);
+    expect(
+      issuesFor("STRIPE_SECRET_KEY", { APP_ENV: "production", STRIPE_SECRET_KEY: liveKey("sk") }),
+    ).toEqual([]);
+  });
+
+  it("requires a Zoho CRM sandbox org when a Zoho mode is live on test", () => {
+    const live = { APP_ENV: "test", ZOHO_ARTWORK_SYNC_MODE: "live" };
+    expect(issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", live)).toHaveLength(1);
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", {
+        ...live,
+        ZOHO_CRM_EXPECTED_ORG_TYPE: "production",
+      }),
+    ).toHaveLength(1);
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { ...live, ZOHO_CRM_EXPECTED_ORG_TYPE: "sandbox" }),
+    ).toEqual([]);
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { APP_ENV: "test", ZOHO_CRM_SYNC_MODE: "dry_run" }),
+    ).toEqual([]);
+  });
+
+  it("requires a Zoho CRM sandbox org when APP_ENV is unset and a Zoho mode is live", () => {
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { ZOHO_ARTWORK_SYNC_MODE: "live" }),
+    ).toHaveLength(1);
+    expect(issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", { ZOHO_CRM_SYNC_MODE: "canary" })).toHaveLength(
+      1,
+    );
+    expect(
+      issuesFor("ZOHO_CRM_EXPECTED_ORG_TYPE", {
+        APP_ENV: "production",
+        ZOHO_CRM_SYNC_MODE: "live",
+        ZOHO_CRM_EXPECTED_ORG_TYPE: "production",
+      }),
+    ).toEqual([]);
+  });
+});

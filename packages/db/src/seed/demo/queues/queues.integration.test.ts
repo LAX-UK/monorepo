@@ -5,6 +5,7 @@ import { runMigrationsPerTransaction } from "../../../migrate-runner.js";
 import * as schema from "../../../schema/index.js";
 import { withTemporaryDatabase } from "../../../testing/temporary-database.js";
 import { runLegacyDemoSeed } from "../../dev/legacy-demo-seed.js";
+import { LOCAL_SEED_PASSWORD } from "../../shared/seed-target-guard.js";
 import { runDemoFull } from "../demo-full-seed.js";
 import { QUEUE_SEEDERS } from "./index.js";
 import { QUEUE_IDS } from "./queue-ids.js";
@@ -16,7 +17,7 @@ async function legacySeed(databaseUrl: string) {
   const previous = process.env.DATABASE_URL;
   process.env.DATABASE_URL = databaseUrl;
   try {
-    await runLegacyDemoSeed();
+    await runLegacyDemoSeed({ password: LOCAL_SEED_PASSWORD, hermetic: true });
   } finally {
     if (previous === undefined) Reflect.deleteProperty(process.env, "DATABASE_URL");
     else process.env.DATABASE_URL = previous;
@@ -156,7 +157,7 @@ describe.skipIf(!url)("demo seed: an item in the staff queues", { timeout: 600_0
          values ('local', current_database(), 'integration test')`,
       );
       const db = drizzle(pool, { schema });
-      const first = await runDemoFull(db, NOW);
+      const first = await runDemoFull(db, NOW, LOCAL_SEED_PASSWORD);
       expect(first.queues).toEqual(QUEUE_SEEDERS.map((s) => s.queue));
 
       for (const check of QUEUE_CHECKS) {
@@ -211,13 +212,13 @@ describe.skipIf(!url)("demo seed: an item in the staff queues", { timeout: 600_0
 
       // A second run with nothing changed writes nothing.
       const untouched = await snapshot(pool);
-      await runDemoFull(db, NOW + 60_000);
+      await runDemoFull(db, NOW + 60_000, LOCAL_SEED_PASSWORD);
       expect(await snapshot(pool)).toEqual(untouched);
 
       // Staff work every item; a later run (days on, as on test) leaves all of it as it is.
       for (const statement of STAFF_WORK) await pool.query(statement);
       const worked = await snapshot(pool);
-      await runDemoFull(db, NOW + 4 * 86_400_000);
+      await runDemoFull(db, NOW + 4 * 86_400_000, LOCAL_SEED_PASSWORD);
       expect(await snapshot(pool)).toEqual(worked);
     });
   });
@@ -227,7 +228,9 @@ describe.skipIf(!url)("demo seed: an item in the staff queues", { timeout: 600_0
       await runMigrationsPerTransaction(pool);
       const db = drizzle(pool, { schema });
       const before = await one(pool, "select count(*)::int as n from venue");
-      await expect(runDemoFull(db, NOW)).rejects.toThrow(/not marked as a demo seed target/);
+      await expect(runDemoFull(db, NOW, LOCAL_SEED_PASSWORD)).rejects.toThrow(
+        /not marked as a demo seed target/,
+      );
       expect(await one(pool, "select count(*)::int as n from venue")).toEqual(before);
 
       // A mark copied from another database (a restored dump) is refused too.
@@ -235,7 +238,7 @@ describe.skipIf(!url)("demo seed: an item in the staff queues", { timeout: 600_0
         `insert into demo_seed_target (environment, database_name, marked_by)
          values ('test', 'some_other_database', 'restored copy')`,
       );
-      await expect(runDemoFull(db, NOW)).rejects.toThrow(/restored copy/);
+      await expect(runDemoFull(db, NOW, LOCAL_SEED_PASSWORD)).rejects.toThrow(/restored copy/);
     });
   });
 });

@@ -1,11 +1,12 @@
 "use client";
 
-import {
-  adminSaleroomCheckInCandidatesResultAction,
-  adminSaleroomCheckInResultAction,
-} from "@/lib/actions/admin";
 import { CHECK_IN_LIMIT_ERROR, parseCheckInLimit } from "@/lib/admin/saleroom/check-in-limit";
-import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
+import {
+  type CheckInInput,
+  checkInBidder,
+  searchCheckInCandidates,
+} from "@/lib/admin/saleroom/check-in.client";
+import type { AdminCheckInCandidate } from "@/lib/data/http/admin-sale-registrations.types";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
 import { notify } from "@/lib/ui/notify";
 import { Notice, Section, StaffButton, staffButtonVariants } from "@auction/staff-ui";
@@ -84,7 +85,7 @@ export function SaleroomCheckInPanel({
       }
       setSearching(true);
       setSearchError(null);
-      const result = await adminSaleroomCheckInCandidatesResultAction({ saleId, q: trimmed });
+      const result = await searchCheckInCandidates({ saleId, q: trimmed });
       if (generation !== searchGenerationRef.current) return;
       setSearching(false);
       if (!result.ok) {
@@ -126,14 +127,7 @@ export function SaleroomCheckInPanel({
     }
     const limitPence = limit.pence;
     startTransition(async () => {
-      const body: {
-        saleId: string;
-        userId: string;
-        buyerLegalEntityId: string;
-        assignPaddle: boolean;
-        bidLimit?: number;
-        paddleNumber?: number;
-      } = {
+      const body: CheckInInput = {
         saleId,
         userId: selectedCandidate.userId,
         buyerLegalEntityId: entityId,
@@ -144,7 +138,7 @@ export function SaleroomCheckInPanel({
         body.paddleNumber = Number.parseInt(paddleTrimmed, 10);
       }
 
-      const result = await adminSaleroomCheckInResultAction(body);
+      const result = await checkInBidder(body);
       if (!result.ok || !result.data) {
         if (result.ok === false) {
           setSubmitError(saleroomCheckInErrorMessage(result.errorCode, result.error));

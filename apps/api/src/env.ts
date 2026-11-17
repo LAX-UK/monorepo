@@ -7,6 +7,7 @@ import {
   parseCidrList,
 } from "@auction/http-headers/client-ip";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS, parseAuthDekKey } from "@auction/identity-contracts";
+import { stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -696,21 +697,12 @@ const envSchema = z
           });
         }
       }
-    } else if (appEnv === "test") {
-      if (e.STRIPE_SECRET_KEY && !e.STRIPE_SECRET_KEY.startsWith("sk_test_")) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "STRIPE_SECRET_KEY in test must use a test key (sk_test_…)",
-          path: ["STRIPE_SECRET_KEY"],
-        });
-      }
-      if (e.STRIPE_PUBLISHABLE_KEY && !e.STRIPE_PUBLISHABLE_KEY.startsWith("pk_test_")) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "STRIPE_PUBLISHABLE_KEY in test must use a test key (pk_test_…)",
-          path: ["STRIPE_PUBLISHABLE_KEY"],
-        });
-      }
+    }
+    for (const issue of stripeTestModeKeyIssues(appEnv, [
+      { name: "STRIPE_SECRET_KEY", kind: "secret", value: e.STRIPE_SECRET_KEY },
+      { name: "STRIPE_PUBLISHABLE_KEY", kind: "publishable", value: e.STRIPE_PUBLISHABLE_KEY },
+    ])) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: [issue.name] });
     }
 
     if (appEnv === "production" && !isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {

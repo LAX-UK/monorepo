@@ -320,6 +320,99 @@ describe("SaleroomService.hammerCurrentLot", () => {
   });
 });
 
+describe("SaleroomService lot outcome names the lot", () => {
+  function liveOn(currentLotId: string | null) {
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn().mockResolvedValue({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId,
+      }),
+      clearDisplayOverlay: vi.fn().mockResolvedValue({ cleared: true }),
+    });
+    const lotLifecycle = {
+      finalizeActiveLotFromClerkHammer: vi
+        .fn()
+        .mockResolvedValue({ winnerId: null, voided: false }),
+      noSaleEndActiveLotFromClerk: vi.fn().mockResolvedValue({ lotId: "lot-1" }),
+    };
+    const lotJobs = { cancelLotJobs: vi.fn().mockResolvedValue(undefined) };
+    const { service } = createService({ sessionRepo, lotLifecycle, lotJobs });
+    return { service, sessionRepo, lotLifecycle };
+  }
+
+  it("refuses a hammer for a lot that is no longer on the block, and ends nothing", async () => {
+    const { service, sessionRepo, lotLifecycle } = liveOn("lot-2");
+
+    const result = await service.hammerCurrentLot({
+      saleId: "sale-1",
+      actorUserId: "staff-1",
+      lotId: "lot-1",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toEqual({
+        message: "This lot is no longer on the block",
+        status: 409,
+        code: "lot_not_on_block",
+      });
+    }
+    expect(lotLifecycle.finalizeActiveLotFromClerkHammer).not.toHaveBeenCalled();
+    expect(sessionRepo.clearCurrentLot).not.toHaveBeenCalled();
+  });
+
+  it("refuses a pass once the lot has left the block", async () => {
+    const { service, lotLifecycle } = liveOn(null);
+
+    const result = await service.noSaleCurrentLot({
+      saleId: "sale-1",
+      actorUserId: "staff-1",
+      lotId: "lot-1",
+    });
+
+    expect(result.isErr() && result.error.code).toBe("lot_not_on_block");
+    expect(lotLifecycle.noSaleEndActiveLotFromClerk).not.toHaveBeenCalled();
+  });
+
+  it("hammers the lot it names when that lot is on the block", async () => {
+    const { service, lotLifecycle } = liveOn("lot-1");
+
+    const result = await service.hammerCurrentLot({
+      saleId: "sale-1",
+      actorUserId: "staff-1",
+      lotId: "lot-1",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(lotLifecycle.finalizeActiveLotFromClerkHammer).toHaveBeenCalledWith("lot-1");
+  });
+});
+
+describe("SaleroomService.getLotSnapshot", () => {
+  it("returns the lot's price and reserve, only for a lot in the sale", async () => {
+    const lotRepo = {
+      findById: vi.fn().mockResolvedValue({
+        id: "lot-1",
+        saleId: "sale-1",
+        status: "active",
+        currentPrice: "950.00",
+        reservePrice: "900.00",
+      }),
+    };
+    const { service } = createService({ lotRepo });
+
+    await expect(service.getLotSnapshot("sale-1", "lot-1")).resolves.toEqual({
+      lotId: "lot-1",
+      status: "active",
+      currentPrice: "950.00",
+      reservePrice: "900.00",
+    });
+    await expect(service.getLotSnapshot("sale-2", "lot-1")).resolves.toBeNull();
+  });
+});
+
 describe("SaleroomService.publishClerkPaddleBidSummary", () => {
   it("publishes bid summary on display channel", async () => {
     const { service, displayPublisher } = createService();

@@ -52,6 +52,10 @@ export class AdminSaleroomApplicationService implements IAdminSaleroomApplicatio
     return this.sessionRead.getSessionWithRecentEvents(...args);
   }
 
+  getLotSnapshot(...args: Parameters<ISaleroomSessionReadService["getLotSnapshot"]>) {
+    return this.sessionRead.getLotSnapshot(...args);
+  }
+
   publishClerkPaddleBidSummary(
     ...args: Parameters<ISaleroomDisplayControlService["publishClerkPaddleBidSummary"]>
   ) {

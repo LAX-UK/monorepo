@@ -111,3 +111,15 @@ describe("fulfilment mirror live mode", () => {
     ).toThrow("zoho_crm_expected_org_type_required_for_live");
   });
 });
+
+describe("live Zoho reads on a test stack", () => {
+  it("runs the org check for the live artwork sync on test only", () => {
+    const base = {
+      ZOHO_CRM_SYNC_MODE: "off",
+      ZOHO_ARTWORK_SYNC_MODE: "live",
+      ZOHO_CRM_EXPECTED_ORG_TYPE: "sandbox",
+    } as const;
+    expect(shouldRunZohoCrmOrgCheck(env({ ...base, APP_ENV: "test" }))).toBe(true);
+    expect(shouldRunZohoCrmOrgCheck(env({ ...base, APP_ENV: "production" }))).toBe(false);
+  });
+});
