@@ -2,7 +2,7 @@
 
 import type { Lot } from "@auction/types";
 import type { SaleroomRealtimePayload } from "@auction/types";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Options = {
   initialLots: Lot[];
@@ -13,6 +13,13 @@ export type ClerkLotRosterSyncState = {
   lots: Lot[];
   /** Lot ids hammered via socket before RSC refresh supplies winnerId. */
   hammeredLotIds: ReadonlySet<string>;
+  /**
+   * Puts a lot's price and reserve as the server holds them now over the rendered props, until
+   * the server renders the page again.
+   */
+  applyLotSnapshot: (
+    snapshot: Pick<Lot, "currentPrice" | "reservePrice"> & { lotId: string },
+  ) => void;
 };
 
 /**
@@ -69,22 +76,23 @@ export function useClerkLotRosterSync({
     }
   }, [liveFeed]);
 
-  return { lots, hammeredLotIds };
+  const applyLotSnapshot = useCallback<ClerkLotRosterSyncState["applyLotSnapshot"]>(
+    ({ lotId, currentPrice, reservePrice }) => {
+      setLots((prev) => patchLot(prev, lotId, { currentPrice, reservePrice }));
+    },
+    [],
+  );
+
+  return { lots, hammeredLotIds, applyLotSnapshot };
 }
 
 function patchLot(
   lots: Lot[],
   lotId: string,
-  patch: Partial<Pick<Lot, "status" | "winnerId">>,
+  patch: Partial<Pick<Lot, "status" | "winnerId" | "currentPrice" | "reservePrice">>,
 ): Lot[] {
   const index = lots.findIndex((l) => l.id === lotId);
-  if (index < 0) return lots;
   const current = lots[index];
   if (!current) return lots;
-  const updated: Lot = {
-    ...current,
-    ...(patch.status !== undefined ? { status: patch.status } : {}),
-    ...(patch.winnerId !== undefined ? { winnerId: patch.winnerId } : {}),
-  };
-  return [...lots.slice(0, index), updated, ...lots.slice(index + 1)];
+  return [...lots.slice(0, index), { ...current, ...patch }, ...lots.slice(index + 1)];
 }

@@ -9,7 +9,10 @@ const SALE_ID = "00000000-0000-4000-8000-000000000002";
 const USER_ID = "usr_8sK2xQ1aB9c";
 const ENTITY_ID = "00000000-0000-4000-8000-0000000000e1";
 
-function buildCheckInApp(checkInBidder?: ReturnType<typeof vi.fn>) {
+function buildCheckInApp(
+  checkInBidder?: ReturnType<typeof vi.fn>,
+  staffRoles: string[] = ["administrator"],
+) {
   const checkInFn =
     checkInBidder ??
     vi.fn().mockResolvedValue(
@@ -49,7 +52,7 @@ function buildCheckInApp(checkInBidder?: ReturnType<typeof vi.fn>) {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "clerk-1",
       role: "staff",
-      staffRoles: ["administrator"],
+      staffRoles,
       scopes: ["bid.read", "bid.write"],
     }),
   };
@@ -127,5 +130,23 @@ describe("saleroom check-in admin routes", () => {
     expect(searchCandidates).toHaveBeenCalledWith({ saleId: SALE_ID, q: "jane" });
     const json = (await res.json()) as { data?: { items?: unknown[] } };
     expect(json.data?.items?.length).toBe(1);
+  });
+
+  it("needs sales access as well as saleroom access, as the web check-in always did", async () => {
+    const { app, checkInBidder, searchCandidates } = buildCheckInApp(undefined, ["saleroom_clerk"]);
+
+    const search = await app.request(
+      `http://test/admin/sales/${SALE_ID}/registrations/check-in-candidates?q=jane`,
+    );
+    const checkIn = await app.request(`http://test/admin/sales/${SALE_ID}/registrations/check-in`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: USER_ID, buyerLegalEntityId: ENTITY_ID }),
+    });
+
+    expect(search.status).toBe(403);
+    expect(checkIn.status).toBe(403);
+    expect(searchCandidates).not.toHaveBeenCalled();
+    expect(checkInBidder).not.toHaveBeenCalled();
   });
 });

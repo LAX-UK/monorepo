@@ -77,6 +77,7 @@ jobs:
         if: inputs.task == 'check-accounts'
         env:
           APP_ENV: test
+          SEED_ACCOUNT_PASSWORD: ${{ secrets.SEED_ACCOUNT_PASSWORD }}
         run: pnpm --filter @auction/db db:seed:check-accounts
       - name: Alerts first-run seed
         if: inputs.task == 'alerts-seed'
@@ -115,6 +116,7 @@ jobs:
         if: inputs.task == 'demo-full'
         env:
           APP_ENV: test
+          SEED_ACCOUNT_PASSWORD: ${{ secrets.SEED_ACCOUNT_PASSWORD }}
         run: pnpm --filter @auction/db db:seed:demo-full
       - name: Demo seed, Shop and lax.art database
         if: inputs.task == 'demo-full'

@@ -2,13 +2,15 @@
 
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import { LotOutcomeControls } from "@/features/saleroom/components/clerk-console/lot-outcome-controls";
+import { clerkAdvance } from "@/features/saleroom/lib/clerk-commands.client";
 import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
-import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import type { Lot } from "@auction/types";
 
 type Props = {
   saleId: string;
+  /** The lot on the block, which hammer and pass name. */
+  currentLotId: string | null;
   canHammer: boolean;
   sessionLive: boolean;
   nextLot: Lot | null;
@@ -28,6 +30,7 @@ type DockProps = Props & {
  */
 export function ClerkLiveActionBar({
   saleId,
+  currentLotId,
   canHammer,
   sessionLive,
   nextLot,
@@ -48,7 +51,7 @@ export function ClerkLiveActionBar({
           variant={hammerShown ? "secondary" : "primary"}
           size="lg"
           disabled={!sessionLive}
-          onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
+          onRun={() => clerkAdvance({ saleId, lotId: nextLot.id })}
         >
           Advance next ({formatLotRunListLabel(nextLot)})
         </SaleroomPendingSubmit>
@@ -56,6 +59,7 @@ export function ClerkLiveActionBar({
       {hammerShown ? (
         <LotOutcomeControls
           saleId={saleId}
+          lotId={currentLotId}
           canHammer={canHammer}
           compact
           hammerVariant={hammerPrimary ? "primary" : "secondary"}

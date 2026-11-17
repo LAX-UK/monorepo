@@ -6,7 +6,7 @@
  * Idempotent: it fills empty covers, refreshes stand-in portraits and sets fixed states, and never deletes. Test and
  * local databases only.
  */
-import type { Database } from "@auction/db";
+import { type Database, type SeedTargetEnv, assertSeedEnvironment } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { planDemoPortraits } from "./demo-portrait-plan.js";
 
@@ -33,21 +33,9 @@ const ORIGINAL_STATES: readonly {
   { slug: "still-water", state: "sold" },
 ];
 
-export function assertDemoSeedTarget(env: {
-  databaseUrl: string | undefined;
-  nodeEnv?: string | undefined;
-  appEnv?: string | undefined;
-}): string {
-  if (!env.databaseUrl) throw new Error("[demo-full] DATABASE_URL_SHOP is required");
-  const production = (value: string | undefined) =>
-    ["production", "prod"].includes((value ?? "").toLowerCase());
-  if (production(env.nodeEnv) || production(env.appEnv)) {
-    throw new Error("[demo-full] refusing to run in production");
-  }
-  if (/prod/i.test(new URL(env.databaseUrl).hostname)) {
-    throw new Error("[demo-full] refusing a production database host");
-  }
-  return env.databaseUrl;
+/** The production checks every seed shares (`assertSeedEnvironment` in @auction/db). */
+export function assertDemoSeedTarget(env: SeedTargetEnv): string {
+  return assertSeedEnvironment("shop demo-full", env);
 }
 
 function pick<T>(list: readonly T[], index: number): T {

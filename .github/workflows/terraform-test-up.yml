@@ -450,8 +450,13 @@ jobs:
       - run: pnpm tsx scripts/jwks-restore.ts test
       - name: Build db package graph for seed
         run: pnpm --filter @auction/db... build
+      # The seed refuses a database without the demo seed mark (0398) and gives seeded sign-ins the
+      # password from this secret; it never uses the local password here.
       - name: Seed only an empty staging database
         timeout-minutes: 10
+        env:
+          APP_ENV: test
+          SEED_ACCOUNT_PASSWORD: ${{ secrets.SEED_ACCOUNT_PASSWORD }}
         run: pnpm tsx scripts/ci/run-staging-seed-if-empty.mjs
       - name: Verify staging readiness and web release contract
         env:

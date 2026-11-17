@@ -1,6 +1,7 @@
 /**
  * Runs the full demo seed against DATABASE_URL. Additive and idempotent, so it is safe on a shared
- * test database; it refuses production.
+ * test database. It refuses production and any database without the demo seed mark, and outside a
+ * local database it needs SEED_ACCOUNT_PASSWORD for the people it creates (seed-target-guard.ts).
  *
  *   DATABASE_URL=... pnpm --filter @auction/db db:seed:demo-full [--dry-run]
  */
@@ -9,30 +10,33 @@ import pg from "pg";
 import * as schema from "../../schema/index.js";
 import { buildPgConnectionConfig } from "../../ssl.js";
 import { runDemoFull } from "../demo/demo-full-seed.js";
+import {
+  type SeedTargetEnv,
+  assertSeedEnvironment,
+  seedTargetEnvFromProcess,
+  withSeedTarget,
+} from "../shared/seed-target-guard.js";
 
-export function assertDemoFullTarget(env: {
-  databaseUrl: string | undefined;
-  nodeEnv?: string | undefined;
-  appEnv?: string | undefined;
-}): string {
-  if (!env.databaseUrl) throw new Error("[demo-full] DATABASE_URL is required");
-  const production = (value: string | undefined) =>
-    ["production", "prod"].includes((value ?? "").toLowerCase());
-  if (production(env.nodeEnv) || production(env.appEnv)) {
-    throw new Error("[demo-full] refusing to run in production");
-  }
-  if (/prod/i.test(new URL(env.databaseUrl).hostname)) {
-    throw new Error("[demo-full] refusing a production database host");
-  }
-  return env.databaseUrl;
+type Tx = Parameters<typeof runDemoFull>[0];
+
+/** Checks the target and the password, then runs the seed. Nothing is written on a refusal. */
+export function seedDemoFull(
+  tx: Tx,
+  env: SeedTargetEnv,
+  now: number,
+  seed: typeof runDemoFull = runDemoFull,
+): ReturnType<typeof runDemoFull> {
+  return withSeedTarget(tx, "demo-full", env, (password) => seed(tx, now, password));
+}
+
+/** The production checks every seed shares (seed-target-guard.ts). */
+export function assertDemoFullTarget(env: SeedTargetEnv): string {
+  return assertSeedEnvironment("demo-full", env);
 }
 
 async function main() {
-  const url = assertDemoFullTarget({
-    databaseUrl: process.env.DATABASE_URL,
-    nodeEnv: process.env.NODE_ENV,
-    appEnv: process.env.APP_ENV,
-  });
+  const env = seedTargetEnvFromProcess();
+  const url = assertDemoFullTarget(env);
   const pool = new pg.Pool({
     ...buildPgConnectionConfig(url),
     options: "-c lock_timeout=5s -c statement_timeout=60s",
@@ -44,7 +48,7 @@ async function main() {
     let result: Awaited<ReturnType<typeof runDemoFull>> | undefined;
     await db
       .transaction(async (tx) => {
-        result = await runDemoFull(tx);
+        result = await seedDemoFull(tx, env, Date.now());
         if (dryRun) tx.rollback();
       })
       .catch((error: unknown) => {

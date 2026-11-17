@@ -2,19 +2,23 @@
 
 import { bidIncrementOptions, validateBidAmount } from "@/features/saleroom/lib/bid-entry";
 import {
+  clerkPlacePaddleBid,
+  clerkPlaceTelephoneBid,
+} from "@/features/saleroom/lib/clerk-commands.client";
+import {
+  ClerkRoomRecheckContext,
+  settleUnknownOutcome,
+} from "@/features/saleroom/lib/clerk-room-recheck";
+import {
   type PaddleRegistrationValidator,
   type SaleroomRegisteredPaddle,
   createPaddleRegistrationValidator,
   createPaddleRosterLookup,
 } from "@/features/saleroom/lib/paddle-roster-validation";
 import type { ClerkBidEntryState } from "@/features/saleroom/types/staff-saleroom.vm";
-import {
-  adminPaddlePlaceBidResultAction,
-  adminTelephonePlaceBidResultAction,
-} from "@/lib/actions/admin";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { notify } from "@/lib/ui/notify";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState, useTransition } from "react";
 
 export type ClerkBidActionResult = { ok: true } | { ok: false; error: string };
 
@@ -46,16 +50,19 @@ type Options<T extends SaleroomRegisteredPaddle = SaleroomRegisteredPaddle> = {
 };
 
 const defaultPlacePaddleBid: PlacePaddleBidFn = async (input) => {
-  const result = await adminPaddlePlaceBidResultAction(input);
+  const result = await clerkPlacePaddleBid(input);
   if (!result.ok) return { ok: false, error: result.error };
   return { ok: true };
 };
 
 const defaultPlaceTelephoneBid: PlaceTelephoneBidFn = async (input) => {
-  const result = await adminTelephonePlaceBidResultAction(input);
+  const result = await clerkPlaceTelephoneBid(input);
   if (!result.ok) return { ok: false, error: result.error };
   return { ok: true };
 };
+
+const PADDLE_BID_TOAST = "clerk-paddle-bid";
+const TELEPHONE_BID_TOAST = "clerk-telephone-bid";
 
 function clerkPaddleStorageKey(saleId: string) {
   return `saleroom-clerk-paddle:${saleId}`;
@@ -79,6 +86,10 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
     bookingId: "",
   });
   const [pending, startTransition] = useTransition();
+  // A bid that fails or goes unanswered may have been placed anyway. It is never resent (the API's
+  // idempotency key would replay it in any case) and never reported as placed: the console
+  // re-reads the room so the price shown is the server's, then the error is shown.
+  const recheckRoom = useContext(ClerkRoomRecheckContext);
 
   useEffect(() => {
     try {
@@ -205,7 +216,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         amount: parsedAmount,
       });
       if (!result.ok) {
-        notify.error(result.error);
+        await settleUnknownOutcome(recheckRoom, result.error, PADDLE_BID_TOAST);
         return;
       }
       notify.success(`Paddle ${parsedPaddle} bid placed`);
@@ -216,6 +227,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
     liveCurrentPrice,
     minBidIncrement,
     placePaddleBid,
+    recheckRoom,
     saleId,
     state.paddleAmount,
     state.paddleNumber,
@@ -242,7 +254,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         telephoneBookingId: selectedBooking.id,
       });
       if (!result.ok) {
-        notify.error(result.error);
+        await settleUnknownOutcome(recheckRoom, result.error, TELEPHONE_BID_TOAST);
         return;
       }
       notify.success("Telephone bid placed");
@@ -253,6 +265,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
     liveCurrentPrice,
     minBidIncrement,
     placeTelephoneBid,
+    recheckRoom,
     selectedBooking,
     state.telephoneAmount,
   ]);

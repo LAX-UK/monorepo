@@ -96,6 +96,38 @@ test.describe("hybrid saleroom clerk @journey", () => {
     }
   });
 
+  test("clerk controls keep working on a console left open across a deploy", async ({ page }) => {
+    await openLiveConsole(page);
+    // A deploy replaces the build: the server no longer knows the server action ids this page
+    // was built with, and Next answers any such POST to the page with 404. Every POST carrying a
+    // `Next-Action` header is answered that way from here on.
+    const staleActionPosts: string[] = [];
+    await page.route(`**/admin/saleroom/${seededHybridSaleId}*`, async (route) => {
+      const request = route.request();
+      if (request.method() === "POST" && (await request.headerValue("next-action"))) {
+        staleActionPosts.push(request.url());
+        await route.fulfill({ status: 404, body: "Server action not found." });
+        return;
+      }
+      await route.fallback();
+    });
+
+    try {
+      await pressUntilServer(page, /^pause$/i, "paused", /^resume$/i);
+      await pressUntilServer(page, /^resume$/i, "live", /^pause$/i);
+    } finally {
+      if ((await serverSessionStatus(page)) === "paused") {
+        await page.unroute(`**/admin/saleroom/${seededHybridSaleId}*`);
+        await pressUntilServer(page, /^resume$/i, "live", /^pause$/i);
+      }
+    }
+
+    // The controls went through the API, not the page, and the console never fell over.
+    expect(staleActionPosts).toEqual([]);
+    await expect(page.getByText(/clerk console did not load/i)).toHaveCount(0);
+    await expect(lotOnBlockHeading(page)).toBeVisible();
+  });
+
   test("a quick amount fills the paddle bid, and placing it needs a paddle number", async ({
     page,
   }) => {

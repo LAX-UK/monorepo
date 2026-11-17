@@ -9,9 +9,9 @@ import { DisplayOverlayActions } from "@/features/saleroom/components/clerk-cons
 import { useClerkDisplayDevices } from "@/features/saleroom/hooks/use-clerk-display-devices";
 import { useDisplayOverlayState } from "@/features/saleroom/hooks/use-display-overlay-state";
 import {
-  adminSaleroomDisplayApproveAction,
-  adminSaleroomDisplayRevokeAction,
-} from "@/lib/actions/admin";
+  clerkDisplayApprove,
+  clerkDisplayRevoke,
+} from "@/features/saleroom/lib/clerk-commands.client";
 import {
   Field,
   Notice,
@@ -113,7 +113,7 @@ export function DisplayControlPanel({
             ? { disabledReason: "Enter the code shown on the venue screen" }
             : {})}
           onRun={() =>
-            adminSaleroomDisplayApproveAction({
+            clerkDisplayApprove({
               saleId,
               userCode: pairingCode.trim(),
             })
@@ -179,7 +179,7 @@ export function DisplayControlPanel({
                   pendingLabel="Revoking…"
                   variant="danger-secondary"
                   onRun={() =>
-                    adminSaleroomDisplayRevokeAction({
+                    clerkDisplayRevoke({
                       saleId,
                       pairingId: device.id,
                     })

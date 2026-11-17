@@ -130,4 +130,32 @@ describe("useClerkLotRosterSync", () => {
 
     expect(result.current.hammeredLotIds.size).toBe(0);
   });
+
+  it("shows a lot's price and reserve from a server snapshot until the server renders again", () => {
+    const { result, rerender } = renderHook(
+      ({ initialLots }: { initialLots: Lot[] }) => useClerkLotRosterSync({ initialLots }),
+      { initialProps: { initialLots: baseLots } },
+    );
+
+    act(() => {
+      result.current.applyLotSnapshot({
+        lotId: "lot-1",
+        currentPrice: "950.00",
+        reservePrice: "900.00",
+      });
+    });
+    expect(result.current.lots[0]).toMatchObject({
+      id: "lot-1",
+      status: "active",
+      currentPrice: "950.00",
+      reservePrice: "900.00",
+    });
+    expect(result.current.lots[1]).toBe(baseLots[1]);
+
+    const refreshed = baseLots.map((lot) =>
+      lot.id === "lot-1" ? { ...lot, currentPrice: "1000.00", reservePrice: "900.00" } : lot,
+    ) as Lot[];
+    rerender({ initialLots: refreshed });
+    expect(result.current.lots[0]?.currentPrice).toBe("1000.00");
+  });
 });

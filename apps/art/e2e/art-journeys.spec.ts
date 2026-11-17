@@ -250,6 +250,10 @@ test.describe("lax.art journeys", () => {
     await expect(tabs.getByRole("link", { name: "Saves" })).toHaveAttribute("aria-current", "page");
     await tabs.getByRole("link", { name: "Follows" }).click();
     await expect(page).toHaveURL(/\/account\/favourites\/follows$/);
+    await expect(tabs.getByRole("link", { name: "Follows" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   test("dark mode toggle persists across reloads", async ({ page }, testInfo) => {

@@ -8,6 +8,8 @@ const { Pool } = pg;
 /**
  * Migration 0205 seeds the staff policy as required for real environments. Dev and
  * hermetic CI fixtures sign staff in with a password only, so the seed leaves 2FA optional.
+ * Only `runDevSeed` calls this, and only for a hermetic (local) database; any other target keeps
+ * its policy.
  */
 export async function seedDevTwoFactorPolicy(): Promise<void> {
   const url = process.env.DATABASE_URL;
