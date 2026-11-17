@@ -1427,6 +1427,14 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  DeliveryLedgerStatus,
+  IZohoMirrorLedgerReader,
+  ZohoMirrorLedger,
+  ZohoMirrorLedgerDelivery,
+  ZohoMirrorLedgerEntity,
+} from "./zoho-mirror-ledger.js";
+
+export type {
   IZohoDriftReader,
   IZohoOutboundQueueReader,
   IZohoSyncHealthReader,

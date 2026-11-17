@@ -1304,3 +1304,22 @@ export {
   type PublicHomeCover,
   type PublicHomeCoverPicture,
 } from "./home-cover.js";
+
+export {
+  AdminZohoMirrorStatusListSchema,
+  AdminZohoMirrorStatusQuerySchema,
+  AdminZohoMirrorStatusSchema,
+  AdminZohoMirrorStatusesQuerySchema,
+  ZOHO_MIRROR_BATCH_LIMIT,
+  ZOHO_MIRROR_ENTITIES,
+  ZOHO_MIRROR_NOT_APPLICABLE_REASONS,
+  ZOHO_MIRROR_STATES,
+  type AdminZohoMirrorStatus,
+  type AdminZohoMirrorStatusList,
+  type AdminZohoMirrorStatusQuery,
+  type AdminZohoMirrorStatusesQuery,
+  type ZohoMirrorEntity,
+  type ZohoMirrorNotApplicableReason,
+  type ZohoMirrorState,
+} from "./admin-zoho-mirror.js";
+export { ZOHO_MIRROR_BADGE_LABEL, ZOHO_MIRROR_NOT_APPLICABLE_COPY } from "./zoho-mirror-copy.js";

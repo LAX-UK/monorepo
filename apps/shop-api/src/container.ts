@@ -14,6 +14,7 @@ import {
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoDriftReader,
   DrizzleZohoListingRunStore,
+  DrizzleZohoMirrorLedgerReader,
   DrizzleZohoOutboundQueueReader,
   DrizzleZohoSyncHealthStore,
   createShopAlertRetentionStore,
@@ -88,6 +89,7 @@ import { createPrintFulfilmentServices } from "./application/print-fulfilment/pr
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import { SubjectExportService } from "./application/subject-export/subject-export.service.js";
+import { ZohoMirrorStatusService } from "./application/zoho-mirror/zoho-mirror-status.service.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
@@ -792,6 +794,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           outbound: new DrizzleZohoOutboundQueueReader(db),
           drift: new DrizzleZohoDriftReader(db),
         }),
+        zohoMirror: new ZohoMirrorStatusService(new DrizzleZohoMirrorLedgerReader(db)),
         catalogueChange,
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,

@@ -313,6 +313,22 @@ Also mark `Print_SKUs.SKU` unique (the mirror finds SKUs by it and upserts on it
 
 Roll out: add the fields in the sandbox; sandbox `dry_run` and read the logged writes for a few orders, including a refunded and a framed one; sandbox `live` (the org check refuses anything but `ZOHO_CRM_EXPECTED_ORG_TYPE`); production fields, `dry_run`, then `live` with the owner's go.
 
+## Mirror status per record (LAX Admin read)
+
+LAX Admin can ask whether an order or an artwork reached Zoho (design: `docs/design/staff-gaps-delivery-zoho-alerts.md`, GAP-18). Nothing is stored for it: the state is worked out from `domain_event_delivery` on every read.
+
+`GET /admin/v1/zoho-mirror/status?entity=order|artwork&id=…` (one record) and `GET /admin/v1/zoho-mirror/statuses?entity=…&ids=a,b,c` (up to 100, for a list column). `order` reads the `zoho_fulfilment` deliveries of the events whose payload `orderId` is the order and needs `order.read`; `artwork` reads the `zoho_artwork_writeback` deliveries of the register entry's events and needs `artwork_register.read`.
+
+| State | Derived from |
+|-------|--------------|
+| `mirrored` | the newest delivery succeeded, or was skipped because Zoho already held the data (`order_already_in_sync`, `status_already_in_sync`, `stock_code_already_in_sync`) |
+| `pending` | the newest delivery is `pending`, `processing` or `retryable` |
+| `failed` | a delivery dead-lettered, or was skipped `order_prints_not_mirrored`, with no later good delivery; this wins over a newer unfinished one |
+| `dry_run` | the newest delivery was skipped as `dry_run` |
+| `not_applicable` | no delivery yet, `order_not_paid`, `writeback_off`, or any other skip reason (the answer says which) |
+
+The mode shown (`off`, `dry_run`, `live`) is what the newest delivery shows, not the worker's setting. The error text is the ledger's already redacted `last_error`; no buyer data is read.
+
 ## Quality checks from Zoho (inbound)
 
 This follows the approved Zoho CRM decisions of 11-04: leads are not auto-converted; fulfilment is owned in LAX Admin and mirrored to Zoho; printing and framing jobs stay in Zoho; and Zoho's **QC Passed** moves the LAX line to **ready to pack**. (ZO1-ZO24 cover offering artworks from Zoho and do not apply here.) In code and in LAX Admin the step is called "Quality check passed", the production task status `qc_passed`; that is the approved "ready to pack" (LAX has no separate ready-to-pack status).

@@ -13,6 +13,7 @@ export * from "./alert-retention/index.js";
 export * from "./bid-alerts/index.js";
 export * from "./artwork-register/index.js";
 export * from "./zoho-artwork-sync/index.js";
+export * from "./zoho-mirror/index.js";
 export * from "./zoho-sync-health/index.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
 export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
