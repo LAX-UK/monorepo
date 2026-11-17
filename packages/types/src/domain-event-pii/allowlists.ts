@@ -698,6 +698,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "cancelledBookings",
     "affectedHandling",
   ]),
+  /** Ids and the status it left; never the reason, which is written to the buyer. */
+  "delivery_quote.declined": new Set(["quoteId", "lotId", "legalEntityId", "fromStatus"]),
   "collection.booking.hand_over_undone": new Set(["bookingId", "reference", "legalEntityId"]),
   "collection.booking.not_collected": new Set([
     "bookingId",

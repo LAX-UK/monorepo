@@ -2780,6 +2780,13 @@
       "when": 1813233600000,
       "tag": "0405_shop_alert_send_log",
       "breakpoints": true
+    },
+    {
+      "idx": 398,
+      "version": "7",
+      "when": 1813320000000,
+      "tag": "0406_delivery_quote_decline",
+      "breakpoints": true
     }
   ]
 }

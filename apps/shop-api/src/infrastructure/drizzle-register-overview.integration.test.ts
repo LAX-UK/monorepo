@@ -2,6 +2,7 @@ import type { NewArtworkRegisterEntry } from "@auction/artwork-register-contract
 import { createDbFromPool } from "@auction/db";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleStockLocationStore,
   registerRowToEntry,
 } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
@@ -151,5 +152,72 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
 
     const artists = await reader.listArtists();
     expect(artists.find((entry) => entry.code === code)).toMatchObject({ count: 4 });
+  });
+
+  it("reads where each record physically is, and filters by a location or by none", async () => {
+    const db = createShopDb(shopPool);
+    const store = new DrizzleStockLocationStore(db);
+    const added = async (name: string) => {
+      const result = await store.addLocation({ name, note: null, actor: "staff:it", now: NOW });
+      if (!result.ok) throw new Error(result.reason);
+      return result.location;
+    };
+    const room = await added(`Store room ${integrationSuffix("l")}`);
+    const framer = await added(`Framer ${integrationSuffix("l")}`);
+    const locationCode = `Y${integrationSuffix("c").slice(-5).toUpperCase()}`;
+    const register = new DrizzleArtworkRegisterRepository(createDbFromPool(ownerPool));
+    const work = async (title: string) => {
+      const created = await register.create(
+        {
+          zohoProductId: `zoho-${integrationSuffix("w")}`,
+          stockCode: uniqueStockCode("original"),
+          kind: "original",
+          sourceOriginalId: null,
+          title,
+          artist: { zohoArtistId: "78", name: "Bo Lind", code: locationCode },
+          medium: null,
+          dimensions: null,
+          year: null,
+          imageRefs: [],
+          catalogueStatus: "Available",
+        },
+        "zoho",
+        NOW,
+      );
+      if (!created.ok) throw new Error(created.reason);
+      return created.entry;
+    };
+    const [movedOn, stayed, never] = [
+      await work("Moved on"),
+      await work("Stayed"),
+      await work("Never"),
+    ];
+    const move = (ids: string[], locationId: string, now: Date) =>
+      store.moveArtworks({ registerIds: ids, locationId, note: null, actor: "staff:it", now });
+    await move([movedOn.id, stayed.id], room.id, NOW);
+    // The latest move wins: "Moved on" is at the framer now.
+    await move([movedOn.id], framer.id, new Date(NOW.getTime() + 60_000));
+    await store.setLocationStatus({
+      id: framer.id,
+      expectedVersion: framer.version,
+      status: "retired",
+      now: NOW,
+    });
+
+    const reader = createDrizzleRegisterOverviewReader(db, registerRowToEntry);
+    const all = await reader.listAll({ artistCode: locationCode }, PAGE);
+    expect(Object.fromEntries(all.rows.map((row) => [row.entry.title, row.location]))).toEqual({
+      "Moved on": { id: framer.id, name: framer.name, status: "retired" },
+      Stayed: { id: room.id, name: room.name, status: "active" },
+      Never: null,
+    });
+
+    const at = async (location: string) => {
+      const page = await reader.listAll({ artistCode: locationCode, location }, PAGE);
+      return { ids: page.rows.map((row) => row.entry.id), total: page.total };
+    };
+    expect(await at(room.id)).toEqual({ ids: [stayed.id], total: 1 });
+    expect(await at(framer.id)).toEqual({ ids: [movedOn.id], total: 1 });
+    expect(await at("none")).toEqual({ ids: [never.id], total: 1 });
   });
 });

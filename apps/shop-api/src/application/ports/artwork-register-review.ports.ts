@@ -1,6 +1,7 @@
 import type {
   ArtworkRegisterEntry,
   CatalogueGap,
+  LocationRef,
   RegisterConflictField,
 } from "@auction/artwork-register-contracts";
 import type { AdminRegisterPlace } from "@auction/shop-contracts";
@@ -59,13 +60,22 @@ export interface ArtworkRegisterQueue {
   listHeldArtists(): Promise<{ code: string; name: string; count: number }[]>;
 }
 
-/** Narrows the All list by artist and by where the artwork is. */
-export type RegisterOverviewFilter = { artistCode?: string; place?: AdminRegisterPlace };
+/**
+ * Narrows the All list by artist, by where the artwork is offered and by where it physically is
+ * (a location id, or `none` for no location recorded).
+ */
+export type RegisterOverviewFilter = {
+  artistCode?: string;
+  place?: AdminRegisterPlace;
+  location?: string;
+};
 
 export type RegisterOverviewRow = {
   entry: ArtworkRegisterEntry;
   /** A lax.art listing made from the record that buyers cannot see yet. */
   hasLaxArtDraft: boolean;
+  /** Where the artwork physically is: its latest move; null when none is recorded. */
+  location: LocationRef | null;
 };
 
 /**

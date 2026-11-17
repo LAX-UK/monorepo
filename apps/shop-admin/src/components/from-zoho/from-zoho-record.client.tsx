@@ -46,6 +46,7 @@ import {
 } from "@auction/staff-ui";
 import { Copy, ExternalLink, Gavel, Globe, MoveRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -72,6 +73,7 @@ export function FromZohoRecord({
   detail,
   zohoUrl,
   bidAdminUrl = null,
+  locationPanel = null,
   zohoMirror = null,
 }: {
   detail: AdminRegisterDetail;
@@ -79,6 +81,8 @@ export function FromZohoRecord({
   zohoUrl: string | null;
   /** Where Bid admin lives, for a person who can open it; null for everyone else. */
   bidAdminUrl?: string | null;
+  /** Where the artwork physically is and has been, streamed in by the page. */
+  locationPanel?: ReactNode;
   /** The "Mirrored to Zoho" badge (Z1); null when the artwork has nothing to mirror. */
   zohoMirror?: ZohoMirrorBadgeView | null;
 }) {
@@ -266,6 +270,8 @@ export function FromZohoRecord({
             ) : undefined
           }
         />
+
+        {locationPanel}
 
         <Section title="Catalogue" description="Edited in Zoho and kept up to date here.">
           <KeyValueList

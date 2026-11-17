@@ -250,6 +250,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "collection.place.updated",
   "collection.exception.added",
   "collection.exception.removed",
+  "delivery_quote.declined",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
   "marketing_enquiry.attachment_viewed",
@@ -1158,6 +1159,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "collection.exception.removed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  /** Staff declined a buyer's delivery quote ("Can't deliver"). The reason stays on the quote. */
+  "delivery_quote.declined": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

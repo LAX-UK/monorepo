@@ -237,6 +237,7 @@ const LABELS: Record<string, string> = {
   "collection.place.updated": "Collection hours and rules changed",
   "collection.exception.added": "Collection closure or opening added",
   "collection.exception.removed": "Collection closure or opening removed",
+  "delivery_quote.declined": "Delivery quote declined",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
   "purchase_problem.assigned": "Purchase problem assigned",

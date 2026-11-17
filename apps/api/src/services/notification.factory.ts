@@ -400,6 +400,22 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
+  createDeliveryQuoteDeclined(
+    lot: Lot,
+    userId: string,
+    input: { reason: string; legalEntityId: string },
+  ): CreateNotificationRow {
+    return {
+      userId,
+      type: "delivery_quote_declined",
+      legalEntityId: input.legalEntityId,
+      title: "We can't deliver this lot",
+      message: `We can't deliver "${lot.title}" where you asked. Our team's note: "${input.reason}" You can collect it, or ask for delivery to another address from your purchase.`,
+      lotId: lot.id,
+      meta: { lotTitle: lot.title },
+    };
+  }
+
   createLotReadyForCollection(
     lot: Lot,
     buyerId: string,

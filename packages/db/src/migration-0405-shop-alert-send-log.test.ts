@@ -23,11 +23,11 @@ const COLUMNS = [
 ];
 
 describe("migration 0405 shop alert send log", () => {
-  it("is the last journal entry, and its rollback removes its own ledger row", () => {
+  it("follows 0404 in the journal, and its rollback removes its own ledger row", () => {
     const at = journal.entries.findIndex((e) => e.tag === TAG);
     const entry = journal.entries[at];
     const previous = journal.entries[at - 1];
-    expect(at).toBe(journal.entries.length - 1);
+    expect(previous?.tag).toBe("0404_artwork_stock_location");
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
     expect(rollback).toContain(`WHERE created_at = ${entry?.when};`);
   });

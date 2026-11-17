@@ -151,7 +151,7 @@ audit row and needs no step-up beyond what that list already applies.
 | List quotes by view, with search, filters, paging | No | `GET /admin/deliveries?view=waiting\|quoted\|to_dispatch\|on_the_way\|delivered\|closed&q=&saleId=&country=&cursor=` returning lot, sale, buyer, destination, quote, fulfilment summary. Read model joins `delivery_quote` and `lot_fulfilment`; no new table. |
 | Nav count | No | `GET /admin/deliveries/summary` → `{waitingCount}`, added to the existing nav counts. |
 | One delivery for the panel | Partly (`GET /admin/lot-fulfilment/:lotId`) | Extend it, or add `GET /admin/deliveries/:lotId`, with the quote and its history. |
-| Staff decline | No (Shop has `deliveryQuoteDecline`) | `POST /admin/deliveries/:lotId/decline {reason}` and a staff step in the Bid table of moves (D8). |
+| Staff decline | No (Shop has `deliveryQuoteDecline`) | `POST /admin/deliveries/:lotId/decline {quoteId, expectedStatus, reason}` and a staff step in the Bid table of moves (D8). The quote id and status name the request staff saw, so a buyer who withdrew and asked again, or a colleague who priced it, gets `quote_changed` (D6) rather than a reason meant for another request. |
 | History | Columns on the quote only (requested/quoted/decided at and by) | Enough for the first release; a full event history would read the domain events the service already raises, if any, else show the three stamps. |
 
 **D8. Staff can turn a request down ("Can't deliver").** *Recommended*, matching LAX Admin. Today

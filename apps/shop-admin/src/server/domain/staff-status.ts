@@ -30,6 +30,7 @@ export type LaxStatusDomain =
   | "merchandise"
   | "framing"
   | "framingTask"
+  | "stockLocation"
   | "editorial"
   | "help"
   | "enquiry"
@@ -161,6 +162,11 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     draft: { label: "Draft", tone: "neutral" },
     active: { label: "Offered", tone: "success" },
     paused: { label: "Paused", tone: "neutral" },
+  },
+  /** A place an original can physically be; retired ones take no new moves. */
+  stockLocation: {
+    active: { label: "Active", tone: "success" },
+    retired: { label: "Retired", tone: "neutral" },
   },
   editorial: {
     draft: { label: "Draft", tone: "info" },

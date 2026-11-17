@@ -14,6 +14,8 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeliveriesList, type DeliveriesListProps } from "./deliveries-list";
 
+vi.mock("@/lib/actions/admin/admin-deliveries", () => ({ declineDeliveryAction: vi.fn() }));
+
 const push = vi.fn();
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -236,6 +238,33 @@ describe("DeliveriesList", () => {
 });
 
 describe("DeliveriesList queue panel", () => {
+  it("offers Can't deliver in the panel footer for Waiting for a price and Quote sent, to write roles only", () => {
+    const cases = [
+      { row: WAITING_DELIVERIES[0], canWork: true, offered: true },
+      { row: WAITING_DELIVERIES[0], canWork: false, offered: false },
+      {
+        row: { ...BOOKED_UNPAID, lotId: "10700000-0000-4000-8000-000000000099" },
+        canWork: true,
+        offered: false,
+      },
+      { row: COLLECTED, canWork: true, offered: false },
+    ];
+    for (const { row, canWork, offered } of cases) {
+      if (!row) throw new Error("fixture");
+      const { unmount } = renderList({
+        canWork,
+        search: { record: row.lotId },
+        selected: row,
+      });
+      const panel = within(screen.getByRole("dialog"));
+      expect(
+        panel.queryByRole("button", { name: "Can't deliver" }) !== null,
+        `${row.status} canWork=${canWork}`,
+      ).toBe(offered);
+      unmount();
+    }
+  });
+
   it("opens a row into the URL, shows its place and steps with J and K", () => {
     renderList();
     fireEvent.click(screen.getAllByText("Lot 7 · Still life, blue jug")[0] as HTMLElement);

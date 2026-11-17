@@ -356,6 +356,11 @@ jobs:
       - name: Seed the Zoho badge fixture orders and artworks
         if: needs.changes.outputs.lax_admin == 'true'
         run: pnpm --filter @auction/shop-api seed:zoho-mirror-badge
+      # Three originals on the register and one location, with one artwork already moved there, so
+      # the stock location checks below move real artworks; that spec fails in CI without them.
+      - name: Seed the stock location fixture artworks
+        if: needs.changes.outputs.lax_admin == 'true'
+        run: pnpm --filter @auction/shop-api seed:stock-location
       # The release-alert send log spec (in the checks below) seeds its own fixture releases, one per
       # status, through seed:release-alert-sends on this job's DATABASE_URL, and fails rather than
       # skipping when it cannot.

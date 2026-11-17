@@ -6,7 +6,7 @@ import type {
   AdminRegisterConflictList,
 } from "@auction/shop-contracts";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -33,6 +33,10 @@ vi.mock("@/server/application/admin-inventory-actions.server", () => ({
 }));
 vi.mock("@/server/application/admin-artwork-actions.server", () => ({
   searchArtistOptions: async () => [],
+}));
+const moveArtworksToLocation = vi.fn();
+vi.mock("@/server/application/admin-stock-location-actions.server", () => ({
+  moveArtworksToLocation: (...args: unknown[]) => moveArtworksToLocation(...args),
 }));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }),
@@ -76,6 +80,7 @@ function item(
     missing: [],
     zohoModifiedAt: "2026-11-04T09:40:00.000Z",
     whereItIs: { key, chip: CHIPS[key] },
+    location: null,
     ...patch,
   };
 }
@@ -189,6 +194,114 @@ describe("AllFromZohoList", () => {
   it("explains an empty register", () => {
     inShell(<AllFromZohoList query={{ tab: "all" }} page={page([])} />);
     expect(screen.getByText("No artworks from Zoho yet")).toBeInTheDocument();
+  });
+});
+
+describe("AllFromZohoList: where each artwork physically is", () => {
+  const ROOM = "11111111-1111-4111-8111-111111111111";
+  const FRAMER = "22222222-2222-4222-8222-222222222222";
+  const location = (id: string, name: string, status: "active" | "retired") => ({
+    id,
+    name,
+    note: null,
+    status,
+    label: status === "retired" ? `${name} (retired)` : name,
+    version: 1,
+    createdAt: "2026-11-01T09:00:00.000Z",
+    updatedAt: "2026-11-01T09:00:00.000Z",
+    retiredAt: status === "retired" ? "2026-11-02T09:00:00.000Z" : null,
+  });
+  const LOCATIONS = [location(ROOM, "Store room", "active"), location(FRAMER, "Framer", "retired")];
+  const ADMIN = [...EDITOR, "artwork_location.read", "artwork_location.move"];
+  const rows = [
+    item(1, "not_offered", {
+      location: { id: ROOM, name: "Store room", status: "active", label: "Store room" },
+    }),
+    item(2, "sold", {
+      location: { id: FRAMER, name: "Framer", status: "retired", label: "Framer (retired)" },
+    }),
+    item(3, "draft_lax_art"),
+  ];
+
+  it("shows each artwork's location, a retired one marked, and Not recorded", () => {
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={page(rows)} locations={LOCATIONS} />);
+    expect(screen.getByRole("columnheader", { name: "Location" })).toBeInTheDocument();
+    expect(rowOf("Work 1").getByText("Store room")).toBeInTheDocument();
+    expect(rowOf("Work 2").getByText("Framer (retired)")).toBeInTheDocument();
+    expect(rowOf("Work 3").getByText("Location not recorded")).toBeInTheDocument();
+  });
+
+  it("shows the location filter as a removable chip, by name or as not recorded", () => {
+    const { unmount } = inShell(
+      <AllFromZohoList
+        query={{ tab: "all", location: FRAMER }}
+        page={page([rows[1] as AdminRegisterAllItem])}
+        locations={LOCATIONS}
+      />,
+    );
+    const applied = () => within(screen.getByRole("list", { name: "Applied filters" }));
+    expect(applied().getByText("Location: Framer (retired)")).toBeInTheDocument();
+    unmount();
+    inShell(
+      <AllFromZohoList
+        query={{ tab: "all", location: "none" }}
+        page={page([rows[2] as AdminRegisterAllItem])}
+        locations={LOCATIONS}
+      />,
+    );
+    expect(applied().getByText("Location: Location not recorded")).toBeInTheDocument();
+  });
+
+  it("lets nobody select rows who cannot move artworks, or when the locations did not load", () => {
+    const { unmount } = inShell(
+      <AllFromZohoList query={{ tab: "all" }} page={page(rows)} locations={LOCATIONS} />,
+    );
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    unmount();
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={page(rows)} locations={null} />, ADMIN);
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("moves the selected artworks to an active location, with a note", async () => {
+    moveArtworksToLocation.mockResolvedValue({
+      ok: true,
+      data: {
+        locationId: ROOM,
+        moved: [{ registerId: rows[1]?.registerId, fromLocationId: FRAMER }],
+        unchanged: [rows[0]?.registerId],
+        notFound: [],
+      },
+    });
+    inShell(
+      <AllFromZohoList query={{ tab: "all" }} page={page(rows)} locations={LOCATIONS} />,
+      ADMIN,
+    );
+    fireEvent.click(rowOf("Work 1").getByRole("checkbox"));
+    fireEvent.click(rowOf("Work 2").getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Move selected…" }));
+
+    const dialog = within(await screen.findByRole("dialog", { name: "Move 2 artworks" }));
+    // Nothing chosen yet: the summary and the field both say so.
+    fireEvent.click(dialog.getByRole("button", { name: "Move 2 artworks" }));
+    expect(
+      await dialog.findByText("Move to: Choose where the artwork is going."),
+    ).toBeInTheDocument();
+    expect(moveArtworksToLocation).not.toHaveBeenCalled();
+
+    // Only active places are offered.
+    fireEvent.click(dialog.getByRole("combobox"));
+    expect(screen.queryByRole("option", { name: /Framer/ })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "Store room" }));
+    fireEvent.change(dialog.getByRole("textbox"), { target: { value: "Winter hang" } });
+    fireEvent.click(dialog.getByRole("button", { name: "Move 2 artworks" }));
+    await waitFor(() => expect(moveArtworksToLocation).toHaveBeenCalledOnce());
+    expect(moveArtworksToLocation.mock.calls[0]?.[0]).toMatchObject({
+      body: {
+        registerIds: [rows[0]?.registerId, rows[1]?.registerId],
+        locationId: ROOM,
+        note: "Winter hang",
+      },
+    });
   });
 });
 

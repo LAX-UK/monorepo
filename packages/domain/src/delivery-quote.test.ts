@@ -69,7 +69,7 @@ describe("deliveryQuoteActionsFor", () => {
   it("offers each side only the steps that will work", () => {
     expect(deliveryQuoteActionsFor(null, "buyer")).toEqual(["request"]);
     expect(deliveryQuoteActionsFor("quoted", "buyer")).toEqual(["accept", "withdraw"]);
-    expect(deliveryQuoteActionsFor("requested", "staff")).toEqual(["quote"]);
+    expect(deliveryQuoteActionsFor("requested", "staff")).toEqual(["quote", "decline"]);
     expect(deliveryQuoteActionsFor("accepted", "staff")).toEqual([]);
   });
 });
@@ -89,9 +89,27 @@ describe("deliveryQuoteDecline", () => {
     }
   });
 
-  it("leaves what Bid offers exactly as it was", () => {
-    expect(deliveryQuoteActionsFor("requested", "staff")).toEqual(["quote"]);
-    expect(deliveryQuoteActionsFor("quoted", "staff")).toEqual(["quote"]);
+  it("is the decline step of the one table, so the Shop and Bid cannot drift apart", () => {
+    for (const current of ["requested", "quoted", "accepted", "withdrawn", null] as const) {
+      expect(deliveryQuoteDecline(current)).toEqual(
+        deliveryQuoteTransition(current, "decline", "staff"),
+      );
+    }
+  });
+
+  it("is a staff step: the buyer withdraws instead, and never sees decline offered", () => {
+    expect(deliveryQuoteTransition("requested", "decline", "buyer")).toEqual({
+      allowed: false,
+      reason: "quote_wrong_actor",
+    });
+    expect(deliveryQuoteActionsFor("requested", "buyer")).toEqual(["withdraw"]);
     expect(deliveryQuoteActionsFor("quoted", "buyer")).toEqual(["accept", "withdraw"]);
+    expect(deliveryQuoteActionsFor("quoted", "staff")).toEqual(["quote", "decline"]);
+  });
+
+  it("lets the buyer ask again after the team declined", () => {
+    const declined = deliveryQuoteTransition("quoted", "decline", "staff");
+    expect(declined).toEqual({ allowed: true, next: "withdrawn" });
+    expect(deliveryQuoteTransition("withdrawn", "request", "buyer").allowed).toBe(true);
   });
 });

@@ -290,6 +290,7 @@ export {
 export {
   ADMIN_REGISTER_PAGE_SIZE,
   REGISTER_GAP_VALUES,
+  REGISTER_LOCATION_NONE,
   REGISTER_PLACE_VALUES,
   AdminRegisterAllItemSchema,
   AdminRegisterAllListSchema,
@@ -1294,9 +1295,12 @@ export {
   type AdminSoldAttentionDealtWithResult,
 } from "./admin-sold-attention.js";
 export {
+  AdminArtworkLocationMoveBodySchema,
   AdminArtworkLocationMoveResultSchema,
   AdminArtworkLocationParamsSchema,
   AdminArtworkLocationSchema,
+  AdminLocationRefSchema,
+  AdminStockLocationConflictSchema,
   AdminStockLocationCreateBodySchema,
   AdminStockLocationListQuerySchema,
   AdminStockLocationListSchema,
@@ -1304,9 +1308,12 @@ export {
   AdminStockLocationSchema,
   AdminStockLocationStatusBodySchema,
   AdminStockLocationUpdateBodySchema,
+  AdminStockLocationValidationSchema,
   AdminStockLocationWriteResultSchema,
   type AdminArtworkLocation,
+  type AdminArtworkLocationMoveBody,
   type AdminArtworkLocationMoveResult,
+  type AdminLocationRef,
   type AdminStockLocation,
   type AdminStockLocationCreateBody,
   type AdminStockLocationList,

@@ -45,7 +45,12 @@ export const deliveryQuote = pgTable(
       .defaultNow(),
     quotedByUserId: text("quoted_by_user_id").references(() => user.id, { onDelete: "set null" }),
     quotedAt: timestamp("quoted_at", { mode: "date", withTimezone: true }),
-    /** Who accepted or withdrew it, and when. */
+    /**
+     * Why the team declined the request ("Can't deliver"), as the buyer was told it. Set only on a
+     * quote staff declined; a buyer's own withdrawal leaves it empty (migration 0406).
+     */
+    declineReason: text("decline_reason"),
+    /** Who accepted, withdrew or declined it, and when. */
     decidedByUserId: text("decided_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -64,6 +69,10 @@ export const deliveryQuote = pgTable(
     check(
       "delivery_quote_status_check",
       sql`${table.status} IN ('requested', 'quoted', 'accepted', 'withdrawn')`,
+    ),
+    check(
+      "delivery_quote_decline_reason_check",
+      sql`${table.declineReason} IS NULL OR (${table.status} = 'withdrawn' AND char_length(${table.declineReason}) BETWEEN 1 AND 500 AND ${table.declineReason} = btrim(${table.declineReason}))`,
     ),
     check(
       "delivery_quote_amount_check",

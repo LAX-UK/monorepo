@@ -66,6 +66,18 @@ describe.skipIf(!AUTH_URL)("auth_app role contract", { timeout: 60_000 }, () => 
     });
   });
 
+  it("has no access to Bid delivery quotes or the reason staff decline one with (0406)", async () => {
+    await withAuthClient(async (client) => {
+      for (const privilege of ["SELECT", "INSERT", "UPDATE"]) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_column_privilege(current_user, 'public.delivery_quote', 'decline_reason', $1) as allowed",
+          [privilege],
+        );
+        expect(result.rows[0]?.allowed, privilege).toBe(false);
+      }
+    });
+  });
+
   it("cannot access product-owned tables", async () => {
     await withAuthClient(async (client) => {
       expectUniformTablePrivileges(
