@@ -100,3 +100,110 @@ docs/design/mockups/staff-gaps/index.html on origin/main (4ab41e66), on top of #
 The design doc on main still has the heading "(proposed design, awaiting owner approval)"
 (`docs/design/staff-gaps-delivery-zoho-alerts.md:1`). If the owner approved it elsewhere, record that approval in the
 doc so later PRs can point to it.
+
+## Final recheck
+
+Rechecked at head `f418a318` (8 commits; base `4ab41e66`, mergeable "clean"). Verdict: **FIX FIRST**.
+Only finding 5 is still open. It is a PR-body problem, not a code problem: the code is ready, but the
+PR's screenshot evidence is still broken, and the body says it was fixed.
+
+| # | Finding | Status | Evidence |
+| --- | --- | --- | --- |
+| 1 | Badge e2e runs in CI | Fixed | See below |
+| 2 | Focus for every state | Fixed | See below |
+| 3 | Failed jobs link gated per role | Fixed | See below |
+| 4 | Times per Z3 / copy contract | Fixed | See below |
+| 5 | Not-applicable screenshots render | **Not fixed** | See below |
+| 6 | Route-JS statement | Fixed | See below |
+
+1. **The e2e runs in CI and passes: fixed.** I read the `browser-gates` job log (run 44023353830,
+   job 133838009055, `head_sha` f418a318):
+   - The new step "Seed the Zoho badge fixture orders" ran. It printed `"ok": true` and created
+     mirrored, pending, failed, dry_run and not_applicable orders (`2a0e5d00-…0001` to `…0005`).
+   - "Run LAX Admin accessibility and role checks" ran with `CI: true` and included
+     `e2e/zoho-mirror-badge.spec.ts`. All 10 badge tests show `✓`: 4 states × light/dark at
+     `:118`, plus "nothing to mirror has no Zoho badge" at `:179` for each theme.
+   - The total was `82 passed (1.1m)`, with no skipped, retried or flaky tests. `retries: CI ? 1 : 0`
+     is the existing config and is not changed by this PR.
+   - `requireOrder` now throws in CI when a state has no order, instead of skipping it.
+2. **Focus for every state: fixed.** The e2e asserts `expect(details).toBeFocused()` at 1440 and
+   `expect(sheet).toBeFocused()` at 375 for all four states, and CI passed. I mutated
+   `packages/staff-ui/src/display/status-details.tsx` and ran the kit tests (9 pass on the unmutated code):
+   - With `focusDetails` as a no-op (Radix default), 5 tests fail: desk holding a button, and
+     phone holding text, a button or a link.
+   - Dropping `onOpenAutoFocus` on the popover only makes the desk-with-button test fail. That is
+     the Mirrored case, where Radix would otherwise focus Copy.
+   - Dropping it on the sheet only makes 4 tests fail.
+
+   Minor: `order-zoho-mirror.component.test.tsx` still passes under all three mutations, because
+   it checks focus with `contains`. The kit tests and the e2e are what guard this. Not blocking.
+3. **"Open in Failed jobs" only for people who can open the Zoho rows: fixed.**
+   - Bid's `myFailedJobSources` uses `failedJobSourcesFor(bidRoles, "read")`, the same access table
+     the Failed jobs page uses. `/admin/staff/my-tools` returns it, and the cache keeps the whole
+     answer.
+   - LAX Admin links only when the list holds `integrations.zoho`.
+
+   Mutation results, each failing tests that pass on the unmutated code:
+   - Dropping the `integrations.zoho` check in `zohoFailedJobsHref` fails 3 tests: the vm test, and
+     the page tests for finance and specialist.
+   - Making `page.tsx` link without asking Bid fails 6 page tests, one per role plus "Bid unavailable".
+   - Making the Bid service return every source fails 9 service tests (8 non-Zoho roles plus
+     finance/non-staff) and 5 route tests.
+
+   The per-role page cases are administrator and read-only (linked), and finance, specialist and
+   LAX-only (not linked). Note: removing the extra `tools.includes("bid-admin")` check in
+   `load-zoho-failed-jobs-href.ts` fails no test. It is redundant, because Bid returns no sources
+   without a Bid role. Not blocking.
+4. **Times: fixed.**
+   - `zoho-mirror.vm.ts` uses `formatDateTime` and `formatTime` from `@auction/datetime` in
+     `LONDON_TIME_ZONE`. A retry later the same London day shows the time only.
+   - Tests pin "Last sent 14 Nov 2026, 16:02." and "Tries again at 16:10 (attempt 2).", which
+     matches Z3 word for word.
+   - The `zoho-mirror-copy.ts` docstring now names that style.
+   - Each time is in a `<time dateTime>`, and the e2e checks the attribute.
+   - Mutations: replacing the formatter fails 5 tests. Replacing `<time>` with `<span>` fails 2
+     component tests.
+5. **The PR body's "Not applicable: no badge" row still does not render: NOT fixed.**
+   - All 22 screenshot URLs in the body return `200 image/png`, including the 4 `not_applicable-*`
+     files: 2 mockup images at 1824×42, the 1440 shots at 2880×760, and the 375 shots at 750×1624.
+   - But the row's four cells are still `&lt;img src="`` https://… `` " width=… alt=…>`. On the
+     rendered PR page (https://github.com/LAX-UK/monorepo/pull/1521) each cell is literal text,
+     `<td>&lt;img src="<code>https://…not_applicable-1440-light.png?raw=true"</code> width="300" …&gt;</td>`.
+     The page has 0 `<img>` elements for `not_applicable`, compared with 4 for `dry_run`.
+   - "Changes after review" item 5 says this row "is plain `<img>` tags again", which is not true
+     of the body as it stands.
+
+   *Fix:* replace the four cells with plain `<img src="…?raw=true" width="300|150" alt="…">` tags,
+   with no `&lt;` and no backticks, as in the other rows.
+6. **Route-JS statement: fixed.**
+   - The body now says `scripts/route-js-budgets.json` has no `apps/shop-admin` entry. That is
+     true: the entries are `apps/account`, `apps/art`, `apps/shop` and `apps/web`, and the script
+     prints "has no entry".
+   - It gives a measured before and after: 520.3 KB to 520.7 KB, the same order of change as my
+     earlier +0.3 KB.
+
+**Circular-dependency fix (`f418a318`): clean.**
+- `FAILED_JOB_SOURCES` and `FailedJobSource` moved to `packages/types/src/failed-job-sources.ts`,
+  a leaf module with no imports.
+- `failed-jobs.ts` imports and re-exports them.
+- `lax-staff-platforms.ts` now has only an `import type` from the leaf, not from `failed-jobs.ts`,
+  so it no longer reaches `admin-access` or `role-policy`.
+- `pnpm lint:deps` exits 0 on f418a318:
+  - "check-circular-deps: ok (46 allowlisted cycles)"
+  - "circular-deps allowlist freeze: ok (47/47 cycles)"
+  - the undeclared-import check passes
+  - the node tests are 7/7
+- No file under `scripts/` changes, so `circular-deps-allowlist.json` has no entry added.
+
+**Budgets, commits and PR body.**
+- The diff touches no route-JS budget, baseline or allowlist file (`scripts/` is untouched). No
+  commit message mentions an allowance.
+- All PR commits are by `mahmoudamrspace <mahmoudamr.space@gmail.com>` as author and committer,
+  with no `Co-Authored-By`, `Signed-off-by` or other trailers.
+- The PR body has no AI footer.
+
+**Tests run locally at f418a318** after building the dependency packages:
+- staff-ui `status-details.test.tsx`: 9/9
+- shop-admin page and vm tests: 27/27
+- shop-admin component test: 11/11
+- api service and route tests: 27/27
