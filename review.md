@@ -113,3 +113,44 @@ The PR branch was not changed.
 These lint gates also pass: `ui-guardrails`, `client-boundary`, `admin-capability-drift`, `datetime`,
 `staff-route-composition`, `lib-admin-boundaries`, `test-mocks`, `client-copy`, `brand-name`,
 `route-js-budget` and `layers`.
+
+## Fixes after review
+
+PR branch `zi-5-consignor-agreements-admin`, now at `0f9d5c75`. No rebase and no force push.
+
+### 1. Conflicts with `main` (fixed)
+
+- `main` was merged into the branch with `git merge origin/main`: `51e5e9ce` (resolves the 7 files) and `4a428deb` (the latest `main`, `599e3f87`, merged cleanly). GitHub no longer reports the PR as `dirty`.
+- Checked each of the 7 files: the diff of the merged branch against `main` equals the PR's own part-2 edits on top of part 1 (`91bd8b6f..3b8ef3a2`). Part 1 now comes from `main` (`934d2b40`).
+- `packages/shop-domain/src/staff-capabilities.ts:227-234`: the catalogue editor keeps #1536's `artwork_location.move` (`:232`) and gains `consignor_agreement.manage` (`:233`). The capabilities themselves are at `:98-102`.
+
+### 2. Reload after a stale-version 409 (fixed)
+
+- `apps/shop-admin/src/components/consignor-agreements/agreements-section.client.tsx:36`: open-dialog state now holds only `agreementId`, set at `:109-110`.
+- `:60-66`: the agreement for Replace and Retire is read from the current `agreements` prop, matching `agreementId` and status `current`.
+- `:139` and `:148`: both dialogs are keyed by the version id. After Reload brings a new version, the dialog starts again from the reloaded terms, and `expectedVersion` is the version just loaded. If the agreement was retired meanwhile, the dialog closes.
+- New tests in `agreements-section.client.test.tsx`:
+  - `:298`: a replace retried after Reload sends `expectedVersion: 2` and the reloaded terms.
+  - `:333`: the same for retire.
+  - `:354`: the dialog closes when the reloaded agreement is retired.
+- All three fail on the previous code.
+
+### Non-blocking notes
+
+None taken; all are left as they were.
+
+- **409 `currentVersion` staleness.** The store's refusal (`AgreementChangeRefusal` in `packages/artwork-register-contracts`) has no version, so the fix needs part-1 persistence changes and is not a one-liner. The UI only checks that `currentVersion` is present, and the retry now reads the version from the reloaded list.
+- **Year in date ranges.** `formatStaffDate` has no "always show the year" option, so this needs a staff-ui or datetime format change.
+
+### Suites run (merged head, plus the fix)
+
+| Suite | Result |
+| --- | --- |
+| shop-admin: agreements section and dialogs, vm | 40 passed |
+| shop-domain: `staff-capabilities`, `staff-role-migration` | 395 passed |
+| shop-contracts | 128 passed |
+| shop-api: `get-staff-session`, consignor-agreement routes | 64 passed |
+| shop-api: `consignor-agreement.service.integration.test.ts` (throwaway Postgres 16 on :55432, migrated, `db:roles`, as `shop_app`, `SHOP_V1_INTEGRATION_REQUIRED=true`) | 15 passed |
+| `tsc --noEmit` for shop-admin and shop-api; Biome on the touched folder | clean |
+
+No full `next build` was run.
