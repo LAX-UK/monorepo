@@ -7,14 +7,14 @@ import { completeShopCheckoutSession } from "../drizzle-payment-event.processor.
 const SEED_BUYER_SUBJECT = "seed:edition-buyer";
 
 /** Numbered demo runs, each given one paid order: the next print on sale is the one sold. */
-const NUMBERED_RUN_SLUGS = [
+export const NUMBERED_RUN_SLUGS = [
   "harbour-at-dusk",
   "composition-1964",
   "shoreline-estate",
   "harbour-at-dusk-artists-proof",
 ] as const;
 
-const orderKey = (slug: string) => `seed:edition-order:${slug}`;
+export const orderKey = (slug: string) => `seed:edition-order:${slug}`;
 
 async function isOrdered(db: Database, slug: string): Promise<boolean> {
   const [existing] = await db
