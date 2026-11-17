@@ -22,12 +22,24 @@ import type {
 export class ShopAlertPublishRecorder implements ShopAlertAnnouncer {
   async recordPublished(
     tx: unknown,
-    input: { artworkId: string; kind: "shop_release" | "art_original"; announce: boolean },
+    input: {
+      artworkId: string;
+      kind: "shop_release" | "art_original";
+      announce: boolean;
+      actorSubjectId: string;
+    },
   ): Promise<{ queued: number }> {
     const db = tx as Database;
+    // What the work is and who published it are kept here, once, for the send log (design LA-3,
+    // L3): later edits to the work's flags or its audit history never change them.
     const inserted = await db
       .insert(shopAlertAnnouncement)
-      .values({ itemKey: artworkItemKey(input.artworkId), announce: input.announce })
+      .values({
+        itemKey: artworkItemKey(input.artworkId),
+        announce: input.announce,
+        kind: input.kind,
+        announcedBy: input.actorSubjectId,
+      })
       .onConflictDoNothing()
       .returning({ itemKey: shopAlertAnnouncement.itemKey });
     if (inserted.length === 0 || !input.announce || input.kind !== "shop_release") {

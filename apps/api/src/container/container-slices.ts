@@ -616,7 +616,10 @@ export type ContainerInternalIdentitySubjectUsageRoutesSlice = Pick<
 export type ContainerAdminMyStaffToolsRoutesSlice = {
   admin: {
     requestLifecycle: Pick<AdminRouteServices["requestLifecycle"], "isSuspended">;
-    staffAccess: Pick<AdminStaffSecurityRouteServices["staffAccess"], "myTools">;
+    staffAccess: Pick<
+      AdminStaffSecurityRouteServices["staffAccess"],
+      "myTools" | "myFailedJobSources"
+    >;
   };
 };
 

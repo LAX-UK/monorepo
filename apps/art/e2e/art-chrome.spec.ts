@@ -68,4 +68,19 @@ test.describe("lax.art shared chrome @smoke", () => {
     await expect(tabBar).toHaveAttribute("data-hidden-reason", "slot-claimed");
     await expect(tabBar).toHaveAttribute("inert", "");
   });
+
+  test("public pages do not fetch Stripe's Connect script", async ({ page }) => {
+    // Stripe Connect is only for payout setup. When a shared barrel pulled it into every page, the
+    // script request held each page's `load` event open whenever Stripe was slow to answer.
+    const stripeRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).hostname.endsWith("stripe.com")) {
+        stripeRequests.push(request.url());
+      }
+    });
+    for (const path of ["/", "/artworks"]) {
+      await page.goto(path, { waitUntil: "load" });
+    }
+    expect(stripeRequests).toEqual([]);
+  });
 });

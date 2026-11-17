@@ -362,6 +362,7 @@ async function applyVisibility(
     artworkId: after.id,
     kind,
     announce: kind === "art_original" || releaseAlerts.send,
+    actorSubjectId,
   });
   return {
     outcome: "changed",

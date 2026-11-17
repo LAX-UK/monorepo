@@ -37,6 +37,10 @@ jobs:
               - "apps/shop-admin/**"
               - "packages/staff-ui/**"
               - "scripts/ci/start-lax-admin-stack.sh"
+              - "apps/shop-api/src/infrastructure/seed/zoho-mirror-badge-seed.ts"
+              - "apps/shop-api/src/scripts/seed-zoho-mirror-badge.ts"
+              - "apps/shop-api/src/application/zoho-mirror/**"
+              - "apps/shop-api/src/routes/admin/v1/admin-zoho-mirror.routes.ts"
             # On a pull request the browser gates run only for changes a page can show: the apps,
             # their UI packages, the e2e suites, seeds and this workflow. Every other change still
             # runs the full gates in the merge queue (merge_group always runs), so nothing reaches
@@ -337,6 +341,11 @@ jobs:
       - name: Start LAX Admin
         if: needs.changes.outputs.lax_admin == 'true'
         run: scripts/ci/start-lax-admin-stack.sh
+      # One paid order per "Mirrored to Zoho" badge state, so the badge checks below open every
+      # state; the badge spec fails in CI when one is missing rather than skipping it.
+      - name: Seed the Zoho badge fixture orders
+        if: needs.changes.outputs.lax_admin == 'true'
+        run: pnpm --filter @auction/shop-api seed:zoho-mirror-badge
       - name: Run LAX Admin accessibility and role checks
         if: needs.changes.outputs.lax_admin == 'true'
         env:

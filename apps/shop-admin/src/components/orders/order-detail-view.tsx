@@ -10,6 +10,7 @@ import {
 } from "@/components/orders/order-actions.client";
 import { PickAndPackPanel } from "@/components/orders/pick-and-pack-panel.client";
 import { ReturnsPanel } from "@/components/orders/returns-panel.client";
+import { ZohoMirrorBadge } from "@/components/zoho/zoho-mirror-badge";
 import { guestErasedLine } from "@/server/domain/guest-erasure.vm";
 import {
   buildOrderTimeline,
@@ -34,6 +35,7 @@ import {
 } from "@/server/domain/order-detail.vm";
 import { orderBuyerAccountLabel, orderNumber } from "@/server/domain/order-list.vm";
 import { cancelledLineStock, orderReturnRows } from "@/server/domain/order-returns.vm";
+import type { ZohoMirrorBadgeView } from "@/server/domain/zoho-mirror.vm";
 import type {
   AdminGuestErasureState,
   AdminOrderDetail,
@@ -83,6 +85,7 @@ export function OrderDetailView({
   permissions,
   guestErasure = null,
   pickAndPack = null,
+  zohoMirror = null,
 }: {
   detail: AdminOrderDetail;
   permissions: OrderPermissions;
@@ -90,6 +93,8 @@ export function OrderDetailView({
   pickAndPack?: AdminPickAndPack | null;
   /** Loaded only for a guest's order, for people who may erase guest data. */
   guestErasure?: AdminGuestErasureState | null;
+  /** Whether the order reached Zoho; absent when it has no badge or could not be read. */
+  zohoMirror?: ZohoMirrorBadgeView | null;
 }) {
   const number = orderNumber(detail.orderId, detail.reference);
   const erased = detail.personalDataErasedAt ? guestErasedLine(detail.personalDataErasedAt) : null;
@@ -112,7 +117,12 @@ export function OrderDetailView({
           />
         }
         title={`Order ${number}`}
-        status={<MappedStatusBadge status={detail.status} present={presentOrderStatus} />}
+        status={
+          <>
+            <MappedStatusBadge status={detail.status} present={presentOrderStatus} />
+            {zohoMirror ? <ZohoMirrorBadge view={zohoMirror} /> : null}
+          </>
+        }
         meta={
           <>
             <MetaItem label="Total">{formatGbp(detail.totalPence)}</MetaItem>

@@ -40,6 +40,16 @@
       "style": {
         "noNonNullAssertion": "warn"
       },
+      "nursery": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@stripe/connect-js": "Import from '@stripe/connect-js/pure' instead: the bare entry injects connect-js.stripe.com at module evaluation, on every page that bundles it. Call loadConnectAndInitialize only when the Connect UI opens."
+            }
+          }
+        }
+      },
       "suspicious": {
         "noExplicitAny": "warn"
       }

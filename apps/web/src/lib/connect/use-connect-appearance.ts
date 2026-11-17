@@ -1,6 +1,6 @@
 "use client";
 
-import type { AppearanceOptions } from "@stripe/connect-js";
+import type { AppearanceOptions } from "@stripe/connect-js/pure";
 import { useEffect, useState } from "react";
 
 function readCssVar(name: string, fallback: string): string {

@@ -1,4 +1,4 @@
-import type { StaffRoles } from "@auction/types";
+import { FAILED_JOB_SOURCES, type StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -6,6 +6,7 @@ import { StaffAccessAdminService } from "../services/admin/staff-access-admin.se
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminMyStaffToolsRoutes } from "./admin/staff-access.routes.js";
 
+const ALL_SOURCES = [...FAILED_JOB_SOURCES];
 const SUBJECT = "8f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f";
 const T0 = new Date("2026-10-10T10:00:00.000Z");
 
@@ -65,7 +66,9 @@ describe("GET /admin/staff/my-tools", () => {
     const res = await request(app);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ data: { tools: ["bid-admin", "lax-admin"] } });
+    expect(await res.json()).toEqual({
+      data: { tools: ["bid-admin", "lax-admin"], failedJobSources: ALL_SOURCES },
+    });
   });
 
   it("lists only Bid admin for Bid staff without a Shop role", async () => {
@@ -73,7 +76,9 @@ describe("GET /admin/staff/my-tools", () => {
       { product: "bid", role: "specialist" },
     ]);
 
-    expect(await (await request(app)).json()).toEqual({ data: { tools: ["bid-admin"] } });
+    expect(await (await request(app)).json()).toEqual({
+      data: { tools: ["bid-admin"], failedJobSources: [] },
+    });
   });
 
   it("answers finance staff, who fail the platform shell gate but open Bid admin", async () => {
@@ -84,7 +89,10 @@ describe("GET /admin/staff/my-tools", () => {
     const res = await request(app);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ data: { tools: ["bid-admin"] } });
+    // Finance opens Failed jobs for its Xero and Books rows only, so it is not sent to Zoho's.
+    expect(await res.json()).toEqual({
+      data: { tools: ["bid-admin"], failedJobSources: ["integrations.xero", "integrations.books"] },
+    });
   });
 
   it("follows the live Bid session rather than a stale directory row", async () => {
@@ -92,13 +100,17 @@ describe("GET /admin/staff/my-tools", () => {
       { product: "bid", role: "specialist" },
     ]);
 
-    expect(await (await request(app)).json()).toEqual({ data: { tools: [] } });
+    expect(await (await request(app)).json()).toEqual({
+      data: { tools: [], failedJobSources: [] },
+    });
   });
 
   it("lists only LAX Admin for Shop-only staff", async () => {
     const app = buildApp({ role: "staff", staffRoles: [] }, [{ product: "shop", role: "broker" }]);
 
-    expect(await (await request(app)).json()).toEqual({ data: { tools: ["lax-admin"] } });
+    expect(await (await request(app)).json()).toEqual({
+      data: { tools: ["lax-admin"], failedJobSources: [] },
+    });
   });
 
   it("answers LAX Admin's exchanged token, which carries only the staff tools scope", async () => {
@@ -111,7 +123,9 @@ describe("GET /admin/staff/my-tools", () => {
     const res = await request(app);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ data: { tools: ["bid-admin", "lax-admin"] } });
+    expect(await res.json()).toEqual({
+      data: { tools: ["bid-admin", "lax-admin"], failedJobSources: [] },
+    });
   });
 
   it("refuses tokens that carry neither bid.read nor the staff tools scope", async () => {

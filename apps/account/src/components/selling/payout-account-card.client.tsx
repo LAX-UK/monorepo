@@ -6,7 +6,7 @@ import { createPayoutSessionAction } from "@/server/application/selling-actions.
 import type { PayoutAccountVm } from "@/server/domain/selling/selling-payouts.vm";
 import { cn } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js";
+import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js/pure";
 import {
   ConnectAccountManagement,
   ConnectAccountOnboarding,

@@ -1,6 +1,9 @@
 import type { AdminFramingDueList } from "@auction/shop-contracts";
 import type { OriginalMoveService } from "./application/admin/original-move.service.js";
-import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
+import type {
+  ReleaseAlertSendLogReader,
+  ReleaseAlertSummaryReader,
+} from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
@@ -125,6 +128,8 @@ export type AdminRoutesDeps = {
   stockLocations: StockLocationService;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
+  /** The release-alert send log: counts per published release, never subscribers. */
+  releaseAlertSends: ReleaseAlertSendLogReader;
   /** The printers and publishers list in Settings. */
   printParties: PrintPartyStore;
   artistApplicationReview: ArtistApplicationReviewService;
