@@ -1,7 +1,7 @@
 import { SaleroomLotCard } from "@/components/sections/saleroom/saleroom-lot-card";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
@@ -71,7 +71,7 @@ const lot: SaleLotCardVM = {
 };
 
 describe("SaleroomLotCard", () => {
-  it("renders saleroom overlay inside the tile image link", () => {
+  it("renders the saleroom overlay on the tile's picture, and quick look beside it", () => {
     const { container } = render(
       <SaleroomLotCard
         lot={lot}
@@ -80,9 +80,10 @@ describe("SaleroomLotCard", () => {
       />,
     );
 
-    const imageLink = screen.getByRole("link", { name: "Lot 1: Test lot" });
+    const picture = screen.getByTestId("lot-card-media");
     const overlay = screen.getByTestId("saleroom-lot-catalog-overlay");
-    expect(imageLink).toContainElement(overlay);
+    expect(picture).toContainElement(overlay);
+    expect(picture.querySelector("a")).toHaveAttribute("href", lot.href);
     expect(overlay).toHaveAttribute("data-layout", "overlay");
     expect(screen.getByTestId("corner")).toBeInTheDocument();
     expect(container.querySelector("[data-overlay-resolved]")).toBeInTheDocument();
@@ -113,11 +114,13 @@ describe("SaleroomLotCard", () => {
       />,
     );
 
-    const titleLink = screen
-      .getAllByRole("link", { name: "Test lot" })
-      .find((link) => link.className.includes("line-clamp-2"));
-    expect(titleLink).toBeDefined();
-    expect(titleLink?.className).not.toContain("min-h");
-    expect(container.querySelector(".mt-auto [data-testid='lot-card-line']")).toBeInTheDocument();
+    const title = screen.getByRole("heading", { name: "Test lot" });
+    expect(title.className).toContain("line-clamp-2");
+    expect(title.className).not.toContain("min-h");
+    expect(within(title).getByRole("link", { name: "Test lot" })).toHaveAttribute("href", lot.href);
+    // The foot (estimate, price, button) is pinned to the bottom of the card (styles/lot-card.css).
+    expect(
+      container.querySelector(".lot-card-foot [data-testid='lot-card-line']"),
+    ).toBeInTheDocument();
   });
 });

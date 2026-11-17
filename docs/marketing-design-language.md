@@ -85,7 +85,7 @@ Load fonts in `apps/web/src/app/layout.tsx` via `next/font/google`. Components M
 - **Hover (cards):** image `scale-[1.02]`, card `-translate-y-px`, `ring-1 ring-primary/20`.
 - **Focus:** `FOCUS_RING` on all interactive marketing chrome and link-cards.
 - **Icon buttons (chrome):** min touch target 44×44.
-- **Lot cards (every Bid lot grid: sale page, search):** nothing sits on the artwork at rest except the sale status pill (Sold, Unsold, In saleroom, Up next) and, for the seller, the owner badge. The save heart is a quiet outline heart at the right end of the "Lot N" line (`LotCardLotLine`), 44px tap area, filled in the Bid accent (`product-accent`) when saved. Quick look's trigger is a "Quick look" label at the bottom of the picture (`LotCardQuickLook`), shown on mouse hover or keyboard focus within the card, and displayed only for a hovering fine pointer; on phones a tap opens the lot page. Both are styled in `apps/web/src/styles/lot-card.css`, so the route scripts carry only class names. Every picture uses one frame (`lotCardMediaFrame`): the same mat, padding and 4:5 box, shown whole and centred. The full-width button names what it does for the viewer (`lotCardBidAction`): "Bid", "Register to bid" or "Leave a bid", and is left out when none applies.
+- **Lot cards (every Bid lot grid):** one component, `LotCard` (`apps/web/src/components/lot-card/lot-card.tsx`): picture box, `LotCardLotLine`, title, meta and an action slot. The sale page, search (grid and `?view=card`), the home rails, the artist page, the sell pages' department rows and the lot page's "More from" rail all render through it, each supplying only data and the parts it has. Nothing sits on the artwork at rest except the sale status pill (Sold, Unsold, In saleroom, Up next) and, for the seller, the owner badge; no lot grid puts a control on the picture (an e2e walks the grids). The save heart is a quiet outline heart at the right end of the "Lot N" line, 44px tap area, filled in the Bid accent (`--color-product-accent`) when saved. Quick look's trigger is a "Quick look" label (`LotCardQuickLook`) that follows the title in reading and tab order but is drawn over the lower picture, raised clear of the status pill's row; it shows on mouse hover or keyboard focus within the card, and only for a hovering fine pointer; on phones a tap opens the lot page. Layout and both controls are styled in `apps/web/src/styles/lot-card.css`, so the route scripts carry only class names. Every picture uses one frame (`lotCardMediaFrame`): the same mat, padding and 4:5 box, shown whole and centred. The full-width button names the viewer's real next action (`lotCardBidAction`): "Bid" on an open lot; before it opens, on the sale page, the hero's own register step with its own label ("Register to bid", "Verify identity to bid", "Set up a buyer profile") or "Leave a bid"; and nothing when none applies (grids of lots from many sales, which cannot know the viewer's step, offer only "Bid").
 - **Card rails (Shop home rows, Bid Editor’s Picks):** compose `MarketingHorizontalRail` — swipe/scroll on touch, optional forward chevron on `sm+` when content overflows. Do **not** add bottom progress thumbs, previous controls, or Embla slide semantics to card rails.
 - **Media carousels (hero, gallery, press):** Embla with arrows/dots. **Catalogue pagination:** numbered URL/page controls — distinct from card rails.
 
@@ -101,7 +101,7 @@ Use `@auction/marketing-ui` (`MarketingReveal`, `MarketingCardReveal`, `Marketin
 | Hero copy choreography | legacy `.fade-up-d1…d4` inside hero shells only | — | fixed 150–550 ms presets |
 
 - **`wipeZoom` / `wipe`:** not used on marketing surfaces.
-- **Card components** (`MarketingLotTile`, `SaleroomLotCard`, etc.) stay presentational — grids wrap them in `MarketingCardReveal`.
+- **Card components** (`LotCard`, `MarketingWorkCard`, etc.) stay presentational — grids wrap them in `MarketingCardReveal`.
 
 ## Component catalog (target)
 
@@ -141,7 +141,7 @@ Use `@auction/marketing-ui` (`MarketingReveal`, `MarketingCardReveal`, `Marketin
 ## Card families
 
 - **`SaleCard`**: composes existing `SaleCardShell`, `SaleCardMedia`, `SaleCardTitle`, `SaleCardMeta`, `SaleCardHeader`, `SaleCardActions`, `SaleLiveBadge` → variants `editorial-bold` \| `editorial-calm` \| `grid` \| `list`.
-- **`LotCard`**: single implementation for catalog, archive, search, saleroom, home urgency.
+- **`LotCard`** (`components/lot-card/lot-card.tsx`): the single lot card for every lot grid: sale page, search, home rails, artist and department grids, the lot page rail.
 - **`ArtistCard`**: directory + browse views; grid delegates to portrait card.
 
 ## Status & live
@@ -253,7 +253,7 @@ Anti-snipe extensions and onsite no-web-bidding callouts are **bid-participation
 - **Catalogue hubs:** use `MarketingCatalogHubShell` for `/search`, `/archive`, `/artists`, `/sales` — do not hand-compose `<main>` + `MARKETING_CATALOG_PT` + `MARKETING_PAGE_SHELL`.
 - **Detail pages:** use `MarketingDetailShell` for artist profile, sale detail, and lot detail — wayfinding/hero slots plus optional `wrapChildren={false}` for multi-band saleroom layouts.
 - **Toolbar rows:** shared count/filter/sort layout lives in `MarketingToolbarRow`; sticky chrome in `MarketingListToolbar`, inset home chrome in `HomeSectionToolbar`. Removable active-filter chips (`CatalogActiveFilterChips`) render **below** the sticky toolbar band — not inside it — so they scroll away with results.
-- **Catalogue grids:** use `MarketingCatalogGrid` for equal-height tile rows; cards inside must be `h-full` with caption `mt-auto` (see `LotCardGrid`).
+- **Catalogue grids:** use `MarketingCatalogGrid` for equal-height tile rows; cards inside must be `h-full` with the price block pinned to the bottom (see `LotCard`).
 - **Bottom chrome:** a fixed phone bar renders through `CookieDockSlot` (stacked under the cookie banner) with safe-area padding, never its own `fixed bottom-0`. A bar that must stay outside the dock sits at `bottom-[var(--cookie-dock-height,0px)]`.
 
 ### PR checklist (marketing UI)
@@ -336,9 +336,9 @@ the column contents differ. No tagline, no second logo, sentence-case labels.
 │ Section: Upcoming       MarketingListToolbar (count + switcher)
 │ SaleCard grid / SaleCard list rows
 ├─────────────────────────────────────────────────────────────
-│ Section: Editors' picks (LotCard editorial-calm rail)
+│ Section: Editors' picks (LotCard rail)
 ├─────────────────────────────────────────────────────────────
-│ Section: Private sale   (LotCard editorial-bold rail)
+│ Section: Private sale   (LotCard rail)
 ├─────────────────────────────────────────────────────────────
 │ MarketingPromoCta: Consign
 ├─────────────────────────────────────────────────────────────

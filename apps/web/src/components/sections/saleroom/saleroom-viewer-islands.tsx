@@ -13,10 +13,7 @@ import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-h
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
-import {
-  type SalePrimaryViewerActionInput,
-  salePrimaryViewerAction,
-} from "@/lib/sale/sale-primary-viewer-action";
+import { salePrimaryViewerAction } from "@/lib/sale/sale-primary-viewer-action";
 import {
   parseLayoutViewCookie,
   viewCookieName,
@@ -29,16 +26,6 @@ import { type ComponentProps, useLayoutEffect, useMemo } from "react";
  * knows and adds what `useSaleViewer()` says about the person looking. Before `/me` answers they
  * render exactly what the signed-out HTML has, so hydration matches.
  */
-
-/** The sale's register step for this viewer: what the hero, the phone bar and the cards offer. */
-function viewerRegisterStep(
-  viewer: ReturnType<typeof useSaleViewer>,
-  status: SalePrimaryViewerActionInput["status"],
-  deliveryMode: SalePrimaryViewerActionInput["deliveryMode"],
-  offer: Pick<SalePrimaryViewerActionInput, "registrationOffered" | "saleHref">,
-) {
-  return salePrimaryViewerAction({ ...viewer, status, deliveryMode, ...offer });
-}
 
 type HeroActionRowProps = ComponentProps<typeof SaleroomHeroActionRow>;
 
@@ -96,7 +83,10 @@ export function SaleMobileSummaryBarIsland({
   // viewer is only the signed-out guess, so the bar offers the lots rather than flash a button
   // that may be wrong for this person.
   const primaryAction = loaded
-    ? viewerRegisterStep(viewer, props.status, props.deliveryMode ?? "online", {
+    ? salePrimaryViewerAction({
+        ...viewer,
+        status: props.status,
+        deliveryMode: props.deliveryMode ?? "online",
         registrationOffered: registerToBidSale && canParticipate,
         saleHref,
       })
@@ -181,10 +171,14 @@ export function SaleroomCatalogLotsLiveIsland({
     [rows, watched],
   );
   const sale = props.saleForLifecycle;
-  // The hero's register step for this person, from the same presenter, so a card never says
-  // "Register to bid" to someone the hero considers registered (or the other way round).
+  // The hero's register step for this person, from the same presenter, label and all: a card
+  // says "Verify identity to bid" or "Set up a buyer profile" exactly when the hero does, and
+  // never "Register to bid" to someone the hero considers registered (or the other way round).
   const register = sale
-    ? viewerRegisterStep(viewer, sale.status, sale.deliveryMode, {
+    ? salePrimaryViewerAction({
+        ...viewer,
+        status: sale.status,
+        deliveryMode: sale.deliveryMode,
         registrationOffered: registerToBidSale && canParticipate,
         saleHref,
       })
@@ -193,13 +187,14 @@ export function SaleroomCatalogLotsLiveIsland({
     <SaleroomCatalogLotsLive
       {...props}
       rows={personalRows}
+      registrationOffered={registerToBidSale}
       isAuthenticated={viewer.isAuthenticated}
       canParticipate={canParticipate}
       bidViewer={
         loaded
           ? {
               signedIn: viewer.isAuthenticated,
-              register: register ? { href: register.href } : null,
+              register: register ? { href: register.href, label: register.label } : null,
             }
           : null
       }

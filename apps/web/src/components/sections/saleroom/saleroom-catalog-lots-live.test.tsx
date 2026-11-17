@@ -256,16 +256,45 @@ describe("SaleroomCatalogLotsLive card button label", () => {
   }
 
   it("says Bid on an open lot and goes to the lot page", () => {
-    renderCard(lot, { signedIn: false, register: { href: "/sign-up" } }, hybridSaleForLifecycle);
+    renderCard(
+      lot,
+      { signedIn: false, register: { href: "/sign-up", label: "Register to bid" } },
+      hybridSaleForLifecycle,
+    );
     const button = screen.getByRole("link", { name: "Bid" });
     expect(button).toHaveAttribute("href", lot.href);
   });
 
   it("says Register to bid before the sale opens for a viewer who must register", () => {
-    renderCard(scheduled, { signedIn: true, register: { href: "#register-to-bid" } });
+    renderCard(scheduled, {
+      signedIn: true,
+      register: { href: "#register-to-bid", label: "Register to bid" },
+    });
     const button = screen.getByRole("link", { name: "Register to bid" });
     expect(button).toHaveAttribute("href", "#register-to-bid");
     expect(screen.queryByRole("link", { name: "Bid" })).not.toBeInTheDocument();
+  });
+
+  it("names the hero's own step when it is not registration (identity, buyer profile)", () => {
+    const { unmount } = renderCard(scheduled, {
+      signedIn: true,
+      register: { href: "/onboarding/identity?next=%2Fsales", label: "Verify identity to bid" },
+    });
+    expect(screen.getByRole("link", { name: "Verify identity to bid" })).toHaveAttribute(
+      "href",
+      "/onboarding/identity?next=%2Fsales",
+    );
+    expect(screen.queryByRole("link", { name: "Register to bid" })).not.toBeInTheDocument();
+    unmount();
+    renderCard(scheduled, {
+      signedIn: true,
+      register: { href: "/onboarding/organisation", label: "Set up a buyer profile" },
+    });
+    expect(screen.getByRole("link", { name: "Set up a buyer profile" })).toHaveAttribute(
+      "href",
+      "/onboarding/organisation",
+    );
+    expect(screen.queryByRole("link", { name: "Register to bid" })).not.toBeInTheDocument();
   });
 
   it("says Leave a bid before opening for a registered viewer when advance bids are taken", () => {
@@ -284,7 +313,16 @@ describe("SaleroomCatalogLotsLive card button label", () => {
   });
 
   it("keeps the button's place, with no label, until the viewer is known", () => {
-    renderCard(scheduled, null);
+    const { container } = renderCard(scheduled, null);
     expect(screen.queryByRole("link", { name: /bid/i })).not.toBeInTheDocument();
+    expect(container.querySelector("[data-testid='lot-card-action'] .lax-skeleton")).not.toBeNull();
+  });
+
+  it("draws no placeholder before the viewer read on a sale that offers no button (onsite)", () => {
+    const { container } = renderCard(scheduled, null, {
+      status: "scheduled",
+      deliveryMode: "onsite",
+    });
+    expect(container.querySelector("[data-testid='lot-card-action']")).toBeNull();
   });
 });

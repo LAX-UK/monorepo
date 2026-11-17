@@ -1,9 +1,9 @@
 "use client";
 
+import { LotCardAction } from "@/components/lot-card/lot-card-action";
 import { saleroomLotCardExtras } from "@/components/marketing/lot-quick-look/saleroom-lot-card-extras";
 import { SaleroomCatalogLotsByView } from "@/components/sections/saleroom/saleroom-catalog-lots-by-view";
 import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
-import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
@@ -33,6 +33,11 @@ type Props = {
    * answers (the button's place is kept meanwhile).
    */
   bidViewer?: LotCardBidViewer;
+  /**
+   * The sale takes web registrations now (`registerToBidSale`). With the sale's mode it says
+   * whether a card could ever ask someone to register, before the viewer read answers.
+   */
+  registrationOffered?: boolean;
   emptyMessage?: string;
   clearFiltersHref?: string | null;
   /**
@@ -49,6 +54,7 @@ export function SaleroomCatalogLotsLive({
   isAuthenticated,
   canParticipate = true,
   bidViewer = null,
+  registrationOffered = true,
   emptyMessage,
   clearFiltersHref,
   live: liveRead = null,
@@ -128,7 +134,7 @@ export function SaleroomCatalogLotsLive({
             : lotCardBidAction({
                 lotStatus: lot.status,
                 lotHref: lot.href,
-                sale: saleForLifecycle,
+                sale: saleForLifecycle ? { ...saleForLifecycle, registrationOffered } : null,
                 viewer: bidViewer,
               });
           if (!action) return null;
@@ -136,7 +142,7 @@ export function SaleroomCatalogLotsLive({
           if (action.kind === "pending") {
             return <Skeleton className="h-lax-control-md w-full rounded-lax-control" />;
           }
-          return <SaleroomLotActions action={action} />;
+          return <LotCardAction action={action} />;
         }}
       />
     </>

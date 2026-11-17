@@ -1,13 +1,14 @@
 "use client";
 
+import { LotCard } from "@/components/lot-card/lot-card";
+import { LotCardQuickLook } from "@/components/lot-card/lot-card-quick-look";
 import { timerText } from "@/components/lot-timer/format";
-import { LotQuickLookTrigger } from "@/components/marketing/lot-quick-look/lot-quick-look-trigger";
 import {
   lotQuickLookFromRailCard,
   lotQuickLookRailDeck,
 } from "@/components/marketing/lot-quick-look/mappers";
-import { MarketingLotOverlayActions } from "@/components/marketing/lot-quick-look/marketing-lot-overlay-actions";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
+import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import type { LotRelatedRailVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
@@ -91,100 +92,102 @@ export function LotMoreFromRail({
               : closingText(new Date(endTime).getTime() - nowMs, nowMs);
           return (
             <li key={c.id} className="w-[200px] shrink-0 min-w-0">
-              <div className="flex h-full flex-col gap-4">
-                <AdaptiveMediaFrame src={c.imageUrl} objectFit="cover" slots={LOT_CARD_GRID_SLOTS}>
-                  <Link
+              {isCompact ? (
+                <AdaptiveMediaFrame
+                  src={c.imageUrl}
+                  objectFit="contain"
+                  slots={LOT_CARD_GRID_SLOTS}
+                  className="flex h-full min-w-0 flex-col"
+                >
+                  <LotCard
                     href={c.href}
-                    className={cn(
-                      "lax-card group relative block aspect-[4/5] w-full overflow-hidden rounded-sm bg-brand-900",
-                      FOCUS_RING,
-                    )}
-                  >
-                    <AdaptiveMediaFrameContainer className="absolute inset-0">
+                    title={c.title}
+                    lotLabel={c.lotNumber != null ? `Lot ${c.lotNumber}` : null}
+                    mediaStyle="wall"
+                    MediaBox={AdaptiveMediaFrameContainer}
+                    media={
                       <AdaptiveFrameImage
                         src={c.imageUrl}
                         alt=""
-                        objectFit="cover"
+                        objectFit="contain"
                         label="Lot artwork"
-                        className="size-full"
-                        imgClassName="size-full object-cover lax-card-zoom"
                         sizes="200px"
                       />
-                      {isCompact ? (
-                        <MarketingLotOverlayActions
-                          lotId={c.id}
-                          lotTitle={c.title}
-                          initialWatching={watchedLotIds.includes(c.id)}
-                          isAuthenticated={isAuthenticated}
-                          loginNextPath={c.href}
-                          vm={lotQuickLookFromRailCard(c, cardLive)}
-                          quickLookOptions={{
-                            deck: quickLookDeck,
-                            deckIndex: cardIndex,
-                            deckSourceLabel: rail.heading,
-                            isAuthenticated,
-                            watchedLotIds,
-                            loginNextPath: c.href,
-                          }}
-                          topRightAddon={
-                            <OwnerBadge
-                              owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                              className="pointer-events-auto"
-                            />
-                          }
-                        />
-                      ) : null}
-                      {!isCompact ? (
-                        <>
-                          <OwnerBadge
-                            owned={Boolean(currentUserId && c.sellerId === currentUserId)}
-                            className="absolute right-2 top-2"
-                          />
-                          <div className="pointer-events-auto absolute bottom-2 left-2 z-10">
-                            <LotQuickLookTrigger
-                              vm={lotQuickLookFromRailCard(c, cardLive)}
-                              layout="overlay"
-                              surface="onImage"
-                              options={{
-                                deck: quickLookDeck,
-                                deckIndex: cardIndex,
-                                deckSourceLabel: rail.heading,
-                                isAuthenticated,
-                                watchedLotIds,
-                                loginNextPath: c.href,
-                              }}
-                            />
-                          </div>
-                        </>
-                      ) : null}
-                    </AdaptiveMediaFrameContainer>
-                  </Link>
+                    }
+                    badge={
+                      <OwnerBadge owned={Boolean(currentUserId && c.sellerId === currentUserId)} />
+                    }
+                    save={
+                      <MarketingWatchlistHeart
+                        lotId={c.id}
+                        lotTitle={c.title}
+                        initialWatching={watchedLotIds.includes(c.id)}
+                        isAuthenticated={isAuthenticated}
+                        loginNextPath={c.href}
+                        layout="inline"
+                        surface="inline"
+                      />
+                    }
+                    quickLook={
+                      <LotCardQuickLook
+                        vm={lotQuickLookFromRailCard(c, cardLive)}
+                        options={{
+                          deck: quickLookDeck,
+                          deckIndex: cardIndex,
+                          deckSourceLabel: rail.heading,
+                          isAuthenticated,
+                          watchedLotIds,
+                          loginNextPath: c.href,
+                        }}
+                      />
+                    }
+                    subtitle={
+                      <p className="m-0 text-xs text-on-surface-variant">
+                        {c.artistName ? `${c.artistName} \u00B7 ` : null}
+                        {cardLive ? (
+                          <span className="text-on-surface">
+                            {cardLive.resultPending ? "Ended" : cardLive.currentBidValue}
+                          </span>
+                        ) : (
+                          <span data-testid="rail-price-pending" aria-busy="true">
+                            <Skeleton className="inline-block h-3 w-12 align-middle" />
+                          </span>
+                        )}
+                      </p>
+                    }
+                  />
                 </AdaptiveMediaFrame>
-                {isCompact ? (
-                  <div className="flex flex-col gap-1">
+              ) : (
+                <div className="flex h-full flex-col gap-4">
+                  <AdaptiveMediaFrame
+                    src={c.imageUrl}
+                    objectFit="cover"
+                    slots={LOT_CARD_GRID_SLOTS}
+                  >
                     <Link
                       href={c.href}
                       className={cn(
-                        "rounded-sm text-sm font-semibold leading-5 text-on-surface underline-offset-2 hover:underline",
+                        "lax-card group relative block aspect-[4/5] w-full overflow-hidden rounded-sm bg-brand-900",
                         FOCUS_RING,
                       )}
                     >
-                      {c.title}
+                      <AdaptiveMediaFrameContainer className="absolute inset-0">
+                        <AdaptiveFrameImage
+                          src={c.imageUrl}
+                          alt=""
+                          objectFit="cover"
+                          label="Lot artwork"
+                          className="size-full"
+                          imgClassName="size-full object-cover lax-card-zoom"
+                          sizes="200px"
+                        />
+                        <OwnerBadge
+                          owned={Boolean(currentUserId && c.sellerId === currentUserId)}
+                          className="absolute right-2 top-2"
+                        />
+                      </AdaptiveMediaFrameContainer>
                     </Link>
-                    <p className="text-xs text-on-surface-variant">
-                      {c.artistName ? `${c.artistName} \u00B7 ` : null}
-                      {cardLive ? (
-                        <span className="text-on-surface">
-                          {cardLive.resultPending ? "Ended" : cardLive.currentBidValue}
-                        </span>
-                      ) : (
-                        <span data-testid="rail-price-pending" aria-busy="true">
-                          <Skeleton className="inline-block h-3 w-12 align-middle" />
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                ) : (
+                  </AdaptiveMediaFrame>
                   <div className="flex flex-1 flex-col gap-2">
                     <p className="text-sm font-bold leading-4 text-warning-on-surface">
                       {c.lotNumber != null ? `Lot ${c.lotNumber}` : "Lot"}
@@ -250,8 +253,8 @@ export function LotMoreFromRail({
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </li>
           );
         })}

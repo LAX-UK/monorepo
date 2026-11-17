@@ -1,13 +1,24 @@
+import {
+  LOT_CARD_STATUS_CORNER,
+  LotCard,
+  type LotCardLinkProps,
+} from "@/components/lot-card/lot-card";
+import { lotCardGridAction } from "@/components/lot-card/lot-card-action";
 import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
 import { LotCardLine } from "@/components/lot-card/lot-card-line";
 import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
-import { CatalogLotEditorialCalmCaption } from "@/components/marketing/catalog-lot-editorial-calm-caption";
-import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
+import { LotListRow } from "@/components/marketing/lot-list-row";
 import { catalogLotCardExtras } from "@/components/marketing/lot-quick-look/catalog-lot-card-extras";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
+import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
+import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
+import {
+  AdaptiveMediaFrame,
+  AdaptiveMediaFrameContainer,
+} from "@/components/ui/adaptive-media-frame";
 import { MediaImage } from "@/components/ui/media-image";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-card-line";
@@ -15,13 +26,15 @@ import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import { MARKETING_CATALOG_LIST_SHELL } from "@/lib/marketing/chrome";
-import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import type { OverlaySurface } from "@/lib/ui/overlay-tone-classes";
+import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
 import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import { lotCardMediaFrame } from "@auction/marketing-ui/lot-media/lot-card-media-frame";
 import type { CatalogLotVM } from "@auction/types";
+import Link from "next/link";
 
 export type CatalogLotViewsProps = {
   lots: CatalogLotVM[];
@@ -75,136 +88,124 @@ function LotStatusOverlay({ lot }: { lot: CatalogLotVM }) {
   if (!isPublicLotStatus(lot.status)) return null;
   // The price line carries the clock; the badge stays only for outcomes the line does not say.
   if (!lotCardShowsStatusBadge(lotCardLineModel(lot, new Date()))) return null;
-  return <LotStatusBadge {...lotStatusBadgeProps(lot)} />;
+  return (
+    <div className={LOT_CARD_STATUS_CORNER}>
+      <LotStatusBadge {...lotStatusBadgeProps(lot)} />
+    </div>
+  );
 }
 
-export function CatalogLotGridView({
-  lots,
+/** The search link that names the lot's view transition (picture and title). */
+function CatalogLotLink({ lotId, ...props }: LotCardLinkProps) {
+  if (!lotId) return <Link {...props} />;
+  return <LotViewTransitionLink lotId={lotId} {...props} />;
+}
+
+type CatalogLotCardProps = Omit<CatalogLotViewsProps, "lots" | "treatments"> & {
+  lot: CatalogLotVM;
+  treatments: LotMediaTreatmentIndex;
+  sizes: string;
+};
+
+/** A search result as the one lot card (grid and card views). */
+function CatalogLotCard({
+  lot,
   currentUserId,
   isAuthenticated,
   watchedLotIds,
   loginNextPath,
-  treatments = {},
+  treatments,
   catalogLinkParams,
-}: CatalogLotViewsProps) {
+  sizes,
+}: CatalogLotCardProps) {
+  const href = resolveLotHref(lot, catalogLinkParams);
+  const style = lotMediaTreatment(lot, treatments).style;
+  const fit = lotCardMediaFrame(style).fit;
+  const owned = Boolean(currentUserId && lot.sellerId === currentUserId);
+  const extras = catalogLotCardExtras(lot, { isAuthenticated, watchedLotIds, loginNextPath });
+  const status = <LotStatusOverlay lot={lot} />;
+  return (
+    <AdaptiveMediaFrame
+      src={lot.images[0]}
+      objectFit={fit}
+      slots={LOT_CARD_GRID_SLOTS}
+      className="flex h-full min-w-0 flex-col"
+    >
+      <LotCard
+        href={href}
+        lotId={lot.id}
+        LinkComponent={CatalogLotLink}
+        rootAttributes={{ [LOT_TRANSITION_ROOT_ATTR]: lot.id }}
+        mediaAttributes={{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
+        title={lot.title}
+        titleAs="h2"
+        lotLabel={lot.lotNumber != null ? `Lot ${lot.lotNumber}` : null}
+        mediaStyle={style}
+        MediaBox={AdaptiveMediaFrameContainer}
+        media={
+          <AdaptiveFrameImage
+            src={lot.images[0]}
+            alt={lot.title}
+            objectFit={fit}
+            sizes={sizes}
+            label="Lot artwork"
+          />
+        }
+        badge={owned ? <OwnerBadge owned /> : null}
+        status={status}
+        save={extras.save}
+        quickLook={extras.quickLook}
+        subtitle={lotSubtitle(lot)}
+        meta={
+          <>
+            <LotEstimateLine value={lotEstimateLine(lot)} />
+            <LotCardLine model={lotCardLineModel(lot, new Date())} />
+            <LotCardBidderState lotId={lot.id} lotHref={href} lotTitle={lot.title} />
+          </>
+        }
+        action={lotCardGridAction({ ...lot, href })}
+      />
+    </AdaptiveMediaFrame>
+  );
+}
+
+export function CatalogLotGridView({ lots, treatments = {}, ...viewer }: CatalogLotViewsProps) {
   return (
     <MarketingCatalogGrid
       count={lots.length}
       gridClassName="gap-3 sm:gap-4 md:gap-8"
       multi="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3"
     >
-      {lots.map((a) => {
-        const img = a.images[0];
-        const est = lotEstimateLine(a);
-        const subtitle = lotSubtitle(a);
-        const owned = Boolean(currentUserId && a.sellerId === currentUserId);
-        const style = lotMediaTreatment(a, treatments).style;
-        return (
-          <LotCardGrid
-            key={a.id}
-            className="h-full"
-            lotId={a.id}
-            mediaStyle={style}
-            href={resolveLotHref(a, catalogLinkParams)}
-            topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
-            bottomLeft={<LotStatusOverlay lot={a} />}
-            lotLabel={a.lotNumber != null ? `Lot ${a.lotNumber}` : null}
-            titleText={a.title}
-            extras={catalogLotCardExtras(a, { isAuthenticated, watchedLotIds, loginNextPath })}
-            adaptiveMedia={{
-              src: img,
-              objectFit: lotCardMediaFrame(style).fit,
-              slots: LOT_CARD_GRID_SLOTS,
-              alt: a.title,
-              sizes: "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw",
-              label: "Lot artwork",
-            }}
-            title={
-              <>
-                <h2 className="font-headline line-clamp-2 text-sm font-medium text-on-surface group-hover:text-link md:text-xl">
-                  {a.title}
-                </h2>
-                {subtitle ? (
-                  <p className="mt-0.5 line-clamp-1 font-body text-xs text-on-surface-variant md:mt-1 md:text-sm">
-                    {subtitle}
-                  </p>
-                ) : null}
-              </>
-            }
-            meta={
-              <div className="mt-2 flex flex-col gap-1.5">
-                <LotEstimateLine value={est} />
-                <LotCardLine model={lotCardLineModel(a, new Date())} />
-                <LotCardBidderState
-                  lotId={a.id}
-                  lotHref={resolveLotHref(a, catalogLinkParams)}
-                  lotTitle={a.title}
-                />
-              </div>
-            }
-          />
-        );
-      })}
+      {lots.map((lot) => (
+        <CatalogLotCard
+          key={lot.id}
+          lot={lot}
+          treatments={treatments}
+          sizes="(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw"
+          {...viewer}
+        />
+      ))}
     </MarketingCatalogGrid>
   );
 }
 
-export function CatalogLotCardView({
-  lots,
-  currentUserId,
-  isAuthenticated,
-  watchedLotIds,
-  loginNextPath,
-  catalogLinkParams,
-}: CatalogLotViewsProps) {
+/**
+ * The card view (`?view=card`): one large lot card per row, the same card as the grid (one frame,
+ * nothing on the picture but the status pill, the heart on the "Lot N" line).
+ */
+export function CatalogLotCardView({ lots, treatments = {}, ...viewer }: CatalogLotViewsProps) {
   return (
-    <ul className="mx-auto flex max-w-2xl flex-col gap-10">
-      {lots.map((a) => {
-        const img = a.images[0];
-        const est = lotEstimateLine(a);
-        const subtitle = lotSubtitle(a);
-        const owned = Boolean(currentUserId && a.sellerId === currentUserId);
-        return (
-          <li key={a.id}>
-            <LotCardEditorialCalm
-              href={resolveLotHref(a, catalogLinkParams)}
-              topRight={
-                <div className="flex flex-col items-end gap-2">
-                  {owned ? (
-                    <OwnerBadge key="owner-badge" owned className="pointer-events-auto" />
-                  ) : null}
-                  <LotWatchlistHeart
-                    key="watchlist"
-                    lot={a}
-                    isAuthenticated={isAuthenticated}
-                    watchedLotIds={watchedLotIds}
-                    loginNextPath={loginNextPath}
-                    layout="inline"
-                    surface="onImage"
-                  />
-                </div>
-              }
-              adaptiveMedia={{
-                src: img,
-                objectFit: "contain",
-                slots: EDITORIAL_CALM_SLOTS,
-                alt: a.title,
-                sizes: "(max-width: 768px) 100vw, 42rem",
-                label: "Lot artwork",
-              }}
-              title={
-                <CatalogLotEditorialCalmCaption
-                  lot={a}
-                  title={a.title}
-                  subtitle={subtitle}
-                  estimate={est}
-                  lotHref={resolveLotHref(a, catalogLinkParams)}
-                />
-              }
-            />
-          </li>
-        );
-      })}
+    <ul className="mx-auto flex max-w-md flex-col gap-12">
+      {lots.map((lot) => (
+        <li key={lot.id}>
+          <CatalogLotCard
+            lot={lot}
+            treatments={treatments}
+            sizes="(max-width: 480px) 100vw, 28rem"
+            {...viewer}
+          />
+        </li>
+      ))}
     </ul>
   );
 }
@@ -226,7 +227,7 @@ export function CatalogLotListView({
           const subtitle = lotSubtitle(a);
           return (
             <li key={a.id}>
-              <LotCardList
+              <LotListRow
                 lotId={a.id}
                 href={resolveLotHref(a, catalogLinkParams)}
                 image={
