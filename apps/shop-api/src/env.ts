@@ -286,6 +286,15 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   /**
+   * GAP-49 express checkout: Apple Pay, Google Pay and Link through Stripe's Express Checkout
+   * Element on Checkout Sessions in Elements mode. Off by default; with it off the express routes
+   * refuse and no express order is made. Mirrors the Shop's own SHOP_EXPRESS_CHECKOUT.
+   */
+  SHOP_EXPRESS_CHECKOUT: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /**
    * Copies of one edition a single order may hold, shown to shoppers as "Limit N per order".
    * "none" leaves only the stock as the limit.
    */
@@ -367,6 +376,7 @@ export const STRIPE_DEPENDENT_FLAGS = [
   "SHOP_PAYOUTS_ENABLED",
   "SHOP_CONNECT_TRANSFERS_ENABLED",
   "SHOP_ORIGINALS_ENABLED",
+  "SHOP_EXPRESS_CHECKOUT",
 ] as const;
 
 /**

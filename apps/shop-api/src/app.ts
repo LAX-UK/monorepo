@@ -68,6 +68,7 @@ import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
 import { registerDeliveryRegionRoutes } from "./routes/v1/delivery-regions.routes.js";
 import { registerEditionAlertRoutes } from "./routes/v1/edition-alerts.routes.js";
 import { registerEditorialRoutes } from "./routes/v1/editorial.routes.js";
+import { registerExpressCheckoutRoutes } from "./routes/v1/express-checkout.routes.js";
 import { registerPublicFramingRoutes } from "./routes/v1/framing.routes.js";
 import { registerGuestCheckoutRoutes } from "./routes/v1/guest-checkout.routes.js";
 import { registerGuestOrderHelpRoutes } from "./routes/v1/guest-order-help.routes.js";
@@ -180,6 +181,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerGuestCheckoutRoutes(app, options.deps.commerce.guestCheckout);
+  void registerExpressCheckoutRoutes(app, options.deps.commerce);
   void registerGuestOrderHelpRoutes(
     app,
     options.deps.commerce.guestCheckout,

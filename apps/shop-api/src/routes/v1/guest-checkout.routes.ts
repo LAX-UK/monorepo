@@ -36,14 +36,19 @@ import { admissionClientIp, visitorClientIp } from "./enquiry-admission.js";
 const BASKET_TOKEN_HEADER = "x-shop-basket-token";
 
 /** Guest routes are the storefront's own: only the BFF token reaches them, never a user token. */
-function requireStorefront(request: FastifyRequest, scope: "shop.read" | "shop.write"): void {
+export function requireStorefront(
+  request: FastifyRequest,
+  scope: "shop.read" | "shop.write",
+): void {
   requireShopScope(request, scope);
   if (request.shopAuth?.kind !== "bff") {
     throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Guest checkout only", 403);
   }
 }
 
-function requireGuestCheckout(deps: GuestCheckoutRoutesDeps | undefined): GuestCheckoutRoutesDeps {
+export function requireGuestCheckout(
+  deps: GuestCheckoutRoutesDeps | undefined,
+): GuestCheckoutRoutesDeps {
   if (!deps) {
     throw new ShopApiError(
       SHOP_API_ERROR_CODES.FEATURE_DISABLED,
@@ -54,7 +59,7 @@ function requireGuestCheckout(deps: GuestCheckoutRoutesDeps | undefined): GuestC
   return deps;
 }
 
-function basketTokenHash(request: FastifyRequest): string {
+export function basketTokenHash(request: FastifyRequest): string {
   const raw = request.headers[BASKET_TOKEN_HEADER];
   const token = typeof raw === "string" ? raw.trim() : "";
   if (!token || token.length > 128 || !/^[A-Za-z0-9_-]+$/.test(token)) throw notFound("Basket");
@@ -62,11 +67,11 @@ function basketTokenHash(request: FastifyRequest): string {
 }
 
 /** A short, non-reversible label for logs: enough to follow one address, not to read it. */
-function emailLogKey(email: string): string {
+export function emailLogKey(email: string): string {
   return createHash("sha256").update(normaliseGuestEmail(email)).digest("hex").slice(0, 16);
 }
 
-function throwRefusal(reply: FastifyReply, refusal: GuestCheckoutRefusal): never {
+export function throwRefusal(reply: FastifyReply, refusal: GuestCheckoutRefusal): never {
   switch (refusal.kind) {
     case "invalid_email":
       throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Enter a valid email address", 400);
