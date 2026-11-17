@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Security review of PR #1514: guard seeds with the demo seed mark, refuse live Stripe keys on test
 
@@ -148,3 +148,88 @@ A trial merge of #1511 into this branch merges the script cleanly but **conflict
 `assertDemoSeedDatabase`. #1511's new `seedDemoShopStates` writes no accounts or grants and calls
 `assertDemoSeedDatabase` itself, so nothing more is needed there. Whichever PR lands second should
 rebase and re-run the Shop seed tests.
+
+## Final recheck
+
+Rechecked head `1ef49b85` (`fix/gap28-seed-and-env-guards`, 3 commits: `0414bba5`, a merge of
+`main`, and the fixer commit) on 2026-11-17. **All 8 findings are fixed. Verdict: SHIP.**
+
+**CI:** all 41 check runs on `1ef49b85` completed with `success` (including `ci-result`, `test`,
+`static-checks`, `identity-acceptance-preflight`, `browser-gates`, `art-browser-gates` and
+`account-browser-gates`, which now run `db:seed:local`). Mergeable state: clean.
+
+**Secrets and PR text:** no key-shaped values in the diff. The only `*_live_` strings are the existing
+`CHANGE_ME` placeholders in `.env.production.example`. `SEED_ACCOUNT_PASSWORD` is read only from
+`secrets.SEED_ACCOUNT_PASSWORD` (`terraform-test-up.yml:459`, `worker-task-test.yml:80,119`). The PR
+body has no AI footer and does not walk through an exploit. No commit has AI trailers.
+
+### Findings
+
+| # | Result | Evidence |
+| --- | --- | --- |
+| 1. Loopback auto-marks `local` | **Fixed** | `assertSeedTarget` never writes the mark. It calls `assertDemoSeedDatabase` and refuses any unmarked database, whatever the address. `hermetic` = mark `local` **and** a local address. Marking is now a separate step (`mark-demo-target`, run by `db:seed:local` / `db:seed:docker`). It refuses `local` when `APP_ENV` is test/production, when the host is not loopback/`postgres`/`db`, and when an unmarked database already has users (unless `--existing-local-database` is passed; no script or workflow passes it). A database already marked `test` keeps that mark, so a tunnelled test database stays non-hermetic: it needs `SEED_ACCOUNT_PASSWORD` and staff 2FA is left alone. `run-staging-seed-if-empty.mjs` now calls `db:seed:dev`, not the local entry point. |
+| 2. CLI guard untested | **Fixed** | Each CLI and Shop script calls an exported guarded function, and every one is covered (table below). |
+| 3. Seed functions default to the repo password | **Fixed** | `runDemoFull`, `runDemoTopUp`, `ensurePeople`, `runCheckAccountsSeed` and `runLegacyDemoSeed` all require `password: string` with no default. Only `seedAccountPassword` hands out `LOCAL_SEED_PASSWORD`. An arity test covers it. |
+| 4. Docs | **Fixed** | The shared-password line is gone from `.env.production.example` (it now says the seeds refuse production). `scripts/local/README.md`, `docs/ui/staff-route-redesign-matrix.md`, `apps/web/e2e/README.md`, the runbooks and the 2FA decision record point to `LOCAL_SEED_PASSWORD` and say it is for local databases only. |
+| 5. Stripe/Zoho depend on exact `APP_ENV=test` | **Fixed, fails closed** | `allowsLiveStripeKeys` is true only for `APP_ENV === "production"`. Unset, misspelled or any other value needs test keys. The Shop API passes the raw `APP_ENV` (not the `NODE_ENV` fallback) and throws on an unknown value. `isProductionZohoStack` is `APP_ENV === "production"`, so unset means sandbox only. The cost: production must set `APP_ENV=production`. That is the first owner item. `docker-compose.prod.yml` already sets it for `api` and `worker` (it has no `shop-api` service). |
+| 6. `account-e2e-pr` comment | **Fixed** | The `mark-demo-target test ci` line is gone. The comment now matches `db:seed:local`. |
+| 7. Needs infra/owner incomplete | **Fixed** | The PR body now covers everything I asked for: revoke sessions and review the audit log, confirm `APP_ENV=test`, update sign-in tooling, mark each Shop/Bid database. It also adds `APP_ENV=production` before deploy, the `SEED_ACCOUNT_PASSWORD` secret, re-enabling staff 2FA on test, test Stripe/`bid_sandbox`, the Zoho org and ATG, the developer one-off mark, and audit items 5, 8 and 9. |
+| 8. Single-label host counts as local | **Fixed** | Only `localhost`, `127.0.0.1`, `::1` and the Compose names `postgres` and `db` count as a local address. |
+
+### Proof that the tests catch each change
+
+I reverted each change in the working tree, ran the package's tests, and restored the file. Before
+that, all of these suites passed: db seed shared and runners 64/64, Shop seed guard and env 54/54,
+worker env and Zoho org check 34/34, stripe-connect 6/6.
+
+| Change reverted | Result |
+| --- | --- |
+| `hermetic` ignores the mark (address only) | 2 db tests fail |
+| Mark check removed from `assertSeedTarget` | 12 db tests fail |
+| Any single-label host counts as local | 3 db tests fail |
+| Local password allowed on any target | 7 db tests fail |
+| `mark-demo-target`: users check removed | 1 db test fails |
+| `mark-demo-target`: `local` allowed at any address | 1 db test fails |
+| Guard removed from `check-accounts` CLI | 3 db tests fail |
+| Guard removed from `demo-topup` CLI | 4 db tests fail |
+| Guard removed from `demo-full` CLI | 4 db tests fail |
+| Staff 2FA relaxed on every target | 2 db tests fail |
+| Destructive-clear check skipped for every target | 2 db tests fail |
+| Guard removed from the Shop acceptance seeds | 4 Shop tests fail |
+| Guard removed from Shop `demo-full` | 2 Shop tests fail |
+| Guard removed from `seed:local-admin-staff` | 3 Shop tests fail |
+| Live Stripe allowed unless `APP_ENV=test` | 1 stripe-connect test fails |
+| Shop API falls back on an unknown `APP_ENV` | 1 Shop env test fails |
+| `bid_sandbox` requirement removed | 2 Shop env tests fail |
+| Zoho production unless `APP_ENV=test` | 1 worker test fails |
+
+The three gaps from the first review (guard removed from `check-accounts`, `demo-topup` and the
+acceptance seeds, with everything still green) are now caught.
+
+### Search for account-creating scripts
+
+I searched the whole repo for `hashPassword`, `ensurePerson`, `grantShopStaffRole`, `staffRole`,
+inserts into `user`/`account`, and shared password constants. Every seed that writes passwords or
+staff grants goes through `assertSeedTarget`/`withSeedTarget`: the dev seed, `check-accounts`,
+`demo-topup`, `demo-full`, Shop `seed:demo-full`, `seed:acceptance-portal`,
+`seed:acceptance-staff-operations` and `seed:local-admin-staff`.
+
+These are out of scope and unchanged since the first review: `staff-grant.ts` (operator tool, no
+password), `seed-worker-role-contract-probes.ts` (password-less CI probe), and the
+`provision-*-identity` CI scripts (password from secrets). `seed:acceptance-commerce`,
+`seed-catalogue`, `seed-editorial-showcase`, `seed-artist-portraits-from-works` and
+`seed-press-hub-demo` write no accounts or grants. The remaining `Password123!` literals are hermetic
+CI workflow env, e2e helper defaults and the identity preflight on a throwaway local database.
+
+### Residual notes (not blocking)
+
+- `pnpm db:seed` can still mark an **unmarked, empty** database reached on a loopback address as
+  `local`. A tunnel is indistinguishable from a real local database by address, and this was the
+  design the first review recommended. Production and test always have users and test is marked
+  `test`, so this does not reach either. A possible hardening: in `mark-demo-target`, also require
+  `inet_server_addr()` to be null, loopback or a private Docker address.
+- `db:seed:docker:prod` (root `package.json:79`) still exists. The guard refuses it, because
+  `APP_ENV: production` is set in `docker-compose.prod.yml` and production has no mark, but the
+  script could be deleted.
+- Conflict with #1511 in `docs/runbooks/demo-seed.md`: the note above still applies to whichever PR
+  merges second.
