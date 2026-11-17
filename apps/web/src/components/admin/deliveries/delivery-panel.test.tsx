@@ -295,6 +295,40 @@ describe("DeliveryPanel quote actions (D5)", () => {
     expect(screen.queryByRole("dialog", { name: "Send this quote?" })).toBeNull();
   });
 
+  it("keeps the dialog saying why when the panel reads the request again as withdrawn (D6)", async () => {
+    mocks.send.mockResolvedValue({
+      ok: false,
+      error: "The buyer changed this request while you were pricing it.",
+      errorCode: "quote_changed",
+    });
+    const waiting = deliveryFixture();
+    const { rerender } = render(<Harness row={waiting} />);
+    fireEvent.click(panel().getByRole("button", { name: "Send quote" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /^Price/ }), {
+      target: { value: "95" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Send quote" }));
+    });
+    // The refusal read the delivery again: the buyer withdrew, so it offers no action now.
+    rerender(
+      <Harness
+        row={deliveryFixture({
+          status: "closed",
+          closedReason: "withdrawn",
+          quote: { ...waiting.quote, status: "withdrawn" },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("The buyer changed this request while you were pricing it."),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Back to the delivery" }));
+    expect(screen.queryByRole("button", { name: "Back to the delivery" })).toBeNull();
+    expect(document.querySelector("[data-staff-panel-footer]")).toBeNull();
+  });
+
   it("does not call its own quote the buyer's change once the panel reads it again", async () => {
     mocks.send.mockResolvedValue({ ok: true, data: { lotId: "x" } });
     const { rerender } = render(<Harness row={deliveryFixture()} />);

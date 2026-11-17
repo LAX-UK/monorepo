@@ -12,7 +12,7 @@ import {
   deliveryTimeline,
   lotFulfilmentHref,
 } from "@/lib/admin/deliveries/deliveries.vm";
-import { quoteActionFor } from "@/lib/admin/deliveries/delivery-quote-form";
+import { type QuoteAction, quoteActionFor } from "@/lib/admin/deliveries/delivery-quote-form";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { notify } from "@/lib/ui/notify";
@@ -92,6 +92,9 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
   const [ownQuoteOpen, setOwnQuoteOpen] = useState(false);
   const quoteOpen = props.quoteOpen ?? ownQuoteOpen;
   const setQuoteOpen = props.onQuoteOpenChange ?? setOwnQuoteOpen;
+  // The action the dialog opened with, for the lot it opened on. A refusal reads the delivery
+  // again, and a withdrawn request no longer offers one; the dialog stays to say why until closed.
+  const [dialog, setDialog] = useState<{ lotId: string; action: QuoteAction } | null>(null);
   if (!row && loadFailed) {
     // D6 error: never "not found" for a read that failed; say so and offer Try again.
     return (
@@ -162,6 +165,11 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
   const price = deliveryPrice(row);
   const booked = row.quote.status === "accepted" || row.fulfilment !== null;
   const quoteAction = canWork ? quoteActionFor(row) : null;
+  const opened = dialog?.lotId === row.lotId ? dialog.action : null;
+  if (quoteOpen && quoteAction && !opened) {
+    setDialog({ lotId: row.lotId, action: quoteAction });
+  }
+  const dialogAction = quoteOpen ? (opened ?? quoteAction) : quoteAction;
   const lotTitle = deliveryLotTitle(row.lot);
   const onQuoteOutcome = (outcome: QuoteDialogOutcome) => {
     // The panel's own write, or another person's price, is not the buyer changing the request:
@@ -276,12 +284,15 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
           />
         </PanelSection>
       ) : null}
-      {quoteAction ? (
+      {canWork && dialogAction ? (
         <DeliveryQuoteDialog
           row={row}
-          action={quoteAction}
+          action={dialogAction}
           open={quoteOpen}
-          onOpenChange={setQuoteOpen}
+          onOpenChange={(open) => {
+            if (!open) setDialog(null);
+            setQuoteOpen(open);
+          }}
           send={sendQuote}
           onOutcome={onQuoteOutcome}
         />
