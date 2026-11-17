@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 Independent review of PR #1517 "Bid admin Deliveries: read API and list page" (head `f0543607`) against `docs/design/staff-gaps-delivery-zoho-alerts.md` GAP-47 D1–D9 and `docs/design/mockups/staff-gaps/` on `origin/main` (`e1853412`).
 
@@ -97,3 +97,69 @@ Independent review of PR #1517 "Bid admin Deliveries: read API and list page" (h
 
 - The status map is kept local rather than registered in `staffStatus` (a CRF-7 deviation), the Country filter is missing, and paging uses offset, not a cursor. All three are disclosed in the PR body with reasons; the owner should acknowledge them when approving PR 2.
 - I did not run the persistence integration test or the e2e here: no Postgres or seeded stack in this environment. I checked the 1440 light panel, the 375 light list and the 1440 dark error screenshots against the mockup; the other states were reviewed from the PR body and README only.
+
+## Final recheck
+
+Head `79bdce9f` (8 commits), base `origin/main` `e1853412`, checked 2026-11-17. The verdict above is now **SHIP**. Findings 1, 2, 3, 10, 11 and 12 are fixed on #1517. Findings 4–9 were about the web page, which is no longer in this PR, so they carry over to D9 PR 2.
+
+### Evidence
+
+- **Scope is exactly D9 PR 1 (finding 1).** `git diff --stat origin/main...79bdce9f` lists 30 files, all under `packages/{domain,persistence,types,validators}` and `apps/api`. That covers the read model, `GET /admin/deliveries`, `/summary` and `/:lotId`, the idempotency key on the quote route, and contract tests. Nothing under `apps/web`, no e2e, no screenshots, no `.png`. Commit `ee7bfc86` removes 82 files (2,240 lines), including the web route-table entry in `packages/types/src/admin-routes.ts`.
+- **D2 "On the way" checks the method (finding 2).**
+  - Domain, `delivery-status.ts`: `in_transit` with method `collection` falls back to the quote status. `delivered` with method `collection` goes through `purchaseDeliveryStage` → `collected` → `closed`/`collected`.
+  - SQL `CASE`: the same rule (`IS DISTINCT FROM 'collection'`, and `delivered` + `collection` → `closed`).
+  - The integration matrix now varies the method and the invoice.
+- **A refunded or cancelled invoice gives cancelled, through the buyer page's logic (finding 3).**
+  - `deliveryStatusOf` calls `purchaseDeliveryStage`. That function now uses the new shared `purchaseInvoiceEnded`.
+  - The reader builds the invoice with `purchaseInvoiceState`. It picks the payment row with `invoicePaymentOrder()`, now shared with `DrizzleAccountPurchaseFactsReader`, and works out `saleCancelled` the same way as `purchase-view.ts:128`.
+  - In the SQL, `refunded` and fulfilment `cancelled` both give closed. Those are the only two ways the invoice can be `refunded` or `cancelled`, so the SQL matches the domain.
+- **Access follows D5 word for word and is enforced on the server (finding 10).**
+  - `DELIVERIES_READ_ACCESS = LOT_FULFILMENT_ACCESS`, not `readOrWrite`. `read_only` is refused.
+  - `platform.use("/deliveries")` and `platform.use("/deliveries/*")` both run `requireDeliveriesRead`.
+  - The PUT quote route keeps `requireOperationsFulfilment` before `guards.idempotent("fulfilment.delivery-quote")`.
+- **Real event times, not `updated_at` (finding 11).** `statusSinceSql` returns `NULL` for dispatch, delivery and cancellation, and `collected_at` for a collection. The order key coalesces only the quote's stamps. `updated_at` appears nowhere in the reader.
+- **Reads are bounded (finding 12).**
+  - `sales()` has `requestedAt >= since` (365 days) and `.limit(100)`.
+  - `summary()` calls `waitingCount()` (only `status = 'requested'` quotes), not the grouped count.
+  - List and count are paged, as before.
+- **Each fix has a test that fails without it.** I reverted each fix on a local copy of the head, with Postgres 16 and all migrations applied:
+
+  | Reverted | Result |
+  | --- | --- |
+  | Domain method guard | domain: 1 of 9 failed |
+  | SQL method guard | integration: 1 of 10 failed |
+  | Domain collected → delivered | domain: 2 failed |
+  | SQL collected branch | integration: 2 failed |
+  | Domain refund ignored | domain: 2 failed |
+  | SQL refund ignored | integration: 2 failed |
+  | `updated_at` used as the dispatch time | integration: 1 failed |
+  | Sales window removed | integration: 1 failed |
+  | Sales limit removed | integration: 1 failed |
+  | Summary back on the grouped count | service: 1 of 9 failed |
+  | Idempotency guard removed | quote route: 3 of 4 failed |
+  | `readOrWrite` read access | types: 1 of 66 failed; deliveries routes (types package rebuilt): 2 of 19 failed |
+
+  Unchanged, the head passes all of these: domain (17), validators (3), api deliveries and quote route (32), deliveries routes (19), types (66) and the persistence integration test (10, including the 352-lot matrix).
+- **Other checks:**
+  - No migration, and no `drizzle/`, budget, baseline, snapshot or allowance paths in the diff.
+  - Route JS has not grown: there are no `apps/web` changes at all.
+- **CI:** 41 check runs on `79bdce9f`. 39 succeeded and 2 were skipped as not applicable (`browser-gates`, `art-browser-gates`). `ci-result` succeeded. Mergeable state: clean.
+- **No AI footer:** no `Co-Authored-By`, Claude or "Generated with" lines in any commit message or in the PR body.
+
+### The removed UI was not preserved
+
+The PR body says the page is in a draft PR, "Bid admin Deliveries: list page and queue panel", based on this branch. **That PR does not exist.** No remote branch other than `feat/bid-admin-deliveries-read` mentions deliveries (`git ls-remote`), and no open or closed PR has that title (the latest PRs are #1519, #1518, #1516…).
+
+The UI work survives only in this branch's history:
+
+- **`29ad55daca40e751f56771e04215fbd85470b8f0`**: the merge of `origin/main` and the direct parent of the removal commit `ee7bfc86`. It holds the full page, nav item, queue panel, e2e spec and `docs/pr-evidence/bid-admin-deliveries/**` on top of current main. Rebuild PR 2 from it, for example with `git checkout 29ad55da -- apps/web docs/pr-evidence/bid-admin-deliveries packages/types/src/admin-routes.ts` on a branch off #1517. Then apply findings 4–9.
+- The same UI work before the merge is `f0543607`. The UI commits are `e9b812d1`, `5a7c0622` and `f0543607`.
+- Warning: a squash merge of #1517 drops these commits from main. If the branch is then deleted, only `refs/pull/1517/head` keeps them reachable. Push a branch at `29ad55da` before deleting `feat/bid-admin-deliveries-read`.
+
+This does not block #1517. But the PR body's claim about the draft PR is false and should be corrected.
+
+### Minor notes (not blockers)
+
+- The "On the way" status also covers fulfilments with no method recorded (`method IS NULL`). The PR body says so.
+- With `in_transit` + `collection` (rare), staff see the quote status while the buyer sees "in transit". This follows D2.
+- `saleCancelled: fulfilment?.status === "cancelled"` is repeated in `toRecord` and `purchase-view.ts:128`. A shared helper would keep the two pages from drifting.
