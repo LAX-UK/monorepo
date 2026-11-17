@@ -17,7 +17,7 @@ type StripeScenario = {
   available?: Record<string, boolean>;
   hold?: boolean;
   loadError?: boolean;
-  payment?: "declined";
+  payment?: "declined" | "declined_once";
 };
 type ShopScenario = { start?: string; address?: string; confirm?: string };
 type Theme = "light" | "dark";
@@ -175,7 +175,9 @@ test.describe("express checkout on Details (guest)", () => {
     expect(failures).toHaveLength(1);
   });
 
-  test("says nothing was charged when the Shop refuses the payment set-up", async ({ page }) => {
+  test("says nothing was charged and withdraws the buttons when the Shop refuses the set-up", async ({
+    page,
+  }) => {
     await setUp(page, { shop: { confirm: "conflict" } });
     await openDetails(page);
     await expect(walletGroup(page).getByRole("button").first()).toBeVisible();
@@ -183,20 +185,56 @@ test.describe("express checkout on Details (guest)", () => {
     await expect(page.locator(".shop-express").getByRole("alert")).toContainText(
       "you have not been charged",
     );
-    await expect(walletGroup(page).getByRole("button").first()).toBeVisible();
+    await expect(walletGroup(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Continue as guest" })).toBeEnabled();
   });
 
-  test("releases the order when the payment is declined", async ({ page }) => {
-    await setUp(page, { stripe: { payment: "declined" } });
+  test("shows no wallet buttons once the session has ended", async ({ page }) => {
+    await setUp(page, { shop: { confirm: "ended" } });
     await openDetails(page);
     await expect(walletGroup(page).getByRole("button").first()).toBeVisible();
     await fakeStripe(page, "confirm");
-    await expect(page.locator(".shop-express").getByRole("alert")).toContainText(
-      "you have not been charged",
+    await expect(page.locator(".shop-express").getByRole("alert")).toHaveText(
+      "This payment has ended. Start again from your basket.",
     );
-    await expect
-      .poll(async () => (await shopRequests(page)).map((r) => r.step))
-      .toContain("cancel");
+    await expect(walletGroup(page)).toHaveCount(0);
+    await expect(page.locator(".shop-express").getByRole("button")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Continue as guest" })).toBeEnabled();
+  });
+
+  test("never shows shop-api's internal refusal text", async ({ page }) => {
+    await setUp(page, { shop: { confirm: "not_checkoutable" } });
+    await openDetails(page);
+    await expect(walletGroup(page).getByRole("button").first()).toBeVisible();
+    await fakeStripe(page, "confirm");
+    const alert = page.locator(".shop-express").getByRole("alert");
+    await expect(alert).toHaveText(
+      "We couldn't set up this payment, so you have not been charged. Start again from your basket.",
+    );
+    await expect(walletGroup(page)).toHaveCount(0);
+  });
+
+  test("declined, then pay again succeeds on the same session and order", async ({ page }) => {
+    await setUp(page, { stripe: { payment: "declined_once" } });
+    await openDetails(page);
+    await expect(walletGroup(page).getByRole("button").first()).toBeVisible();
+    await fakeStripe(page, "confirm");
+    await expect(page.locator(".shop-express").getByRole("alert")).toHaveText(
+      "Your payment did not go through, so you have not been charged. Try again or check out as usual.",
+    );
+    // The order stays on its session, so the buttons still work.
+    await expect(walletGroup(page).getByRole("button").first()).toBeVisible();
+    expect((await shopRequests(page)).map((r) => r.step)).not.toContain("cancel");
+
+    await fakeStripe(page, "confirm");
+    await page.waitForURL(`**/checkout/confirmation?orderId=${ORDER_ID}`);
+    const requests = await shopRequests(page);
+    expect(requests.map((r) => r.step)).not.toContain("cancel");
+    const confirms = requests.filter((r) => r.step === "confirm");
+    expect(confirms).toHaveLength(2);
+    for (const confirm of confirms) {
+      expect(confirm.body).toMatchObject({ sessionId: "cs_test_expressGate0001" });
+    }
   });
 
   test("notes a closed sheet quietly", async ({ page }) => {

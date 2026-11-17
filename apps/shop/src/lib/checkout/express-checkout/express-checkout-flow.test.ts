@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { EXPRESS_PAYMENT_FAILED_MESSAGE, type ExpressConfirmResult } from "./express-checkout-api";
+import {
+  EXPRESS_PAYMENT_FAILED_MESSAGE,
+  EXPRESS_UNAVAILABLE_MESSAGE,
+  type ExpressConfirmResult,
+} from "./express-checkout-api";
 import {
   type ExpressFlowPorts,
   handleExpressAddressChange,
@@ -41,7 +45,6 @@ function ports(overrides: Partial<ExpressFlowPorts> = {}) {
       calls.push("shop.confirm");
       return { kind: "confirmed", orderId: ORDER_ID };
     }),
-    cancelOrder: vi.fn(async () => undefined),
     refresh: vi.fn(),
     navigate: vi.fn(),
     origin: "https://test-shop.lax.bid",
@@ -120,33 +123,47 @@ describe("express checkout confirm", () => {
     expect(p.refresh).toHaveBeenCalledOnce();
   });
 
-  it("passes a bind mismatch through as not charged, without paying", async () => {
+  it("ends the row on an answer that ends the session, without paying", async () => {
     const message =
       "We couldn't set up this payment, so you have not been charged. Start again from your basket.";
     const { ports: p } = ports({
-      confirmOrder: vi.fn(async () => ({ kind: "not_charged" as const, message })),
+      confirmOrder: vi.fn(async () => ({ kind: "ended" as const, message })),
     });
     const event = confirmEvent();
     await handleExpressConfirm(p, event);
+    expect(event.paymentFailed).toHaveBeenCalled();
     expect(p.checkout.confirm).not.toHaveBeenCalled();
-    expect(p.dispatch).toHaveBeenLastCalledWith({ type: "not_charged", message });
-    expect(p.cancelOrder).not.toHaveBeenCalled();
+    expect(p.dispatch).toHaveBeenLastCalledWith({ type: "ended", message });
   });
 
-  it("releases the order when Stripe declines the payment", async () => {
-    const { ports: p } = ports();
-    p.checkout.confirm = vi.fn(async () => ({
-      type: "error" as const,
-      error: { message: "Your card was declined." },
-    }));
-    const event = confirmEvent();
-    await handleExpressConfirm(p, event);
+  it("keeps the order on its session when Stripe declines, so paying again replays it", async () => {
+    const { ports: p, calls } = ports();
+    const declined = { type: "error" as const, error: { message: "Your card was declined." } };
+    p.checkout.confirm = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        calls.push("stripe.confirm");
+        return declined;
+      })
+      .mockImplementationOnce(async () => {
+        calls.push("stripe.confirm");
+        return { type: "success" as const };
+      });
+    const first = confirmEvent();
+    await handleExpressConfirm(p, first);
+    expect(first.paymentFailed).toHaveBeenCalled();
     expect(p.dispatch).toHaveBeenLastCalledWith({
       type: "not_charged",
       message: EXPRESS_PAYMENT_FAILED_MESSAGE,
     });
-    expect(p.cancelOrder).toHaveBeenCalledWith(ORDER_ID);
     expect(p.navigate).not.toHaveBeenCalled();
+
+    const second = confirmEvent();
+    await handleExpressConfirm(p, second);
+    expect(second.paymentFailed).not.toHaveBeenCalled();
+    expect(calls.filter((call) => call === "shop.confirm")).toHaveLength(2);
+    expect(p.dispatch).toHaveBeenLastCalledWith({ type: "paid", orderId: ORDER_ID });
+    expect(p.navigate).toHaveBeenCalledWith(`/checkout/confirmation?orderId=${ORDER_ID}`);
   });
 
   it("fails the sheet if the Shop cannot be reached", async () => {
@@ -158,7 +175,6 @@ describe("express checkout confirm", () => {
     const event = confirmEvent();
     await handleExpressConfirm(p, event);
     expect(event.paymentFailed).toHaveBeenCalled();
-    expect(p.cancelOrder).not.toHaveBeenCalled();
     expect(p.dispatch).toHaveBeenLastCalledWith({
       type: "not_charged",
       message: EXPRESS_PAYMENT_FAILED_MESSAGE,
@@ -188,6 +204,21 @@ describe("express checkout address change", () => {
     await handleExpressAddressChange(p, event);
     expect(event.reject).toHaveBeenCalled();
     expect(p.dispatch).toHaveBeenCalledWith({ type: "address_refused", message: "UK only" });
+  });
+
+  it("says the row is unavailable, not that a payment failed, when the Shop cannot be reached", async () => {
+    const { ports: p } = ports({
+      changeAddress: vi.fn(async () => {
+        throw new Error("network");
+      }),
+    });
+    const event = { address: { country: "GB" }, resolve: vi.fn(), reject: vi.fn() };
+    await handleExpressAddressChange(p, event);
+    expect(event.reject).toHaveBeenCalled();
+    expect(p.dispatch).toHaveBeenCalledWith({
+      type: "address_refused",
+      message: EXPRESS_UNAVAILABLE_MESSAGE,
+    });
   });
 });
 

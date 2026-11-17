@@ -58,7 +58,9 @@ export function walletRateId(
   return byAmount.length === 1 && byAmount[0] ? byAmount[0].id : null;
 }
 
-const PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{6,19}$/;
+// Shop Identity checks 8 to 20 characters of this pattern; matching it here keeps the wallet's
+// phone message rather than a generic refusal.
+const PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{7,19}$/;
 
 export const WALLET_MESSAGES = {
   rate: "Choose insured UK delivery or collection in the payment sheet.",

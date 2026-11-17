@@ -83,6 +83,22 @@ describe("express checkout row states", () => {
     expect(expressRowShowsButtons(state)).toBe(false);
   });
 
+  it("withdraws the buttons for good when the session has ended", () => {
+    const message = "This payment has ended. Start again from your basket.";
+    const state = run([
+      { type: "loaded", available: true },
+      { type: "confirm_started" },
+      { type: "ended", message },
+    ]);
+    expect(state).toEqual({ status: "ended", message });
+    expect(expressRowShowsButtons(state)).toBe(false);
+    expect(expressRowReservesSpace(state)).toBe(false);
+    // Nothing brings the dead buttons back.
+    expect(expressRowReducer(state, { type: "cancelled", message: "x" })).toBe(state);
+    expect(expressRowReducer(state, { type: "not_charged", message: "x" })).toBe(state);
+    expect(expressRowReducer(state, { type: "confirm_started" })).toBe(state);
+  });
+
   it("notes a closed sheet quietly, and clears an older notice on the next confirm", () => {
     const cancelled = run([
       { type: "loaded", available: true },

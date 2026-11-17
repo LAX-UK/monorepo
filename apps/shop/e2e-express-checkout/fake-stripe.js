@@ -75,7 +75,11 @@
         async confirm(options) {
           state.confirms.push(options.returnUrl);
           const s = scenario();
-          return s.payment === "declined"
+          // "declined_once": the first card is declined and the next one in the sheet is paid.
+          const declined =
+            s.payment === "declined" ||
+            (s.payment === "declined_once" && state.confirms.length === 1);
+          return declined
             ? { type: "error", error: { message: "Your card was declined." } }
             : { type: "success" };
         },

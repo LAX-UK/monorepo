@@ -70,6 +70,17 @@ export const EXPRESS_PAYMENT_FAILED_MESSAGE =
 
 export const EXPRESS_CANCELLED_MESSAGE = "Payment cancelled. You have not been charged.";
 
+/**
+ * shop-api's express refusals, written for the shopper (shop-checkout-express-session.ts). Only
+ * these are shown as shop-api words them; any other refusal text (for example "Order is no longer
+ * checkoutable") is internal and reads as EXPRESS_NOT_CHARGED_MESSAGE.
+ */
+export const EXPRESS_UPSTREAM_MESSAGES: readonly string[] = [
+  "Your basket changed while you were paying. Check it and try again.",
+  "This payment has ended. Start again from your basket.",
+  EXPRESS_NOT_CHARGED_MESSAGE,
+];
+
 export { EXPRESS_CHECKOUT_SOLD_OUT_MESSAGE };
 
 export type ExpressStartResult =
@@ -83,8 +94,12 @@ export type ExpressAddressResult = { kind: "ok" } | { kind: "refused"; message: 
 export type ExpressConfirmResult =
   | { kind: "confirmed"; orderId: string }
   | { kind: "sold_out"; message: string }
-  /** The Shop refused before any charge (basket changed, session ended, bind mismatch). */
-  | { kind: "not_charged"; message: string }
+  /**
+   * The Shop refused before any charge and the session cannot be paid any more (basket changed,
+   * session ended, bind mismatch, order released): the wallet buttons are withdrawn.
+   */
+  | { kind: "ended"; message: string }
+  /** Refused before any charge; the same session can be tried again in the sheet. */
   | { kind: "error"; message: string };
 
 type Failure = { error?: string; code?: string; message?: string };
@@ -95,6 +110,14 @@ function failure(body: unknown): Failure {
 
 function upstreamMessage(body: Failure): string | null {
   return typeof body.message === "string" && body.message.trim() ? body.message.trim() : null;
+}
+
+/** shop-api's wording when it is one of its express refusals, otherwise the generic line. */
+function expressRefusalMessage(body: Failure): string {
+  const message = upstreamMessage(body);
+  return message && EXPRESS_UPSTREAM_MESSAGES.includes(message)
+    ? message
+    : EXPRESS_NOT_CHARGED_MESSAGE;
 }
 
 export function expressStartResult(status: number, body: unknown): ExpressStartResult {
@@ -131,11 +154,15 @@ export function expressConfirmResult(status: number, body: unknown): ExpressConf
   if (answer.code === SHOP_API_ERROR_CODES.OUT_OF_STOCK) {
     return { kind: "sold_out", message: EXPRESS_CHECKOUT_SOLD_OUT_MESSAGE };
   }
+  // Each of these ends the session on shop-api (its order is released or bound elsewhere), so a
+  // retry on it cannot succeed.
   if (
     answer.code === SHOP_API_ERROR_CODES.CONFLICT ||
-    answer.code === SHOP_API_ERROR_CODES.BASKET_CONFLICT
+    answer.code === SHOP_API_ERROR_CODES.BASKET_CONFLICT ||
+    answer.code === SHOP_API_ERROR_CODES.PRICE_CHANGED ||
+    (status === 404 && answer.code === SHOP_API_ERROR_CODES.NOT_FOUND)
   ) {
-    return { kind: "not_charged", message: upstreamMessage(answer) ?? EXPRESS_NOT_CHARGED_MESSAGE };
+    return { kind: "ended", message: expressRefusalMessage(answer) };
   }
   if (status >= 500 || answer.error === "invalid_upstream") {
     return { kind: "error", message: EXPRESS_UNAVAILABLE_MESSAGE };

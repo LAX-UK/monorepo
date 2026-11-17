@@ -91,17 +91,37 @@ describe("express checkout API adapter", () => {
     ).toEqual({ kind: "sold_out", message: "This print has just sold out" });
   });
 
-  it("tells the shopper they have not been charged on a refused bind or changed basket", () => {
-    const message =
-      "We couldn't set up this payment, so you have not been charged. Start again from your basket.";
-    expect(expressConfirmResult(409, { code: "shop.conflict", message })).toEqual({
-      kind: "not_charged",
-      message,
-    });
+  it("ends the session in shop-api's words on a refused bind, ended session or changed basket", () => {
+    for (const [code, message] of [
+      [
+        "shop.conflict",
+        "We couldn't set up this payment, so you have not been charged. Start again from your basket.",
+      ],
+      ["shop.conflict", "This payment has ended. Start again from your basket."],
+      ["shop.price_changed", "Your basket changed while you were paying. Check it and try again."],
+    ] as const) {
+      expect(expressConfirmResult(409, { code, message })).toEqual({ kind: "ended", message });
+    }
     expect(expressConfirmResult(409, { code: "shop.basket_conflict" })).toEqual({
-      kind: "not_charged",
+      kind: "ended",
       message: EXPRESS_NOT_CHARGED_MESSAGE,
     });
+    expect(
+      expressConfirmResult(404, { code: "shop.not_found", message: "Express checkout not found" }),
+    ).toEqual({ kind: "ended", message: EXPRESS_NOT_CHARGED_MESSAGE });
+  });
+
+  it("never shows other conflict text as it is", () => {
+    for (const message of [
+      "Order is no longer checkoutable",
+      "Order already paid",
+      "Checkout session expired",
+    ]) {
+      expect(expressConfirmResult(409, { code: "shop.conflict", message })).toEqual({
+        kind: "ended",
+        message: EXPRESS_NOT_CHARGED_MESSAGE,
+      });
+    }
   });
 
   it("keeps other refusals to one plain line", () => {

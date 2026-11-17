@@ -112,6 +112,16 @@ function expressAnswer(step, res) {
       ),
     );
   }
+  if (scenario.confirm === "ended") {
+    return json(
+      res,
+      409,
+      upstreamFailure("shop.conflict", "This payment has ended. Start again from your basket."),
+    );
+  }
+  if (scenario.confirm === "not_checkoutable") {
+    return json(res, 409, upstreamFailure("shop.conflict", "Order is no longer checkoutable"));
+  }
   return json(res, 200, {
     orderId: ORDER_ID,
     returnUrl: `/checkout/confirmation?orderId=${ORDER_ID}`,

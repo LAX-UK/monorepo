@@ -15,7 +15,9 @@ export type ExpressRowState =
   /** Stripe.js or the session could not load; the row is replaced by one line. */
   | { status: "error"; message: string }
   /** A print sold while the sheet was open; the basket reloads. */
-  | { status: "sold_out"; message: string };
+  | { status: "sold_out"; message: string }
+  /** shop-api ended the session before any charge: one line, no buttons, the card path stays. */
+  | { status: "ended"; message: string };
 
 export type ExpressNotice = { tone: "error" | "info"; message: string };
 
@@ -28,6 +30,8 @@ export type ExpressRowEvent =
   | { type: "sold_out"; message: string }
   /** Refused or failed before any charge: the shopper may try again or use the card path. */
   | { type: "not_charged"; message: string }
+  /** Refused before any charge, and the session cannot be paid any more. */
+  | { type: "ended"; message: string }
   | { type: "cancelled"; message: string }
   | { type: "address_refused"; message: string };
 
@@ -50,6 +54,10 @@ export function expressRowReducer(state: ExpressRowState, event: ExpressRowEvent
       return state.status === "processing" ? { status: "paid", orderId: event.orderId } : state;
     case "sold_out":
       return { status: "sold_out", message: event.message };
+    case "ended":
+      return state.status === "ready" || state.status === "processing"
+        ? { status: "ended", message: event.message }
+        : state;
     case "not_charged":
       return state.status === "ready" || state.status === "processing"
         ? { status: "ready", notice: { tone: "error", message: event.message } }

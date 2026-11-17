@@ -1,5 +1,6 @@
 import {
   EXPRESS_PAYMENT_FAILED_MESSAGE,
+  EXPRESS_UNAVAILABLE_MESSAGE,
   type ExpressAddressResult,
   type ExpressCheckoutAudience,
   type ExpressConfirmResult,
@@ -41,8 +42,6 @@ export type ExpressFlowPorts = {
     city?: string;
   }) => Promise<ExpressAddressResult>;
   confirmOrder: (payload: WalletConfirmPayload) => Promise<ExpressConfirmResult>;
-  /** Releases the order's print hold after a payment that did not go through. */
-  cancelOrder: (orderId: string) => Promise<unknown>;
   /** Reloads the page's data (the basket) after a print sold out. */
   refresh: () => void;
   navigate: (href: string) => void;
@@ -58,7 +57,8 @@ export async function handleExpressAddressChange(
   try {
     answer = await ports.changeAddress(walletAddressChange(event));
   } catch {
-    answer = { kind: "refused", message: EXPRESS_PAYMENT_FAILED_MESSAGE };
+    // Nothing has been paid yet: the row could not reach the Shop, not a failed payment.
+    answer = { kind: "refused", message: EXPRESS_UNAVAILABLE_MESSAGE };
   }
   if (answer.kind === "ok") {
     event.resolve();
@@ -72,6 +72,11 @@ export async function handleExpressAddressChange(
  * The shopper confirmed in the sheet. The Shop makes the order and binds the session to it; only
  * then does Stripe take the payment. Every refusal fails the sheet and says the shopper has not
  * been charged; a print sold meanwhile says so and reloads the basket.
+ *
+ * A declined payment keeps the order on its session: shop-api's confirm is idempotent per session
+ * (`express:<sessionId>`), so paying again in the sheet returns to the same order and hold, and
+ * the session's expiry releases the hold if the shopper leaves. An answer that ends the session
+ * withdraws the buttons instead, since nothing on it can be paid any more.
  */
 export async function handleExpressConfirm(
   ports: ExpressFlowPorts,
@@ -87,7 +92,6 @@ export async function handleExpressConfirm(
     return;
   }
 
-  let orderId: string | null = null;
   try {
     const result = await withServerUpdate(ports.checkout, () =>
       ports.confirmOrder(reading.payload),
@@ -98,12 +102,17 @@ export async function handleExpressConfirm(
       ports.refresh();
       return;
     }
+    if (result.kind === "ended") {
+      event.paymentFailed({ reason: "fail" });
+      ports.dispatch({ type: "ended", message: result.message });
+      return;
+    }
     if (result.kind !== "confirmed") {
       event.paymentFailed({ reason: "fail" });
       ports.dispatch({ type: "not_charged", message: result.message });
       return;
     }
-    orderId = result.orderId;
+    const { orderId } = result;
     const href = expressConfirmationHref(orderId);
     const payment = await ports.checkout.confirm({
       expressCheckoutConfirmEvent: event,
@@ -114,9 +123,9 @@ export async function handleExpressConfirm(
     ports.dispatch({ type: "paid", orderId });
     ports.navigate(href);
   } catch {
-    // Nothing was charged: release the print rather than hold it until the session ends.
+    // Nothing was charged. The order stays bound to the session so the shopper can pay again in
+    // the sheet; cancelling it here would end the session and leave the buttons unusable.
     event.paymentFailed({ reason: "fail" });
     ports.dispatch({ type: "not_charged", message: EXPRESS_PAYMENT_FAILED_MESSAGE });
-    if (orderId) await ports.cancelOrder(orderId).catch(() => undefined);
   }
 }

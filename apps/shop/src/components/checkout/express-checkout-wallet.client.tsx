@@ -1,6 +1,5 @@
 "use client";
 
-import { cancelCheckoutOrder } from "@/app/actions/cancel-checkout.actions";
 import {
   changeExpressShippingAddress,
   confirmExpressCheckout,
@@ -60,6 +59,7 @@ function statusLine(state: ExpressRowState) {
       return { tone: "info" as const, message: "Payment received. Opening your order…" };
     case "error":
     case "sold_out":
+    case "ended":
       return { tone: "error" as const, message: state.message };
     default:
       return null;
@@ -124,6 +124,7 @@ export function ExpressCheckoutWallet({
 
       mounted.on("ready", (event) => {
         const available = Object.values(event.availablePaymentMethods ?? {}).some(Boolean);
+        window.clearTimeout(timeout);
         dispatch({ type: "loaded", available });
       });
       mounted.on("loaderror", fail);
@@ -150,7 +151,6 @@ export function ExpressCheckoutWallet({
             ...payload,
             ...(audience === "guest" ? { marketingConsent: consentRef.current } : {}),
           }),
-        cancelOrder: cancelCheckoutOrder,
         refresh: () => router.refresh(),
         navigate: (href) => window.location.assign(href),
         origin: window.location.origin,
