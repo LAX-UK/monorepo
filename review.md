@@ -236,3 +236,49 @@ Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_
 1. When #1552 lands and this is rebased onto main, resolve the `shop-contracts/src/index.ts` export conflict by keeping both blocks.
 2. Consignor history entries can still name an earlier client consignor outside a broker's scope. This is already noted for a follow-up.
 3. Item 7 (dropping a crafted `?consignor=` on the client) and item 8 (consolidating the duplicate reads with #1554) are still open, as planned.
+
+## Merge with main after #1552
+
+#1552 was squash-merged to `main` as `f20f7416`, and its branch was deleted. I merged `origin/main` (`f20f7416`) into `zi-5-consignor-artwork-link` with a merge commit, no rebase. The new head is `fe955ac1`, pushed with a normal push.
+
+### Resolution
+
+- **Base used:** the old merge base with `zi-5-consignor-agreements-admin` was `51e5e9ce`. The reviewed change set is `git diff 51e5e9ce cb2f9cee` (94 files).
+- **Method:** I resolved every file this PR touches with a 3-way merge. Base is `51e5e9ce`, ours is this PR's head `cb2f9cee`, theirs is `main`. So each part-1/part-2 file keeps main's version exactly, and only this PR's own hunks are layered on top. Files this PR doesn't touch are main's as they are.
+- **13 conflicted files:** 12 merged cleanly with that base:
+  - `agreements-section.client(.test).tsx`, `use-agreement-write.client.tsx`
+  - `audit-log.vm(.test).ts`, `consignor-agreement.vm.ts`
+  - `admin-route-deps.ts`, `app.ts`, `container.ts`, `test-app-deps.ts`
+  - `admin-consignor-agreement.ts`, `staff-step-up.ts`
+
+  `packages/shop-contracts/src/index.ts` had one real conflict: main's #1546 `express-checkout-public.js` export block was next to this PR's added `AdminArtworkConsignorAgreementSchema` export. I kept both, as the final recheck predicted.
+- **Wiring files** (`app.ts`, `container.ts`, `admin-route-deps.ts`, `test-app-deps.ts`, shop-contracts `index.ts`) carry main's entries (#1552 plus #1544/#1546/#1548 and the rest) and this PR's entries.
+- **A silent auto-merge error, fixed:** git's own merge (it used the old base `37e18d7f` because of the squash) had duplicated the `describe("signed file uploads")` block in `packages/shop-contracts/src/admin-consignor-agreement.test.ts`. Main's copy of that file is identical to `51e5e9ce`, so the correct result is this PR's version. I restored it, and the file has the block once.
+- **No behaviour change.** #1552's later commit `0f9d5c75` ("retry after Reload at the version just loaded") is kept exactly as on main.
+
+### Verification
+
+- `git diff origin/main...HEAD` (merge base `f20f7416`) lists the same 94 files as `git diff 51e5e9ce cb2f9cee`: 50 source/docs files plus 44 screenshots under `docs/design/screenshots/zi-5-consignor-field/`.
+- With `index`/`@@` lines ignored, the two diffs are identical except for one context line in the `index.ts` hunk: the block before the PR's export is now main's express-checkout block. Every screenshot blob is byte-identical to `cb2f9cee`.
+- It still merges cleanly with the merged #1554 head (`git merge-tree`).
+
+### Tests (on `fe955ac1`)
+
+Throwaway Postgres 16 on port 55432, migrated with `db:migrate` and `db:roles`, `SHOP_V1_INTEGRATION_REQUIRED=true`, shop suites as `shop_app`, `--maxWorkers=2`. Everything passed:
+
+- **Typecheck:** shop-api, shop-admin, shop-contracts, shop-domain and persistence pass.
+- **Biome:** `biome check` on all 48 changed code files is clean.
+- **shop-api, 184 tests (8 files):**
+  - `admin-artwork-consignor.routes` (27)
+  - `admin-artwork-register.routes` (63)
+  - `admin-lookups.routes` (30)
+  - `artwork-register-review.service` (32)
+  - `artwork-consignor.service.integration` (9)
+  - `drizzle-register-overview.integration` (4)
+  - #1552's `consignor-agreement.service.integration` (15)
+  - `consignor-agreement-files` (4)
+- **shop-api, 100 tests:** #1552's `admin-consignor-agreement.routes` (62) and `step-up-paths.guard` (38), because the wiring and step-up paths were merged.
+- **persistence:** `consignor-agreement.integration` (14).
+- **shop-admin, 148 tests (8 files):** the From Zoho record page, the consignor section, the All list, `artwork-consignor.vm`, `audit-log.vm`, `zoho-register.vm`, the agreements section and `consignor-agreement.vm`.
+- **shop-contracts:** 130 tests.
+- **Not run:** a full `next build`.
