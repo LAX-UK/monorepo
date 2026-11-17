@@ -9,10 +9,12 @@ import type { ShopTransactionEffects } from "./shop-unit-of-work.js";
 /** What LAX Admin reads about stock locations, outside any write. */
 export type StockLocationReads = {
   listLocations(options?: { includeRetired?: boolean }): Promise<StockLocation[]>;
-  /** Whether the artwork is on the register, so an unknown id reads as not found. */
-  registerExists(registerId: string): Promise<boolean>;
-  /** Newest first; the first is where the artwork is now. */
-  listMoves(registerId: string, limit: number): Promise<LocationMove[]>;
+  /**
+   * The artwork's newest `limit` moves, newest first (the first is where it is now), or null when
+   * it is not on the register. Both are read in one snapshot, so a move committed meanwhile is
+   * either wholly in the answer or not at all.
+   */
+  artworkMoves(registerId: string, limit: number): Promise<LocationMove[] | null>;
 };
 
 export type StockLocationWriteResult =
