@@ -2,6 +2,7 @@ import type {
   ArtworkRegisterEntry,
   FieldConflict,
   GallerySalePlan,
+  MoveAgreementRecord,
   MoveRecord,
   NewArtworkRegisterEntry,
   OfferRef,
@@ -347,6 +348,8 @@ export type RecordLaxArtDraftCreatedInput = {
   actor: RegisterActor;
   artworkId: string;
   now: Date;
+  /** The consignor agreement the offer read (ZI-5), kept in the history entry. */
+  consignorAgreement?: MoveAgreementRecord;
 };
 
 /** Keeps "a lax.art draft was made from this record" in the register's history. */

@@ -25,6 +25,7 @@ import {
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { MoveAgreementService } from "./application/admin/move-agreement.service.js";
 import { OriginalMoveService } from "./application/admin/original-move.service.js";
 import { ReopenArtListingService } from "./application/admin/reopen-art-listing.service.js";
 import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
@@ -130,6 +131,7 @@ import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizz
 import {
   createDrizzleConsignorAgreementReads,
   createDrizzleConsignorAgreementWritesFor,
+  createDrizzleMoveAgreementReads,
 } from "./infrastructure/drizzle-consignor-agreement.js";
 import { createDrizzleDeletionEligibilityRepository } from "./infrastructure/drizzle-deletion-eligibility.repository.js";
 import { createDrizzleEditionAlertStore } from "./infrastructure/drizzle-edition-alert.store.js";
@@ -573,11 +575,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const zohoSyncHealth = new DrizzleZohoSyncHealthStore(db);
   const originalMoveReader = createDrizzleOriginalMoveReader(db);
   const artworkRegister = new DrizzleArtworkRegisterRepository(db);
+  const moveAgreements = new MoveAgreementService({
+    reads: createDrizzleMoveAgreementReads(db, consignorAgreementStoreOn),
+  });
   const inventoryMoves = new OriginalMoveService({
     originals: originalMoveReader,
     register: artworkRegister,
     history: artworkRegister,
     auction: auctionOffers,
+    agreements: moveAgreements,
     withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
       await artworkCatalogue.setVisibility({
         artworkId,
@@ -828,6 +834,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
             registerFor: (session) => artworkRegisterRepository.withExecutor(session),
             listings: laxArtListings,
           }),
+          agreements: moveAgreements,
         }),
         zohoLink: new ZohoLinkService({
           listings: createDrizzleZohoLinkListingReader(db),

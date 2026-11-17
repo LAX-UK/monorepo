@@ -46,6 +46,16 @@ const ready = {
     eligible: true,
     zohoPrice: "4800.00",
     blockers: [],
+    consignorAgreement: {
+      place: "lax_art",
+      state: "lax_owns",
+      outcome: "allowed",
+      checkboxFallbackUntil: "2027-01-31",
+      consignor: null,
+      agreement: null,
+      lowestPricePence: null,
+      canAddAgreement: false,
+    },
   },
 };
 
@@ -257,5 +267,86 @@ describe("OfferOnLaxArtDialog", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Open on lax.art" }));
     expect(push).toHaveBeenCalledWith(`/artworks/${ARTWORK_ID}?arrived=zoho`);
     expect(screen.queryByRole("button", { name: "Create lax.art draft" })).not.toBeInTheDocument();
+  });
+});
+
+describe("OfferOnLaxArtDialog and the consignor agreement", () => {
+  const PARTY_ID = "44444444-4444-4444-8444-444444444444";
+  const AGREEMENT_ID = "55555555-5555-4555-8555-555555555555";
+  const agreementLine = (patch: Record<string, unknown>) =>
+    withData({ consignorAgreement: { ...ready.data.consignorAgreement, ...patch } });
+
+  beforeEach(() => {
+    for (const fn of [assess, offer, push, toastSuccess]) fn.mockReset();
+  });
+
+  it("shows the agreement in force for lax.art", async () => {
+    // Loaded here: staff-ui imports sonner, which is mocked with a variable declared below.
+    const { formatStaffDate } = await import("@auction/staff-ui");
+    assess.mockResolvedValue(
+      agreementLine({
+        state: "in_force",
+        consignor: { partyId: PARTY_ID, displayName: "Example Gallery Ltd" },
+        agreement: {
+          id: AGREEMENT_ID,
+          agreementId: AGREEMENT_ID,
+          version: 2,
+          places: ["lax_art"],
+          startsOn: "2026-03-03",
+          endsOn: null,
+          retiredOn: null,
+        },
+      }),
+    );
+    open();
+    expect(
+      await screen.findByText(
+        `Covered by agreement with Example Gallery Ltd, signed ${formatStaffDate("2026-03-03")}, lax.art, with no end date.`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("warns, without blocking, when no agreement covers lax.art", async () => {
+    assess.mockResolvedValue(
+      agreementLine({
+        state: "none",
+        consignor: { partyId: PARTY_ID, displayName: "Example Gallery Ltd" },
+        canAddAgreement: true,
+      }),
+    );
+    open();
+    expect(
+      await screen.findByText("No agreement covers lax.art for Example Gallery Ltd."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add agreement" })).toHaveAttribute(
+      "href",
+      `/clients/${PARTY_ID}#agreements`,
+    );
+    expect(screen.getByRole("button", { name: "Create lax.art draft" })).toBeEnabled();
+  });
+
+  it("says when no consignor is set, without asking for a checkbox", async () => {
+    assess.mockResolvedValue(agreementLine({ state: "no_consignor", canAddAgreement: true }));
+    open();
+    expect(await screen.findByText("No consignor is set for this work.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Set consignor" })).toHaveAttribute(
+      "href",
+      `/from-zoho/${REGISTER_ID}#consignor`,
+    );
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("offers Set consignor only to someone who keeps consignor agreements", async () => {
+    assess.mockResolvedValue(agreementLine({ state: "no_consignor" }));
+    open();
+    expect(await screen.findByText("No consignor is set for this work.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Set consignor" })).not.toBeInTheDocument();
+  });
+
+  it("shows no line when LAX owns the work", async () => {
+    assess.mockResolvedValue(ready);
+    open();
+    await screen.findByRole("button", { name: "Create lax.art draft" });
+    expect(screen.queryByText(/agreement/i)).not.toBeInTheDocument();
   });
 });

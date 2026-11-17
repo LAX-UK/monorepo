@@ -2,7 +2,9 @@
 
 import { ArtistPicker } from "@/components/artworks/artist-picker.client";
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
+import { MoveAgreementNotice } from "@/components/consignor-agreements/move-agreement-notice";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
+import { moveAgreementLine } from "@/lib/move-agreement-line";
 import {
   type OfferOnLaxArtField,
   type OfferOnLaxArtForm,
@@ -177,6 +179,10 @@ export function OfferOnLaxArtDialogView({
   onOpenExisting,
 }: OfferOnLaxArtViewProps) {
   const ready = loaded.phase === "ready" ? loaded.assessment : null;
+  // lax.art shows the agreement but never waits for it in the first release.
+  const agreementLine = ready
+    ? moveAgreementLine(ready.consignorAgreement, ready.registerId)
+    : null;
   const summary = showErrors ? offerOnLaxArtErrorSummary(errors) : [];
   const footer =
     loaded.phase === "existing" ? (
@@ -263,6 +269,7 @@ export function OfferOnLaxArtDialogView({
           />
           {formError ? <Notice tone="danger" alert title={formError} /> : null}
           <ZohoFacts assessment={ready} />
+          {agreementLine ? <MoveAgreementNotice line={agreementLine} /> : null}
           <Field
             label="lax.art artist"
             id={offerOnLaxArtFieldId("artistId")}

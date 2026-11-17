@@ -24,8 +24,15 @@ export function startingPriceText(priceText: string): string | null {
   return value > 0 ? value.toFixed(2) : null;
 }
 
+/**
+ * Whether the move still asks for the "The consignor agreed" checkbox: only while a work with no
+ * consignor set falls back to it (ZI-5, owner decision Q2). A recorded agreement decides otherwise.
+ */
+export type OfferAtAuctionRules = { needsCheckbox: boolean };
+
 export function validateOfferAtAuctionForm(
   form: OfferAtAuctionForm,
+  rules: OfferAtAuctionRules,
 ): Partial<Record<OfferAtAuctionField, string>> {
   const errors: Partial<Record<OfferAtAuctionField, string>> = {};
   if (!form.saleId) errors.saleId = "Choose a sale";
@@ -33,15 +40,49 @@ export function validateOfferAtAuctionForm(
   else if (startingPriceText(form.priceText) === null) {
     errors.price = "Enter a price above £0, such as 250 or 250.00";
   }
-  if (!form.consignorAgreed) errors.consignorAgreed = "Confirm the consignor agreed";
+  if (rules.needsCheckbox && !form.consignorAgreed)
+    errors.consignorAgreed = "Confirm the consignor agreed";
   return errors;
 }
 
 /** The request body for a form that passed validation. */
-export function offerAtAuctionBody(form: OfferAtAuctionForm): AdminOfferAtAuctionBody | null {
+export function offerAtAuctionBody(
+  form: OfferAtAuctionForm,
+  rules: OfferAtAuctionRules,
+): AdminOfferAtAuctionBody | null {
   const startingPrice = startingPriceText(form.priceText);
-  if (!form.saleId || !startingPrice || !form.consignorAgreed) return null;
-  return { saleId: form.saleId, startingPrice, consignorAgreed: true };
+  if (!form.saleId || !startingPrice) return null;
+  if (!rules.needsCheckbox) return { saleId: form.saleId, startingPrice };
+  return form.consignorAgreed
+    ? { saleId: form.saleId, startingPrice, consignorAgreed: true }
+    : null;
+}
+
+/** Each field's control, for the error summary's links. */
+export const OFFER_AT_AUCTION_FIELD_IDS: Record<OfferAtAuctionField, string> = {
+  saleId: "offer-sale",
+  price: "offer-price",
+  consignorAgreed: "offer-consignor-agreed",
+};
+
+/**
+ * The summary above the form: shown only when two or more fields are wrong; a single error is
+ * shown on its field alone.
+ */
+export function offerAtAuctionErrorSummary(
+  errors: Partial<Record<OfferAtAuctionField, string>>,
+): Array<{ fieldId: string; message: string }> {
+  const list = (["saleId", "price", "consignorAgreed"] as const).flatMap((field) => {
+    const message = errors[field];
+    return message ? [{ fieldId: OFFER_AT_AUCTION_FIELD_IDS[field], message }] : [];
+  });
+  return list.length >= 2 ? list : [];
+}
+
+/** The starting price as typed, in pence; null while it is not a valid amount. */
+export function startingPricePence(priceText: string): number | null {
+  const text = startingPriceText(priceText);
+  return text === null ? null : Math.round(Number(text) * 100);
 }
 
 /** "Starts 1 Dec 2026, 10:00": how a sale reads in the chooser. */

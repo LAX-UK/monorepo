@@ -44,11 +44,27 @@ const assessment = {
   eligible: true,
   zohoPrice: "4800.00",
   blockers: [],
+  consignorAgreement: {
+    place: "lax_art",
+    state: "none",
+    outcome: "allowed",
+    checkboxFallbackUntil: "2027-01-31",
+    consignor: {
+      partyId: "77777777-7777-4777-8777-777777777777",
+      displayName: "Example Gallery Ltd",
+    },
+    agreement: null,
+    lowestPricePence: null,
+    canAddAgreement: false,
+  },
 };
 
 const offerBody = { artistId: ARTIST_ID, saleState: "for_sale", slug: "ada-rowe-tidal-margin-iv" };
 
-async function buildApp(role: ShopStaffRole) {
+async function buildApp(
+  role: ShopStaffRole,
+  consignorAgreement: unknown = assessment.consignorAgreement,
+) {
   vi.mocked(verifyBearerToken).mockResolvedValue({
     subject: `${role}-subject`,
     payload: {
@@ -72,7 +88,10 @@ async function buildApp(role: ShopStaffRole) {
     slug: "ada-rowe-tidal-margin-iv",
     created: true,
   }));
-  deps.admin.offerOnLaxArt = { assess: vi.fn(async () => assessment as never), offer };
+  deps.admin.offerOnLaxArt = {
+    assess: vi.fn(async () => ({ ...assessment, consignorAgreement }) as never),
+    offer,
+  };
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();
   return { app, offer };
@@ -120,6 +139,59 @@ describe("Offer on lax.art routes", () => {
       zohoPrice: "4800.00",
     });
     await app.close();
+  });
+
+  it("shows the agreement line, with the consignor only to people who read agreements", async () => {
+    const editor = await buildApp("catalogue_editor");
+    const shown = await editor.app.inject({ method: "GET", url, headers: headers() });
+    expect(shown.json().consignorAgreement).toMatchObject({
+      state: "none",
+      consignor: { displayName: "Example Gallery Ltd" },
+      canAddAgreement: true,
+    });
+    await editor.app.close();
+
+    const reader = await buildApp("read_only");
+    const hidden = await reader.app.inject({ method: "GET", url, headers: headers() });
+    expect(hidden.json().consignorAgreement).toMatchObject({
+      state: "none",
+      consignor: null,
+      canAddAgreement: false,
+    });
+    await reader.app.close();
+  });
+
+  it("sends the lowest price to someone who can make the draft, and not to Read-only", async () => {
+    const inForce = {
+      ...assessment.consignorAgreement,
+      state: "in_force",
+      agreement: {
+        id: "88888888-8888-4888-8888-888888888888",
+        agreementId: "88888888-8888-4888-8888-888888888888",
+        version: 1,
+        places: ["lax_art"],
+        startsOn: "2026-03-03",
+        endsOn: null,
+        retiredOn: null,
+      },
+      lowestPricePence: 200_000,
+    };
+    const editor = await buildApp("catalogue_editor", inForce);
+    const shown = await editor.app.inject({ method: "GET", url, headers: headers() });
+    expect(shown.json().consignorAgreement.lowestPricePence).toBe(200_000);
+    await editor.app.close();
+
+    const reader = await buildApp("read_only", inForce);
+    const hidden = await reader.app.inject({ method: "GET", url, headers: headers() });
+    expect(hidden.statusCode).toBe(200);
+    expect(hidden.json().consignorAgreement).toEqual({
+      ...inForce,
+      consignor: null,
+      agreement: null,
+      lowestPricePence: null,
+      canAddAgreement: false,
+    });
+    await reader.app.close();
   });
 
   it("hands the staff member, the key and the choices to the use case", async () => {

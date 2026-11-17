@@ -6,6 +6,7 @@ import type {
 } from "@auction/shop-contracts";
 import { ShopDomainError } from "@auction/shop-domain";
 import { notFound } from "../../errors/shop-api-error.js";
+import type { MoveAgreementService } from "../admin/move-agreement.service.js";
 import type { ArtworkRegisterRecords } from "../ports/artwork-register-review.ports.js";
 import {
   type LaxArtArtistDirectory,
@@ -21,6 +22,8 @@ export type OfferOnLaxArtDeps = {
   artists: LaxArtArtistDirectory;
   listings: LaxArtListingReader;
   drafts: LaxArtDraftWriter;
+  /** The consignor agreement for lax.art: shown, recorded, never blocking in the first release. */
+  agreements: Pick<MoveAgreementService, "read">;
 };
 
 /**
@@ -28,6 +31,7 @@ export type OfferOnLaxArtDeps = {
  * dialog shows and why it may be blocked. The offer makes the lax.art draft from the record: Zoho
  * decides what the artwork is, staff decide which lax.art artist it belongs to and how it is sold.
  * Nothing is public until staff publish the draft, where the one-place-at-a-time lock applies.
+ * The consignor's agreement for lax.art is shown and kept in history, and does not block.
  */
 export class OfferOnLaxArtService {
   constructor(private readonly deps: OfferOnLaxArtDeps) {}
@@ -35,9 +39,10 @@ export class OfferOnLaxArtService {
   async assess(registerId: string): Promise<AdminLaxArtOfferAssessment> {
     const entry = await this.deps.register.findById(registerId);
     if (!entry) throw notFound("Artwork");
-    const [existing, artist] = await Promise.all([
+    const [existing, artist, agreement] = await Promise.all([
       this.deps.listings.findByZohoProductId(entry.zohoProductId),
       this.deps.artists.findByZohoArtistCode(entry.artist.code),
+      this.deps.agreements.read(entry.id, "lax_art"),
     ]);
     // The listing made from this record is the place; it does not block opening it again.
     const blockers = existing ? [] : laxArtOfferBlockers(entry, DRAFT_PROBE);
@@ -62,6 +67,7 @@ export class OfferOnLaxArtService {
       eligible: blockers.length === 0,
       zohoPrice: entry.zohoPrice ?? null,
       blockers: blockers.map(({ message, link }) => ({ message, link })),
+      consignorAgreement: agreement.view,
     };
   }
 
@@ -73,6 +79,8 @@ export class OfferOnLaxArtService {
   }): Promise<AdminLaxArtOfferResponse> {
     const entry = await this.deps.register.findById(input.registerId);
     if (!entry) throw notFound("Artwork");
+    const agreement = await this.deps.agreements.read(entry.id, "lax_art");
+    agreement.assertAllowed({ consignorAgreed: false });
     try {
       const draft = await this.deps.drafts.createDraft({
         entry,
@@ -81,6 +89,7 @@ export class OfferOnLaxArtService {
         slug: input.body.slug,
         actorSubjectId: input.actorSubjectId,
         idempotencyKey: input.idempotencyKey,
+        consignorAgreement: agreement.record(),
       });
       return { artworkId: draft.artworkId, slug: draft.slug, created: draft.created };
     } catch (error) {

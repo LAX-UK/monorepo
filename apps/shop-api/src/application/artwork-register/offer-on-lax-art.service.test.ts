@@ -2,6 +2,11 @@ import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import { ShopDomainError } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
 import {
+  CONSIGNOR_PARTY_ID,
+  consignorAgreement,
+  moveAgreementsOver,
+} from "../../test-support/move-agreement-fixtures.js";
+import {
   type CreateLaxArtDraftCommand,
   LaxArtArtistRefusedError,
   LaxArtOfferRefusedError,
@@ -60,6 +65,7 @@ function build(
       findZohoProductId: vi.fn(async () => null),
     },
     drafts: { createDraft },
+    agreements: moveAgreementsOver({ consignor: { kind: "lax" }, now: () => T0 }),
     ...rest,
   };
   return { service: new OfferOnLaxArtService(deps), deps, createDraft };
@@ -257,5 +263,68 @@ describe("OfferOnLaxArtService.offer", () => {
     const { service, createDraft } = build({ found: null });
     await expect(offer(service)).rejects.toMatchObject({ statusCode: 404 });
     expect(createDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe("OfferOnLaxArtService and the consignor agreement", () => {
+  const client = { kind: "client", partyId: CONSIGNOR_PARTY_ID } as const;
+
+  it("shows the agreement for lax.art in the assessment", async () => {
+    const { service } = build({
+      agreements: moveAgreementsOver({
+        consignor: client,
+        agreements: [consignorAgreement()],
+        now: () => T0,
+      }),
+    });
+    const assessment = await service.assess(REGISTER_ID);
+    expect(assessment.eligible).toBe(true);
+    expect(assessment.consignorAgreement).toMatchObject({
+      place: "lax_art",
+      state: "in_force",
+      outcome: "allowed",
+      consignor: { displayName: "Example Gallery Ltd" },
+    });
+  });
+
+  it("does not block when no agreement covers lax.art, and records what it read", async () => {
+    const { service, createDraft } = build({
+      agreements: moveAgreementsOver({
+        consignor: client,
+        agreements: [consignorAgreement({ endsOn: "2026-06-30" })],
+        now: () => T0,
+      }),
+    });
+    expect((await service.assess(REGISTER_ID)).consignorAgreement).toMatchObject({
+      state: "expired",
+      outcome: "allowed",
+    });
+    await offer(service);
+    expect(createDraft).toHaveBeenCalledWith(
+      expect.objectContaining({
+        consignorAgreement: {
+          place: "lax_art",
+          state: "expired",
+          consignorPartyId: CONSIGNOR_PARTY_ID,
+          agreementId: consignorAgreement().agreementId,
+          agreementVersionId: consignorAgreement().id,
+          version: 1,
+        },
+      }),
+    );
+  });
+
+  it("does not ask for a checkbox when no consignor is set", async () => {
+    const { service, createDraft } = build({
+      agreements: moveAgreementsOver({ consignor: null, now: () => T0 }),
+    });
+    expect((await service.assess(REGISTER_ID)).consignorAgreement).toMatchObject({
+      state: "no_consignor",
+      outcome: "allowed",
+    });
+    await offer(service);
+    expect(createDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ consignorAgreement: { place: "lax_art", state: "no_consignor" } }),
+    );
   });
 });

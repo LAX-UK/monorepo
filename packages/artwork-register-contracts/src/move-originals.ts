@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { MoveAgreementRecord } from "./consignor-agreement.js";
 import type { OfferState } from "./offer-state.js";
 
 /**
@@ -254,7 +255,12 @@ export type MoveRecord = {
    * register moved, and there was no listing to reopen.
    */
   noLaxArtListing?: true;
-  /** Set when the consignor's agreement to sell at auction was confirmed. */
+  /**
+   * Set when staff ticked "The consignor agreed to sell at auction": before agreements were
+   * recorded, and while a work with no consignor falls back to the checkbox.
+   */
   consignorAgreed?: true;
+  /** The consignor agreement the move read, when it read one (moves from ZI-5 on). */
+  consignorAgreement?: MoveAgreementRecord;
   confirmedBy: string;
 };

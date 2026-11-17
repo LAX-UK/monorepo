@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminMoveAgreementSchema } from "./admin-move-agreement.js";
 import { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN } from "./catalogue-slug.js";
 
 /**
@@ -62,6 +63,8 @@ export const AdminLaxArtOfferAssessmentSchema = Type.Object({
   zohoPrice: Type.Union([Type.String(), Type.Null()]),
   /** Empty when the offer can go ahead. Most important first. */
   blockers: Type.Array(AdminLaxArtOfferBlockerSchema),
+  /** The consignor agreement for lax.art. Shown, never blocking in the first release. */
+  consignorAgreement: AdminMoveAgreementSchema,
 });
 export type AdminLaxArtOfferAssessment = Static<typeof AdminLaxArtOfferAssessmentSchema>;
 

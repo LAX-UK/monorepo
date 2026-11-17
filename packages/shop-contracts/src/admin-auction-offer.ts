@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminMoveAgreementSchema } from "./admin-move-agreement.js";
 import { AdminLaxArtOfferBlockerSchema } from "./admin-offer-on-lax-art.js";
 import { AdminBidLotRefSchema } from "./admin-where-it-is.js";
 
@@ -29,6 +30,8 @@ export const AdminAuctionOfferAssessmentSchema = Type.Object({
   zohoPrice: Type.Union([Type.String(), Type.Null()]),
   /** Why the artwork cannot be offered, most important first, with the link that goes with each. */
   blockers: Type.Array(AdminLaxArtOfferBlockerSchema),
+  /** The consignor agreement the move reads; null when the artwork has no register record. */
+  consignorAgreement: Type.Union([AdminMoveAgreementSchema, Type.Null()]),
 });
 export type AdminAuctionOfferAssessment = Static<typeof AdminAuctionOfferAssessmentSchema>;
 
@@ -50,8 +53,12 @@ export const AdminOfferAtAuctionBodySchema = Type.Object({
   saleId: Type.String({ format: "uuid" }),
   /** In pounds, for example "250" or "250.00". */
   startingPrice: Type.String({ pattern: "^\\d{1,9}(\\.\\d{1,2})?$" }),
-  /** Staff confirm the consignor agreed to sell at auction; who confirmed is recorded. */
-  consignorAgreed: Type.Literal(true),
+  /**
+   * Staff confirm the consignor agreed to sell at auction; who confirmed is recorded. Needed only
+   * while a work with no consignor falls back to the checkbox (`consignorAgreement.outcome` is
+   * `checkbox_fallback`); otherwise the recorded agreement decides and this is ignored.
+   */
+  consignorAgreed: Type.Optional(Type.Literal(true)),
 });
 export type AdminOfferAtAuctionBody = Static<typeof AdminOfferAtAuctionBodySchema>;
 

@@ -1,12 +1,20 @@
 import {
   type ArtworkRegisterEntry,
   BID_NOT_CONNECTED_MESSAGE,
+  type Consignor,
+  type ConsignorAgreement,
   InventoryPeerRefusedError,
   InventoryPeerUnavailableError,
 } from "@auction/artwork-register-contracts";
 import { ShopDomainError } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
 import { ShopApiError } from "../../errors/shop-api-error.js";
+import {
+  CONSIGNOR_PARTY_ID,
+  consignorAgreement,
+  laxOwnsMoveAgreement,
+  moveAgreementsOver,
+} from "../../test-support/move-agreement-fixtures.js";
 import type { OriginalForMove } from "../ports/original-move.js";
 import { OriginalMoveService } from "./original-move.service.js";
 
@@ -67,6 +75,10 @@ type Setup = {
   listSales?: () => Promise<unknown>;
   findDraftLot?: () => Promise<unknown>;
   withdraw?: () => Promise<void>;
+  consignor?: Consignor | null;
+  agreements?: ConsignorAgreement[];
+  /** The clock, for the agreement's London day and the end of the checkbox transition. */
+  now?: Date;
 };
 
 function setup(over: Setup = {}) {
@@ -103,9 +115,14 @@ function setup(over: Setup = {}) {
         throw new Error("not used");
       }) as never,
     },
+    agreements: moveAgreementsOver({
+      consignor: over.consignor === undefined ? { kind: "lax" } : over.consignor,
+      agreements: over.agreements ?? [],
+      now: () => over.now ?? NOW,
+    }),
     withdrawFromLaxArt,
     resolveImageUrl: (value) => (value ? `https://media.example/${value}` : null),
-    now: () => NOW,
+    now: () => over.now ?? NOW,
   });
   return { service, withdrawFromLaxArt, createDraftLot, recordMoveConfirmed };
 }
@@ -131,6 +148,7 @@ describe("OriginalMoveService.assess", () => {
       eligible: true,
       zohoPrice: null,
       blockers: [],
+      consignorAgreement: laxOwnsMoveAgreement("lax_bid"),
     });
   });
 
@@ -318,7 +336,7 @@ describe("OriginalMoveService.offerAtAuction", () => {
         saleTitle: "Winter sale",
         lotId: LOT_ID,
         withdrawnFromLaxArt: true,
-        consignorAgreed: true,
+        consignorAgreement: { place: "lax_bid", state: "lax_owns" },
         confirmedBy: "staff:user-1",
       },
       now: NOW,
@@ -434,7 +452,7 @@ describe("OriginalMoveService.offerRegisterAtAuction", () => {
         record: expect.objectContaining({
           direction: "to_auction",
           lotId: LOT_ID,
-          consignorAgreed: true,
+          consignorAgreement: { place: "lax_bid", state: "lax_owns" },
           confirmedBy: "staff:user-1",
         }),
       }),
@@ -533,5 +551,169 @@ describe("OriginalMoveService.offerRegisterAtAuction", () => {
       statusCode: 502,
     });
     expect(down.recordMoveConfirmed).not.toHaveBeenCalled();
+  });
+});
+
+describe("OriginalMoveService and the consignor agreement", () => {
+  const client = { kind: "client", partyId: CONSIGNOR_PARTY_ID } as const;
+
+  it("shows the agreement in force for LAX Bid with the consignor's name", async () => {
+    const assessment = await setup({
+      consignor: client,
+      agreements: [consignorAgreement({ lowestPricePence: 200_000 })],
+    }).service.assessRegister(REGISTER_ID);
+    expect(assessment.consignorAgreement).toMatchObject({
+      place: "lax_bid",
+      state: "in_force",
+      outcome: "allowed",
+      consignor: { partyId: CONSIGNOR_PARTY_ID, displayName: "Example Gallery Ltd" },
+      agreement: { version: 1, startsOn: "2026-03-03", endsOn: "2027-03-02", retiredOn: null },
+      lowestPricePence: 200_000,
+    });
+  });
+
+  it("makes the lot without the checkbox and records the agreement version", async () => {
+    const { service, recordMoveConfirmed } = setup({
+      consignor: client,
+      agreements: [consignorAgreement({ version: 2, lowestPricePence: 50_000 })],
+    });
+    await service.offerRegisterAtAuction(registerCommand);
+    const { record } = recordMoveConfirmed.mock.calls[0]?.[0] ?? {};
+    expect(record.consignorAgreed).toBeUndefined();
+    expect(record.consignorAgreement).toEqual({
+      place: "lax_bid",
+      state: "in_force",
+      consignorPartyId: CONSIGNOR_PARTY_ID,
+      agreementId: consignorAgreement().agreementId,
+      agreementVersionId: consignorAgreement().id,
+      version: 2,
+      belowLowestPrice: true,
+    });
+  });
+
+  it("goes ahead below the lowest price, and does not mark it when at or above", async () => {
+    const { service, recordMoveConfirmed } = setup({
+      consignor: client,
+      agreements: [consignorAgreement({ lowestPricePence: 25_000 })],
+    });
+    await service.offerRegisterAtAuction(registerCommand);
+    expect(recordMoveConfirmed.mock.calls[0]?.[0].record.consignorAgreement.belowLowestPrice).toBe(
+      undefined,
+    );
+  });
+
+  it.each([
+    ["expired", consignorAgreement({ endsOn: "2026-10-31" })],
+    ["not_started", consignorAgreement({ startsOn: "2026-12-01" })],
+    [
+      "retired",
+      consignorAgreement({ status: "retired", retiredAt: new Date("2026-10-01T09:00:00Z") }),
+    ],
+    ["none", consignorAgreement({ places: ["lax_art"] })],
+  ] as const)(
+    "refuses the move when the agreement is %s, and makes no lot",
+    async (state, agreement) => {
+      const { service, createDraftLot, recordMoveConfirmed } = setup({
+        consignor: client,
+        agreements: [agreement],
+      });
+      const assessment = await service.assessRegister(REGISTER_ID);
+      expect(assessment.consignorAgreement).toMatchObject({ state, outcome: "blocked" });
+      await expect(
+        service.offerRegisterAtAuction({ ...registerCommand, consignorAgreed: true }),
+      ).rejects.toThrow("No agreement covers LAX Bid for this work's consignor.");
+      expect(createDraftLot).not.toHaveBeenCalled();
+      expect(recordMoveConfirmed).not.toHaveBeenCalled();
+    },
+  );
+
+  it("asks for the checkbox for a work with no consignor during the transition", async () => {
+    const { service, createDraftLot, recordMoveConfirmed } = setup({ consignor: null });
+    expect((await service.assessRegister(REGISTER_ID)).consignorAgreement).toMatchObject({
+      state: "no_consignor",
+      outcome: "checkbox_fallback",
+      checkboxFallbackUntil: "2027-01-31",
+    });
+    await expect(service.offerRegisterAtAuction(registerCommand)).rejects.toThrow(
+      "Confirm the consignor agreed to sell at auction.",
+    );
+    expect(createDraftLot).not.toHaveBeenCalled();
+
+    await service.offerRegisterAtAuction({ ...registerCommand, consignorAgreed: true });
+    expect(recordMoveConfirmed.mock.calls[0]?.[0].record).toMatchObject({
+      consignorAgreed: true,
+      consignorAgreement: { place: "lax_bid", state: "no_consignor" },
+    });
+  });
+
+  it("refuses a work with no consignor once the transition is over, even with the checkbox", async () => {
+    const { service, createDraftLot, recordMoveConfirmed } = setup({
+      consignor: null,
+      now: new Date("2027-02-01T12:00:00Z"),
+    });
+    expect((await service.assessRegister(REGISTER_ID)).consignorAgreement).toMatchObject({
+      state: "no_consignor",
+      outcome: "blocked",
+    });
+    await expect(
+      service.offerRegisterAtAuction({ ...registerCommand, consignorAgreed: true }),
+    ).rejects.toThrow("Set who consigned this work first.");
+    expect(createDraftLot).not.toHaveBeenCalled();
+    expect(recordMoveConfirmed).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    // 31 Jan 2027 in London (GMT): the last day of the transition.
+    ["2027-01-31T23:30:00Z", "checkbox_fallback"],
+    // 1 Feb 2027 in London: the transition is over.
+    ["2027-02-01T00:30:00Z", "blocked"],
+  ] as const)(
+    "reads the transition's last day on the London clock: at %s it is %s",
+    async (instant, outcome) => {
+      const { service, createDraftLot } = setup({ consignor: null, now: new Date(instant) });
+      expect((await service.assessRegister(REGISTER_ID)).consignorAgreement?.outcome).toBe(outcome);
+      const offer = service.offerRegisterAtAuction({ ...registerCommand, consignorAgreed: true });
+      if (outcome === "blocked") {
+        await expect(offer).rejects.toThrow("Set who consigned this work first.");
+        expect(createDraftLot).not.toHaveBeenCalled();
+      } else {
+        await offer;
+        expect(createDraftLot).toHaveBeenCalledTimes(1);
+      }
+    },
+  );
+
+  it.each([
+    // 23:30 BST on 24 Oct 2026: still the agreement's last day in London.
+    ["2026-10-24T22:30:00Z", { endsOn: "2026-10-24" }, "in_force"],
+    // 00:30 BST on 25 Oct 2026: the day after it ends in London, though UTC still says 24 Oct.
+    ["2026-10-24T23:30:00Z", { endsOn: "2026-10-24" }, "expired"],
+    // 23:30 BST on 31 May 2026: the day before it starts.
+    ["2026-05-31T22:30:00Z", { startsOn: "2026-06-01" }, "not_started"],
+    // 00:30 BST on 1 Jun 2026: its first day in London, though UTC still says 31 May.
+    ["2026-05-31T23:30:00Z", { startsOn: "2026-06-01" }, "in_force"],
+  ] as const)(
+    "reads the agreement's dates on the London clock in summer time: at %s it is %s",
+    async (instant, dates, state) => {
+      const { service, createDraftLot } = setup({
+        consignor: client,
+        agreements: [consignorAgreement(dates)],
+        now: new Date(instant),
+      });
+      expect((await service.assessRegister(REGISTER_ID)).consignorAgreement?.state).toBe(state);
+      const offer = service.offerRegisterAtAuction(registerCommand);
+      if (state === "in_force") {
+        await offer;
+        expect(createDraftLot).toHaveBeenCalledTimes(1);
+      } else {
+        await expect(offer).rejects.toThrow("No agreement covers LAX Bid");
+        expect(createDraftLot).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it("has no agreement line for an artwork outside the register", async () => {
+    const assessment = await setup({ entry: null }).service.assess(ARTWORK_ID);
+    expect(assessment.consignorAgreement).toBeNull();
   });
 });
