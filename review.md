@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1552: Consignor agreements, part 2 (ZI-5), Agreements on the LAX Admin client page
 
@@ -154,3 +154,31 @@ None taken; all are left as they were.
 | `tsc --noEmit` for shop-admin and shop-api; Biome on the touched folder | clean |
 
 No full `next build` was run.
+
+## Final recheck
+
+Rechecked PR head `0f9d5c75` against `origin/main` at `599e3f87`. The PR branch was not changed.
+
+### 1. Merge with `main` and the scope of the diff: fixed
+
+- `origin/main` is an ancestor of the branch, and `git merge-tree --write-tree origin/main <branch>` merges with no conflicts.
+- `git diff origin/main...<branch>` touches the same 73 files as part 2 (`91bd8b6f..3b8ef3a2`). Part 1 is not carried twice.
+- For each `.ts`/`.tsx` file, the changed lines match the part-2 diff, with three exceptions:
+  - `agreements-section.client.tsx` and its test. Their diff since `3b8ef3a2` is exactly the fix commit `0f9d5c75`.
+  - `packages/shop-domain/src/staff-capabilities.ts`. The only difference is in the `catalogue_editor` list, which #1536 had already expanded. That list now holds `artwork_location.move` (#1536) and also `consignor_agreement.manage`.
+- Role and capability tests: `shop-domain` `staff-capabilities` and `staff-role-migration` (395 passed), `shop-api` `get-staff-session` and the consignor-agreement routes (64 passed), and `shop-contracts` (128 passed).
+
+### 2. Reload after a 409: fixed
+
+- The open-dialog state keeps only `agreementId`. Replace and Retire read the `current` version of that agreement from the refreshed `agreements` prop.
+- Both dialogs are keyed by the version id, so they send the version that was just loaded. If the agreement was retired in the meantime, `current` is null and the dialog closes.
+- `agreements-section.client.test.tsx`: 20 of 20 tests pass.
+- I put the pre-fix component (`4a428deb`) back with the new tests. Exactly the 3 new tests failed (`:298` replace after Reload, `:333` retire after Reload, `:354` closes when retired), and the other 17 passed. On `0f9d5c75`, all 20 pass.
+
+Suites were run in a detached worktree at `0f9d5c75`, after `pnpm install --frozen-lockfile` and a build of the workspace dependencies.
+
+### Later (low, not blocking)
+
+- **Typed edits are lost on Reload.** After Reload, the Replace dialog remounts with a new `key`, so anything typed in the form is lost. This is intended, because the form restarts from the reloaded terms, but it may surprise people. One option is a short note in the notice.
+- **`open` can go stale.** When `current` becomes null, the dialog unmounts but `open` is not reset to `null`. Today this does no harm, but it is cleaner to reset it.
+- **A failed refresh closes the open dialog.** If the refresh fails and `agreements` comes back empty or undefined, the dialog closes instead of showing an error.
