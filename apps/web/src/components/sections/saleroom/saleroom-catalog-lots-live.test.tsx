@@ -1,5 +1,6 @@
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
+import type { LotCardBidViewer } from "@/lib/lot-card/lot-card-bid-action";
 import { liveCardFields, pendingCardVM } from "@/lib/marketing/saleroom/card-live-state";
 import {
   replaceMarketingViewUrl,
@@ -25,8 +26,8 @@ vi.mock("@/components/sections/saleroom/saleroom-live-lot-banner", () => ({
   SaleroomLiveLotBanner: () => null,
 }));
 
-vi.mock("@/components/marketing/lot-quick-look/saleroom-lot-quick-look-corner", () => ({
-  SaleroomLotQuickLookCorner: () => <div data-testid="quick-look" />,
+vi.mock("@/components/lot-card/lot-card-quick-look", () => ({
+  LotCardQuickLook: () => <div data-testid="quick-look" />,
 }));
 
 vi.mock("next/image", () => ({
@@ -122,7 +123,7 @@ const hybridSaleForLifecycle = {
 };
 
 describe("SaleroomCatalogLotsLive staff gating", () => {
-  it("hides bid actions for staff while keeping quick-look overlay", () => {
+  it("hides bid actions for staff while keeping quick look", () => {
     render(
       <SaleroomCatalogLotsLive
         view="grid"
@@ -164,7 +165,8 @@ describe("SaleroomCatalogLotsLive view switching", () => {
       />,
     );
 
-    expect(screen.queryByTestId("watchlist-lot-1")).not.toBeInTheDocument();
+    // Grid: the heart sits on the "Lot N" line.
+    expect(screen.getByTestId("watchlist-lot-1")).toHaveAttribute("data-layout", "line");
 
     act(() => {
       replaceMarketingViewUrl("/sales/test/sale-1?view=list", "list");
@@ -220,5 +222,65 @@ describe("SaleroomCatalogLotsLive before and after the live read", () => {
     expect(screen.getByTestId("saleroom-lot-catalog-overlay")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /bid/i })).toBeInTheDocument();
     expect(screen.getByTestId("lot-card-line").textContent).toContain("£500");
+  });
+});
+
+/*
+ * The card's full-width button names what it does for this viewer: "Bid" on an open lot,
+ * "Register to bid" before the sale opens for someone who must still register, "Leave a bid"
+ * before the lot opens for someone who may bid and a sale that takes bids in advance.
+ */
+describe("SaleroomCatalogLotsLive card button label", () => {
+  const scheduled = { ...lot, status: "scheduled" as const };
+  const onlineScheduledSale = { status: "scheduled" as const, deliveryMode: "online" as const };
+
+  function renderCard(
+    cardLot: SaleLotCardVM,
+    bidViewer: LotCardBidViewer,
+    sale: Parameters<typeof SaleroomCatalogLotsLive>[0]["saleForLifecycle"] = onlineScheduledSale,
+  ) {
+    return render(
+      <SaleroomCatalogLotsLive
+        view="grid"
+        rows={[{ kind: "lot", key: cardLot.id, lot: cardLot }]}
+        saleForLifecycle={sale}
+        isAuthenticated={bidViewer?.signedIn ?? false}
+        canParticipate
+        bidViewer={bidViewer}
+      />,
+    );
+  }
+
+  it("says Bid on an open lot and goes to the lot page", () => {
+    renderCard(lot, { signedIn: false, register: { href: "/sign-up" } }, hybridSaleForLifecycle);
+    const button = screen.getByRole("link", { name: "Bid" });
+    expect(button).toHaveAttribute("href", lot.href);
+  });
+
+  it("says Register to bid before the sale opens for a viewer who must register", () => {
+    renderCard(scheduled, { signedIn: true, register: { href: "#register-to-bid" } });
+    const button = screen.getByRole("link", { name: "Register to bid" });
+    expect(button).toHaveAttribute("href", "#register-to-bid");
+    expect(screen.queryByRole("link", { name: "Bid" })).not.toBeInTheDocument();
+  });
+
+  it("says Leave a bid before opening for a registered viewer when advance bids are taken", () => {
+    renderCard(scheduled, { signedIn: true, register: null });
+    const button = screen.getByRole("link", { name: "Leave a bid" });
+    expect(button).toHaveAttribute("href", `${lot.href}?bid=open`);
+  });
+
+  it("offers no button before opening when the sale takes no advance bids", () => {
+    renderCard(
+      scheduled,
+      { signedIn: true, register: null },
+      { status: "scheduled", deliveryMode: "hybrid", allowOnlineBidsBeforeGoLive: false },
+    );
+    expect(screen.queryByRole("link", { name: /bid/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps the button's place, with no label, until the viewer is known", () => {
+    renderCard(scheduled, null);
+    expect(screen.queryByRole("link", { name: /bid/i })).not.toBeInTheDocument();
   });
 });

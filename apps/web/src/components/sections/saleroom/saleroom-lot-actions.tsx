@@ -1,22 +1,27 @@
+import type { LotCardBidAction } from "@/lib/lot-card/lot-card-bid-action";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Gavel } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
-  lotHref: string;
+  action: Extract<LotCardBidAction, { href: string }>;
 };
 
-/** Per-lot bid CTA for saleroom catalogue cards. Watchlist/quick-look overlay on grid; inline beside title on list. */
-export function SaleroomLotActions({ lotHref }: Props) {
+/**
+ * The full-width button of a sale page lot card. Its label names what it does for this viewer
+ * (`lotCardBidAction`): "Bid", "Register to bid" or "Leave a bid".
+ */
+export function SaleroomLotActions({ action }: Props) {
   return (
     <ButtonLink
       Link={Link}
-      href={lotHref}
+      href={action.href}
       variant="secondary"
-      icon={<Gavel aria-hidden />}
+      {...(action.kind === "register" ? {} : { icon: <Gavel aria-hidden /> })}
       className="w-full"
+      data-bid-action={action.kind}
     >
-      Bid
+      {action.label}
     </ButtonLink>
   );
 }

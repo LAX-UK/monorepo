@@ -13,10 +13,17 @@ type WatchlistHeartProps = {
   lotTitle?: string;
   className?: string;
   disabled?: boolean;
+  /** The saved heart's fill: live red (default) or the product accent (lot card line). */
+  pressedTone?: "live" | "accent";
 } & Omit<
   React.ComponentPropsWithoutRef<typeof Button>,
   "onClick" | "type" | "variant" | "children"
 >;
+
+const PRESSED_FILL = {
+  live: "fill-live-red stroke-live-red",
+  accent: "fill-product-accent stroke-product-accent",
+} as const;
 
 /** F4 — Watchlist heart toggle with bump animation on click.
  *
@@ -31,6 +38,7 @@ export function WatchlistHeart({
   lotTitle,
   className,
   disabled = false,
+  pressedTone = "live",
   ...rest
 }: WatchlistHeartProps) {
   const [animKey, setAnimKey] = React.useState<number>(0);
@@ -71,7 +79,7 @@ export function WatchlistHeart({
         <Heart
           className={cn(
             "size-5 transition-[fill,stroke] motion-reduce:transition-none",
-            isPressed ? "fill-live-red stroke-live-red" : "fill-transparent stroke-current",
+            isPressed ? PRESSED_FILL[pressedTone] : "fill-transparent stroke-current",
           )}
         />
       </span>

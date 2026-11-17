@@ -16,6 +16,7 @@ describe("LotCard", () => {
             href="/lot/test"
             image={<span data-testid="img" />}
             title={<h2>Lot title</h2>}
+            titleText="Lot title"
             meta={<p>Meta</p>}
           />
         </li>

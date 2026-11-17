@@ -140,12 +140,23 @@ export function SaleroomCataloguePreparingIsland(
 
 export function SaleroomCatalogLotsLiveIsland({
   atgReadOnly,
+  registerToBidSale,
+  saleHref,
   rows,
   ...props
-}: Omit<ComponentProps<typeof SaleroomCatalogLotsLive>, "isAuthenticated" | "canParticipate"> & {
+}: Omit<
+  ComponentProps<typeof SaleroomCatalogLotsLive>,
+  "isAuthenticated" | "canParticipate" | "bidViewer"
+> & {
   atgReadOnly: boolean;
+  /** The sale takes web registrations now: the same flag the hero's island is given. */
+  registerToBidSale: boolean;
+  /** Where sign-up and identity checks bring the person back to. */
+  saleHref: string;
 }) {
   const viewer = useSaleViewer();
+  const loaded = useSaleViewerLoaded();
+  const canParticipate = viewer.canParticipateAsBuyer && !atgReadOnly;
   const watched = useMemo(() => new Set(viewer.watchedLotIds), [viewer.watchedLotIds]);
   const personalRows = useMemo(
     () =>
@@ -159,12 +170,33 @@ export function SaleroomCatalogLotsLiveIsland({
           ),
     [rows, watched],
   );
+  const sale = props.saleForLifecycle;
+  // The hero's register step for this person, from the same presenter, so a card never says
+  // "Register to bid" to someone the hero considers registered (or the other way round).
+  const register =
+    loaded && sale
+      ? salePrimaryViewerAction({
+          ...viewer,
+          status: sale.status,
+          deliveryMode: sale.deliveryMode,
+          registrationOffered: registerToBidSale && canParticipate,
+          saleHref,
+        })
+      : null;
   return (
     <SaleroomCatalogLotsLive
       {...props}
       rows={personalRows}
       isAuthenticated={viewer.isAuthenticated}
-      canParticipate={viewer.canParticipateAsBuyer && !atgReadOnly}
+      canParticipate={canParticipate}
+      bidViewer={
+        loaded
+          ? {
+              signedIn: viewer.isAuthenticated,
+              register: register ? { href: register.href } : null,
+            }
+          : null
+      }
     />
   );
 }

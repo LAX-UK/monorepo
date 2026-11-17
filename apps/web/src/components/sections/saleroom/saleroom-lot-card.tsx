@@ -1,7 +1,9 @@
 "use client";
 
 import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import type { LotCardExtras } from "@/components/lot-card/lot-card-extras";
 import { LotCardLine } from "@/components/lot-card/lot-card-line";
+import { LotCardLotLine } from "@/components/lot-card/lot-card-lot-line";
 import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
 import { SaleroomLotCatalogOverlay } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
@@ -26,8 +28,8 @@ import type { SaleLotCardVM } from "./view-models";
 type Props = {
   lot: SaleLotCardVM;
   saleForLifecycle: SaleroomSaleForLifecycle;
-  /** Grid/tile image overlays (watchlist + quick-look). */
-  cornerAction?: ReactNode;
+  /** Tile only: the save heart (on the "Lot N" line) and the quick look label (on the picture). */
+  extras?: LotCardExtras;
   /** List row actions beside title (inline heart + quick-look). */
   listActions?: ReactNode;
   actions?: ReactNode;
@@ -60,7 +62,7 @@ function CardPriceLine({ lot }: { lot: SaleLotCardVM }) {
 export function SaleroomLotCard({
   lot,
   saleForLifecycle,
-  cornerAction,
+  extras,
   listActions,
   actions,
   sizes = DEFAULT_SIZES,
@@ -185,18 +187,13 @@ export function SaleroomLotCard({
             />
           )}
         </Link>
-        {cornerAction ? <Fragment key={`${lot.id}-corner-action`}>{cornerAction}</Fragment> : null}
+        {extras?.quickLook ? (
+          <Fragment key={`${lot.id}-quick-look`}>{extras.quickLook}</Fragment>
+        ) : null}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <p
-          className={cn(
-            "min-h-4 font-label text-xs font-medium leading-4 text-on-surface-variant",
-            !lot.lotLabel && "invisible",
-          )}
-        >
-          {lot.lotLabel ?? "Lot"}
-        </p>
+        <LotCardLotLine label={lot.lotLabel} save={extras?.save} />
         {lot.isOnBlock ? (
           <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} className="self-start" />
         ) : null}

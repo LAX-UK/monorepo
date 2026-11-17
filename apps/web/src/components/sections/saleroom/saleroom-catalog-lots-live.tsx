@@ -1,6 +1,6 @@
 "use client";
 
-import { SaleroomLotQuickLookCorner } from "@/components/marketing/lot-quick-look/saleroom-lot-quick-look-corner";
+import { saleroomLotCardExtras } from "@/components/marketing/lot-quick-look/saleroom-lot-card-extras";
 import { SaleroomCatalogLotsByView } from "@/components/sections/saleroom/saleroom-catalog-lots-by-view";
 import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
 import { SaleroomLotActions } from "@/components/sections/saleroom/saleroom-lot-actions";
@@ -8,7 +8,7 @@ import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/sa
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
-import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
+import { type LotCardBidViewer, lotCardBidAction } from "@/lib/lot-card/lot-card-bid-action";
 import { withLiveCardFields } from "@/lib/marketing/saleroom/card-live-state";
 import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
 import {
@@ -28,6 +28,11 @@ type Props = {
   isAuthenticated: boolean;
   /** When false (staff viewers), hide per-lot bid CTAs. Defaults to true. */
   canParticipate?: boolean;
+  /**
+   * Who is looking, for the card button's label before a lot opens; `null` until the viewer read
+   * answers (the button's place is kept meanwhile).
+   */
+  bidViewer?: LotCardBidViewer;
   emptyMessage?: string;
   clearFiltersHref?: string | null;
   /**
@@ -43,6 +48,7 @@ export function SaleroomCatalogLotsLive({
   view: initialView,
   isAuthenticated,
   canParticipate = true,
+  bidViewer = null,
   emptyMessage,
   clearFiltersHref,
   live: liveRead = null,
@@ -114,17 +120,24 @@ export function SaleroomCatalogLotsLive({
             },
           };
         })}
-        renderCorner={(lot) => (
-          <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
-        )}
-        renderActions={(lot) =>
-          !canParticipate ? null : lot.pending ? (
-            // The bid action waits for the live state; its place is kept so nothing moves.
-            <Skeleton className="h-lax-control-md w-full rounded-lax-control" />
-          ) : lotShowsBidAction(lot.status) ? (
-            <SaleroomLotActions lotHref={lot.href} />
-          ) : null
-        }
+        renderExtras={(lot) => saleroomLotCardExtras(lot, isAuthenticated)}
+        renderActions={(lot) => {
+          if (!canParticipate) return null;
+          const action = lot.pending
+            ? ({ kind: "pending" } as const)
+            : lotCardBidAction({
+                lotStatus: lot.status,
+                lotHref: lot.href,
+                sale: saleForLifecycle,
+                viewer: bidViewer,
+              });
+          if (!action) return null;
+          // The button waits for the live state or the viewer; its place is kept so nothing moves.
+          if (action.kind === "pending") {
+            return <Skeleton className="h-lax-control-md w-full rounded-lax-control" />;
+          }
+          return <SaleroomLotActions action={action} />;
+        }}
       />
     </>
   );

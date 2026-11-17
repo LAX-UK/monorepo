@@ -21,7 +21,17 @@ const inlineHeartShellClass = cn(
   FOCUS_RING,
 );
 
-type LayoutMode = "overlay" | "inline";
+/**
+ * `overlay` sits on the image; `inline` is the round toolbar button; `line` is the lot card's
+ * quiet outline heart at the end of the "Lot N" line (no chrome, 44px tap area, the Bid accent
+ * when saved).
+ */
+type LayoutMode = "overlay" | "inline" | "line";
+
+const lineHeartShellClass = cn(
+  "inline-flex size-[var(--tap-target-min,44px)] shrink-0 items-center justify-center rounded-full bg-transparent p-0 text-on-surface-variant transition-colors hover:bg-transparent hover:text-on-surface motion-reduce:transition-none",
+  FOCUS_RING,
+);
 
 type Props = {
   lotId: string;
@@ -57,16 +67,21 @@ export function MarketingWatchlistHeart({
   const liveText = error ?? announce ?? "";
 
   const positionClass =
-    layout === "inline" ? "relative shrink-0" : "pointer-events-auto absolute right-3 top-3 z-10";
+    layout === "overlay" ? "pointer-events-auto absolute right-3 top-3 z-10" : "relative shrink-0";
 
   const inFrame = useOverlayToneContext() != null;
   const overlayTone = useOverlayTone("topRight");
-  const useOverlayChrome = resolveOverlayChrome(surface, layout, inFrame);
+  const useOverlayChrome = layout !== "line" && resolveOverlayChrome(surface, layout, inFrame);
   const imageAwareShell = overlayIconButtonClasses(
     overlayTone,
     "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)]",
   );
-  const shellClass = useOverlayChrome ? imageAwareShell : inlineHeartShellClass;
+  const shellClass =
+    layout === "line"
+      ? lineHeartShellClass
+      : useOverlayChrome
+        ? imageAwareShell
+        : inlineHeartShellClass;
   const overlayProps = overlayToneProps(overlayTone);
 
   const onLoginClick = useCallback(
@@ -103,6 +118,7 @@ export function MarketingWatchlistHeart({
         onChange={() => void toggle()}
         lotTitle={lotTitle}
         disabled={busy}
+        {...(layout === "line" ? { pressedTone: "accent" as const } : {})}
         className={cn(shellClass, positionClass, className)}
         {...(useOverlayChrome ? overlayProps : {})}
       />

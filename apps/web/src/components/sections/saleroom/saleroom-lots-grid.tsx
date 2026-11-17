@@ -1,3 +1,4 @@
+import type { LotCardExtras } from "@/components/lot-card/lot-card-extras";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
@@ -11,7 +12,8 @@ import type { SaleLotCardVM } from "./view-models";
 type Props = {
   rows: CatalogueRow<SaleLotCardVM>[];
   saleForLifecycle: SaleroomSaleForLifecycle;
-  renderCorner?: (lot: SaleLotCardVM) => ReactNode;
+  /** The save heart and quick look label of each tile. */
+  renderExtras?: (lot: SaleLotCardVM) => LotCardExtras;
   /** OCP: callers render action slot per lot (Bid vs Results). */
   renderActions?: (lot: SaleLotCardVM) => ReactNode;
   emptyMessage?: string;
@@ -22,7 +24,7 @@ type Props = {
 export function SaleroomLotsGrid({
   rows,
   saleForLifecycle,
-  renderCorner,
+  renderExtras,
   renderActions,
   emptyMessage = "No lots in this section yet.",
 }: Props) {
@@ -50,7 +52,7 @@ export function SaleroomLotsGrid({
       <SaleroomLotCard
         lot={lot}
         saleForLifecycle={saleForLifecycle}
-        cornerAction={renderCorner?.(lot)}
+        {...(renderExtras ? { extras: renderExtras(lot) } : {})}
         actions={renderActions?.(lot)}
       />
     </MarketingCardReveal>

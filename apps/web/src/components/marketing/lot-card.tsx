@@ -1,5 +1,7 @@
 "use client";
 
+import type { LotCardExtras } from "@/components/lot-card/lot-card-extras";
+import { LotCardLotLine } from "@/components/lot-card/lot-card-lot-line";
 import type { AdaptiveMediaConfig } from "@/components/marketing/adaptive-media-config";
 import { LotViewTransitionLink } from "@/components/marketing/lot-view-transition-link";
 import { AdaptiveFrameImage } from "@/components/ui/adaptive-frame-image";
@@ -59,12 +61,17 @@ export type LotCardGridProps = {
   /** How the lot's department shows its picture; a wall work by default. */
   mediaStyle?: DepartmentDisplayStyle;
   title: ReactNode;
+  /** The picture link's accessible name (the title's text). */
+  titleText: string;
+  /** "Lot 12": the line under the picture that carries the save heart. */
+  lotLabel?: string | null;
   meta?: ReactNode;
   topLeft?: ReactNode;
   topRight?: ReactNode;
+  /** The sale status pill: the one thing besides an owner badge that sits on the picture. */
   bottomLeft?: ReactNode;
-  /** Full-bleed overlay controls (e.g. watchlist + quick look) positioned on the image. */
-  imageOverlays?: ReactNode;
+  /** The save heart (on the "Lot N" line) and the quick look label (on the picture). */
+  extras?: LotCardExtras;
   className?: string;
 };
 
@@ -82,7 +89,11 @@ function EditorialBoldScrim() {
   );
 }
 
-/** Uniform `4/5` tile — catalogue grid (object-contain on neutral field per design language). */
+/**
+ * Uniform `4/5` tile: catalogue grid (search). The picture is a link with nothing on it but the
+ * status pill; the "Lot N" line under it ends with the save heart; the title is the card's link
+ * for keyboard and screen readers.
+ */
 export function LotCardGrid({
   href,
   lotId,
@@ -90,11 +101,13 @@ export function LotCardGrid({
   adaptiveMedia,
   mediaStyle = "wall",
   title,
+  titleText,
+  lotLabel = null,
   meta,
   topLeft,
   topRight,
   bottomLeft,
-  imageOverlays,
+  extras,
   className,
 }: LotCardGridProps) {
   const media = lotCardMediaClasses(mediaStyle);
@@ -103,57 +116,71 @@ export function LotCardGrid({
       className={cn(cardShell, "flex h-full min-h-0 flex-col", className)}
       {...(lotId ? { [LOT_TRANSITION_ROOT_ATTR]: lotId } : {})}
     >
-      <LotCardNavLink lotId={lotId} href={href} className="flex min-h-0 flex-1 flex-col">
-        <AdaptiveMediaFrameContainer
-          {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
-          className={cn("relative shrink-0", media.frame)}
+      <div className="relative shrink-0">
+        <LotCardNavLink
+          lotId={lotId}
+          href={href}
+          className="block"
+          aria-hidden="true"
+          tabIndex={-1}
         >
-          <div
-            key={lotId ? `${lotId}-media` : "media"}
-            className={cn("absolute inset-0", media.inset, media.image, mediaHover)}
+          <AdaptiveMediaFrameContainer
+            {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
+            className={cn("relative", media.frame)}
           >
-            {adaptiveMedia ? (
-              <AdaptiveFrameImage
-                src={adaptiveMedia.src}
-                alt={adaptiveMedia.alt}
-                objectFit={adaptiveMedia.objectFit}
-                {...(adaptiveMedia.sizes
-                  ? { sizes: adaptiveMedia.sizes }
-                  : { sizes: LOT_CARD_GRID_SIZES })}
-                {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
-                className="h-full w-full"
-              />
-            ) : (
-              image
-            )}
-          </div>
-          {topLeft ? (
             <div
-              key={lotId ? `${lotId}-top-left` : "top-left"}
-              className="pointer-events-none absolute left-1.5 top-1.5 z-[1] md:left-3 md:top-3"
+              key={lotId ? `${lotId}-media` : "media"}
+              className={cn("absolute inset-0", media.inset, media.image, mediaHover)}
             >
-              {topLeft}
+              {adaptiveMedia ? (
+                <AdaptiveFrameImage
+                  src={adaptiveMedia.src}
+                  alt={adaptiveMedia.alt}
+                  objectFit={adaptiveMedia.objectFit}
+                  {...(adaptiveMedia.sizes
+                    ? { sizes: adaptiveMedia.sizes }
+                    : { sizes: LOT_CARD_GRID_SIZES })}
+                  {...(adaptiveMedia.label ? { label: adaptiveMedia.label } : {})}
+                  className="h-full w-full"
+                />
+              ) : (
+                image
+              )}
             </div>
-          ) : null}
-          {bottomLeft ? (
-            <div
-              key={lotId ? `${lotId}-bottom-left` : "bottom-left"}
-              className="pointer-events-none absolute bottom-1.5 left-1.5 z-[1] md:bottom-3 md:left-3"
-            >
-              {bottomLeft}
-            </div>
-          ) : null}
-          {imageOverlays ? (
-            <Fragment key={lotId ? `${lotId}-image-overlays` : "image-overlays"}>
-              {imageOverlays}
-            </Fragment>
-          ) : null}
-        </AdaptiveMediaFrameContainer>
-        <div className="flex flex-1 flex-col p-3 md:p-5">
-          <div className="lax-card-title">{title}</div>
-          {meta ? <div className="mt-auto">{meta}</div> : null}
-        </div>
-      </LotCardNavLink>
+            {topLeft ? (
+              <div
+                key={lotId ? `${lotId}-top-left` : "top-left"}
+                className="pointer-events-none absolute left-1.5 top-1.5 z-[1] md:left-3 md:top-3"
+              >
+                {topLeft}
+              </div>
+            ) : null}
+            {bottomLeft ? (
+              <div
+                key={lotId ? `${lotId}-bottom-left` : "bottom-left"}
+                className="pointer-events-none absolute bottom-1.5 left-1.5 z-[1] md:bottom-3 md:left-3"
+              >
+                {bottomLeft}
+              </div>
+            ) : null}
+          </AdaptiveMediaFrameContainer>
+        </LotCardNavLink>
+        {extras?.quickLook ? (
+          <Fragment key={lotId ? `${lotId}-quick-look` : "quick-look"}>{extras.quickLook}</Fragment>
+        ) : null}
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3 md:p-5">
+        {extras?.save || lotLabel ? <LotCardLotLine label={lotLabel} save={extras?.save} /> : null}
+        <LotCardNavLink
+          lotId={lotId}
+          href={href}
+          className="lax-card-title block focus-visible:outline-none"
+          aria-label={titleText}
+        >
+          {title}
+        </LotCardNavLink>
+        {meta ? <div className="mt-auto">{meta}</div> : null}
+      </div>
       {topRight ? (
         <div className="pointer-events-auto absolute right-1.5 top-1.5 z-[2] md:right-3 md:top-3">
           {topRight}

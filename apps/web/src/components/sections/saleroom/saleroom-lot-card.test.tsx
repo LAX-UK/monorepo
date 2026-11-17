@@ -76,7 +76,7 @@ describe("SaleroomLotCard", () => {
       <SaleroomLotCard
         lot={lot}
         saleForLifecycle={hybridSaleForLifecycle}
-        cornerAction={<span data-testid="corner">Corner</span>}
+        extras={{ quickLook: <span data-testid="corner">Corner</span> }}
       />,
     );
 

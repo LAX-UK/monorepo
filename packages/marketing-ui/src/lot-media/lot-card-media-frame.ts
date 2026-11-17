@@ -1,19 +1,14 @@
 import type { DepartmentDisplayStyle } from "@auction/domain";
 
 /**
- * How a lot's picture sits in its card, by department display style. Every lot card on Bid
- * (sale page, search, results, watching, home) reads this one table, so a style looks the same
- * wherever the lot appears.
+ * How a lot's picture sits in its card. Every lot card on Bid (sale page, search, results,
+ * watching, home) reads this one table, so a lot looks the same wherever it appears.
  *
- * Every style has the same 4:5 box, so titles, estimates and status line up across a row of
- * mixed lots. The style changes only what happens inside the box:
- * - wall: shown whole at its true ratio on the mat, with the soft wall shadow
- * - object: shown whole on a plain studio ground, no shadow
- * - product: fills the box
- * - showcase: shown whole at its own (3:2) ratio across the full width of the box, centred on
- *   the studio ground. A 3:2 car photograph cropped to 4:5 would lose its ends; this keeps the
- *   whole car and still reads as a wide image.
- * - document: the page shown whole on the mat
+ * One frame for every picture (owner decision, 16 Nov 2026): whatever the department, the
+ * picture is shown whole, centred on the same mat, with the same padding and the soft shadow, in
+ * the same 4:5 box, so titles, estimates and status line up across a row of mixed lots and no
+ * picture is cropped. The table stays keyed by display style so a department can be given its
+ * own frame again without touching any card.
  */
 export type LotCardMediaFrame = {
   /** The frame's ratio: the same for every style. */
@@ -29,12 +24,20 @@ export type LotCardMediaFrame = {
 
 const BOX = "aspect-[4/5]";
 
+const ONE_FRAME: LotCardMediaFrame = {
+  aspect: BOX,
+  inset: "p-[7%]",
+  fit: "contain",
+  ground: "mat",
+  shadow: true,
+};
+
 export const LOT_CARD_MEDIA_FRAMES: Readonly<Record<DepartmentDisplayStyle, LotCardMediaFrame>> = {
-  wall: { aspect: BOX, inset: "p-[7%]", fit: "contain", ground: "mat", shadow: true },
-  object: { aspect: BOX, inset: "p-[7%]", fit: "contain", ground: "studio", shadow: false },
-  product: { aspect: BOX, inset: "p-0", fit: "cover", ground: "studio", shadow: false },
-  showcase: { aspect: BOX, inset: "p-0", fit: "contain", ground: "studio", shadow: false },
-  document: { aspect: BOX, inset: "p-[7%]", fit: "contain", ground: "mat", shadow: false },
+  wall: ONE_FRAME,
+  object: ONE_FRAME,
+  product: ONE_FRAME,
+  showcase: ONE_FRAME,
+  document: ONE_FRAME,
 };
 
 export function lotCardMediaFrame(style: DepartmentDisplayStyle): LotCardMediaFrame {

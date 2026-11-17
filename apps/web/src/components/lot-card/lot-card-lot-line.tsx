@@ -1,0 +1,34 @@
+import { cn } from "@auction/ui/lib/utils";
+import type { ReactNode } from "react";
+
+type Props = {
+  /** "Lot 12"; without a number the line keeps its height so a row of cards stays aligned. */
+  label: string | null;
+  /** The save heart, at the right end of the line. */
+  save?: ReactNode;
+  className?: string;
+};
+
+/**
+ * The "Lot N" line under a lot card's picture, with the save heart at its right end. The picture
+ * itself carries nothing but the sale status pill. The heart keeps its 44px tap area by reaching
+ * past the line's own height (negative margins), so the line stays a quiet 24px row.
+ */
+export function LotCardLotLine({ label, save, className }: Props) {
+  return (
+    <div
+      data-testid="lot-card-lot-line"
+      className={cn("flex min-h-6 items-center justify-between gap-2", className)}
+    >
+      <p
+        className={cn(
+          "min-h-4 font-label text-xs font-medium leading-4 text-on-surface-variant",
+          !label && "invisible",
+        )}
+      >
+        {label ?? "Lot"}
+      </p>
+      {save ? <div className="-my-2.5 -mr-3 flex shrink-0 items-center">{save}</div> : null}
+    </div>
+  );
+}

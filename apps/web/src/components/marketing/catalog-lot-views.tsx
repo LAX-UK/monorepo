@@ -3,7 +3,7 @@ import { LotCardLine } from "@/components/lot-card/lot-card-line";
 import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { CatalogLotEditorialCalmCaption } from "@/components/marketing/catalog-lot-editorial-calm-caption";
 import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
-import { CatalogLotQuickLookCorner } from "@/components/marketing/lot-quick-look/catalog-lot-quick-look-corner";
+import { catalogLotCardExtras } from "@/components/marketing/lot-quick-look/catalog-lot-card-extras";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
@@ -107,15 +107,10 @@ export function CatalogLotGridView({
             mediaStyle={style}
             href={resolveLotHref(a, catalogLinkParams)}
             topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
-            imageOverlays={
-              <CatalogLotQuickLookCorner
-                lot={a}
-                isAuthenticated={isAuthenticated}
-                watchedLotIds={watchedLotIds}
-                loginNextPath={loginNextPath}
-                bottomLeftAddon={<LotStatusOverlay lot={a} />}
-              />
-            }
+            bottomLeft={<LotStatusOverlay lot={a} />}
+            lotLabel={a.lotNumber != null ? `Lot ${a.lotNumber}` : null}
+            titleText={a.title}
+            extras={catalogLotCardExtras(a, { isAuthenticated, watchedLotIds, loginNextPath })}
             adaptiveMedia={{
               src: img,
               objectFit: lotCardMediaFrame(style).fit,

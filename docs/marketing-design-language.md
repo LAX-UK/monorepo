@@ -85,6 +85,7 @@ Load fonts in `apps/web/src/app/layout.tsx` via `next/font/google`. Components M
 - **Hover (cards):** image `scale-[1.02]`, card `-translate-y-px`, `ring-1 ring-primary/20`.
 - **Focus:** `FOCUS_RING` on all interactive marketing chrome and link-cards.
 - **Icon buttons (chrome):** min touch target 44×44.
+- **Lot cards (every Bid lot grid: sale page, search):** nothing sits on the artwork at rest except the sale status pill (Sold, Unsold, In saleroom, Up next) and, for the seller, the owner badge. The save heart is a quiet outline heart at the right end of the "Lot N" line (`LotCardLotLine`, `MarketingWatchlistHeart layout="line"`), 44px tap area, filled in the Bid accent (`product-accent`) when saved. Quick look's trigger is a "Quick look" label at the bottom of the picture (`LotCardQuickLook`), shown on mouse hover or keyboard focus within the card, and drawn only for a hovering fine pointer; on phones a tap opens the lot page. Every picture uses one frame (`lotCardMediaFrame`): the same mat, padding and 4:5 box, shown whole and centred. The full-width button names what it does for the viewer (`lotCardBidAction`): "Bid", "Register to bid" or "Leave a bid", and is left out when none applies.
 - **Card rails (Shop home rows, Bid Editor’s Picks):** compose `MarketingHorizontalRail` — swipe/scroll on touch, optional forward chevron on `sm+` when content overflows. Do **not** add bottom progress thumbs, previous controls, or Embla slide semantics to card rails.
 - **Media carousels (hero, gallery, press):** Embla with arrows/dots. **Catalogue pagination:** numbered URL/page controls — distinct from card rails.
 
@@ -505,7 +506,7 @@ Marketing overlays on photos resolve **light** or **dark** chrome from pixels be
 | Slot | Typical consumer |
 |------|------------------|
 | `topLeft` | Owner badge |
-| `topRight` | Watchlist heart, gallery counter |
+| `topRight` | Gallery counter (lot cards keep their heart off the picture) |
 | `bottomLeft` | Live timer pill, sale status badge |
 | `bottomRight` | Gallery expand control |
 | `contentBlock` | Hero copy column, editorial-bold title on image |
