@@ -30,7 +30,7 @@ describe("lotCardBidAction", () => {
   it("says Leave a bid before opening for a registered viewer when advance bids are taken", () => {
     expect(
       lotCardBidAction({ lotStatus: "scheduled", lotHref, sale: online, viewer: registered }),
-    ).toEqual({ kind: "leave_bid", label: "Leave a bid", href: lotHref });
+    ).toEqual({ kind: "leave_bid", label: "Leave a bid", href: `${lotHref}?bid=open` });
     const hybridOpenEarly = {
       status: "active",
       deliveryMode: "hybrid",

@@ -1,4 +1,3 @@
-import { lotBidHref } from "@/components/lot-card/lot-card-bidder-state";
 import type { LotCardBidAction } from "@/lib/lot-card/lot-card-bid-action";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import { Gavel } from "lucide-react";
@@ -16,8 +15,7 @@ export function SaleroomLotActions({ action }: Props) {
   return (
     <ButtonLink
       Link={Link}
-      // "Leave a bid" opens the lot page with its bid dialog open, where the maximum is left.
-      href={action.kind === "leave_bid" ? lotBidHref(action.href) : action.href}
+      href={action.href}
       variant="secondary"
       {...(action.kind === "register" ? {} : { icon: <Gavel aria-hidden /> })}
       className="w-full"
