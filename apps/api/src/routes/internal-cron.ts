@@ -227,6 +227,14 @@ export function createInternalCronRoutes(container: ContainerInternalCronRoutesS
     return c.json({ data });
   });
 
+  // GAP-53: drafts their clients deleted more than 30 days ago go for good, with their photos.
+  r.post("/purge-deleted-submission-drafts", async (c) => {
+    const gate = auth(c);
+    if (!gate.ok) return c.json(gate.body, gate.status);
+    const data = await container.platformCron.hygiene.purgeDeletedSubmissionDrafts();
+    return c.json({ data });
+  });
+
   r.post("/consignment-agreement-reminders", async (c) => {
     const gate = auth(c);
     if (!gate.ok) return c.json(gate.body, gate.status);

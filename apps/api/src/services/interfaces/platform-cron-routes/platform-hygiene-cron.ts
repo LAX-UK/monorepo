@@ -4,6 +4,7 @@ export interface IPlatformHygieneCronApplicationService {
   sendStaleSubmissionDraftReminders(
     staleDays: number,
   ): ReturnType<HygieneCronService["sendStaleSubmissionDraftReminders"]>;
+  purgeDeletedSubmissionDrafts(): ReturnType<HygieneCronService["purgeDeletedSubmissionDrafts"]>;
   sendConsignmentAgreementReminders(): ReturnType<
     HygieneCronService["sendConsignmentAgreementReminders"]
   >;

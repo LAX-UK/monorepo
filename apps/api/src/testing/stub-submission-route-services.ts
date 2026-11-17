@@ -13,6 +13,7 @@ export function stubSubmissionRouteServices(
       patch: vi.fn(),
       submitForReview: vi.fn(),
       withdraw: vi.fn(),
+      deleteDraft: vi.fn(),
     },
     adminHttp: {
       listSubmissions: vi.fn(),

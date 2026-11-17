@@ -114,7 +114,7 @@ function HistoryTab({ vm }: { vm: ConsignmentPageData }) {
 }
 
 function YourDescription({ vm }: { vm: ConsignmentPageData }) {
-  const { submission, photos, withdrawOwnSubmission } = vm;
+  const { submission, photos, withdrawOwnSubmission, canDeleteDraft } = vm;
   return (
     <section
       aria-labelledby="your-submission-heading"
@@ -160,6 +160,7 @@ function YourDescription({ vm }: { vm: ConsignmentPageData }) {
           // Sending happens in the form at Make changes, never from the record.
           canSubmit={false}
           canWithdraw={withdrawOwnSubmission}
+          canDeleteDraft={canDeleteDraft}
         />
       </div>
     </section>

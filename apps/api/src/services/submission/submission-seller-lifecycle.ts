@@ -132,6 +132,35 @@ export async function submitForReview(
   return ok(updated);
 }
 
+/** "Only a draft can be deleted": the stable code a client reads for a sent submission. */
+export const SUBMISSION_NOT_A_DRAFT = "submission_not_a_draft";
+
+/**
+ * Deletes a draft the account never sent (GAP-53, docs/design/decision-pack-2026-11-17.md section
+ * 5): it leaves the account at once and is purged with its photos after 30 days, so support can
+ * restore it meanwhile. A submission that was sent is refused (409); none in the account, or one
+ * already deleted, is "Not found" (404). Who may delete it is the caller's policy check.
+ */
+export async function deleteDraft(
+  deps: Pick<ItemSubmissionServiceDeps, "submissions">,
+  legalEntityId: string,
+  id: string,
+  at: Date = new Date(),
+): Promise<Result<{ id: string }, SubmissionError>> {
+  const outcome = await deps.submissions.softDeleteDraft(id, legalEntityId, at);
+  if (outcome === "not_found") return err(new SubmissionError("Not found", 404));
+  if (outcome === "not_draft") {
+    return err(
+      new SubmissionError(
+        "Only a draft can be deleted. To stop a work you sent, withdraw it.",
+        409,
+        SUBMISSION_NOT_A_DRAFT,
+      ),
+    );
+  }
+  return ok({ id });
+}
+
 export async function withdraw(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,

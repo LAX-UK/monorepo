@@ -4,6 +4,7 @@ import {
   CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
   PAYMENT_REMINDERS_QUEUE_NAME,
   PRIVATE_SALE_SETTLEMENT_FOLLOW_UPS_QUEUE_NAME,
+  PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
@@ -15,6 +16,7 @@ import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreeme
 import { runConsignmentThreadSweepJob } from "../jobs/consignment-thread-sweep.js";
 import { runPaymentRemindersJob } from "../jobs/payment-reminders.js";
 import { runPrivateSaleSettlementFollowUpsJob } from "../jobs/private-sale-settlement-follow-ups.js";
+import { runPurgeDeletedSubmissionDraftsJob } from "../jobs/purge-deleted-submission-drafts.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
@@ -99,6 +101,47 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
   });
   closables.push(staleSubmissionDraftRemindersWorker, staleSubmissionDraftRemindersQueue);
+
+  // GAP-53: drafts deleted more than 30 days ago go for good, with their photos (API-side).
+  const purgeDeletedDraftsQueue = new Queue(
+    PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME,
+    bullConnection,
+  );
+  const purgeDeletedDraftsWorker = new Worker(
+    PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runPurgeDeletedSubmissionDraftsJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+        },
+      );
+    },
+    bullConnection,
+  );
+  purgeDeletedDraftsWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME, job, err);
+  });
+  void purgeDeletedDraftsQueue.add(
+    PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME,
+    {},
+    {
+      jobId: "daily-purge-deleted-submission-drafts",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 10,
+    },
+  );
+  log.info("purge-deleted-submission-drafts repeat registered (daily)");
+  errorHandlers.push({
+    worker: purgeDeletedDraftsWorker,
+    queue: PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME,
+  });
+  closables.push(purgeDeletedDraftsWorker, purgeDeletedDraftsQueue);
 
   const agreementRemindersQueue = new Queue(
     CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,

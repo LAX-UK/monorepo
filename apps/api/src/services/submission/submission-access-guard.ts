@@ -64,7 +64,7 @@ export class SubmissionAccessGuard implements ISubmissionAccessGuard {
     );
     return decision.allowed
       ? { kind: "allowed" }
-      : { kind: "forbidden", message: decision.message };
+      : { kind: "forbidden", message: decision.message, reason: decision.reason };
   }
 
   async keepVisible<T extends { submissionId: string }>(

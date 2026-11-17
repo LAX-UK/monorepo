@@ -77,6 +77,12 @@ export class SubmissionService implements ISubmissionService {
     );
   }
 
+  async deleteDraft(id: string): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(`/submissions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  }
+
   async withdraw(id: string): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/submissions/${encodeURIComponent(id)}/withdraw`,

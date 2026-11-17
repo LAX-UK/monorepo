@@ -2,6 +2,9 @@ export const LOT_LIFECYCLE_TICK_QUEUE_NAME = "lot-lifecycle-tick" as const;
 export const PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME = "process-notification-outbox" as const;
 export const STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME =
   "stale-submission-draft-reminders" as const;
+/** Daily removal of drafts their clients deleted more than 30 days ago, with their photos. */
+export const PURGE_DELETED_SUBMISSION_DRAFTS_QUEUE_NAME =
+  "purge-deleted-submission-drafts" as const;
 export const CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME =
   "consignment-agreement-reminders" as const;
 export const PAYMENT_REMINDERS_QUEUE_NAME = "payment-reminders" as const;

@@ -2794,6 +2794,13 @@
       "when": 1813406400000,
       "tag": "0407_consignor_agreement",
       "breakpoints": true
+    },
+    {
+      "idx": 400,
+      "version": "7",
+      "when": 1813492800000,
+      "tag": "0408_item_submission_soft_delete",
+      "breakpoints": true
     }
   ]
 }

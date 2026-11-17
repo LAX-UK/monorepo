@@ -27,6 +27,7 @@ import { convert } from "./submission-convert-to-lot.js";
 import { getForAdmin, getForSeller, listForAdmin, listForSeller } from "./submission-read.js";
 import {
   createDraft,
+  deleteDraft,
   submitForReview,
   updateForActor,
   withdraw,
@@ -185,6 +186,14 @@ export async function submitForReviewForSellerApi(
   return ok(
     await presentSubmissionImages(deps.mediaUrlResolver, result.value, deps.mediaAssetEnricher),
   );
+}
+
+export async function deleteDraftForSellerApi(
+  deps: ItemSubmissionServiceDeps,
+  legalEntityId: string,
+  id: string,
+): Promise<Result<{ id: string }, SubmissionError>> {
+  return deleteDraft(deps, legalEntityId, id);
 }
 
 export async function withdrawForSellerApi(
