@@ -5,6 +5,7 @@ import {
   type ArtConsentChoice,
   artConsentCookie,
   buildGtagInitSnippet,
+  readArtConsent,
 } from "@/lib/analytics/art-consent";
 import { BOTTOM_BAR_ABOVE_CLASS } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -15,7 +16,6 @@ import { useCallback, useEffect, useState } from "react";
 
 type ArtAnalyticsConsentProps = {
   measurementId: string;
-  initialChoice: ArtConsentChoice | null;
   /** False while the cookie policy is a draft hidden on production. */
   cookiePolicyLinked: boolean;
 };
@@ -30,16 +30,22 @@ function clearAnalyticsCookies() {
   }
 }
 
-/** Cookie banner plus GA4, which loads only after the visitor accepts analytics cookies. */
+/**
+ * Cookie banner plus GA4, which loads only after the visitor accepts analytics cookies. The stored
+ * choice is read in the browser (the layout's HTML is shared between visitors), so the banner opens
+ * after hydration for a visitor who has not chosen yet, and never flashes for one who has.
+ */
 export function ArtAnalyticsConsent({
   measurementId,
-  initialChoice,
   cookiePolicyLinked,
 }: ArtAnalyticsConsentProps) {
-  const [choice, setChoice] = useState(initialChoice);
-  const [open, setOpen] = useState(initialChoice === null);
+  const [choice, setChoice] = useState<ArtConsentChoice | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    const stored = readArtConsent(document.cookie);
+    setChoice(stored);
+    setOpen(stored === null);
     const openFromHash = () => {
       if (window.location.hash !== ART_COOKIE_SETTINGS_HASH) return;
       setOpen(true);

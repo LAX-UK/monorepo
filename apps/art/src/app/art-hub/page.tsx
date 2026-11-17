@@ -152,6 +152,12 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
   }
 }
 
+/**
+ * Rendered per request, as before the root layout stopped reading the visitor. Whether this page is
+ * prerendered like the home page is decided per route (apps/art/scripts/check-prerendered-routes.mjs).
+ */
+export const dynamic = "force-dynamic";
+
 export default async function ArtHubPage() {
   const result = await composeArtHubPage(artServices);
   if (result.status !== "ok") {

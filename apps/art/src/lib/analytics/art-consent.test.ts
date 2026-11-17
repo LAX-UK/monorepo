@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { artConsentCookie, buildGtagInitSnippet, parseArtConsent } from "./art-consent";
+import {
+  artConsentCookie,
+  buildGtagInitSnippet,
+  parseArtConsent,
+  readArtConsent,
+} from "./art-consent";
 
 describe("Art analytics consent", () => {
   it("treats anything but an explicit choice as undecided", () => {
@@ -18,5 +23,18 @@ describe("Art analytics consent", () => {
 
   it("configures only the given GA4 stream", () => {
     expect(buildGtagInitSnippet("G-YGZCF5FD67")).toContain(`gtag('config',"G-YGZCF5FD67")`);
+  });
+});
+
+describe("readArtConsent", () => {
+  it("reads the stored choice from the browser's cookie string", () => {
+    expect(readArtConsent("lax_theme=dark; lax_art_consent=granted; _ga=1")).toBe("granted");
+    expect(readArtConsent("lax_art_consent=denied")).toBe("denied");
+  });
+
+  it("gives null when nothing valid was stored", () => {
+    expect(readArtConsent("")).toBeNull();
+    expect(readArtConsent("lax_art_consent=maybe")).toBeNull();
+    expect(readArtConsent("x_lax_art_consent=granted")).toBeNull();
   });
 });

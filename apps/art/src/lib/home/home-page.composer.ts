@@ -1,4 +1,3 @@
-import type { ArtViewerState } from "@/lib/art-viewer-state";
 import type { CatalogueArtistCardSource } from "@/lib/catalogue/catalogue-artist-card.vm";
 import {
   type CatalogueArtworkCardVm,
@@ -11,8 +10,6 @@ import type {
   ArtEditorialStorySummary,
 } from "@/lib/editorial/art-editorial.types";
 import { type EditorialCardVm, buildPlacementCards } from "@/lib/editorial/editorial-card.vm";
-import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import {
   FEATURED_ARTISTS_LIMIT,
   type FeaturedArtistsVm,
@@ -34,13 +31,7 @@ import {
   pickWhatsOn,
   whatsOnNeedsDetail,
 } from "@/lib/home/art-home-whats-on.vm";
-import type {
-  ArtCataloguePort,
-  ArtEcosystemPort,
-  ArtEditorialPort,
-  ArtFavoritesReadPort,
-  ArtViewerPort,
-} from "@/lib/ports";
+import type { ArtCataloguePort, ArtEcosystemPort, ArtEditorialPort } from "@/lib/ports";
 import { buildArtProductDoors } from "@/lib/product-doors/art-product-doors.vm";
 import {
   type MarketingBandSection,
@@ -94,8 +85,6 @@ export type ArtHomePageVm = {
   galleries: ArtHomeGalleryCardVm[];
   /** Sections with no image among their items; they lead with text instead of placeholders. */
   textLed: { galleries: boolean };
-  viewer: ArtViewerState;
-  favoriteAuth: ArtFavoriteAuth;
   /** Sections whose upstream read failed; the page shows an inline error instead. */
   sectionErrors: ArtHomeSection[];
 };
@@ -205,20 +194,22 @@ async function loadFeaturedArtists(
   return buildFeaturedArtists({ artists, followedSlugs, soloDetail });
 }
 
+/** Nobody has saved or followed anything on a page drawn for every visitor. */
+const NONE: ReadonlySet<string> = new Set();
+
+/**
+ * The home page as every visitor first sees it. It reads no viewer, cookie or session, so the page
+ * can be prerendered and its HTML shared: hearts and Follow buttons are drawn unset and the browser
+ * seeds them for a signed-in visitor (ArtPageViewerProvider).
+ */
 export async function composeArtHomePage(services: {
   catalogue: ArtCataloguePort;
-  viewer: ArtViewerPort;
-  favorites: ArtFavoritesReadPort;
   editorial: Pick<
     ArtEditorialPort,
     "home" | "listVenues" | "getVenue" | "listExhibitions" | "getExhibition" | "listStories"
   >;
   ecosystem: ArtEcosystemPort;
 }): Promise<ArtHomePageVm> {
-  const favoritesPromise = loadViewerFavoriteContext(services, "/", {
-    savedArtworks: true,
-    followedArtists: true,
-  });
   const editorialPromise = services.editorial.home();
   const venuesPromise = loadGalleryEntries(services.editorial);
   const exhibitionsPromise = loadCurrentExhibitions(services.editorial);
@@ -237,14 +228,12 @@ export async function composeArtHomePage(services: {
       () => services.catalogue.listArtists({ limit: FEATURED_ARTISTS_LIMIT }),
     ),
   ]);
-  const [favorites, editorialResult, venuesResult, currentExhibitions, publishedStories] =
-    await Promise.all([
-      favoritesPromise,
-      editorialPromise,
-      venuesPromise,
-      exhibitionsPromise,
-      storiesPromise,
-    ]);
+  const [editorialResult, venuesResult, currentExhibitions, publishedStories] = await Promise.all([
+    editorialPromise,
+    venuesPromise,
+    exhibitionsPromise,
+    storiesPromise,
+  ]);
 
   const editorial = homeEditorial(editorialResult);
   const placements = editorial.kind === "ok" ? editorial.promos : [];
@@ -257,7 +246,7 @@ export async function composeArtHomePage(services: {
   const featuredArtists = await loadFeaturedArtists(
     services.catalogue,
     artists.status === "fulfilled" ? artists.value.items : [],
-    favorites.followedArtistSlugs,
+    NONE,
   );
   const productDoors = buildArtProductDoors(
     services.ecosystem.crossProductLinks(),
@@ -270,9 +259,7 @@ export async function composeArtHomePage(services: {
   if (artists.status === "rejected") sectionErrors.push("artists");
 
   const featuredArtworks =
-    artworks.status === "fulfilled"
-      ? buildCatalogueArtworkCards(artworks.value.items, favorites.savedArtworkSlugs)
-      : [];
+    artworks.status === "fulfilled" ? buildCatalogueArtworkCards(artworks.value.items, NONE) : [];
 
   // Rails need enough items to read as a rail; with fewer the section hides rather than leaving
   // most of its row empty. Curators' picks keeps its inline error; the guide promo and closing
@@ -303,8 +290,6 @@ export async function composeArtHomePage(services: {
     guidePromo: buildArtHomeGuidePromoVm(editorial.kind === "ok" ? editorial.guide : []),
     galleries,
     textLed: { galleries: isTextLedSection(galleries) },
-    viewer: favorites.viewer,
-    favoriteAuth: favorites.favoriteAuth,
     sectionErrors,
   };
 }

@@ -7,6 +7,7 @@ const { artCatalogueFetch, isArtEditorialEnabled } = vi.hoisted(() => ({
 
 vi.mock("@/lib/art-catalogue.server", () => ({
   ART_SLUG_LOOKUP: { cache: "no-store" },
+  artSlugReadInit: (mode: string) => (mode === "fresh" ? { cache: "no-store" } : undefined),
   artCatalogueApiBaseUrl: () => "http://shop-api.test",
   artCatalogueFetch,
 }));
@@ -18,6 +19,7 @@ import {
   fetchEditorialPreview,
   fetchEditorialStories,
   fetchEditorialStoryBySlug,
+  fetchEditorialVenueBySlug,
 } from "@/lib/editorial/art-editorial.server";
 
 const exhibitionSummary = {
@@ -81,6 +83,26 @@ describe("art editorial BFF", () => {
     expect(artCatalogueFetch).toHaveBeenCalledWith("/v1/editorial/artists/mara%20ellison", {
       cache: "no-store",
     });
+  });
+
+  it("reads exhibition and venue details fresh, or cached and tagged for a prerendered page", async () => {
+    artCatalogueFetch.mockResolvedValue(jsonResponse({}));
+
+    await fetchEditorialExhibitionBySlug("new-originals");
+    await fetchEditorialVenueBySlug("marylebone");
+    expect(artCatalogueFetch.mock.calls.map(([, init]) => init)).toEqual([
+      { cache: "no-store" },
+      { cache: "no-store" },
+    ]);
+
+    artCatalogueFetch.mockClear();
+    await fetchEditorialExhibitionBySlug("new-originals", "cached");
+    await fetchEditorialVenueBySlug("marylebone", "cached");
+    const published = { next: { revalidate: 120, tags: ["art:editorial"] } };
+    expect(artCatalogueFetch.mock.calls).toEqual([
+      ["/v1/editorial/exhibitions/new-originals", published],
+      ["/v1/editorial/venues/marylebone", published],
+    ]);
   });
 
   it("passes story list filters as query parameters and keeps new story fields", async () => {
