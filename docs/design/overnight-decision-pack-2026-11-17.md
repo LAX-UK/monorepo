@@ -139,7 +139,7 @@ I could not find a failing run in the last 15 completed `art-e2e-pr.yml` runs, s
 
 ### Risks
 
-- **The marker changes the DOM of every loading screen.** It adds one attribute, with no layout or paint effect. The existing skeleton Chromium suite (`packages/ui/src/lax/skeleton-resolved.test.ts`) runs unchanged.
+- **The marker changes the DOM of every loading screen.** It adds one attribute, with no layout or paint effect. The skeleton Chromium tests added in #1485 run unchanged.
 - **D4 relies on Next router internals** (the prefetch cache). Mitigation: if the internal check is unavailable, fall back to today's 10 s wait, so a Next upgrade can only slow the test, never break it.
 - **The real cause may be different** (for example runner CPU starvation). PR 1 exists to show this before PR 2 is merged. If the PR 1 data contradicts the hypothesis, PR 2 is redesigned before it is built.
 
