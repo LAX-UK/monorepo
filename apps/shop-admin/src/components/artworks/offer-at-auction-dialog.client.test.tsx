@@ -1,3 +1,4 @@
+import { formatStaffDate } from "@auction/staff-ui";
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -476,13 +477,13 @@ describe("OfferAtAuctionDialog and the consignor agreement", () => {
     open();
     expect(
       await screen.findByText(
-        "Covered by agreement with Example Gallery Ltd, signed 3 Mar 2026, LAX Bid and lax.art, until 2 Mar 2027.",
+        `Covered by agreement with Example Gallery Ltd, signed ${formatStaffDate("2026-03-03")}, LAX Bid and lax.art, until ${formatStaffDate("2027-03-02")}.`,
       ),
     ).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: /consignor agreed/ })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Starting price"), { target: { value: "1800" } });
-    expect(screen.getByText("Below the lowest price agreed (£2,000.00).")).toBeTruthy();
+    expect(screen.getByText("Below the lowest price agreed (£2,000).")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Starting price"), { target: { value: "2000" } });
     expect(screen.queryByText(/Below the lowest price agreed/)).toBeNull();
 
@@ -500,7 +501,7 @@ describe("OfferAtAuctionDialog and the consignor agreement", () => {
       {
         agreement: { ...withAgreement({}).data.consignorAgreement.agreement, endsOn: "2026-10-31" },
       },
-      "No agreement covers LAX Bid for Example Gallery Ltd: the last one ended on 31 Oct 2026.",
+      "No agreement covers LAX Bid for Example Gallery Ltd.",
     ],
     [
       "not_started",
@@ -510,7 +511,7 @@ describe("OfferAtAuctionDialog and the consignor agreement", () => {
           startsOn: "2026-12-01",
         },
       },
-      "No agreement covers LAX Bid for Example Gallery Ltd: the next one starts on 1 Dec 2026.",
+      "No agreement covers LAX Bid for Example Gallery Ltd.",
     ],
     [
       "retired",
@@ -520,7 +521,7 @@ describe("OfferAtAuctionDialog and the consignor agreement", () => {
           retiredOn: "2026-10-01",
         },
       },
-      "No agreement covers LAX Bid for Example Gallery Ltd: the last one was retired on 1 Oct 2026.",
+      "No agreement covers LAX Bid for Example Gallery Ltd.",
     ],
   ])("blocks the move when the agreement is %s, with Add agreement", async (state, over, line) => {
     assess.mockResolvedValue(withAgreement({ state, outcome: "blocked", ...over }));
@@ -553,11 +554,11 @@ describe("OfferAtAuctionDialog and the consignor agreement", () => {
   });
 
   it("asks for the checkbox while no consignor is set, with Set consignor", async () => {
-    assess.mockResolvedValue(eligible);
+    assess.mockResolvedValue(withAgreement({ consignor: null, agreement: null }));
     open();
     expect(
       await screen.findByText(
-        "No consignor is set for this work. Until 31 Jan 2027, confirm the consignor's agreement below.",
+        `No consignor is set for this work. Until ${formatStaffDate("2027-01-31")}, confirm the consignor's agreement below.`,
       ),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "Set consignor" }).getAttribute("href")).toBe(
@@ -577,9 +578,31 @@ describe("OfferAtAuctionDialog and the consignor agreement", () => {
     );
     open();
     expect(await screen.findByText("Set who consigned this work first.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Set consignor" }).getAttribute("href")).toBe(
+      `/from-zoho/${REGISTER_ID}#consignor`,
+    );
     expect(
       (screen.getByRole("button", { name: "Offer at auction" }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  it("offers Set consignor only to someone who keeps consignor agreements", async () => {
+    assess.mockResolvedValue(eligible);
+    open();
+    await screen.findByText(/No consignor is set for this work/);
+    expect(screen.queryByRole("link", { name: "Set consignor" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: /consignor agreed/ })).toBeTruthy();
+  });
+
+  it("keeps pence in the lowest price when the agreement sets them", async () => {
+    assess.mockResolvedValue(
+      withAgreement({ state: "in_force", outcome: "allowed", lowestPricePence: 200_050 }),
+    );
+    open();
+    fireEvent.change(await screen.findByLabelText("Starting price"), {
+      target: { value: "1800" },
+    });
+    expect(screen.getByText("Below the lowest price agreed (£2,000.50).")).toBeTruthy();
   });
 
   it("shows no line when LAX owns the work", async () => {

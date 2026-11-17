@@ -1,7 +1,6 @@
-import { placesSentence } from "@/server/domain/consignor-agreement.vm";
-import { LONDON_TIME_ZONE, formatDate, resolveWallClock } from "@auction/datetime";
+import { PLACE_LABELS, placesSentence } from "@/server/domain/consignor-agreement.vm";
 import type { AdminMoveAgreement } from "@auction/shop-contracts";
-import { formatStaffMoney } from "@auction/staff-ui";
+import { formatStaffDate, formatStaffMoney } from "@auction/staff-ui";
 
 /*
  * The one line a move dialog shows about the work's consignor agreement (ZI-5, decision pack
@@ -13,24 +12,20 @@ import { formatStaffMoney } from "@auction/staff-ui";
 export type MoveAgreementLine = {
   tone: "info" | "warning" | "danger";
   text: string;
-  /** "Add agreement" or "Set consignor", when this person can act on it. */
+  /**
+   * "Add agreement" or "Set consignor", when this person can act on it: both need
+   * `consignor_agreement.manage`, which shop-api reports as `canAddAgreement`.
+   */
   link: { label: string; href: string } | null;
 };
 
-const PLACE_NAMES: Record<AdminMoveAgreement["place"], string> = {
-  lax_bid: "LAX Bid",
-  lax_art: "lax.art",
-};
-
-/** "3 Mar 2026": a London calendar day. */
-export function agreementDayText(day: string): string {
-  const date = resolveWallClock(day, "12:00", LONDON_TIME_ZONE);
-  return date ? formatDate(date, LONDON_TIME_ZONE) : day;
-}
-
-/** "£2,000.00", the lowest price agreed. */
+/**
+ * "Below the lowest price agreed (£2,000).": whole pounds without pence, as the design reads,
+ * and "£2,000.50" when the agreement sets pence.
+ */
 export function lowestPriceWarning(pence: number): string {
-  return `Below the lowest price agreed (${formatStaffMoney(pence)}).`;
+  const amount = formatStaffMoney(pence);
+  return `Below the lowest price agreed (${pence % 100 === 0 ? amount.replace(/\.00$/, "") : amount}).`;
 }
 
 /**
@@ -41,11 +36,11 @@ export function moveAgreementLine(
   view: AdminMoveAgreement,
   registerId: string | null,
 ): MoveAgreementLine | null {
-  const place = PLACE_NAMES[view.place];
+  const place = PLACE_LABELS[view.place];
   const blocked = view.outcome === "blocked";
   const { agreement, consignor } = view;
   const setConsignor =
-    registerId !== null
+    view.canAddAgreement && registerId !== null
       ? { label: "Set consignor", href: `/from-zoho/${registerId}#consignor` }
       : null;
 
@@ -56,7 +51,7 @@ export function moveAgreementLine(
       if (view.outcome === "checkbox_fallback") {
         return {
           tone: "warning",
-          text: `No consignor is set for this work. Until ${agreementDayText(view.checkboxFallbackUntil)}, confirm the consignor's agreement below.`,
+          text: `No consignor is set for this work. Until ${formatStaffDate(view.checkboxFallbackUntil)}, confirm the consignor's agreement below.`,
           link: setConsignor,
         };
       }
@@ -74,20 +69,20 @@ export function moveAgreementLine(
         };
       }
       const until = agreement.endsOn
-        ? `until ${agreementDayText(agreement.endsOn)}`
+        ? `until ${formatStaffDate(agreement.endsOn)}`
         : "with no end date";
+      // "signed" reads the day the agreement starts: an agreement records no separate signing day.
       return {
         tone: "info",
-        text: `Covered by agreement with ${consignor.displayName}, signed ${agreementDayText(agreement.startsOn)}, ${placesSentence(agreement.places)}, ${until}.`,
+        text: `Covered by agreement with ${consignor.displayName}, signed ${formatStaffDate(agreement.startsOn)}, ${placesSentence(agreement.places)}, ${until}.`,
         link: null,
       };
     }
     default: {
       const who = consignor ? consignor.displayName : "this work's consignor";
-      const why = agreement ? reasonOf(view.state, agreement) : null;
       return {
         tone: blocked ? "danger" : "warning",
-        text: `No agreement covers ${place} for ${who}${why ? `: ${why}` : ""}.`,
+        text: `No agreement covers ${place} for ${who}.`,
         link:
           view.canAddAgreement && consignor
             ? { label: "Add agreement", href: `/clients/${consignor.partyId}#agreements` }
@@ -95,17 +90,4 @@ export function moveAgreementLine(
       };
     }
   }
-}
-
-function reasonOf(
-  state: AdminMoveAgreement["state"],
-  agreement: NonNullable<AdminMoveAgreement["agreement"]>,
-): string | null {
-  if (state === "not_started")
-    return `the next one starts on ${agreementDayText(agreement.startsOn)}`;
-  if (state === "expired" && agreement.endsOn)
-    return `the last one ended on ${agreementDayText(agreement.endsOn)}`;
-  if (state === "retired" && agreement.retiredOn)
-    return `the last one was retired on ${agreementDayText(agreement.retiredOn)}`;
-  return null;
 }

@@ -1,4 +1,5 @@
 import {
+  CONSIGNMENT_PLACE_LABELS,
   CONSIGNOR_CHECKBOX_FALLBACK_LAST_DAY,
   type ConsignorAgreement,
   type MoveAgreementReading,
@@ -14,8 +15,6 @@ import type { MoveAgreementReads } from "../ports/move-agreement.ports.js";
 
 /** The places a move dialog offers a work at. Private sale has no move dialog. */
 export type MovePlace = AdminMoveAgreement["place"];
-
-const PLACE_NAMES: Record<MovePlace, string> = { lax_bid: "LAX Bid", lax_art: "lax.art" };
 
 /** One reading of the agreement for a move, with what the dialog shows and what history keeps. */
 export type MoveAgreementRead = {
@@ -87,7 +86,7 @@ export class MoveAgreementService {
           throw new ShopDomainError(
             check.reason === "no_consignor"
               ? "Set who consigned this work first."
-              : `No agreement covers ${PLACE_NAMES[place]} for this work's consignor. Add one on the client's page first.`,
+              : `No agreement covers ${CONSIGNMENT_PLACE_LABELS[place]} for this work's consignor. Add one on the client's page first.`,
           );
         }
         if (check.outcome === "checkbox_fallback" && !consignorAgreed) {

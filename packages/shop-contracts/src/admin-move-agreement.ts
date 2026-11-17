@@ -67,7 +67,10 @@ export const AdminMoveAgreementSchema = Type.Object(
      * someone who may neither read the agreement nor make the move.
      */
     lowestPricePence: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
-    /** Whether this person may add an agreement for the consignor (the "Add agreement" link). */
+    /**
+     * Whether this person holds `consignor_agreement.manage`: the "Add agreement" link, and the
+     * "Set consignor" link when no consignor is set.
+     */
     canAddAgreement: Type.Boolean(),
   },
   { additionalProperties: false },

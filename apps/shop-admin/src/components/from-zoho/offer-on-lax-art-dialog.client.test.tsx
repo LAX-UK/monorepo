@@ -281,6 +281,8 @@ describe("OfferOnLaxArtDialog and the consignor agreement", () => {
   });
 
   it("shows the agreement in force for lax.art", async () => {
+    // Loaded here: staff-ui imports sonner, which is mocked with a variable declared below.
+    const { formatStaffDate } = await import("@auction/staff-ui");
     assess.mockResolvedValue(
       agreementLine({
         state: "in_force",
@@ -299,7 +301,7 @@ describe("OfferOnLaxArtDialog and the consignor agreement", () => {
     open();
     expect(
       await screen.findByText(
-        "Covered by agreement with Example Gallery Ltd, signed 3 Mar 2026, lax.art, with no end date.",
+        `Covered by agreement with Example Gallery Ltd, signed ${formatStaffDate("2026-03-03")}, lax.art, with no end date.`,
       ),
     ).toBeInTheDocument();
   });
@@ -324,7 +326,7 @@ describe("OfferOnLaxArtDialog and the consignor agreement", () => {
   });
 
   it("says when no consignor is set, without asking for a checkbox", async () => {
-    assess.mockResolvedValue(agreementLine({ state: "no_consignor" }));
+    assess.mockResolvedValue(agreementLine({ state: "no_consignor", canAddAgreement: true }));
     open();
     expect(await screen.findByText("No consignor is set for this work.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Set consignor" })).toHaveAttribute(
@@ -332,6 +334,13 @@ describe("OfferOnLaxArtDialog and the consignor agreement", () => {
       `/from-zoho/${REGISTER_ID}#consignor`,
     );
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("offers Set consignor only to someone who keeps consignor agreements", async () => {
+    assess.mockResolvedValue(agreementLine({ state: "no_consignor" }));
+    open();
+    expect(await screen.findByText("No consignor is set for this work.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Set consignor" })).not.toBeInTheDocument();
   });
 
   it("shows no line when LAX owns the work", async () => {
