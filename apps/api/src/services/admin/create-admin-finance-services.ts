@@ -5,6 +5,7 @@ import type {
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
+import { createBaseLogger } from "../../lib/logger.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IAccountingQueueService } from "../interfaces/accounting-queue.js";
 import type { AdminFinanceRouteServices } from "../interfaces/admin-routes/admin-finance-routes.js";
@@ -48,6 +49,8 @@ export type CreateAdminFinanceServicesInput = {
     | "WEB_ORIGIN"
     | "WEB_ORIGINS"
     | "SSR_TRUSTED_ORIGINS"
+    | "LOG_LEVEL"
+    | "NODE_ENV"
   >;
 };
 
@@ -91,6 +94,7 @@ export function createAdminFinanceServices(
       input.paymentExternalRefRepository,
       input.userRepository,
       input.env,
+      createBaseLogger(input.env).child({ module: "admin-xero" }),
     ),
   };
 }

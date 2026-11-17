@@ -115,6 +115,40 @@ describe.skipIf(!HAS_DB)("DrizzleXeroConnectionRepository token sealing (integra
     expect(await repo.findLatest()).toMatchObject({ accessToken: "NEW-A", refreshToken: "NEW-R" });
   });
 
+  it("reports tokens sealed with another key as unreadable, refuses to use them, and lets a reconnect replace them", async () => {
+    const otherKey = new DrizzleXeroConnectionRepository(
+      db,
+      XeroTokenSealer.fromKey(randomBytes(32).toString("hex")),
+    );
+    await otherKey.upsertConnection({
+      tenantId,
+      tenantName: "Org",
+      accessToken: "STALE-A",
+      refreshToken: "STALE-R",
+      expiresAt,
+    });
+
+    const summary = await repo.findLatestSummary();
+    expect(summary).toMatchObject({ tenantId, tenantName: "Org", tokensReadable: false });
+    expect(JSON.stringify(summary)).not.toMatch(/STALE-|v1:/);
+    await expect(repo.findLatest()).rejects.toThrow(/unreadable/);
+
+    await repo.upsertConnection({
+      tenantId,
+      tenantName: "Org",
+      accessToken: "FRESH-A",
+      refreshToken: "FRESH-R",
+      expiresAt,
+    });
+    expect(await repo.findLatestSummary()).toMatchObject({ tenantId, tokensReadable: true });
+    expect(await repo.findLatest()).toMatchObject({
+      tenantId,
+      accessToken: "FRESH-A",
+      refreshToken: "FRESH-R",
+      connectionStatus: "healthy",
+    });
+  });
+
   it("refuses to read a legacy row without a key, so no refresh can be attempted", async () => {
     await db.insert(xeroConnection).values({
       tenantId,

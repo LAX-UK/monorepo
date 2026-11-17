@@ -221,6 +221,8 @@ export type CreateAdminRouteServicesInput = {
     | "WEB_ORIGIN"
     | "WEB_ORIGINS"
     | "SSR_TRUSTED_ORIGINS"
+    | "LOG_LEVEL"
+    | "NODE_ENV"
   >;
 };
 

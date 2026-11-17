@@ -14,6 +14,14 @@ export type XeroConnectionRow = Omit<XeroConnectionStoredRow, XeroConnectionToke
   accessToken: string;
   refreshToken: string;
 };
+/**
+ * A connection as a status read sees it: never the tokens, only whether they can still be opened.
+ * `tokensReadable: false` means the stored tokens were sealed without the current key (or with
+ * another one) and the connection must be made again before anything can be sent to Xero.
+ */
+export type XeroConnectionSummaryRow = Omit<XeroConnectionRow, "accessToken" | "refreshToken"> & {
+  tokensReadable: boolean;
+};
 export type XeroConnectionInsert = Omit<
   InferInsertModel<typeof xeroConnection>,
   XeroConnectionTokenStorage
@@ -28,7 +36,10 @@ export type PaymentExternalSyncStatus = PaymentExternalRefRow["syncStatus"];
 export type XeroConnectionStatus = XeroConnectionRow["connectionStatus"];
 
 export interface IXeroConnectionRepository {
+  /** The latest connection with its tokens opened; throws when they cannot be opened. */
   findLatest(): Promise<XeroConnectionRow | null>;
+  /** The latest connection for reporting state only; never throws on unreadable tokens. */
+  findLatestSummary(): Promise<XeroConnectionSummaryRow | null>;
   upsertConnection(
     row: Omit<XeroConnectionInsert, "id" | "createdAt" | "updatedAt">,
   ): Promise<XeroConnectionRow>;
