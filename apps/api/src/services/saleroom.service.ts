@@ -68,6 +68,10 @@ export class SaleroomService
     return this.read.getSessionWithRecentEvents(saleId);
   }
 
+  getLotSnapshot(saleId: string, lotId: string) {
+    return this.read.getLotSnapshot(saleId, lotId);
+  }
+
   goLive(input: Parameters<ISaleroomSessionControlService["goLive"]>[0]) {
     return this.control.goLive(input);
   }

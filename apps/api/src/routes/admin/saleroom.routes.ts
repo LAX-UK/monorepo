@@ -14,7 +14,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireSaleroomOperate } from "../../middleware/require-capability.js";
+import { requireSaleroomOperate, requireSalesAccess } from "../../middleware/require-capability.js";
 import { saleReadinessForViewer } from "../../services/admin/admin-sale-readiness.service.js";
 import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
@@ -50,6 +50,9 @@ export function attachAdminSaleroomRoutes(
   platform.get(
     "/sales/:saleId/registrations/check-in-candidates",
     requireSaleroomOperate,
+    // The web check-in panel calls this from the browser through the BFF; it used to go through a
+    // server action that also required sales access, so the API holds both checks.
+    requireSalesAccess,
     zValidator("param", z.object({ saleId: z.string().uuid() })),
     zValidator("query", adminSaleroomCheckInCandidatesQuerySchema),
     async (c) => {
@@ -63,6 +66,7 @@ export function attachAdminSaleroomRoutes(
   platform.post(
     "/sales/:saleId/registrations/check-in",
     requireSaleroomOperate,
+    requireSalesAccess,
     zValidator("param", z.object({ saleId: z.string().uuid() })),
     zValidator("json", adminSaleroomCheckInBodySchema),
     async (c) => {

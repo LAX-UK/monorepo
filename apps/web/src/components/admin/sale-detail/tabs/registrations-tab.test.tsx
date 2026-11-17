@@ -7,12 +7,13 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/actions/admin", () => ({
   adminDecideSaleRegistrationResultAction: vi.fn(),
-  adminSaleroomCheckInResultAction: vi.fn(),
   adminAssignPaddleResultAction: vi.fn(),
   adminClearPaddleResultAction: vi.fn(),
-  adminSaleroomCheckInCandidatesResultAction: vi
-    .fn()
-    .mockResolvedValue({ ok: true, data: { items: [] } }),
+}));
+
+vi.mock("@/lib/admin/saleroom/check-in.client", () => ({
+  checkInBidder: vi.fn(),
+  searchCheckInCandidates: vi.fn().mockResolvedValue({ ok: true, data: [] }),
 }));
 
 vi.mock("next/navigation", () => ({

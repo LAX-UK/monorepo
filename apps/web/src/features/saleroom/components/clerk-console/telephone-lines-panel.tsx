@@ -5,11 +5,8 @@ import {
   ConsolePanel,
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
+import { clerkTelephoneLine } from "@/features/saleroom/lib/clerk-commands.client";
 import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
-import {
-  adminTelephoneBookingCompleteLineAction,
-  adminTelephoneBookingStartLineAction,
-} from "@/lib/actions/admin";
 import { staffTelephoneBookingStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { StatusBadge } from "@auction/staff-ui";
@@ -66,35 +63,36 @@ export function TelephoneLinesPanel({
                 </div>
                 {currentLotId ? (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <form id={`tel-start-${row.id}`} action={adminTelephoneBookingStartLineAction}>
-                      <input type="hidden" name="saleId" value={saleId} />
-                      <input type="hidden" name="bookingId" value={row.id} />
-                      <input type="hidden" name="lotId" value={currentLotId} />
-                      <SaleroomPendingSubmit
-                        formId={`tel-start-${row.id}`}
-                        pendingLabel="Starting…"
-                        variant="secondary"
-                        size="lg"
-                      >
-                        Start line
-                      </SaleroomPendingSubmit>
-                    </form>
-                    <form
-                      id={`tel-complete-${row.id}`}
-                      action={adminTelephoneBookingCompleteLineAction}
+                    <SaleroomPendingSubmit
+                      pendingLabel="Starting…"
+                      variant="secondary"
+                      size="lg"
+                      onRun={() =>
+                        clerkTelephoneLine({
+                          saleId,
+                          bookingId: row.id,
+                          lotId: currentLotId,
+                          step: "start-line",
+                        })
+                      }
                     >
-                      <input type="hidden" name="saleId" value={saleId} />
-                      <input type="hidden" name="bookingId" value={row.id} />
-                      <input type="hidden" name="lotId" value={currentLotId} />
-                      <SaleroomPendingSubmit
-                        formId={`tel-complete-${row.id}`}
-                        pendingLabel="Completing…"
-                        variant="secondary"
-                        size="lg"
-                      >
-                        Complete line
-                      </SaleroomPendingSubmit>
-                    </form>
+                      Start line
+                    </SaleroomPendingSubmit>
+                    <SaleroomPendingSubmit
+                      pendingLabel="Completing…"
+                      variant="secondary"
+                      size="lg"
+                      onRun={() =>
+                        clerkTelephoneLine({
+                          saleId,
+                          bookingId: row.id,
+                          lotId: currentLotId,
+                          step: "complete-line",
+                        })
+                      }
+                    >
+                      Complete line
+                    </SaleroomPendingSubmit>
                   </div>
                 ) : null}
               </li>
