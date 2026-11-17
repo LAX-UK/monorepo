@@ -53,6 +53,16 @@ export const adminVisualCases: readonly AdminVisualCase[] = [
     setup: "lot-filters",
   },
   {
+    // Bid admin › Deliveries (GAP-47, D9 part 2b): the list on its default view, Waiting for a
+    // price, with the six view tabs. The demo seed has no delivery requests, so it is the
+    // empty state; journeys add and remove their own.
+    path: "/admin/deliveries",
+    slug: "admin-deliveries",
+    heading: /^deliveries$/i,
+    variants: ["desktop-light", "desktop-dark", "mobile-light", "mobile-dark"],
+    capture: "main",
+  },
+  {
     path: "/admin/categories/new",
     slug: "admin-category-new",
     heading: /new category/i,
