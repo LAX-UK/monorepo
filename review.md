@@ -138,6 +138,6 @@ because their status stays `current`. The UI should label them using `agreementC
   store's Postgres integration tests run on their own as the owner and as `shop_app`: 13 of 13
   passed.
 - `packages/shop-contracts`: 127 passed.
-- `apps/shop-api`: run in progress (the first run failed to load test files because the workspace packages were not built; it is being re-run after `turbo build --filter=@auction/shop-api^...`). The result will follow in the next commit. The PR adds no shop-api code, only contracts it does not import yet.
+- `apps/shop-api`: 2876 passed, 590 skipped (244 files passed, 92 skipped), after building its workspace dependencies. The first run failed only because those packages were not built yet. The PR adds no shop-api code.
 - `tsc --noEmit` passed for the 4 changed packages, and `biome check` passed on the 21 changed
   files.
