@@ -10,7 +10,7 @@ export function BrowserOfflineBanner() {
 
   return (
     <ConnectivityBannerShell
-      variant="sticky-top"
+      variant="fixed-top"
       tone="error"
       testId="browser-offline-banner"
       message="You are offline. Some features may be unavailable until your connection returns."

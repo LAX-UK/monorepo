@@ -32,6 +32,9 @@ function scrollTo(y: number) {
   });
 }
 
+/** The published offsets include any connectivity banner under the header. */
+const withBanner = (px: number) => `calc(${px}px + var(--connectivity-banner-height, 0px))`;
+
 describe("useHeaderChrome", () => {
   beforeEach(() => {
     resizeCallbacks = [];
@@ -103,7 +106,9 @@ describe("useHeaderChrome", () => {
     vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(() => height);
 
     render(<Probe transparent={false} overlayOpen={false} onHeightChange={onHeightChange} />);
-    expect(document.documentElement.style.getPropertyValue("--header-height")).toBe("120px");
+    expect(document.documentElement.style.getPropertyValue("--header-height")).toBe(
+      withBanner(120),
+    );
     expect(onHeightChange).toHaveBeenCalledTimes(1);
 
     act(() => {
@@ -115,7 +120,7 @@ describe("useHeaderChrome", () => {
     act(() => {
       for (const callback of resizeCallbacks) callback();
     });
-    expect(document.documentElement.style.getPropertyValue("--header-height")).toBe("96px");
+    expect(document.documentElement.style.getPropertyValue("--header-height")).toBe(withBanner(96));
     expect(onHeightChange).toHaveBeenLastCalledWith(96);
   });
 
@@ -141,7 +146,7 @@ describe("useHeaderChrome", () => {
       );
     }
     render(<WithBar />);
-    expect(rootStyle.getPropertyValue("--header-offset")).toBe("110px");
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe(withBanner(110));
 
     const scrollToFrame = (y: number) => {
       scrollTo(y);
@@ -152,14 +157,16 @@ describe("useHeaderChrome", () => {
 
     scrollToFrame(10);
     expect(rootStyle.getPropertyValue("--lax-top-bar-shift")).toBe("10px");
-    expect(rootStyle.getPropertyValue("--header-offset")).toBe("100px");
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe(withBanner(100));
 
     scrollToFrame(500);
-    expect(rootStyle.getPropertyValue("--header-offset")).toBe("74px");
-    expect(rootStyle.getPropertyValue("--header-height")).toBe("110px");
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe(withBanner(74));
+    // The banner itself sits where the header element ends.
+    expect(rootStyle.getPropertyValue("--header-bar-offset")).toBe("74px");
+    expect(rootStyle.getPropertyValue("--header-height")).toBe(withBanner(110));
 
     scrollToFrame(0);
-    expect(rootStyle.getPropertyValue("--header-offset")).toBe("110px");
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe(withBanner(110));
   });
 });
 

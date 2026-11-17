@@ -1,8 +1,12 @@
+import { PILL_SURFACE_LIVE } from "@/components/lot-timer/pill-surface";
 import { SaleroomLotCatalogOverlay } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/time/use-clock", () => ({ useClockNow: () => Date.now() }));
+const NOW = Date.parse("2026-11-17T12:00:00.000Z");
+
+// Only the clock and the live session are stubbed; the label comes from the real resolver.
+vi.mock("@/lib/time/use-clock", () => ({ useClockNow: () => NOW }));
 vi.mock("@/lib/context/saleroom-live-provider", () => ({
   useSaleroomLive: () => ({
     isSessionLive: true,
@@ -12,37 +16,63 @@ vi.mock("@/lib/context/saleroom-live-provider", () => ({
   }),
 }));
 
-vi.mock("@/lib/lot/catalog-lot-overlay", () => ({
-  resolveCatalogLotOverlay: ({ isUpNext }: { isUpNext?: boolean }) =>
-    isUpNext
-      ? { kind: "saleroom", label: "Up next", tone: "live" }
-      : { kind: "saleroom", label: "In saleroom", tone: "muted" },
-}));
+type LotState = "upNext" | "inSaleroom" | "sold";
 
-const lot = (isUpNext: boolean) =>
+const lot = (state: LotState) =>
   ({
-    id: "l1",
-    status: "active",
-    currentBidValue: 100,
-    isUpNext,
+    id: `lot-${state}`,
+    status: state === "sold" ? "ended" : "active",
+    currentBidValue: "100",
+    isUpNext: state === "upNext",
     isOnBlock: false,
-    startTime: new Date(Date.now() - 1000),
-    endTime: new Date(Date.now() + 3_600_000),
+    winnerId: state === "sold" ? "buyer-1" : null,
+    hasWinner: state === "sold",
+    startTime: new Date(NOW - 3_600_000),
+    endTime: new Date(state === "sold" ? NOW - 60_000 : NOW + 3_600_000),
   }) as never;
 
-const sale = { status: "live", deliveryMode: "saleroom" } as never;
+const sale = { status: "live", deliveryMode: "hybrid" } as never;
+const LABEL: Record<LotState, string> = {
+  upNext: "Up next",
+  inSaleroom: "In saleroom",
+  sold: "Sold",
+};
+
+function pillClasses(state: LotState, useOverlayChrome: boolean): string[] {
+  const { unmount } = render(
+    <SaleroomLotCatalogOverlay
+      lot={lot(state)}
+      saleForLifecycle={sale}
+      layout="overlay"
+      useOverlayChrome={useOverlayChrome}
+      showTimer={false}
+    />,
+  );
+  const classes = screen.getByLabelText(LABEL[state]).className.split(/\s+/).sort();
+  unmount();
+  return classes;
+}
 
 describe("SaleroomLotCatalogOverlay pills", () => {
-  it("Up next uses a solid, defined background class with white text", () => {
-    render(<SaleroomLotCatalogOverlay lot={lot(true)} saleForLifecycle={sale} />);
-    const pill = screen.getByLabelText("Up next");
-    expect(pill.className).toContain("bg-brand-900/85");
-    expect(pill.className).not.toContain("bg-brand-600");
-    expect(pill.className).toContain("text-white");
+  it("resolves the three saleroom labels from lot and session state", () => {
+    for (const state of ["upNext", "inSaleroom", "sold"] as const) {
+      const { unmount } = render(
+        <SaleroomLotCatalogOverlay lot={lot(state)} saleForLifecycle={sale} useOverlayChrome />,
+      );
+      expect(screen.getByLabelText(LABEL[state])).toBeInTheDocument();
+      unmount();
+    }
   });
 
-  it("In saleroom styling is unchanged", () => {
-    render(<SaleroomLotCatalogOverlay lot={lot(false)} saleForLifecycle={sale} />);
-    expect(screen.getByLabelText("In saleroom").className).toContain("bg-brand-900/70");
+  it("in the catalogue grid, Up next is the same pill as In saleroom and Sold", () => {
+    const upNext = pillClasses("upNext", true);
+    expect(upNext).toEqual(pillClasses("inSaleroom", true));
+    expect(upNext).toEqual(pillClasses("sold", true));
+  });
+
+  it("off the image, Up next keeps the solid live surface and never a missing token", () => {
+    const upNext = pillClasses("upNext", false);
+    for (const token of PILL_SURFACE_LIVE.split(" ")) expect(upNext).toContain(token);
+    expect(upNext.some((c) => c.includes("brand-600"))).toBe(false);
   });
 });

@@ -126,8 +126,8 @@ export function StaffShell({
             data-staff-shell=""
             data-staff-product={product.id === "bid-admin" ? "bid" : "lax-admin"}
             {...laxDensityAttributes("staff")}
-            // Sticky table headers sit under the top bar.
-            className="min-h-dvh bg-staff-canvas font-staff text-staff-fg [--staff-sticky-top:var(--spacing-staff-top-bar)]"
+            // Sticky table headers sit under the top bar and any connectivity banner below it.
+            className="min-h-dvh bg-staff-canvas font-staff text-staff-fg [--staff-sticky-top:calc(var(--spacing-staff-top-bar)+var(--connectivity-banner-height,0px))]"
           >
             <a
               href="#main-content"

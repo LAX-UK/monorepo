@@ -91,11 +91,15 @@ test.describe("marketing viewport audit @a11y", () => {
 
     // Hero bleeds under the fixed header: one viewport tall below the header (HOME_HERO_MIN_H).
     const heroBox = await heroShell.boundingBox();
-    const headerHeight = await page.evaluate(() =>
-      Number.parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue("--header-height"),
-      ),
-    );
+    // `--header-height` is a calc() (it adds any connectivity banner), so resolve it in layout.
+    const headerHeight = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.height = "var(--header-height)";
+      document.body.append(probe);
+      const height = probe.getBoundingClientRect().height;
+      probe.remove();
+      return height;
+    });
     expect(heroBox?.height).toBeDefined();
     if (heroBox?.height) {
       expect(heroBox.height).toBeLessThanOrEqual(1080 + headerHeight + 1);
