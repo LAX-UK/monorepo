@@ -125,3 +125,20 @@ Finished on head `237a1e05`: 41 check runs, 40 `success` and 1 `skipped` (`art-b
 ### To flip to SHIP
 
 Do A (remove the footer from the PR description) and C (three small test changes, each confirmed by rerunning its mutation). D can be a one-line PR-body note. Findings 1 to 7 need nothing more.
+
+### Independent confirmation (second run, same head `237a1e05`)
+
+I ran a separate pass on a fresh Postgres 16 with `db:migrate` and `db:roles`, using `shop_app`. It agrees with the verdict above.
+
+- **Blocker A** is confirmed: the PR description still ends with the AI footer.
+- **Finding C** is confirmed for `markExpanded`: removing its topic filter still passes all 15 send-log integration tests. I did not rerun the `liveCounts` and `dropReasons` mutations.
+
+These mutations were not run above. Each one fails the relevant suite:
+- stuck threshold moved to 22h, and to 26h
+- `counts_not_kept` collapsed to `sent`
+- removed-before-sending left out of `notSent`
+- migration: the counter default put on `ADD COLUMN`
+- rollback: the `kind` column left in place
+- migration: the counts check removed
+- route: the querystring schema removed (2 route tests fail)
+- grant probe: `shop_app` UPDATE revoked (the probe fails with `shop_app kind:UPDATE: expected false to be true`; restored with `db:roles`)
