@@ -8,6 +8,7 @@ import { Clock } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import type { LotTimerState } from "./classify";
 import type { TimerText } from "./format";
+import { PILL_SHELL, PILL_SURFACE_LIVE, PILL_SURFACE_MUTED } from "./pill-surface";
 
 function assertNever(x: never): never {
   throw new Error(`Unexpected lot timer state: ${String(x)}`);
@@ -21,15 +22,6 @@ const PILL_OVERLAY_FRAME = "pointer-events-none absolute inset-x-3 bottom-3 z-10
 const PILL_OVERLAY_POS = "relative inline-flex max-w-full whitespace-nowrap";
 const PILL_INLINE_POS =
   "relative inline-flex max-w-full shrink-0 whitespace-nowrap pointer-events-auto";
-
-const PILL_BASE_SHARED =
-  "items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-xs font-medium backdrop-blur-sm";
-
-const SHELL_LIVE =
-  "border-transparent bg-brand-900/85 text-white dark:border-transparent dark:bg-black/80 dark:text-white";
-
-const SHELL_MUTED =
-  "border-transparent bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
 
 /** Ending-soon tag: glass chip; live shows red dot + countdown only (no “Live” copy). */
 const ENDING_SOON_TAG_GLASS_SHARED =
@@ -138,12 +130,12 @@ export function LotTimerPill({
     themePos: string,
   ) => {
     if (useOverlayChrome && !figma) {
-      return cn(themePos, PILL_BASE_SHARED, overlayShell, themeShell, surfaceClassName);
+      return cn(themePos, PILL_SHELL, overlayShell, themeShell, surfaceClassName);
     }
     if (figma) {
       return cn(inline ? ENDING_SOON_INLINE_POS : figmaPos, figmaShell, surfaceClassName);
     }
-    return cn(inline ? PILL_INLINE_POS : themePos, PILL_BASE_SHARED, themeShell, surfaceClassName);
+    return cn(inline ? PILL_INLINE_POS : themePos, PILL_SHELL, themeShell, surfaceClassName);
   };
 
   const toneProps = useOverlayChrome && !figma ? overlayProps : {};
@@ -165,7 +157,7 @@ export function LotTimerPill({
           className={shellClass(
             ENDING_SOON_TAG_GLASS_SHARED,
             ENDING_SOON_OVERLAY_POS,
-            SHELL_LIVE,
+            PILL_SURFACE_LIVE,
             PILL_OVERLAY_POS,
           )}
           {...toneProps}
@@ -199,7 +191,7 @@ export function LotTimerPill({
           className={shellClass(
             ENDING_SOON_TAG_GLASS_SHARED,
             ENDING_SOON_OVERLAY_POS,
-            SHELL_LIVE,
+            PILL_SURFACE_LIVE,
             PILL_OVERLAY_POS,
           )}
           {...toneProps}
@@ -239,7 +231,7 @@ export function LotTimerPill({
           className={shellClass(
             ENDING_SOON_MUTED_SHELL_SHARED,
             ENDING_SOON_OVERLAY_POS,
-            SHELL_MUTED,
+            PILL_SURFACE_MUTED,
             PILL_OVERLAY_POS,
           )}
           {...toneProps}
@@ -256,7 +248,7 @@ export function LotTimerPill({
           className={shellClass(
             ENDING_SOON_MUTED_SHELL_SHARED,
             ENDING_SOON_OVERLAY_POS,
-            SHELL_MUTED,
+            PILL_SURFACE_MUTED,
             PILL_OVERLAY_POS,
           )}
           {...toneProps}
@@ -273,7 +265,7 @@ export function LotTimerPill({
           className={shellClass(
             ENDING_SOON_MUTED_SHELL_SHARED,
             ENDING_SOON_OVERLAY_POS,
-            SHELL_MUTED,
+            PILL_SURFACE_MUTED,
             PILL_OVERLAY_POS,
           )}
           {...toneProps}

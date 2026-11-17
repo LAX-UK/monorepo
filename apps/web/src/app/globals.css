@@ -305,9 +305,14 @@
    * A default that is off moves the whole page when the real height arrives. On a notched phone
    * the bar also clears the status area. A signed-in person's attention strip under the phone bar
    * (below 640px) is not in this default, so the page still shifts slightly for them until the
-   * header is measured.
+   * header is measured. A connectivity banner under the header adds its height (as the published
+   * value does), so content and sticky bars clear it.
    */
-  --header-height: calc(57px + env(safe-area-inset-top, 0px));
+  --header-height: calc(
+    57px +
+    env(safe-area-inset-top, 0px) +
+    var(--connectivity-banner-height, 0px)
+  );
   --container-max: 1440px;
   --container-inner: 1376px;
   --auth-column: 528px;
@@ -364,7 +369,7 @@
 /* From 1024px the 36px LAX top bar joins the 72px row, with the hairline (matches `lg:` in site-header). */
 @media (min-width: 64rem) {
   :root {
-    --header-height: 109px;
+    --header-height: calc(109px + var(--connectivity-banner-height, 0px));
   }
 }
 
