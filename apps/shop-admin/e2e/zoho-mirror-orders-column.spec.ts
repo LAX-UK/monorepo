@@ -168,7 +168,9 @@ for (const theme of themes) {
       const badge = card.locator('[data-zoho-mirror="mirrored"]');
       await expect(badge).toBeVisible();
       // In the card's detail slot, a line of its own, not folded into the buyer and total line.
-      const line = card.locator('[data-mobile-slot="detail"]').filter({ has: badge });
+      const line = card
+        .locator('[data-mobile-slot="detail"]')
+        .filter({ has: page.locator('[data-zoho-mirror="mirrored"]') });
       await expect(line).toHaveCount(1);
       await expect(line).toHaveText(BADGE_LABEL.mirrored);
       const meta = card.locator('[data-mobile-slot="meta"]');

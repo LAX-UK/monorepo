@@ -28,6 +28,10 @@ Taken the same way, on the fixture artworks and orders `seed:zoho-mirror-badge` 
 - `orders-column-default-hidden-1440-{theme}.png`: the column is hidden by default; Display shows
   it, unticked (TBL-12).
 
+The six `orders-column-*` shots were retaken after review: the seed now dates the fixtures 29 days
+back, inside the summary's "last 30 days", so the strip counts the five paid orders (it read
+£0.00 and 0 before).
+
 ### PR 3 gallery
 
 **Artwork record: Mirrored to Zoho**
