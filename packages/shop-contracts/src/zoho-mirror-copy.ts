@@ -6,10 +6,14 @@ import type {
 
 /**
  * The words of the "Mirrored to Zoho" badge and its details, as approved in
- * `docs/design/staff-gaps-delivery-zoho-alerts.md` Z3, so the order page and the artwork record
- * (PRs 2 and 3) write no copy of their own. Z3 joins a state and its sentence with " · ".
+ * `docs/design/staff-gaps-delivery-zoho-alerts.md` Z3, so the order page, the artwork record and
+ * the Orders list's Zoho column (PRs 2 and 3) write no copy of their own. Z3 joins a state and its
+ * sentence with " · ".
  */
 export const ZOHO_MIRROR_SEPARATOR = " · ";
+
+/** The header of a list's optional Zoho column (Z1), hidden until staff show it from Display. */
+export const ZOHO_MIRROR_COLUMN_HEADER = "Zoho";
 
 /** The badge text for each state; `not_applicable` has no badge. */
 export const ZOHO_MIRROR_BADGE_LABEL: Record<Exclude<ZohoMirrorState, "not_applicable">, string> = {

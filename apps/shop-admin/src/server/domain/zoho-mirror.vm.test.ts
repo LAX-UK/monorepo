@@ -1,6 +1,11 @@
 import { type AdminZohoMirrorStatus, ZOHO_MIRROR_SEPARATOR } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
-import { ZOHO_RECORD_ID_LABEL, presentZohoMirror, zohoFailedJobsHref } from "./zoho-mirror.vm";
+import {
+  ZOHO_RECORD_ID_LABEL,
+  presentZohoMirror,
+  presentZohoMirrorCell,
+  zohoFailedJobsHref,
+} from "./zoho-mirror.vm";
 
 const ORDER_ID = "0f0e0d0c-0b0a-4908-8706-050403020100";
 const NOW = new Date("2026-11-14T15:30:00.000Z");
@@ -202,5 +207,29 @@ describe("zohoFailedJobsHref (Q7, PRM-1)", () => {
     expect(
       zohoFailedJobsHref({ bidUrl: null, failedJobSources: ["integrations.zoho"] }),
     ).toBeNull();
+  });
+});
+
+describe("presentZohoMirrorCell", () => {
+  it.each([
+    ["mirrored", "Mirrored to Zoho", "success", "check"],
+    ["pending", "Sending to Zoho", "info", "dot"],
+    ["failed", "Not in Zoho", "danger", "alert"],
+    ["dry_run", "Zoho dry run", "neutral", "ring"],
+  ] as const)(
+    "gives a list's Zoho column the record's own %s badge",
+    (state, label, tone, shape) => {
+      const cell = presentZohoMirrorCell(status({ state }));
+      expect(cell).toEqual({ state, label, tone, shape });
+      // The same badge as the record's header, so the list and the record never disagree.
+      expect(presentZohoMirror(status({ state }), { now: NOW })).toMatchObject(cell ?? {});
+    },
+  );
+
+  it("leaves the cell blank for a record with nothing to mirror, or no status", () => {
+    expect(
+      presentZohoMirrorCell(status({ state: "not_applicable", notApplicableReason: "not_paid" })),
+    ).toBeNull();
+    expect(presentZohoMirrorCell(null)).toBeNull();
   });
 });
