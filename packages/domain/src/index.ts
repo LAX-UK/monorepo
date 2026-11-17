@@ -772,6 +772,7 @@ export {
   type PurchaseProblemTransitionRefusal,
 } from "./purchase-problem.js";
 export {
+  DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH,
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
   deliveryQuoteDecline,

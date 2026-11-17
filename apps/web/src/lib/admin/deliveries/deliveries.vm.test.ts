@@ -3,6 +3,7 @@ import { DELIVERIES_COPY } from "./deliveries-copy";
 import {
   BOOKED_UNPAID,
   COLLECTED,
+  DECLINED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
   REFUNDED,
@@ -206,8 +207,27 @@ describe("badges", () => {
 
   it("names why a delivery closed", () => {
     expect(
-      deliveryBadges({ status: "closed", closedReason: "cancelled", awaitingPayment: false }),
+      deliveryBadges({
+        status: "closed",
+        closedReason: "cancelled",
+        awaitingPayment: false,
+        quote: { declineReason: null },
+      }),
     ).toEqual([{ label: "Cancelled", tone: "neutral", shape: "ring" }]);
+  });
+
+  it("says a request the team declined was declined by LAX, not withdrawn by the buyer", () => {
+    expect(deliveryBadges(DECLINED)).toEqual([
+      { label: "Declined by LAX", tone: "neutral", shape: "ring" },
+    ]);
+    expect(deliverySince(DECLINED, now)).toBe("Declined 20 hours ago");
+    expect(deliverySince({ ...DECLINED, statusSince: null }, now)).toBe("Declined");
+    const buyerWithdrew = deliveryFixture({
+      status: "closed",
+      closedReason: "withdrawn",
+      quote: { ...deliveryFixture().quote, status: "withdrawn" },
+    });
+    expect(deliveryBadges(buyerWithdrew)[0]?.label).toBe("Withdrawn by buyer");
   });
 
   it("adds Awaiting payment beside an unpaid booking, and never more than two", () => {
@@ -262,6 +282,13 @@ describe("cells", () => {
 });
 
 describe("deliveryTimeline", () => {
+  it("names a withdrawal the team made as Declined by LAX", () => {
+    expect(deliveryTimeline(DECLINED).map((event) => [event.title, event.actor])).toEqual([
+      ["Declined by LAX", "LAX"],
+      ["Buyer asked for a delivery price", "Buyer"],
+    ]);
+  });
+
   it("tells the story newest first, with the price and who took each step", () => {
     expect(deliveryTimeline(ON_THE_WAY).map((event) => [event.title, event.actor])).toEqual([
       ["Handed to the courier", "LAX"],

@@ -6,7 +6,8 @@ export type AdminMutationResult<T> =
   | { ok: false; kind: "forbidden" }
   | { ok: false; kind: "csrf" }
   | { ok: false; kind: "step_up_required"; message: string }
-  | { ok: false; kind: "conflict"; message: string; currentVersion?: string }
+  /** `code` is the API's error code, so a caller can tell one 409 from another. */
+  | { ok: false; kind: "conflict"; message: string; currentVersion?: string; code?: string }
   /** `issues` lists the rows at fault when the API names them (Featured on home). */
   | { ok: false; kind: "validation"; message: string; issues?: unknown[] }
   /** 422: the request named records that do not exist, so nothing was written. */
@@ -32,11 +33,13 @@ export function mapAdminMutationErrorBody(
   }
   if (status === 409) {
     const currentVersion = readErrorField(body, "currentVersion");
+    const code = readErrorCode(body);
     return {
       ok: false,
       kind: "conflict",
       message: readErrorMessage(body) ?? "This action conflicts with current state.",
       ...(currentVersion ? { currentVersion } : {}),
+      ...(code ? { code } : {}),
     };
   }
   if (status === 422) {

@@ -23,7 +23,7 @@ export type AdminDeliveryEvent = {
    * any later edit, so it is never shown as one).
    */
   at: string | null;
-  /** Who took the step: the buyer, or the LAX team. */
+  /** Who took the step: the buyer, or the LAX team (a `withdrawn` by staff is a decline). */
   by: "buyer" | "staff";
 };
 
@@ -49,6 +49,8 @@ export type AdminDeliveryView = {
     requestedAt: string;
     quotedAt: string | null;
     decidedAt: string | null;
+    /** Why the team declined it ("Can't deliver"), as the buyer was told; else `null`. */
+    declineReason: string | null;
   };
   lot: {
     title: string;

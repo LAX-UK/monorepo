@@ -54,7 +54,7 @@ import type { NotificationDispatcher } from "../services/notification.dispatcher
 import { AccountPurchasesService } from "../services/organisation-buying/account-purchases.service.js";
 import { AccountRegistrationsService } from "../services/organisation-buying/account-registrations.service.js";
 import { CollectionBookingService } from "../services/organisation-buying/collection-booking.service.js";
-import { DeliveryQuoteReadyNotifier } from "../services/organisation-buying/delivery-quote-ready-notifier.js";
+import { DeliveryQuoteNotifier } from "../services/organisation-buying/delivery-quote-notifier.js";
 import {
   DeliveryQuoteService,
   StaffDeliveryQuoteService,
@@ -115,7 +115,10 @@ export type CreateOrganisationBuyingInput = {
   /** Tells a buyer their purchase problem report was received. */
   purchaseProblemNotices: IPurchaseProblemNotices;
   notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
-  notificationFactory: Pick<INotificationFactory, "createDeliveryQuoteReady">;
+  notificationFactory: Pick<
+    INotificationFactory,
+    "createDeliveryQuoteReady" | "createDeliveryQuoteDeclined"
+  >;
   /** What paying several invoices at once needs from the payments side. */
   payments: {
     tierLimits: PaymentTierLimits;
@@ -250,7 +253,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     staffDeliveryQuotes: new StaffDeliveryQuoteService({
       quotes,
       lots: lookups,
-      notifier: new DeliveryQuoteReadyNotifier(
+      notifier: new DeliveryQuoteNotifier(
         input.lots,
         input.notificationDispatcher,
         input.notificationFactory,

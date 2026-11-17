@@ -1,9 +1,7 @@
 import {
-  type CurrentLocation,
   LOCATION_NAME_MAX,
   LOCATION_NOTE_MAX,
   type LocationMove,
-  type LocationRef,
   type LocationStatus,
   MOVE_BATCH_MAX,
   MOVE_NOTE_MAX,
@@ -24,14 +22,18 @@ import {
   SHOP_API_ERROR_CODES,
 } from "@auction/shop-contracts";
 import type { ShopStaffCapability } from "@auction/shop-domain";
+import { FieldValidationError } from "../../errors/field-validation-error.js";
 import { ShopApiError } from "../../errors/shop-api-error.js";
+import { StaleVersionError } from "../../errors/stale-version-error.js";
 import { withAdminIdempotency } from "../admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../ports/shop-unit-of-work.js";
+import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import type {
   StockLocationReads,
   StockLocationWriteResult,
   StockLocationWritesFor,
 } from "../ports/stock-location.ports.js";
+import { presentLocationRef } from "./location-ref.presenter.js";
 
 /** How many moves the Location panel shows; older ones are flagged with `moreMoves`. */
 export const LOCATION_HISTORY_LIMIT = 100;
@@ -45,8 +47,12 @@ export type StockLocationServiceDeps = {
   uow: ShopUnitOfWorkFactory;
   reads: StockLocationReads;
   writesFor: StockLocationWritesFor;
+  /** Who moved each artwork, by name; a person without one reads as LAX staff on the page. */
+  staffNames: StaffNameReader;
   clock?: () => Date;
 };
+
+const STAFF_PREFIX = "staff:";
 
 const iso = (date: Date) => date.toISOString();
 
@@ -56,6 +62,7 @@ function presentLocation(location: StockLocation): AdminStockLocation {
     name: location.name,
     note: location.note,
     status: location.status,
+    label: locationLabel(location),
     version: location.version,
     createdAt: iso(location.createdAt),
     updatedAt: iso(location.updatedAt),
@@ -63,35 +70,41 @@ function presentLocation(location: StockLocation): AdminStockLocation {
   };
 }
 
-const presentRef = (ref: LocationRef) => ({
-  id: ref.id,
-  name: ref.name,
-  status: ref.status,
-  label: locationLabel(ref),
-});
-
+/**
+ * Where the artwork is and has been, from one read of its moves: the current location is the
+ * newest move, so the panel's "now" and the top of its history can never disagree.
+ */
 function presentArtworkLocation(
   registerId: string,
-  current: CurrentLocation | null,
   moves: LocationMove[],
+  names: ReadonlyMap<string, string>,
 ): AdminArtworkLocation {
   const shown = moves.slice(0, LOCATION_HISTORY_LIMIT);
+  const nameOf = (movedBy: string) =>
+    movedBy.startsWith(STAFF_PREFIX)
+      ? (names.get(movedBy.slice(STAFF_PREFIX.length)) ?? null)
+      : null;
+  const latest = shown[0];
   return {
     registerId,
-    label: currentLocationLabel(current),
-    current: current
+    label: currentLocationLabel(
+      latest ? { location: latest.to, movedAt: latest.movedAt, movedBy: latest.movedBy } : null,
+    ),
+    current: latest
       ? {
-          location: presentRef(current.location),
-          movedAt: iso(current.movedAt),
-          movedBy: current.movedBy,
+          location: presentLocationRef(latest.to),
+          movedAt: iso(latest.movedAt),
+          movedBy: latest.movedBy,
+          movedByName: nameOf(latest.movedBy),
         }
       : null,
     moves: shown.map((move) => ({
       id: move.id,
-      from: move.from ? presentRef(move.from) : null,
-      to: presentRef(move.to),
+      from: move.from ? presentLocationRef(move.from) : null,
+      to: presentLocationRef(move.to),
       movedAt: iso(move.movedAt),
       movedBy: move.movedBy,
+      movedByName: nameOf(move.movedBy),
       note: move.note,
     })),
     moreMoves: moves.length > LOCATION_HISTORY_LIMIT,
@@ -104,33 +117,60 @@ const conflict = (message: string) => new ShopApiError(SHOP_API_ERROR_CODES.CONF
 const notFound = (message: string) =>
   new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, message, 404);
 
-function textOrRefuse<T>(
-  parsed: { ok: true; value: T } | { ok: false; reason: TextRefusal },
-  messages: Record<TextRefusal, string>,
-): T {
-  if (!parsed.ok) throw validation(messages[parsed.reason]);
-  return parsed.value;
-}
+type Parsed<T> = { ok: true; value: T } | { ok: false; reason: TextRefusal };
 
-const parseName = (raw: string) =>
-  textOrRefuse(parseLocationName(raw), {
+/** What is wrong with each field, in the words the form shows beside it. */
+const TEXT_REFUSALS = {
+  name: {
     empty: "Give the location a name.",
     too_long: `Keep the name to ${LOCATION_NAME_MAX} characters or fewer.`,
+  },
+  note: { empty: "", too_long: `Keep the note to ${LOCATION_NOTE_MAX} characters or fewer.` },
+  moveNote: { empty: "", too_long: `Keep the note to ${MOVE_NOTE_MAX} characters or fewer.` },
+} as const satisfies Record<string, Record<TextRefusal, string>>;
+
+/**
+ * The parsed values, or a 400 naming every field at fault (`issues`), so LAX Admin shows each
+ * message beside its field. These are the shared rules; the screens do not repeat them.
+ */
+function fieldsOrRefuse<K extends string, V extends Record<K, unknown>>(
+  fields: {
+    [F in K]: { parsed: Parsed<V[F]>; messages: Record<TextRefusal, string> };
+  },
+): V {
+  const values = {} as V;
+  const issues: { field: string; message: string }[] = [];
+  for (const field of Object.keys(fields) as K[]) {
+    const { parsed, messages } = fields[field];
+    if (parsed.ok) values[field] = parsed.value;
+    else issues.push({ field, message: messages[parsed.reason] });
+  }
+  const [first, ...rest] = issues;
+  if (first) throw new FieldValidationError([first, ...rest]);
+  return values;
+}
+
+/** A location's name and note, checked together. */
+const parseNameAndNote = (raw: { name: string; note?: string | null | undefined }) =>
+  fieldsOrRefuse<"name" | "note", { name: string; note: string | null }>({
+    name: { parsed: parseLocationName(raw.name), messages: TEXT_REFUSALS.name },
+    note: { parsed: parseLocationNote(raw.note), messages: TEXT_REFUSALS.note },
   });
 
-const parseNote = (raw: string | null | undefined) =>
-  textOrRefuse(parseLocationNote(raw), {
-    empty: "",
-    too_long: `Keep the note to ${LOCATION_NOTE_MAX} characters or fewer.`,
-  });
-
-/** A list write that did not happen, in the words the Locations page shows. */
-function refuseListWrite(result: Exclude<StockLocationWriteResult, { ok: true }>): never {
+/**
+ * A list write that did not happen, in the words the Locations page shows. A stale version carries
+ * the version the location had when the write began, so the page can tell it from a taken name
+ * and offer to reload.
+ */
+function refuseListWrite(
+  result: Exclude<StockLocationWriteResult, { ok: true }>,
+  before: StockLocation | null = null,
+): never {
   switch (result.reason) {
     case "not_found":
       throw notFound("Location not found");
     case "stale":
-      throw conflict("Someone else changed this location. Reload it and try again.");
+      throw new StaleVersionError("This location", String(before?.version ?? 0));
     case "name_taken":
       throw conflict("Another location already has this name.");
   }
@@ -175,7 +215,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
             status: command.status,
             now: now(),
           });
-          if (!result.ok) refuseListWrite(result);
+          if (!result.ok) refuseListWrite(result, before);
           // Already so: nothing was written, so there is nothing to audit.
           if (result.changed) {
             await tx.audit.append({
@@ -205,18 +245,21 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
     /** Where the artwork is now and where it has been; null when it is not on the register. */
     async artworkLocation(registerId: string): Promise<AdminArtworkLocation | null> {
       if (!(await deps.reads.registerExists(registerId))) return null;
-      const [current, moves] = await Promise.all([
-        deps.reads.currentLocation(registerId),
-        deps.reads.listMoves(registerId, LOCATION_HISTORY_LIMIT + 1),
-      ]);
-      return presentArtworkLocation(registerId, current, moves);
+      // One more than is shown, to know whether older moves exist.
+      const moves = await deps.reads.listMoves(registerId, LOCATION_HISTORY_LIMIT + 1);
+      const staffIds = moves
+        .slice(0, LOCATION_HISTORY_LIMIT)
+        .map((move) => move.movedBy)
+        .filter((movedBy) => movedBy.startsWith(STAFF_PREFIX))
+        .map((movedBy) => movedBy.slice(STAFF_PREFIX.length));
+      const names = await deps.staffNames.namesFor([...new Set(staffIds)]);
+      return presentArtworkLocation(registerId, moves, names);
     },
 
     async addLocation(
       command: Actor & { name: string; note?: string | null | undefined },
     ): Promise<AdminStockLocationWriteResult> {
-      const name = parseName(command.name);
-      const note = parseNote(command.note);
+      const { name, note } = parseNameAndNote(command);
       return deps.uow.run((tx) =>
         withAdminIdempotency({
           tx,
@@ -254,8 +297,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
         note?: string | null | undefined;
       },
     ): Promise<AdminStockLocationWriteResult> {
-      const name = parseName(command.name);
-      const note = parseNote(command.note);
+      const { name, note } = parseNameAndNote(command);
       return deps.uow.run((tx) =>
         withAdminIdempotency({
           tx,
@@ -278,17 +320,20 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
               note,
               now: now(),
             });
-            if (!result.ok) refuseListWrite(result);
-            await tx.audit.append({
-              actorSubjectId: command.actorSubjectId,
-              capability: MANAGE,
-              action: "artwork_location.update",
-              targetType: "artwork_location",
-              targetId: result.location.id,
-              ...(before ? { beforeJson: auditView(before) } : {}),
-              afterJson: auditView(result.location),
-            });
-            return { changed: true, location: presentLocation(result.location) };
+            if (!result.ok) refuseListWrite(result, before);
+            // Saved as it was: nothing was written, so there is nothing to audit.
+            if (result.changed) {
+              await tx.audit.append({
+                actorSubjectId: command.actorSubjectId,
+                capability: MANAGE,
+                action: "artwork_location.update",
+                targetType: "artwork_location",
+                targetId: result.location.id,
+                ...(before ? { beforeJson: auditView(before) } : {}),
+                afterJson: auditView(result.location),
+              });
+            }
+            return { changed: result.changed, location: presentLocation(result.location) };
           },
         }),
       );
@@ -310,9 +355,8 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
     async moveArtworks(
       command: Actor & { request: MoveArtworksRequest },
     ): Promise<AdminArtworkLocationMoveResult> {
-      const note = textOrRefuse(parseMoveNote(command.request.note), {
-        empty: "",
-        too_long: `Keep the note to ${MOVE_NOTE_MAX} characters or fewer.`,
+      const { note } = fieldsOrRefuse<"note", { note: string | null }>({
+        note: { parsed: parseMoveNote(command.request.note), messages: TEXT_REFUSALS.moveNote },
       });
       const { registerIds, locationId } = command.request;
       return deps.uow.run((tx) =>

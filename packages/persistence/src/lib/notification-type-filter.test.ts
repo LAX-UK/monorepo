@@ -8,6 +8,7 @@ describe("notificationTypesForFilter", () => {
       "lot_shipped",
       "lot_delivered",
       "delivery_quote_ready",
+      "delivery_quote_declined",
       "collection_booked",
       "collection_changed",
       "collection_cancelled",

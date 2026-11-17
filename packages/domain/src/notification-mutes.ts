@@ -17,9 +17,11 @@ export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   "payment_reminder",
   "buyer_default_notice",
   "lot_won",
-  // A payout that did not reach the bank, and a delivery quote waiting to be accepted.
+  // A payout that did not reach the bank, a delivery quote waiting to be accepted, and the team's
+  // answer that it cannot deliver (the buyer decides how to get the work instead).
   "payout_problem",
   "delivery_quote_ready",
+  "delivery_quote_declined",
   // Consignments waiting for the person to act.
   "consignment_agreement_reminder",
   "submission_changes_requested",
