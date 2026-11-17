@@ -34,6 +34,7 @@ import {
 } from "@auction/staff-ui";
 import { Copy, ExternalLink, Mail, ShieldCheck } from "@auction/staff-ui/icons";
 import Link from "next/link";
+import type * as React from "react";
 import { useMemo, useState } from "react";
 
 const NextLink: StaffLinkComponent = Link;
@@ -63,17 +64,20 @@ function copy(value: string, noun: string) {
  * A client's page on the staff record template: who they are in the header (their kind and
  * whether they have a LAX login as badges, email and joined date as facts), granting sale
  * authority as the one primary action, four figures said once, then their Shop and lax.art
- * records as related sections: orders, editions owned, sale limits, sale limit requests,
- * enquiries and payouts. Their bidding stays in Bid admin, linked from the header.
+ * records as related sections: orders, editions owned, sale limits, sale limit requests, their
+ * agreements as a consignor, enquiries and payouts. Their bidding stays in Bid admin, linked from the header.
  */
 export function ClientRecordPage({
   detail,
   canGrant,
   bidPublicUrl,
+  agreements = null,
 }: {
   detail: AdminClientDetail;
   canGrant: boolean;
   bidPublicUrl: string | undefined;
+  /** Their agreements as a consignor, streamed in by the page; null for people who cannot read them. */
+  agreements?: React.ReactNode;
 }) {
   const [granting, setGranting] = useState(false);
   const { party } = detail;
@@ -432,6 +436,7 @@ export function ClientRecordPage({
               description: "Requests they send from LAX Account to sell more editions appear here.",
             }}
           />
+          {agreements}
           <RelatedRecordsSection<Enquiry>
             id="enquiries"
             title="Enquiries"
