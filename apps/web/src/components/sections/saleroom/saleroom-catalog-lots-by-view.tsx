@@ -1,3 +1,4 @@
+import type { LotCardExtras } from "@/components/lot-card/lot-card-extras";
 import { CatalogByView } from "@/components/marketing/catalog-by-view";
 import { SaleroomLotListActions } from "@/components/marketing/lot-quick-look/saleroom-lot-list-actions";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
@@ -17,8 +18,8 @@ type Props = {
   rows: CatalogueRow<SaleLotCardVM>[];
   saleForLifecycle: SaleroomSaleForLifecycle;
   isAuthenticated: boolean;
-  /** OCP: grid image overlays (watchlist + quick-look on tile). */
-  renderCorner?: (lot: SaleLotCardVM) => ReactNode;
+  /** OCP: each tile's save heart and quick look label; given, list rows get theirs too. */
+  renderExtras?: (lot: SaleLotCardVM) => LotCardExtras;
   /** OCP: callers render action slot per lot (Bid vs Results). */
   renderActions?: (lot: SaleLotCardVM) => ReactNode;
   emptyMessage?: string;
@@ -30,7 +31,7 @@ export function SaleroomCatalogLotsByView({
   rows,
   saleForLifecycle,
   isAuthenticated,
-  renderCorner,
+  renderExtras,
   renderActions,
   emptyMessage,
   clearFiltersHref,
@@ -72,7 +73,7 @@ export function SaleroomCatalogLotsByView({
                   lot={entry.lot}
                   saleForLifecycle={saleForLifecycle}
                   listActions={
-                    renderCorner ? (
+                    renderExtras ? (
                       <SaleroomLotListActions lot={entry.lot} isAuthenticated={isAuthenticated} />
                     ) : undefined
                   }
@@ -88,7 +89,7 @@ export function SaleroomCatalogLotsByView({
         <SaleroomLotsGrid
           rows={items}
           saleForLifecycle={saleForLifecycle}
-          {...(renderCorner ? { renderCorner } : {})}
+          {...(renderExtras ? { renderExtras } : {})}
           {...(renderActions ? { renderActions } : {})}
           {...(emptyMessage !== undefined ? { emptyMessage } : {})}
         />

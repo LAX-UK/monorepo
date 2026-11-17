@@ -1,6 +1,11 @@
 "use client";
 
 import { useListNavigation } from "@/components/use-list-navigation.client";
+import {
+  type LoadZohoMirrorCells,
+  useZohoMirrorCells,
+  zohoMirrorColumn,
+} from "@/components/zoho/zoho-mirror-column.client";
 import { createSavedViewsPort } from "@/lib/saved-views-port.client";
 import { presentOrderStatus } from "@/server/domain/order-detail.vm";
 import {
@@ -67,6 +72,15 @@ type OrderRow = AdminOrderList["items"][number];
 
 const ORDERS_LIST_KEY = "lax-admin.orders";
 
+/** Z1: the Zoho column is there for whoever wants it, hidden until shown from Display (TBL-12). */
+const DEFAULT_HIDDEN_COLUMNS = ["zoho"] as const;
+
+/**
+ * The columns Orders had before the Zoho column. A browser that saved a column choice back then
+ * kept a plain array of hidden ids; read against these, the Zoho column stays hidden for it.
+ */
+const LEGACY_COLUMN_IDS = ["order", "status", "buyer", "total", "created"] as const;
+
 const STATUS_VIEWS = ["paid", "pending_payment", "partially_refunded", "refunded"] as const;
 
 /** The created-date presets, counted in whole UK days ending today. */
@@ -115,6 +129,7 @@ export function OrderList({
   page,
   summary = null,
   now,
+  loadZohoMirror,
 }: {
   query: OrderListQuery;
   page: AdminOrderList;
@@ -122,6 +137,8 @@ export function OrderList({
   summary?: AdminOrderSummary | null;
   /** The server's clock, so presets match on the server and in the browser. */
   now: string;
+  /** Reads the page's Zoho badges; the server action unless a test gives its own. */
+  loadZohoMirror?: LoadZohoMirrorCells;
 }) {
   const { pending, navigate, Link: ListLink } = useListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -136,6 +153,8 @@ export function OrderList({
   const sort = orderSortState(query);
   const rows = useMemo(() => sortOrderRows(page.items, orderSortState(query)), [page.items, query]);
   const rowHref = useCallback((row: OrderRow) => orderRecordHref(query, row.orderId), [query]);
+  const orderIds = useMemo(() => page.items.map((row) => row.orderId), [page.items]);
+  const zohoMirror = useZohoMirrorCells("order", orderIds, loadZohoMirror);
 
   const views = [
     { id: "all", label: "All", href: orderListHref(query, { status: null }), count: total },
@@ -216,8 +235,9 @@ export function OrderList({
         truncate: false,
         cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
+      zohoMirrorColumn<OrderRow>(zohoMirror, (row) => row.orderId),
     ],
-    [rowHref],
+    [rowHref, zohoMirror],
   );
 
   const createdLabel = createdRangeLabel(query);
@@ -379,6 +399,8 @@ export function OrderList({
           getRowId: (row) => row.orderId,
           // The first cell carries a second line, which needs 44px rows.
           defaultDensity: "comfortable",
+          defaultHiddenColumns: DEFAULT_HIDDEN_COLUMNS,
+          legacyColumnIds: LEGACY_COLUMN_IDS,
           defaultSort: ORDER_DEFAULT_SORT,
           // The sort orders the page already loaded; it is in the URL so Back keeps it.
           sort,

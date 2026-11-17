@@ -1018,6 +1018,7 @@ export function DataTable<T>({
                                 return (
                                   <div
                                     key={column.id}
+                                    data-mobile-slot="detail"
                                     className="min-w-0 break-words text-staff-xs text-staff-fg"
                                   >
                                     {value}
@@ -1025,7 +1026,10 @@ export function DataTable<T>({
                                 );
                               })}
                               {metaColumns.length > 0 ? (
-                                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-staff-xs text-staff-muted">
+                                <div
+                                  data-mobile-slot="meta"
+                                  className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-staff-xs text-staff-muted"
+                                >
                                   {metaColumns.map((column) => {
                                     const value = column.cell(row);
                                     // An empty fact takes no space, so the others stay aligned.

@@ -167,6 +167,8 @@ export function SaleroomDetailView({ vm, jsonLdText, explainerContext }: Saleroo
                     allowOnlineBidsBeforeGoLive: vm.sale.allowOnlineBidsBeforeGoLive,
                   }}
                   atgReadOnly={vm.atgReadOnly}
+                  registerToBidSale={vm.registerToBidSale}
+                  saleHref={vm.basePath}
                   live={
                     vm.catalogueLiveReads.length > 0
                       ? {

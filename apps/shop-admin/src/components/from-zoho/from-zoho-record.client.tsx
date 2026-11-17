@@ -11,8 +11,10 @@ import {
   useCanOfferOnLaxArt,
   useOfferOnLaxArt,
 } from "@/components/from-zoho/use-offer-on-lax-art.client";
+import { ZohoMirrorBadge } from "@/components/zoho/zoho-mirror-badge";
 import { bidLotUrl } from "@/lib/offer-at-auction-links";
 import { whereItIsLine } from "@/server/domain/where-it-is.vm";
+import type { ZohoMirrorBadgeView } from "@/server/domain/zoho-mirror.vm";
 import {
   CONFLICT_FIELD_LABEL,
   RESOLUTION_LABEL,
@@ -72,6 +74,7 @@ export function FromZohoRecord({
   zohoUrl,
   bidAdminUrl = null,
   locationPanel = null,
+  zohoMirror = null,
 }: {
   detail: AdminRegisterDetail;
   /** The Product's page in Zoho; null when no CRM address is set. */
@@ -80,6 +83,8 @@ export function FromZohoRecord({
   bidAdminUrl?: string | null;
   /** Where the artwork physically is and has been, streamed in by the page. */
   locationPanel?: ReactNode;
+  /** The "Mirrored to Zoho" badge (Z1); null when the artwork has nothing to mirror. */
+  zohoMirror?: ZohoMirrorBadgeView | null;
 }) {
   const open = detail.conflicts.filter((conflict) => conflict.status === "open");
   const decided = detail.conflicts.filter((conflict) => conflict.status === "resolved");
@@ -181,7 +186,14 @@ export function FromZohoRecord({
           />
         }
         title={detail.title}
-        status={isPrint ? undefined : <WhereItIsChip chip={detail.whereItIs.chip} />}
+        status={
+          isPrint && !zohoMirror ? undefined : (
+            <>
+              {isPrint ? null : <WhereItIsChip chip={detail.whereItIs.chip} />}
+              {zohoMirror ? <ZohoMirrorBadge view={zohoMirror} /> : null}
+            </>
+          )
+        }
         meta={
           <>
             <MetaItem label="Stock code">{detail.stockCode}</MetaItem>
