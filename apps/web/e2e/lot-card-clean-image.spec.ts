@@ -1,13 +1,11 @@
-import { type APIRequestContext, type Locator, type Page, expect } from "@playwright/test";
+import { type Locator, type Page, expect } from "@playwright/test";
+import pg from "pg";
 import { clientSession } from "./helpers/auth";
 import { test } from "./helpers/test";
 import { resolveArtistRoutes, resolveSaleRoutes } from "./public-routes";
 
 const enabled = process.env.PLAYWRIGHT_E2E === "1";
 const skipReason = "Set PLAYWRIGHT_E2E=1, PLAYWRIGHT_BASE_URL, and start apps/web (pnpm dev).";
-
-const apiBase = () =>
-  process.env.PLAYWRIGHT_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 /** The labels a lot card's full-width button may carry; each names what the button does. */
 const CARD_BUTTON_LABELS = [
@@ -33,6 +31,11 @@ function cardButton(card: Locator): Locator {
   return card.getByTestId("lot-card-action").getByRole("link");
 }
 
+/** The lot page with its bid dialog open, as the card's "Leave a bid" links it. */
+function withBidOpen(href: string | null): string {
+  return `${href}${href?.includes("?") ? "&" : "?"}bid=open`;
+}
+
 async function opacity(locator: Locator): Promise<number> {
   return locator.evaluate((el) => Number(getComputedStyle(el).opacity));
 }
@@ -44,36 +47,65 @@ async function settled(page: Page) {
   });
 }
 
-type SaleRow = { sale: { id: string; status: string; deliveryMode: string } };
-type LotRow = { id: string; status: string; saleId: string | null };
-
-async function listJson<T>(request: APIRequestContext, path: string): Promise<T[]> {
-  const res = await request.get(`${apiBase()}${path}`);
-  if (!res.ok()) return [];
-  const body = (await res.json()) as { data?: T[] };
-  return body.data ?? [];
-}
+/** The seeded open online sale (organisation journeys), copied for a sale that has not opened. */
+const SEEDED_ONLINE_SALE = "e1000010-0000-4000-8000-000000000010";
+const SCHEDULED_SALE = "e1000099-0000-4000-8000-000000000099";
+const SCHEDULED_LOT = "b1000999-0000-4000-8000-000000000999";
 
 /**
- * An online sale that has not opened, with a lot that has not opened either: its cards' button
- * depends on who is looking ("Register to bid" for a visitor, "Leave a bid" for a registered
- * collector), unlike an open lot's "Bid".
+ * An online sale that opens tomorrow, with one lot: its card's button depends on who is looking
+ * ("Register to bid" for a visitor, "Leave a bid" for a registered collector), unlike an open
+ * lot's "Bid". The seed has no such sale, so this copies the seeded open online sale and one of its
+ * lots under new ids with tomorrow's times, and removes them afterwards. It is a sale of its own,
+ * so no other spec's sale or lot changes. Needs `DATABASE_URL` (the e2e stack's database).
  */
-async function scheduledOnlineSale(request: APIRequestContext): Promise<string> {
-  const sales = await listJson<SaleRow>(request, "/sales?limit=50");
-  const lots = await listJson<LotRow>(request, "/lots?limit=100");
-  const found = sales.find(
-    (row) =>
-      row.sale.status === "scheduled" &&
-      row.sale.deliveryMode === "online" &&
-      lots.some((lot) => lot.saleId === row.sale.id && lot.status === "scheduled"),
+async function withScheduledOnlineSale(): Promise<{ path: string; remove: () => Promise<void> }> {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) return { path: "", remove: async () => {} };
+  const client = new pg.Client({ connectionString });
+  await client.connect();
+  const remove = async () => {
+    await client.query("delete from lot where id = $1", [SCHEDULED_LOT]);
+    await client.query("delete from sale where id = $1", [SCHEDULED_SALE]);
+  };
+  await remove();
+  await client.query("begin");
+  await client.query(
+    "create temp table e2e_sale on commit drop as select * from sale where id = $1",
+    [SEEDED_ONLINE_SALE],
   );
-  return found ? `/sales/sale/${found.sale.id}` : "";
+  await client.query(
+    `update e2e_sale set id = $1, title = 'Lot card e2e: opens tomorrow', status = 'scheduled',
+       start_time = now() + interval '1 day', end_time = now() + interval '8 days',
+       preview_start_time = now() - interval '1 day', home_pin_order = null`,
+    [SCHEDULED_SALE],
+  );
+  await client.query("insert into sale select * from e2e_sale");
+  await client.query(
+    "create temp table e2e_lot on commit drop as select * from lot where sale_id = $1 and lot_number = 1",
+    [SEEDED_ONLINE_SALE],
+  );
+  await client.query(
+    `update e2e_lot set id = $1, sale_id = $2, status = 'scheduled', artwork_register_id = null,
+       start_time = now() + interval '1 day', end_time = now() + interval '8 days',
+       current_price = starting_price, winner_id = null, buyer_legal_entity_id = null`,
+    [SCHEDULED_LOT, SCHEDULED_SALE],
+  );
+  await client.query("insert into lot select * from e2e_lot");
+  await client.query("commit");
+  return {
+    path: `/sales/sale/${SCHEDULED_SALE}`,
+    remove: async () => {
+      await remove();
+      await client.end();
+    },
+  };
 }
 
 let salePath = "";
 let artistPath = "";
 let scheduledSalePath = "";
+let removeScheduledSale: () => Promise<void> = async () => {};
 
 test.beforeAll(async ({ playwright }) => {
   if (!enabled) return;
@@ -82,8 +114,14 @@ test.beforeAll(async ({ playwright }) => {
   const artist = (await resolveArtistRoutes(request)).find((r) => r.name === "artist-on-sale");
   salePath = sale?.path ?? "";
   artistPath = artist?.path ?? "";
-  scheduledSalePath = await scheduledOnlineSale(request);
   await request.dispose();
+  const scheduled = await withScheduledOnlineSale();
+  scheduledSalePath = scheduled.path;
+  removeScheduledSale = scheduled.remove;
+});
+
+test.afterAll(async () => {
+  await removeScheduledSale();
 });
 
 test.beforeEach(async ({ page }) => {
@@ -174,9 +212,11 @@ test.describe("sale page lot card: clean picture @smoke", () => {
     // Mouse over the card: the label shows, over the picture, raised clear of the pill's row.
     await card.hover();
     await expect.poll(() => opacity(quickLook)).toBe(1);
+    const hovered = await box.boundingBox();
     const label = await quickLook.boundingBox();
-    expect(label?.y ?? 0).toBeGreaterThan(picture?.y ?? 0);
-    expect(pictureBottom - ((label?.y ?? 0) + (label?.height ?? 0))).toBeGreaterThanOrEqual(38);
+    const hoveredBottom = (hovered?.y ?? 0) + (hovered?.height ?? 0);
+    expect(label?.y ?? 0).toBeGreaterThan(hovered?.y ?? 0);
+    expect(hoveredBottom - ((label?.y ?? 0) + (label?.height ?? 0))).toBeGreaterThanOrEqual(38);
 
     // Keyboard: Tab from the title reaches the label (read after the lot's name), which shows
     // and opens quick look.
@@ -226,7 +266,7 @@ test.describe("sale page lot card: clean picture @smoke", () => {
         expect(CARD_BUTTON_LABELS).toContain(label);
         const href = (await button.getAttribute("href")) ?? "";
         if (label === "Bid") expect(href).toBe(pictureHref);
-        if (label === "Leave a bid") expect(href).toBe(`${pictureHref}?bid=open`);
+        if (label === "Leave a bid") expect(href).toBe(withBidOpen(pictureHref));
         if (label !== "Bid" && label !== "Leave a bid") expect(href).not.toBe(pictureHref);
         seen += 1;
       }
@@ -237,12 +277,17 @@ test.describe("sale page lot card: clean picture @smoke", () => {
 
 test.describe("lot card button before the lot opens @smoke", () => {
   test.beforeEach(() => {
-    test.skip(!scheduledSalePath, "No seeded online sale with a lot that has not opened");
+    test.skip(!scheduledSalePath, "Set DATABASE_URL (the e2e stack's database)");
   });
 
   /** The first card whose lot has not opened: no "Bid" there, whoever is looking. */
   async function notYetOpen(page: Page): Promise<Locator> {
-    await page.goto(`${scheduledSalePath}?view=grid`);
+    // After signing in, My bids may still be settling its own address; a navigation it
+    // interrupts is simply made again.
+    await page.goto(`${scheduledSalePath}?view=grid`).catch(async () => {
+      await page.waitForLoadState("networkidle").catch(() => undefined);
+      await page.goto(`${scheduledSalePath}?view=grid`);
+    });
     await expect(lotCards(page).first()).toBeVisible();
     await settled(page);
     return lotCards(page).first();
@@ -267,6 +312,6 @@ test.describe("lot card button before the lot opens @smoke", () => {
     const button = cardButton(card);
     await expect(button).toHaveText("Leave a bid");
     const pictureHref = await pictureBox(card).locator("a").first().getAttribute("href");
-    expect(await button.getAttribute("href")).toBe(`${pictureHref}?bid=open`);
+    expect(await button.getAttribute("href")).toBe(withBidOpen(pictureHref));
   });
 });
