@@ -1,3 +1,5 @@
+import type { AdminReleaseAlertSend } from "@auction/shop-contracts";
+
 /** What an alert is about, read from the catalogue when the work is matched. */
 export type AlertArtwork = {
   id: string;
@@ -47,4 +49,12 @@ export type ReleaseAlertCounts = { confirmed: number; awaitingConfirmation: numb
 /** What LAX Admin shows about the release list. */
 export interface ReleaseAlertSummaryReader {
   counts(): Promise<ReleaseAlertCounts>;
+}
+
+/** One page of the release-alert send log, newest release first. */
+export interface ReleaseAlertSendLogReader {
+  list(query: { cursor?: string | undefined; limit?: number | undefined }): Promise<{
+    items: AdminReleaseAlertSend[];
+    nextCursor: string | null;
+  }>;
 }

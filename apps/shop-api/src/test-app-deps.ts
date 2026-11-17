@@ -304,6 +304,7 @@ export function createMinimalShopApiTestDeps(
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
       releaseAlertSummary: { counts: async () => ({ confirmed: 0, awaitingConfirmation: 0 }) },
+      releaseAlertSends: { list: async () => ({ items: [], nextCursor: null }) },
       printParties: createInMemoryPrintPartyStore(),
       leads: new LeadsService({
         list: async () => ({
