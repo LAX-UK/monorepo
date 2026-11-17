@@ -159,3 +159,151 @@ The page is close. Access, bounded reads, the kit reuse, the D6 states and the a
 - Thumbnails show as broken images in my shots only because this sandbox cannot reach `images.unsplash.com`, where the seed's photos live. That is not a PR defect, but see the `missingLabel` item in finding 7.
 - The quotes I added for the screenshots exist only in the throwaway local database.
 - I did not prove that the journey fails with the page reverted (the PR body says it was done).
+
+## Final recheck
+
+I rechecked the PR at head `8884fca7` (18 commits) on 2026-11-17. That head adds `12d6b52d`, a merge of `main`, and `8884fca7`, the fixes from this review. I checked it against the Deliveries section of `docs/design/staff-gaps-delivery-zoho-alerts.md` (D1–D9) and the seven findings above.
+
+**Result: the code is ready, but the PR body is not.** All seven findings are fixed and each was checked with evidence. One item in the brief still fails: the `08b-closed-collected-panel` row of the PR body's screenshot table does not render (see below). The fix is an edit to the PR body only, with no code change.
+
+### Findings 1–7
+
+| # | Finding | Status | Evidence |
+| --- | --- | --- | --- |
+| 1 | The browser test runs in the Bid admin PR browser gate, seeds its own data and never skips | **Fixed** | See "Finding 1 in CI" below. |
+| 2 | The kit test "a click on the list does not close it" can fail | **Fixed** | The test now waits a tick (`act` plus `setTimeout 0`) for Radix's listener. I replaced `onInteractOutside: (event) => event.preventDefault()` (`detail-panel.tsx:183`) with a no-op, and 1 test failed: "from 1280px has no scrim, and a click on the list beside it does not close it". Restored, it passes (11 of 11). |
+| 3 | The tab-return refresh is tested | **Fixed** | See "Finding 3 mutations" below. |
+| 4 | API failure and not found are separate states, with correct D6 copy | **Fixed** | See "Finding 4" below. |
+| 5 | The lot title is readable beside the panel at 1440 and at 375 | **Fixed** | See "Finding 5 screenshots" below. |
+| 6 | D9 records PR 2 split into 2a and 2b, and the PR body says so | **Fixed** | See "Finding 6" below. |
+| 7 | The smaller items | **Fixed** | See "Finding 7" below. |
+
+#### Finding 1 in CI
+
+- **Run:** Web PR browser gates run `44036318293`, job `browser-gates` (133880081722), on head `8884fca7`, event `pull_request`. It succeeded.
+- **The test listing** (`playwright test --list --grep "@smoke|@roles|@public-a11y"`) includes:
+  - `admin-deliveries.spec.ts:149 › deliveries @smoke @journey › finds a buyer's request, opens it in the queue panel and steps through`
+  - `:254 › deliveries access @roles › operations @roles › opens Deliveries with its six views and the waiting count`
+  - `:278 › … read-only staff @roles › is sent to No access and has no Deliveries link`
+- **The `test:e2e:pr` step** (`--grep "@smoke|@roles"`) reported `Running 84 tests`, then `78 passed, 6 skipped`.
+- **These 3 tests ran and passed, not skipped.** The same step on the previous head (run `44020787235`) reported `81 tests, 75 passed, 6 skipped`, with no `admin-deliveries` in its log. So the 3 tests added here are the 3 new passes; the 6 skips are unchanged and are other specs.
+- **The spec cannot skip.**
+  - It has no `test.skip` or `test.fixme`.
+  - `requireStack()` throws without `PLAYWRIGHT_E2E` or staff credentials, and the seeding throws without `DATABASE_URL`.
+  - The gate step's env has `DATABASE_URL` and `PLAYWRIGHT_E2E=1`.
+  - The journey seeds its own sale, lots and requests and removes them afterwards.
+- **Audits:** `/admin/deliveries` is now in `admin-a11y.spec.ts` (at 1440 and at mobile width), in `QUEUE_PANELS` in `admin-viewport-audit.spec.ts` (`param: "record"`) and in `staffViewportListRoutes`.
+
+#### Finding 3 mutations
+
+The new test opens the panel and checks hidden, then visible, and checks visible with the panel closed. I reverted the behaviour two ways:
+
+| Reverted | Result |
+| --- | --- |
+| `router.refresh()` replaced with a no-op | 1 failed |
+| The `if (!panelOpen) return` guard removed | 1 failed |
+
+Both failures were "reads the list again when the tab comes back with a panel open, and not with it closed".
+
+#### Finding 4
+
+- **The loader.** `load-deliveries-page.ts` no longer has `.catch(() => null)`:
+  - A 404 is still `null` through `getAdminDelivery`'s `nullStatuses`, which shows "not found".
+  - Any other failure sets `selectedError`.
+- **The panel.** It renders a danger Notice with `alert`:
+  - Title "This delivery could not be loaded. Try again."
+  - Text "The Bid API didn't answer. The buyer's request is kept."
+  - Buttons "Try again" (`router.refresh()`) and "Back to the list".
+- **Not-found copy.** It now reads "No buyer has asked for delivery on this lot, or the link is out of date."
+- **Mutations:**
+
+  | Reverted | Result |
+  | --- | --- |
+  | `selectedError = true` set back to `selected = null` | The loader test failed |
+  | The `loadFailed` branch in the panel disabled | 2 failed (panel and list) |
+
+- **Screenshots.** `16-load-error` at 1440 shows the error in the beside panel while the list stays readable.
+
+#### Finding 5 screenshots
+
+I opened the PR's re-shot PNGs.
+
+- **`02-waiting-panel-1440-light`:** beside the panel, the titles read in full ("Lot 3 · Anatomy of Light", "Lot 4 · Chromatic Resonance", "Lot 5 · Suspended Memory"). The sale line wraps to two lines and keeps its date ("Spring Contemporary Evening / Sale · Tue 8 Sep"). Status, Price and Waiting stay in view.
+- **`02b-long-title-panel-1440-dark`:** the same, in dark.
+- **`01-waiting-375-light` and `08-closed-375-dark`:** the badge now sits on its own line under the title. Titles read in full, including "Lot 8 · Collection journey: collected", and the sale line wraps. Only the meta line is cut ("… Berlin, Germ…"), which is acceptable.
+- **Tests:** a list test asserts `whitespace-normal` on the title and the sale line, and no `data-staff-truncated`. A kit `cells.test` covers the `PrimaryCell` `wrap` change for the second line.
+- **Other users of the kit change:** the only other `wrap` user is `accounting-queue-list.tsx:138`. Its short `row.kind` line may now wrap, which is harmless.
+
+#### Finding 6
+
+- **The design doc:** its D9 now reads "Page, split in two (decided at the review of #1520)":
+  - 2a is the read-only page (#1520).
+  - 2b is Send quote and Change quote, and the `/admin/deliveries` baseline in `admin-pages-visual.spec.ts`.
+  - The summary table row is updated to match.
+- **The PR body:** it says the same, under "D9 PR 2 is split …: this PR is 2a … 2b adds …".
+- **Baselines:** none are added or changed.
+
+#### Finding 7
+
+- **`missingLabel`:** the thumbnail passes `missingLabel: DELIVERIES_COPY.noPhoto` ("No photo yet"), and a test finds `img` named "No photo yet".
+- **`error.tsx` copy:** it uses `DELIVERIES_COPY.title`, `DELIVERIES_PATH` and `DELIVERIES_COPY.error.back`.
+- **403 to `AccessDeniedState`:** a 403 on the list read now returns `denied: true`, and the list renders the kit's `AccessDeniedState` (H1 "You don't have access to Deliveries", roles Fulfilment and Administrator) with no Try again. Screenshots are `17-denied`. Mutations:
+
+  | Reverted | Result |
+  | --- | --- |
+  | The loader's `denied` flag | 1 failed |
+  | The list's `denied` branch | 1 failed |
+
+- **Ref written during render:** `useChangedWhileOpen` now keeps `{ lotId, key }` in `useState`, reset by lot ("adjust state when a prop changes"). `useRef` is gone from `delivery-panel.tsx`. A new test covers reopening the same lot after its panel closed.
+- **Stale comment:** `page.tsx` now says that under D5 the page opens only for Fulfilment and Administrators, and everyone else is sent to No access.
+
+### PR 1 review findings 4–9: no regression
+
+| Area | Result |
+| --- | --- |
+| Web: deliveries, nav, the segment layout and `lib/data/http` | 52 files, 280 tests passed |
+| Kit `@auction/staff-ui` | 86 files, 704 tests passed |
+
+The behaviours behind PR 1's findings 4–9 all hold, and their tests and mutations above still fail when the behaviour is removed:
+
+- the D6 notices
+- the beside panel with columns in view
+- the copy all in `deliveries-copy.ts`
+- the ", 3 waiting" count
+
+Finding 8 is now complete, because `error.tsx` copy comes from the copy file.
+
+CI on `8884fca7`: 41 check runs. All succeeded except `account-browser-gates` and `art-browser-gates`, which were skipped as not applicable.
+
+### Hygiene
+
+- **No budgets, baselines or allowances raised.** `git diff --name-only <merge-base> pr1520` has no path matching budget, baseline, allowance, snapshots, visual or Lenis.
+- **Commits by `mahmoudamrspace`, no trailers.** All 18 commits are authored and committed by `mahmoudamrspace <mahmoudamr.space@gmail.com>`, and that includes the 4 merges. No message has a Co-authored-by, Signed-off-by or "Generated with" line.
+- **No AI footer** in the PR body.
+- **Behind `main`:** the branch is behind `main` (`ab2ca97c`). That is not a blocker.
+
+### What still blocks: the PR body's 08b screenshot row does not render
+
+- **Where:** line 107 of the PR body, the `08b-closed-collected-panel` row.
+- **What is wrong:** all four cells are escaped and wrapped in backticks, for example:
+
+  ```
+  | `08b-closed-collected-panel` | &lt;img src="`` https://github.com/lax-uk/monorepo/raw/8884fca7…/08b-closed-collected-panel-1440-light.png" `` width="220"> | …
+  ```
+
+  GitHub shows this as literal text, so the four 08b images (the "Collected in person" closed panel) do not appear.
+- **Everything else renders:** I fetched the other 68 image URLs in the body (all 17 states × 4, plus the 4 mockups), and every one returned 200 `image/png` with a real PNG. The 08b PNGs exist in the branch at `docs/pr-evidence/bid-admin-deliveries/08b-*`.
+- **Fix:** rewrite the row like its neighbours:
+
+  ```
+  | `08b-closed-collected-panel` | <img src="https://github.com/lax-uk/monorepo/raw/8884fca7…/08b-closed-collected-panel-1440-light.png" width="220"> | … |
+  ```
+
+  Remove the `&lt;` and the backtick runs. No code change is needed.
+
+### Not blocking
+
+- **The 02b screenshot is mislabelled.** `02b-long-title-panel` is labelled "title and sale line wrap", but its rows are the same short seeded titles as in 02. The wrapping it shows is the sale line's. The unit test covers the wrap, and at 1440 the title column has room, so this is evidence that is weaker than its label, not a defect.
+- **A refused detail read can still be retried.** A 403 on the detail read (`getAdminDelivery`) shows the retryable "could not be loaded" Notice, not access denied. That needs the list read to be allowed and the detail read refused, which cannot happen under the current API guard (both are under `/deliveries*`).
+
+Verdict: FIX FIRST. The code passes every check; the PR body still has to be fixed so its 08b screenshot row renders.
