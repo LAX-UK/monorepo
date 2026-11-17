@@ -840,6 +840,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           writesFor: createDrizzleStockLocationWritesFor(stockLocationStoreOn),
         }),
         releaseAlertSummary: shopAlerts.summary,
+        releaseAlertSends: shopAlerts.sendLog,
         printParties: createDrizzlePrintPartyStore(db),
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {

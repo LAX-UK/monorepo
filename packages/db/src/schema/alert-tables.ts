@@ -27,6 +27,8 @@ export type AlertTablesConfig = {
   subjectColumn: string;
   /** Where the account column points, when it has a foreign key (Bid's `user.id`). */
   subjectReference?: () => AnyPgColumn;
+  /** Index matches by `(item_key, topic)`: Shop's release-alert send log reads them by item (0405). */
+  matchItemKeyIndex?: boolean;
 };
 
 const STATUSES: AlertStatusTuple = ["pending", "confirmed", "stopped"];
@@ -168,20 +170,31 @@ export function defineAlertTables(config: AlertTablesConfig) {
       index(`${prefix}_alert_match_digest_idx`).on(t.digestId),
       /** The retention prune picks settled matches by age. */
       index(`${prefix}_alert_match_matched_at_idx`).on(t.matchedAt),
+      ...(config.matchItemKeyIndex
+        ? [index(`${prefix}_alert_match_item_key_idx`).on(t.itemKey, t.topic)]
+        : []),
       check(`${prefix}_alert_match_topic_check`, sql`${t.topic} IN (${list(config.topics)})`),
     ],
   );
 
-  const announcement = pgTable(`${prefix}_alert_announcement`, {
+  const announcement = pgTable(`${prefix}_alert_announcement`, alertAnnouncementColumns());
+
+  return { subscriber, topic, match, digest, announcement };
+}
+
+export type AlertTables = ReturnType<typeof defineAlertTables>;
+
+/**
+ * The announced-once record's columns, shared by every product. Shop adds its send-log columns on
+ * top (`shop-alerts.ts`); the engine reads and writes only these.
+ */
+export function alertAnnouncementColumns() {
+  return {
     itemKey: text("item_key").primaryKey(),
     announcedAt: ts("announced_at").notNull().defaultNow(),
     /** False when staff unticked "Announce": the item counts as announced and tells nobody. */
     announce: boolean("announce").notNull(),
     /** When the item was turned into matches. */
     expandedAt: ts("expanded_at"),
-  });
-
-  return { subscriber, topic, match, digest, announcement };
+  };
 }
-
-export type AlertTables = ReturnType<typeof defineAlertTables>;
