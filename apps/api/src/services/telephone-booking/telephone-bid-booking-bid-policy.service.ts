@@ -1,4 +1,6 @@
-import { ok } from "neverthrow";
+import { OPERATOR_CAP_ERROR_CODES } from "@auction/domain";
+import { numberToMoneyString } from "@auction/validators";
+import { err, ok } from "neverthrow";
 import { parseAuthorizedMaxCap } from "../../lib/telephone-booking.mapper.js";
 import type { ITelephoneBidBookingBidPolicy } from "../interfaces/telephone-bid-booking-service.js";
 import type { TelephoneBidBookingContext } from "./telephone-bid-booking-context.js";
@@ -42,11 +44,13 @@ export class TelephoneBidBookingBidPolicyService implements ITelephoneBidBooking
         ? Math.max(input.amount, input.maxAutoBidAmount)
         : input.amount;
     if (cap != null && effective > cap + 1e-9) {
-      return telephoneBookingErr(
-        "Bid exceeds authorized telephone limit",
-        403,
-        "authorized_max_exceeded",
-      );
+      // The booking's maximum travels with the refusal so the clerk sees it (and it is audited).
+      return err({
+        message: "Bid exceeds authorized telephone limit",
+        status: 403,
+        code: OPERATOR_CAP_ERROR_CODES.telephone,
+        details: { limitKind: "telephone", limit: numberToMoneyString(cap) },
+      });
     }
 
     return ok(booking);

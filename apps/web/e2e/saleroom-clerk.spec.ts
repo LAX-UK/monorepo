@@ -168,6 +168,64 @@ test.describe("hybrid saleroom clerk @journey", () => {
     await expect(paddleAmount).toHaveValue("1500");
   });
 
+  test("a bid a limit refused says which limit in an alert above the form, not a toast", async ({
+    page,
+  }) => {
+    // The API's answer is mocked at the BFF, so nothing is placed and the room is unchanged.
+    const refusedBids: string[] = [];
+    await page.route("**/admin/saleroom/telephone-bids", async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      refusedBids.push(route.request().postData() ?? "");
+      await route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: "Bid exceeds your approved limit for this sale",
+          code: "bid_limit_exceeded",
+          refusal: { kind: "registration", limit: "5000.00", available: null },
+        }),
+      });
+    });
+    await clerkConsole(page);
+
+    // The seed confirms one telephone line for the lot on the block.
+    const telephoneAmount = page.locator('input[id^="telephone-bid-amount-"]');
+    await expect(telephoneAmount).toBeVisible();
+    await expect(async () => {
+      await page.getByRole("combobox", { name: "Telephone line" }).click();
+      await page.getByRole("option").first().click({ timeout: 2_000 });
+    }).toPass({ timeout: 15_000 });
+    await page
+      .locator("div")
+      .filter({ has: telephoneAmount })
+      .filter({ has: page.getByRole("button", { name: /^minimum bid/i }) })
+      .last()
+      .getByRole("button", { name: /^minimum bid/i })
+      .click();
+    await expect(telephoneAmount).toHaveValue(/^7,?100(\.00)?$/);
+
+    await page.getByRole("button", { name: /^place telephone bid$/i }).click();
+
+    const alert = page.getByRole("alert").filter({ hasText: /wasn't placed/ });
+    await expect(alert).toContainText(/bid of £7,100\.00 wasn't placed/);
+    await expect(alert).toContainText("Their approved limit for this sale is £5,000.00.");
+    await expect(alert).toContainText(
+      "Take a bid within the limit. To bid higher, their registration limit must be raised first.",
+    );
+    // Above the form it concerns (FBK-1).
+    const alertTop = (await alert.boundingBox())?.y ?? Number.POSITIVE_INFINITY;
+    const amountTop = (await telephoneAmount.boundingBox())?.y ?? 0;
+    expect(alertTop).toBeLessThan(amountTop);
+    expect(refusedBids).toHaveLength(1);
+    // A limit refusal is an answer, not an error: no toast is raised for it.
+    await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+    await expect(page.getByText("Bid exceeds your approved limit for this sale")).toHaveCount(0);
+
+    // Changing the bid clears it.
+    await telephoneAmount.fill("5000");
+    await expect(alert).toHaveCount(0);
+  });
+
   test("clerk console refreshes roster after check-in redirect", async ({ page }) => {
     await page.goto(`/admin/sales/${seededHybridSaleId}/registrations#check-in`);
     await expect(page.locator("#check-in")).toBeVisible();

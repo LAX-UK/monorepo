@@ -9,6 +9,7 @@ import {
   adminSaleroomCheckInCandidatesQuerySchema,
   adminSaleroomSaleIdParamSchema,
   adminTelephonePlaceBidBodySchema,
+  staffBidIdempotencyHeaderSchema,
 } from "@auction/validators";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -16,6 +17,7 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireSaleroomOperate, requireSalesAccess } from "../../middleware/require-capability.js";
 import { saleReadinessForViewer } from "../../services/admin/admin-sale-readiness.service.js";
+import { clerkBidErrorBody } from "../../services/admin/clerk-bid-error-body.js";
 import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -102,14 +104,14 @@ export function attachAdminSaleroomRoutes(
   platform.post(
     "/saleroom/telephone-bids",
     requireSaleroomOperate,
+    zValidator("header", staffBidIdempotencyHeaderSchema),
     zValidator("json", adminTelephonePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
       const idempotencyKey =
         body.idempotencyKey ??
-        c.req.header("idempotency-key") ??
-        c.req.header("Idempotency-Key") ??
+        c.req.valid("header")["idempotency-key"] ??
         (body.telephoneBookingId
           ? `telephone-booking:${body.lotId}:${body.telephoneBookingId}:${body.amount}`
           : `telephone-clerk:${body.lotId}:${clerkUserId}:${body.buyerUserId}:${body.amount}`);
@@ -127,11 +129,7 @@ export function attachAdminSaleroomRoutes(
         return c.json(out.body, 201);
       }
       if (out.type === "err") {
-        const e = out.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
+        return c.json(clerkBidErrorBody(out.error), asHttpStatus(out.error.status));
       }
       return c.json(out.body, 201);
     },
@@ -140,14 +138,14 @@ export function attachAdminSaleroomRoutes(
   platform.post(
     "/saleroom/paddle-bids",
     requireSaleroomOperate,
+    zValidator("header", staffBidIdempotencyHeaderSchema),
     zValidator("json", adminPaddlePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
       const clerkUserId = c.get("userId") as string;
       const idempotencyKey =
         body.idempotencyKey ??
-        c.req.header("idempotency-key") ??
-        c.req.header("Idempotency-Key") ??
+        c.req.valid("header")["idempotency-key"] ??
         `paddle:${body.saleId}:${body.paddleNumber}:${body.lotId}:${body.amount}`;
       const out = await container.admin.liveBidding.placeClerkPaddleBid({
         saleId: body.saleId,

@@ -29,6 +29,25 @@ describe("OperatorPlacementPolicy", () => {
     expect(() => policy.assertCapNotExceeded(5000, 5001)).toThrow();
   });
 
+  it("names the cap a refused bid went over, so the clerk can be told it", () => {
+    const refusal = (placedVia: string) => {
+      try {
+        policy.assertCapNotExceeded(5000, 5001, placedVia);
+      } catch (e) {
+        return e as { code?: string; details?: Record<string, string> };
+      }
+      return null;
+    };
+    expect(refusal("saleroom")).toMatchObject({
+      code: "bid_limit_exceeded",
+      details: { limitKind: "paddle", limit: "5000.00" },
+    });
+    expect(refusal("telephone")).toMatchObject({
+      code: "authorized_max_exceeded",
+      details: { limitKind: "telephone", limit: "5000.00" },
+    });
+  });
+
   it("binds telephone bypass to the booking owner and acting entity", async () => {
     vi.mocked(reader.findTelephoneBookingPlacement).mockResolvedValue({
       saleId: "sale-1",

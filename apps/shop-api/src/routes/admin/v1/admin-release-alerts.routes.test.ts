@@ -3,6 +3,7 @@ import { OIDC_ACR_SILVER } from "@auction/identity-contracts";
 import {
   type AdminReleaseAlertSend,
   AdminReleaseAlertSendListSchema,
+  AdminReleaseAlertSendSchema,
 } from "@auction/shop-contracts";
 import type { ShopStaffRole } from "@auction/shop-domain";
 import { Value } from "@sinclair/typebox/value";
@@ -49,7 +50,7 @@ const SENT: AdminReleaseAlertSend = {
   notSentReasons: [{ reason: "topic_off", count: 14 }],
 };
 
-async function buildApp(role: ShopStaffRole, sends?: ReleaseAlertSendLogReader) {
+async function buildApp(role: ShopStaffRole, sends?: Partial<ReleaseAlertSendLogReader>) {
   vi.mocked(verifyBearerToken).mockResolvedValue({
     subject: `${role}-subject`,
     payload: {
@@ -68,7 +69,7 @@ async function buildApp(role: ShopStaffRole, sends?: ReleaseAlertSendLogReader) 
       brokerCanAccessClientParty: async () => false,
     },
   });
-  if (sends) deps.admin.releaseAlertSends = sends;
+  if (sends) deps.admin.releaseAlertSends = { ...deps.admin.releaseAlertSends, ...sends };
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();
   return app;
@@ -136,6 +137,48 @@ describe("GET /admin/v1/release-alerts/sends", () => {
     });
     const response = await app.inject({ method: "GET", url: `${URL}?cursor=junk`, headers: auth });
     expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+});
+
+describe("GET /admin/v1/release-alerts/sends/:artworkId", () => {
+  const ONE = `${URL}/${SENT.artworkId}`;
+
+  for (const role of ALL_ROLES) {
+    const allowed = CAN_READ.includes(role);
+    it(`${role} ${allowed ? "can" : "cannot"} read one release`, async () => {
+      const app = await buildApp(role, { find: async () => SENT });
+      const response = await app.inject({ method: "GET", url: ONE, headers: auth });
+      expect(response.statusCode).toBe(allowed ? 200 : 403);
+      await app.close();
+    });
+  }
+
+  it("answers one release in the contract shape, read by its work", async () => {
+    const find = vi.fn(async () => SENT);
+    const app = await buildApp("account_manager", { find });
+    const response = await app.inject({ method: "GET", url: ONE, headers: auth });
+    expect(response.statusCode).toBe(200);
+    expect(Value.Check(AdminReleaseAlertSendSchema, response.json())).toBe(true);
+    expect(response.json()).toEqual(SENT);
+    expect(find).toHaveBeenCalledWith(SENT.artworkId);
+    await app.close();
+  });
+
+  it("answers 404 for a work with no release in the log", async () => {
+    const app = await buildApp("shop_admin", { find: async () => null });
+    const response = await app.inject({ method: "GET", url: ONE, headers: auth });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: "not_found" });
+    await app.close();
+  });
+
+  it("refuses an id that is not a work id with 400, without reading", async () => {
+    const find = vi.fn(async () => SENT);
+    const app = await buildApp("shop_admin", { find });
+    const response = await app.inject({ method: "GET", url: `${URL}/not-a-uuid`, headers: auth });
+    expect(response.statusCode).toBe(400);
+    expect(find).not.toHaveBeenCalled();
     await app.close();
   });
 });
