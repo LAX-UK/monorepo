@@ -1,5 +1,6 @@
 "use client";
 
+import { lotBidHref } from "@/lib/lot-card/lot-bid-href";
 import { useLotCardState } from "@/lib/lot-card/use-lot-card-state";
 import { formatLotMoney } from "@/lib/lot-page/lot-money";
 import {
@@ -38,11 +39,6 @@ const SHAPES: Readonly<Record<StateLineIcon, ComponentType<{ className?: string 
 };
 
 const MONEY = { money: (amount: string) => formatLotMoney(amount) };
-
-/** The lot page with its bid dialog open; the page re-checks every rule before it opens. */
-export function lotBidHref(lotHref: string): string {
-  return `${lotHref}${lotHref.includes("?") ? "&" : "?"}bid=open`;
-}
 
 /**
  * How the signed-in bidder stands on a card's lot: "You're leading", "Outbid", "Maximum set".

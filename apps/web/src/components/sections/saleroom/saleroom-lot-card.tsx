@@ -1,6 +1,8 @@
 "use client";
 
+import { LotCard } from "@/components/lot-card/lot-card";
 import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import type { LotCardExtras } from "@/components/lot-card/lot-card-extras";
 import { LotCardLine } from "@/components/lot-card/lot-card-line";
 import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
@@ -13,21 +15,17 @@ import {
 } from "@/components/ui/adaptive-media-frame";
 import { saleroomOnBlockBadge, saleroomOnBlockRingClass } from "@/lib/lot/lot-lifecycle";
 import { LOT_CARD_GRID_SLOTS, LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
-import {
-  lotCardMediaClasses,
-  lotCardMediaFrame,
-} from "@auction/marketing-ui/lot-media/lot-card-media-frame";
+import { lotCardMediaFrame } from "@auction/marketing-ui/lot-media/lot-card-media-frame";
 import { Skeleton } from "@auction/ui/lax/skeleton";
-import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   lot: SaleLotCardVM;
   saleForLifecycle: SaleroomSaleForLifecycle;
-  /** Grid/tile image overlays (watchlist + quick-look). */
-  cornerAction?: ReactNode;
+  /** Tile only: the save heart (on the "Lot N" line) and the quick look label (on the picture). */
+  extras?: LotCardExtras;
   /** List row actions beside title (inline heart + quick-look). */
   listActions?: ReactNode;
   actions?: ReactNode;
@@ -60,7 +58,7 @@ function CardPriceLine({ lot }: { lot: SaleLotCardVM }) {
 export function SaleroomLotCard({
   lot,
   saleForLifecycle,
-  cornerAction,
+  extras,
   listActions,
   actions,
   sizes = DEFAULT_SIZES,
@@ -148,80 +146,46 @@ export function SaleroomLotCard({
     );
   }
 
-  const media = lotCardMediaClasses(lot.displayStyle);
   const fit = lotCardMediaFrame(lot.displayStyle).fit;
   const tile = (
-    <article className="lax-card lax-card-lift group flex h-full w-full min-w-0 flex-col gap-4">
-      <div className="relative w-full">
-        <Link
-          href={lot.href}
-          className={cn(
-            "relative block w-full min-h-0 overflow-hidden rounded-lg motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-            media.frame,
-            lot.isOnBlock && saleroomOnBlockRingClass,
-          )}
-          aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
-        >
-          <AdaptiveMediaFrameContainer className="absolute inset-0">
-            <span className={cn("block size-full", media.inset)}>
-              <span className={cn("relative block size-full", media.image)}>
-                <AdaptiveFrameImage
-                  src={lot.imageUrl}
-                  alt={lot.imageAlt}
-                  objectFit={fit}
-                  sizes={sizes}
-                  imgClassName="lax-card-zoom"
-                />
-              </span>
-            </span>
-          </AdaptiveMediaFrameContainer>
-          {lot.pending ? null : (
-            <SaleroomLotCatalogOverlay
-              lot={lot}
-              saleForLifecycle={saleForLifecycle}
-              layout="overlay"
-              useOverlayChrome
-              showTimer={false}
-            />
-          )}
-        </Link>
-        {cornerAction ? <Fragment key={`${lot.id}-corner-action`}>{cornerAction}</Fragment> : null}
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
-        <p
-          className={cn(
-            "min-h-4 font-label text-xs font-medium leading-4 text-on-surface-variant",
-            !lot.lotLabel && "invisible",
-          )}
-        >
-          {lot.lotLabel ?? "Lot"}
-        </p>
-        {lot.isOnBlock ? (
+    <LotCard
+      href={lot.href}
+      title={lot.title}
+      lotLabel={lot.lotLabel}
+      mediaStyle={lot.displayStyle}
+      MediaBox={AdaptiveMediaFrameContainer}
+      media={
+        <AdaptiveFrameImage src={lot.imageUrl} alt={lot.imageAlt} objectFit={fit} sizes={sizes} />
+      }
+      status={
+        lot.pending ? null : (
+          <SaleroomLotCatalogOverlay
+            lot={lot}
+            saleForLifecycle={saleForLifecycle}
+            layout="overlay"
+            useOverlayChrome
+            showTimer={false}
+          />
+        )
+      }
+      {...(lot.isOnBlock ? { pictureClassName: saleroomOnBlockRingClass } : {})}
+      save={extras?.save}
+      quickLook={extras?.quickLook}
+      flag={
+        lot.isOnBlock ? (
           <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} className="self-start" />
-        ) : null}
-        <div>
-          <Link
-            href={lot.href}
-            className="lax-card-title line-clamp-2 text-sm font-semibold leading-snug text-brand-900 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:text-lg md:leading-6 dark:text-on-surface"
-          >
-            {lot.title}
-          </Link>
-          {lot.artistOrMedium ? (
-            <p className="line-clamp-1 mt-1 text-sm font-normal leading-4 text-brand-500 dark:text-on-surface-variant">
-              {lot.artistOrMedium}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="mt-auto flex flex-col gap-1.5">
+        ) : null
+      }
+      subtitle={lot.artistOrMedium}
+      meta={
+        <>
           <LotEstimateLine value={lot.estimateValue} />
           <CardPriceLine lot={lot} />
           <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
-          {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
-        </div>
-      </div>
-    </article>
+        </>
+      }
+      action={actions}
+    />
   );
 
   return (
