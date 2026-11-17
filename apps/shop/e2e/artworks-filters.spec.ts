@@ -21,3 +21,59 @@ test.describe("Artworks catalogue filters @a11y", () => {
     await expect(rail.getByRole("button", { name: "Price on request" })).toHaveCount(0);
   });
 });
+
+test.describe("Artworks catalogue orientation and framing @a11y", () => {
+  // Applied from the URL, so each group shows whatever the catalogue holds: an applied option
+  // keeps its group, even with nothing else in it.
+  const applied = "/artworks?orientation=portrait&framing=framed";
+
+  test("shows applied orientation and framing in the rail and as chips", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-desktop", "desktop filter rail only");
+    await page.goto(applied);
+    const rail = page.getByRole("complementary", { name: "Filters" });
+    const orientation = rail.getByRole("group", { name: "Orientation" });
+    const framing = rail.getByRole("group", { name: "Framing" });
+    await expect(orientation.getByRole("checkbox", { name: /Portrait/ })).toBeChecked();
+    await expect(framing.getByRole("checkbox", { name: /Available framed/ })).toBeChecked();
+
+    // Artist, Price, Size, Orientation, Framing, Technique: the new groups sit together, in order.
+    const titles = await rail
+      .getByRole("group")
+      .evaluateAll((groups) =>
+        groups.map((group) => group.querySelector("legend")?.textContent ?? ""),
+      );
+    expect(titles.indexOf("Orientation")).toBeLessThan(titles.indexOf("Framing"));
+    for (const before of ["Artist", "Price", "Size"]) {
+      if (titles.includes(before)) {
+        expect(titles.indexOf(before)).toBeLessThan(titles.indexOf("Orientation"));
+      }
+    }
+    if (titles.includes("Technique")) {
+      expect(titles.indexOf("Framing")).toBeLessThan(titles.indexOf("Technique"));
+    }
+
+    const portraitChip = page.getByRole("button", { name: "Portrait Remove filter" });
+    await expect(portraitChip).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Available framed Remove filter" }),
+    ).toBeVisible();
+    await portraitChip.click();
+    await expect(page).toHaveURL(/\/artworks\?framing=framed$/);
+    await expect(page.getByRole("button", { name: "Portrait Remove filter" })).toHaveCount(0);
+  });
+
+  test("offers the groups in the phone filter sheet", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-mobile", "phone filter sheet only");
+    await page.goto(applied);
+    await page.getByRole("button", { name: /Filter and sort/ }).click();
+    const sheet = page.getByRole("dialog", { name: "Filter and sort" });
+    await expect(sheet.getByRole("group", { name: "Orientation" })).toBeVisible();
+    await expect(
+      sheet
+        .getByRole("group", { name: "Framing" })
+        .getByRole("checkbox", { name: /Available framed/ }),
+    ).toBeChecked();
+  });
+});

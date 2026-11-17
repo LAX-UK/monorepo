@@ -244,9 +244,9 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
 
     /** Where the artwork is now and where it has been; null when it is not on the register. */
     async artworkLocation(registerId: string): Promise<AdminArtworkLocation | null> {
-      if (!(await deps.reads.registerExists(registerId))) return null;
       // One more than is shown, to know whether older moves exist.
-      const moves = await deps.reads.listMoves(registerId, LOCATION_HISTORY_LIMIT + 1);
+      const moves = await deps.reads.artworkMoves(registerId, LOCATION_HISTORY_LIMIT + 1);
+      if (!moves) return null;
       const staffIds = moves
         .slice(0, LOCATION_HISTORY_LIMIT)
         .map((move) => move.movedBy)

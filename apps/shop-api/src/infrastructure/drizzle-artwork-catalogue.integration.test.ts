@@ -1,6 +1,7 @@
 import { createDbFromPool } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
 import { shopArtwork, shopArtworkCategory, shopCategory, shopEdition } from "@auction/db/schema";
+import { CATALOGUE_ORIENTATION_KEYS, catalogueOrientationFor } from "@auction/shop-domain";
 import { and, eq, inArray } from "drizzle-orm";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -254,6 +255,173 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
       { value: "Giclée", count: 2 },
       { value: "Screenprint", count: 2 },
     ]);
+  });
+
+  it("filters by orientation and framing and counts both groups as the domain rules say", async () => {
+    const db = createDbFromPool(shopPool);
+    const writer = createPublishedArtworkImportWriter(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const q = `integration-shape-${suffix}`;
+    const edition = async (key: string, heightCm: string | null, widthCm: string | null) => {
+      const imported = await writer.importArtwork({
+        importKey: `integration:shape:${suffix}:${key}`,
+        slug: `${q}-${key}`,
+        title: `Shape ${key}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-shape-artist-${suffix}`,
+        artistDisplayName: "Shape artist",
+        eligibleForEditionAllocation: true,
+        printPricePence: 9_000,
+      });
+      await db
+        .update(shopArtwork)
+        .set({ heightCm, widthCm })
+        .where(eq(shopArtwork.id, imported.artworkId));
+      return { id: imported.artworkId, slug: `${q}-${key}` };
+    };
+    /** A framing option with real prices (the database keeps placeholders off active ones). */
+    const option = async (status: "active" | "paused") => {
+      const inserted = await ownerPool.query<{ id: string }>(
+        `insert into shop_framing_option
+           (code, name, frame, mount, glazing, hanging, lead_time_min_days, lead_time_max_days, status, sort_order)
+         values ($1, 'Shape test frame', 'black_wood', 'window_conservation', 'uv_acrylic', 'd_rings_cord', 5, 10, 'draft', 990)
+         returning id`,
+        [`shape-${suffix}-${crypto.randomUUID()}`],
+      );
+      const id = inserted.rows[0]?.id;
+      if (!id) throw new Error("Failed to create a framing option");
+      await ownerPool.query(
+        `insert into shop_framing_option_price (option_id, band, price_pence, is_placeholder)
+         values ($1, 'up_to_40x50', 9000, false), ($1, 'up_to_60x80', 12000, false), ($1, 'up_to_80x100', 15000, false)`,
+        [id],
+      );
+      await ownerPool.query("update shop_framing_option set status = $2 where id = $1", [
+        id,
+        status,
+      ]);
+      return id;
+    };
+    const setFraming = async (
+      artworkId: string,
+      mode: "unframed_or_framed" | "framed_only" | "framed_by_artist",
+      offers: string[] = [],
+    ) => {
+      await ownerPool.query(
+        "insert into shop_edition_framing (artwork_id, mode, framed_by_artist) values ($1, $2, $3)",
+        [artworkId, mode, mode === "framed_by_artist" ? "Black ash frame" : null],
+      );
+      for (const optionId of offers) {
+        await ownerPool.query(
+          "insert into shop_framing_edition_offer (option_id, artwork_id) values ($1, $2)",
+          [optionId, artworkId],
+        );
+      }
+    };
+
+    const active = await option("active");
+    const paused = await option("paused");
+
+    // Portrait, no framing row: unframed only.
+    const tall = await edition("tall", "70", "50");
+    // Landscape, framing to choose with an active option: framed and unframed.
+    const wide = await edition("wide", "50", "70");
+    await setFraming(wide.id, "unframed_or_framed", [active]);
+    // Square within 5 %, framed by the artist: framed only.
+    const square = await edition("square", "52", "50");
+    await setFraming(square.id, "framed_by_artist");
+    // Exactly 5 % taller stays square; framed only with an active option: framed.
+    const bound = await edition("bound", "105", "100");
+    await setFraming(bound.id, "framed_only", [active]);
+    // Unsized; framing to choose with only a paused option: unframed only.
+    const unsized = await edition("unsized", null, "40");
+    await setFraming(unsized.id, "unframed_or_framed", [paused]);
+    // Portrait; framed only with no option buyers can see: in neither framing group.
+    const stranded = await edition("stranded", "60", "40");
+    await setFraming(stranded.id, "framed_only", [paused]);
+
+    const base = { q, artworkType: "edition" as const, sort: "newest" as const };
+    const slugs = async (filter: Record<string, string>) =>
+      (await repository.listPublicArtworks({ limit: 20, filter: { ...base, ...filter } })).items
+        .map((item) => item.slug)
+        .sort();
+
+    expect(await slugs({ orientation: "portrait" })).toEqual([stranded.slug, tall.slug].sort());
+    expect(await slugs({ orientation: "landscape" })).toEqual([wide.slug]);
+    expect(await slugs({ orientation: "square" })).toEqual([bound.slug, square.slug].sort());
+    expect(await slugs({ framing: "framed" })).toEqual([bound.slug, square.slug, wide.slug].sort());
+    expect(await slugs({ framing: "unframed" })).toEqual(
+      [tall.slug, unsized.slug, wide.slug].sort(),
+    );
+    expect(await slugs({ orientation: "landscape", framing: "unframed" })).toEqual([wide.slug]);
+
+    const facets = await repository.countFacets({ ...base, framing: "framed" });
+    // Orientation keeps the framing filter; framing ignores its own.
+    expect(facets.orientations).toEqual([
+      { key: "portrait", count: 0 },
+      { key: "landscape", count: 1 },
+      { key: "square", count: 2 },
+    ]);
+    expect(facets.framing).toEqual([
+      { key: "framed", count: 3 },
+      { key: "unframed", count: 3 },
+    ]);
+    expect((await repository.countFacets({ ...base, orientation: "portrait" })).framing).toEqual([
+      { key: "framed", count: 0 },
+      { key: "unframed", count: 1 },
+    ]);
+  });
+
+  it("orients works in SQL exactly as the domain does, at and around the 5 % bound", async () => {
+    const db = createDbFromPool(shopPool);
+    const writer = createPublishedArtworkImportWriter(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const q = `integration-orient-${suffix}`;
+    const sizes: Array<[string, string]> = [
+      ["105", "100"],
+      ["105.01", "100"],
+      ["100", "105"],
+      ["100", "105.01"],
+      ["31.5", "30"],
+      ["31.51", "30"],
+      ["29.7", "42"],
+      ["42", "29.7"],
+      ["0.01", "0.01"],
+      ["999.99", "952.37"],
+    ];
+    const expected = new Map<string, string | null>();
+    for (const [index, [heightCm, widthCm]] of sizes.entries()) {
+      const imported = await writer.importArtwork({
+        importKey: `integration:orient:${suffix}:${index}`,
+        slug: `${q}-${index}`,
+        title: `Orient ${index}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-orient-artist-${suffix}`,
+        artistDisplayName: "Orient artist",
+        eligibleForEditionAllocation: true,
+        printPricePence: 9_000,
+      });
+      await db
+        .update(shopArtwork)
+        .set({ heightCm, widthCm })
+        .where(eq(shopArtwork.id, imported.artworkId));
+      expected.set(
+        `${q}-${index}`,
+        catalogueOrientationFor({ heightCm: Number(heightCm), widthCm: Number(widthCm) }),
+      );
+    }
+    const base = { q, artworkType: "edition" as const, sort: "newest" as const };
+    for (const orientation of CATALOGUE_ORIENTATION_KEYS) {
+      const listed = await repository.listPublicArtworks({
+        limit: 20,
+        filter: { ...base, orientation },
+      });
+      const want = [...expected].filter(([, value]) => value === orientation).map(([slug]) => slug);
+      expect(listed.items.map((item) => item.slug).sort()).toEqual(want.sort());
+    }
   });
 
   it("filters artworks by artist display name text search", async () => {

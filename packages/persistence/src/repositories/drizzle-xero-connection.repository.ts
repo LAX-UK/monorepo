@@ -1,11 +1,12 @@
 import type { Database } from "@auction/db";
 import { xeroConnection } from "@auction/db/schema";
-import type { XeroTokenSealer } from "@auction/db/xero-token-sealing";
+import { type XeroTokenSealer, XeroTokenSealingError } from "@auction/db/xero-token-sealing";
 import { desc, eq } from "drizzle-orm";
 import type {
   IXeroConnectionRepository,
   XeroConnectionInsert,
   XeroConnectionRow,
+  XeroConnectionSummaryRow,
 } from "../interfaces/xero.repository.js";
 
 type StoredConnection = typeof xeroConnection.$inferSelect;
@@ -35,6 +36,29 @@ export class DrizzleXeroConnectionRepository implements IXeroConnectionRepositor
       .orderBy(desc(xeroConnection.updatedAt))
       .limit(1);
     return row ? this.open(row) : null;
+  }
+
+  /**
+   * For reads that only report state: an unreadable or missing token is reported as
+   * `tokensReadable: false` instead of thrown, and no token value leaves this method. A missing
+   * key still throws: that is a configuration fault, and reconnecting could not store tokens.
+   */
+  async findLatestSummary(): Promise<XeroConnectionSummaryRow | null> {
+    const [row] = await this.db
+      .select()
+      .from(xeroConnection)
+      .orderBy(desc(xeroConnection.updatedAt))
+      .limit(1);
+    if (!row) return null;
+    const { accessToken, refreshToken, accessTokenSealed, refreshTokenSealed, ...rest } = row;
+    let tokensReadable = true;
+    try {
+      this.sealer.open({ accessToken, refreshToken, accessTokenSealed, refreshTokenSealed });
+    } catch (e) {
+      if (!(e instanceof XeroTokenSealingError) || e.code === "key_missing") throw e;
+      tokensReadable = false;
+    }
+    return { ...rest, tokensReadable };
   }
 
   async upsertConnection(

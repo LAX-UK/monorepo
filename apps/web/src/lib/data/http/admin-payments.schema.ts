@@ -96,6 +96,7 @@ export const adminXeroIntegrationStatusSchema = z
         : null;
     return {
       connected: Boolean(row.connected),
+      reason: row.reason === "reconnect_required" ? "reconnect_required" : null,
       tenantId: row.tenantId == null ? null : String(row.tenantId),
       tenantName: row.tenantName == null ? null : String(row.tenantName),
       expiresAt: row.expiresAt == null ? null : String(row.expiresAt),

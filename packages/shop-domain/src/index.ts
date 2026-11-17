@@ -567,6 +567,21 @@ export {
   type CatalogueSizeBandKey,
 } from "./catalogue-bands.js";
 export {
+  CATALOGUE_FRAMING_KEYS,
+  CATALOGUE_FRAMING_RULES,
+  CATALOGUE_ORIENTATION_KEYS,
+  CATALOGUE_SQUARE_TOLERANCE_PERCENT,
+  catalogueFramingFor,
+  catalogueOrientationFor,
+  isCatalogueFramingKey,
+  isCatalogueOrientationKey,
+  isInCatalogueFraming,
+  type CatalogueFramingFacts,
+  type CatalogueFramingKey,
+  type CatalogueFramingRule,
+  type CatalogueOrientationKey,
+} from "./catalogue-shape-framing.js";
+export {
   GUEST_EMAIL_MAX_LENGTH,
   GUEST_MARKETING_CONSENT,
   GUEST_ORDER_LINK_TTL_DAYS,

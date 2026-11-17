@@ -11,6 +11,8 @@ import {
 } from "@auction/db/schema";
 import { containsPattern } from "@auction/persistence/lib";
 import {
+  CATALOGUE_FRAMING_KEYS,
+  CATALOGUE_ORIENTATION_KEYS,
   CATALOGUE_PRICE_BANDS,
   CATALOGUE_SIZE_BANDS,
   type CatalogueBandRange,
@@ -48,6 +50,7 @@ import type {
 } from "../application/ports/artwork-catalogue.reader.js";
 import type { ArtworkImageReadModel } from "../application/read-models/catalogue.read-model.js";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
+import { inCatalogueFramingSql, inCatalogueOrientationSql } from "./catalogue-shape-framing-sql.js";
 import { FACET_SALE_STATES, orderedCounts } from "./facet-counts.js";
 import { toPublicArtworkDetail } from "./map-public-artwork.js";
 import {
@@ -64,12 +67,6 @@ import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js"
 
 const priceTierSql = sql<number>`CASE WHEN ${shopArtwork.printPricePence} IS NULL THEN 1 ELSE 0 END`;
 
-/** The longest side of the image in cm; null unless both height and width are positive. */
-const longestSideCmSql = sql<number | null>`CASE
-  WHEN ${shopArtwork.heightCm} > 0 AND ${shopArtwork.widthCm} > 0
-  THEN greatest(${shopArtwork.heightCm}, ${shopArtwork.widthCm})
-END`;
-
 /** The catalogued medium, trimmed; the technique filter and its counts both read it. */
 const techniqueSql = sql<string | null>`nullif(btrim(${shopArtwork.medium}), '')`;
 
@@ -78,6 +75,27 @@ function inBandSql(value: SQL, range: CatalogueBandRange): SQL {
   const parts: SQL[] = [sql`${value} IS NOT NULL`];
   if (range.from !== undefined) parts.push(sql`${value} >= ${range.from}`);
   if (range.below !== undefined) parts.push(sql`${value} < ${range.below}`);
+  return and(...parts) as SQL;
+}
+
+/**
+ * `catalogueSizeBandFor` as SQL: a positive height and width with the longest side in the band.
+ * Written on the two columns (`greatest(h, w) >= x` as `h >= x or w >= x`, `< y` as
+ * `h < y and w < y`) rather than on `greatest(...)`, so Postgres estimates it from the columns'
+ * statistics. An expression has none, and its default guess for a range (0.5 %), with the
+ * orientation and framing filters on top, made the planner expect a handful of works and join
+ * the artists by nested loop (`catalogue-shape-framing-plan.integration.test.ts`).
+ */
+function inSizeBandSql(range: CatalogueBandRange): SQL {
+  const height = sql`${shopArtwork.heightCm}`;
+  const width = sql`${shopArtwork.widthCm}`;
+  const parts: SQL[] = [sql`${height} > 0`, sql`${width} > 0`];
+  if (range.from !== undefined) {
+    parts.push(sql`(${height} >= ${range.from} OR ${width} >= ${range.from})`);
+  }
+  if (range.below !== undefined) {
+    parts.push(sql`${height} < ${range.below}`, sql`${width} < ${range.below}`);
+  }
   return and(...parts) as SQL;
 }
 
@@ -186,7 +204,13 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
     );
   }
   if (filter.sizeBand) {
-    conditions.push(inBandSql(longestSideCmSql, catalogueSizeBandRange(filter.sizeBand)));
+    conditions.push(inSizeBandSql(catalogueSizeBandRange(filter.sizeBand)));
+  }
+  if (filter.orientation) {
+    conditions.push(inCatalogueOrientationSql(filter.orientation));
+  }
+  if (filter.framing) {
+    conditions.push(inCatalogueFramingSql(filter.framing));
   }
   if (filter.technique) {
     conditions.push(sql`lower(${techniqueSql}) = lower(${filter.technique})`);
@@ -464,17 +488,19 @@ export function createDrizzleArtworkCatalogueRepository(
       const { technique: _technique, ...techniqueScope } = filter;
       const { objectTypes: _objectTypes, ...objectTypeScope } = filter;
       const { saleState: _saleState, ...saleStateScope } = filter;
-      const bandCounts = (
-        value: SQL,
-        bands: ReadonlyArray<{ key: string; range: CatalogueBandRange }>,
+      const { orientation: _orientation, ...orientationScope } = filter;
+      const { framing: _framing, ...framingScope } = filter;
+      /** One row with a count per option, each option its own condition. */
+      const optionCounts = (
+        options: ReadonlyArray<{ key: string; where: SQL }>,
         scope: NormalizedArtworkCatalogueFilters,
       ) =>
         db
           .select(
             Object.fromEntries(
-              bands.map((band) => [
-                band.key,
-                sql<number>`count(*) filter (where ${inBandSql(value, band.range)})`,
+              options.map((option) => [
+                option.key,
+                sql<number>`count(*) filter (where ${option.where})`,
               ]),
             ),
           )
@@ -482,6 +508,15 @@ export function createDrizzleArtworkCatalogueRepository(
           .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
           .where(and(...buildArtworkFilters(scope)));
+      const bandCounts = (
+        value: SQL,
+        bands: ReadonlyArray<{ key: string; range: CatalogueBandRange }>,
+        scope: NormalizedArtworkCatalogueFilters,
+      ) =>
+        optionCounts(
+          bands.map((band) => ({ key: band.key, where: inBandSql(value, band.range) })),
+          scope,
+        );
       const priceBands = CATALOGUE_PRICE_BANDS.map((band) => ({
         key: band.key,
         range: band.pence,
@@ -490,12 +525,22 @@ export function createDrizzleArtworkCatalogueRepository(
         key: band.key,
         range: band.longestSideCm,
       }));
+      const orientationOptions = CATALOGUE_ORIENTATION_KEYS.map((key) => ({
+        key,
+        where: inCatalogueOrientationSql(key),
+      }));
+      const framingOptions = CATALOGUE_FRAMING_KEYS.map((key) => ({
+        key,
+        where: inCatalogueFramingSql(key),
+      }));
       const [
         availabilityRows,
         categoryRows,
         artistRows,
         priceRows,
         sizeRows,
+        orientationRows,
+        framingRows,
         techniqueRows,
         objectTypeRows,
         saleStateRows,
@@ -528,7 +573,12 @@ export function createDrizzleArtworkCatalogueRepository(
           .groupBy(shopArtist.slug, shopParty.displayName)
           .orderBy(asc(shopParty.displayName)),
         bandCounts(sql`${shopArtwork.printPricePence}`, priceBands, priceScope),
-        bandCounts(longestSideCmSql, sizeBands, sizeScope),
+        optionCounts(
+          sizeBands.map((band) => ({ key: band.key, where: inSizeBandSql(band.range) })),
+          sizeScope,
+        ),
+        optionCounts(orientationOptions, orientationScope),
+        optionCounts(framingOptions, framingScope),
         db
           .select({ value: sql<string>`${techniqueSql}`, count: count() })
           .from(shopArtwork)
@@ -564,6 +614,8 @@ export function createDrizzleArtworkCatalogueRepository(
         artists: artistRows.map((row) => ({ ...row, count: Number(row.count) })),
         priceBands: bandRow(priceRows, priceBands),
         sizes: bandRow(sizeRows, sizeBands),
+        orientations: bandRow(orientationRows, orientationOptions),
+        framing: bandRow(framingRows, framingOptions),
         techniques: techniqueRows.map((row) => ({ value: row.value, count: Number(row.count) })),
         objectTypes: orderedCounts(ARTWORK_OBJECT_TYPES, objectTypeRows),
         saleStates: orderedCounts(FACET_SALE_STATES, saleStateRows),

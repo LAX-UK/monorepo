@@ -392,6 +392,43 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
       expect(read?.moreMoves).toBe(false);
       expect(await service().artworkLocation("00000000-0000-4000-8000-000000000000")).toBeNull();
     });
+
+    it("reads the artwork and its moves in one snapshot: a move committed between them is not shown", async () => {
+      const a = await artwork();
+      const [first, second] = [await addLocation(), await addLocation()];
+      await service().moveArtworks({
+        actorSubjectId: "ops-1",
+        idempotencyKey: key(),
+        request: { registerIds: [a], locationId: first.id },
+      });
+      // The second move commits on another connection after the register row has been read and
+      // before the moves are: under read committed the moves query would see it.
+      const movingBetweenReads = (session: Database) => {
+        const store = storeOn(session);
+        return Object.assign(Object.create(store), {
+          listMoves: async (registerId: string, limit: number) => {
+            await service().moveArtworks({
+              actorSubjectId: "ops-1",
+              idempotencyKey: key(),
+              request: { registerIds: [a], locationId: second.id },
+            });
+            return store.listMoves(registerId, limit);
+          },
+        });
+      };
+      const db = createShopDb(shopPool);
+      const read = await createStockLocationService({
+        uow: createDrizzleShopUnitOfWork(db, "off"),
+        reads: createDrizzleStockLocationReads(db, movingBetweenReads),
+        writesFor: createDrizzleStockLocationWritesFor(storeOn),
+        staffNames,
+        clock: () => NOW,
+      }).artworkLocation(a);
+      expect(read?.current?.location.id).toBe(first.id);
+      expect(read?.moves.map((m) => m.to.id)).toEqual([first.id]);
+      // The move did commit; the next read shows it.
+      expect((await service().artworkLocation(a))?.current?.location.id).toBe(second.id);
+    });
   });
 
   describe("the list", () => {

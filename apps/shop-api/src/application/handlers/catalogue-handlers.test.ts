@@ -17,6 +17,8 @@ describe("catalogue handlers", () => {
         artists: [],
         priceBands: [],
         sizes: [],
+        orientations: [],
+        framing: [],
         techniques: [],
         objectTypes: [],
         saleStates: [],

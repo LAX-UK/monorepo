@@ -16,6 +16,8 @@ function createDeps() {
         artists: [],
         priceBands: [],
         sizes: [],
+        orientations: [],
+        framing: [],
         techniques: [],
         objectTypes: [],
         saleStates: [],

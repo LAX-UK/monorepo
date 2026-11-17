@@ -180,3 +180,40 @@ export async function withdrawDeliveryRequest(lotId: string): Promise<void> {
     await client.end();
   }
 }
+
+/**
+ * The buyer accepts the quote and the lot reaches `status` on Lot fulfilment, by courier: what
+ * To dispatch (`released`), On the way (`in_transit`) and Delivered (`delivered`) are made of.
+ * Removing the lot removes its fulfilment with it.
+ */
+export async function bookDelivery(
+  lotId: string,
+  status: "awaiting_release" | "released" | "in_transit" | "delivered",
+): Promise<void> {
+  const client = deliveriesDatabase();
+  await client.connect();
+  try {
+    await client.query("begin");
+    await client.query(
+      `update delivery_quote
+          set status = 'accepted', amount = 180, quote_note = 'Insured, two-person delivery',
+              quoted_at = now() - interval '1 hour', decided_at = now() - interval '30 minutes',
+              updated_at = now()
+        where lot_id = $1`,
+      [lotId],
+    );
+    const shipped = status === "in_transit" || status === "delivered";
+    await client.query(
+      `insert into lot_fulfilment (lot_id, status, fulfilment_method, shipping_carrier,
+         tracking_number, payment_cleared_at)
+       values ($1, $2, 'shipping', $3, $4, now() - interval '20 minutes')`,
+      [lotId, status, shipped ? "Example Couriers" : null, shipped ? "EX123456789GB" : null],
+    );
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    await client.end();
+  }
+}
