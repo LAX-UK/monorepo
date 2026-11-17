@@ -52,8 +52,10 @@ export function zohoMirrorBadgeName(label: string): string {
 }
 
 /**
- * The details for each state with a badge. Dates and times come in already formatted for London
- * (for example "14 Nov 2026, 16:02" and "16:10"); the record is the Zoho reference, when any.
+ * The details for each state with a badge. Dates and times come in already formatted, in London
+ * time and the LAX date style of `@auction/datetime` with no zone name, as Z3 writes them:
+ * `formatDateTime` for a moment ("14 Nov 2026, 16:02") and `formatTime` for a time later the same
+ * day ("16:10"). The record is the Zoho reference, when any.
  */
 export const ZOHO_MIRROR_DETAILS = {
   mirrored: (input: { lastSent: string; recordLabel: string; record: string | null }) =>

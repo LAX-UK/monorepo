@@ -22,35 +22,43 @@ function setup(answers: StaffToolsAnswer[]) {
 describe("createCachedStaffToolsAccess", () => {
   it("reuses a good answer until its TTL passes, then asks again", async () => {
     const { clock, inner, cached } = setup([
-      { status: "ok", tools: ["bid-admin"] },
-      { status: "ok", tools: [] },
+      { status: "ok", tools: ["bid-admin"], failedJobSources: [] },
+      { status: "ok", tools: [], failedJobSources: [] },
     ]);
 
-    expect(await cached.toolsFor(A)).toEqual({ status: "ok", tools: ["bid-admin"] });
+    expect(await cached.toolsFor(A)).toEqual({
+      status: "ok",
+      tools: ["bid-admin"],
+      failedJobSources: [],
+    });
     clock.now += 59_000;
-    expect(await cached.toolsFor(A)).toEqual({ status: "ok", tools: ["bid-admin"] });
+    expect(await cached.toolsFor(A)).toEqual({
+      status: "ok",
+      tools: ["bid-admin"],
+      failedJobSources: [],
+    });
     expect(inner.toolsFor).toHaveBeenCalledTimes(1);
 
     clock.now += 2_000;
-    expect(await cached.toolsFor(A)).toEqual({ status: "ok", tools: [] });
+    expect(await cached.toolsFor(A)).toEqual({ status: "ok", tools: [], failedJobSources: [] });
     expect(inner.toolsFor).toHaveBeenCalledTimes(2);
   });
 
   it("keeps people apart", async () => {
     const { inner, cached } = setup([
-      { status: "ok", tools: ["bid-admin"] },
-      { status: "ok", tools: [] },
+      { status: "ok", tools: ["bid-admin"], failedJobSources: [] },
+      { status: "ok", tools: [], failedJobSources: [] },
     ]);
 
     await cached.toolsFor(A);
-    expect(await cached.toolsFor(B)).toEqual({ status: "ok", tools: [] });
+    expect(await cached.toolsFor(B)).toEqual({ status: "ok", tools: [], failedJobSources: [] });
     expect(inner.toolsFor).toHaveBeenCalledTimes(2);
   });
 
   it("remembers a failure briefly so an outage is not retried on every page", async () => {
     const { clock, inner, cached } = setup([
       { status: "unavailable" },
-      { status: "ok", tools: ["bid-admin"] },
+      { status: "ok", tools: ["bid-admin"], failedJobSources: [] },
     ]);
 
     expect(await cached.toolsFor(A)).toEqual({ status: "unavailable" });
@@ -59,16 +67,20 @@ describe("createCachedStaffToolsAccess", () => {
     expect(inner.toolsFor).toHaveBeenCalledTimes(1);
 
     clock.now += 2_000;
-    expect(await cached.toolsFor(A)).toEqual({ status: "ok", tools: ["bid-admin"] });
+    expect(await cached.toolsFor(A)).toEqual({
+      status: "ok",
+      tools: ["bid-admin"],
+      failedJobSources: [],
+    });
   });
 
   it("drops the oldest entry when full", async () => {
     const C = { subjectId: "55555555-1111-4222-8333-666666666666", idToken: "id-c" };
     const { inner, cached } = setup([
-      { status: "ok", tools: [] },
-      { status: "ok", tools: [] },
-      { status: "ok", tools: [] },
-      { status: "ok", tools: [] },
+      { status: "ok", tools: [], failedJobSources: [] },
+      { status: "ok", tools: [], failedJobSources: [] },
+      { status: "ok", tools: [], failedJobSources: [] },
+      { status: "ok", tools: [], failedJobSources: [] },
     ]);
 
     await cached.toolsFor(A);

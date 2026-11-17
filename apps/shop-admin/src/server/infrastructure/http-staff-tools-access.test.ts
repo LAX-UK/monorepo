@@ -25,11 +25,22 @@ function setup(overrides: { baseUrl?: string | undefined } = {}) {
 describe("createHttpStaffToolsAccess", () => {
   it("exchanges the session for a Bid token and asks as the signed-in person", async () => {
     const { requestToken, options } = setup();
-    const fetch = vi.fn().mockResolvedValue(reply({ data: { tools: ["lax-admin", "bid-admin"] } }));
+    const fetch = vi.fn().mockResolvedValue(
+      reply({
+        data: {
+          tools: ["lax-admin", "bid-admin"],
+          failedJobSources: ["background_jobs", "integrations.zoho"],
+        },
+      }),
+    );
 
     const answer = await createHttpStaffToolsAccess({ ...options, fetch }).toolsFor(caller);
 
-    expect(answer).toEqual({ status: "ok", tools: ["bid-admin", "lax-admin"] });
+    expect(answer).toEqual({
+      status: "ok",
+      tools: ["bid-admin", "lax-admin"],
+      failedJobSources: ["background_jobs", "integrations.zoho"],
+    });
     const form = requestToken.mock.calls[0]?.[0] as URLSearchParams;
     expect(form.get("grant_type")).toBe("urn:ietf:params:oauth:grant-type:token-exchange");
     expect(form.get("subject_token")).toBe(caller.idToken);
@@ -48,6 +59,21 @@ describe("createHttpStaffToolsAccess", () => {
     expect(await createHttpStaffToolsAccess({ ...options, fetch }).toolsFor(caller)).toEqual({
       status: "ok",
       tools: [],
+      failedJobSources: [],
+    });
+  });
+
+  it.each([
+    ["an older Bid that does not list them", { tools: ["bid-admin"] }],
+    ["a malformed list", { tools: ["bid-admin"], failedJobSources: "all" }],
+  ])("reads no Failed jobs sources from %s", async (_name, data) => {
+    const { options } = setup();
+    const fetch = vi.fn().mockResolvedValue(reply({ data }));
+
+    expect(await createHttpStaffToolsAccess({ ...options, fetch }).toolsFor(caller)).toEqual({
+      status: "ok",
+      tools: ["bid-admin"],
+      failedJobSources: [],
     });
   });
 
@@ -60,6 +86,7 @@ describe("createHttpStaffToolsAccess", () => {
     expect(await createHttpStaffToolsAccess({ ...options, fetch }).toolsFor(caller)).toEqual({
       status: "ok",
       tools: ["bid-admin"],
+      failedJobSources: [],
     });
   });
 
