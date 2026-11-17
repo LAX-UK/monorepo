@@ -413,7 +413,10 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
           name: name.toUpperCase(),
           note: null,
         }),
-      ).rejects.toMatchObject({ statusCode: 409 });
+      ).rejects.toSatisfy(
+        // A taken name is not a stale version: no version to reload to.
+        (error: ShopApiError) => error.statusCode === 409 && !("currentVersion" in error),
+      );
       const rows = await owner()
         .select()
         .from(artworkLocation)
@@ -456,7 +459,7 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
           expectedVersion: added.version,
           name: "Overwritten",
         }),
-      ).rejects.toMatchObject({ statusCode: 409 });
+      ).rejects.toMatchObject({ statusCode: 409, currentVersion: String(added.version + 1) });
       expect(await auditRows([added.id], "artwork_location.update")).toHaveLength(1);
     });
 

@@ -1288,6 +1288,7 @@ export {
   AdminArtworkLocationParamsSchema,
   AdminArtworkLocationSchema,
   AdminLocationRefSchema,
+  AdminStockLocationConflictSchema,
   AdminStockLocationCreateBodySchema,
   AdminStockLocationListQuerySchema,
   AdminStockLocationListSchema,

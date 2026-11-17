@@ -4,6 +4,7 @@ import {
   AdminArtworkLocationMoveResultSchema,
   AdminArtworkLocationParamsSchema,
   AdminArtworkLocationSchema,
+  AdminStockLocationConflictSchema,
   type AdminStockLocationCreateBody,
   AdminStockLocationCreateBodySchema,
   type AdminStockLocationListQuery,
@@ -46,6 +47,8 @@ const WRITE_ERRORS = {
   404: ShopApiErrorBodySchema,
   409: ShopApiErrorBodySchema,
 } as const;
+/** List writes: a stale version's 409 also says the version, so the page can offer to reload. */
+const LIST_WRITE_ERRORS = { ...WRITE_ERRORS, 409: AdminStockLocationConflictSchema } as const;
 
 /**
  * Stock location in LAX Admin (docs/design/stock-location.md).
@@ -93,7 +96,7 @@ export async function registerAdminStockLocationRoutes(
       schema: {
         tags,
         body: AdminStockLocationCreateBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -113,7 +116,7 @@ export async function registerAdminStockLocationRoutes(
         tags,
         params: AdminStockLocationParamsSchema,
         body: AdminStockLocationUpdateBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -139,7 +142,7 @@ export async function registerAdminStockLocationRoutes(
         tags,
         params: AdminStockLocationParamsSchema,
         body: AdminStockLocationStatusBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {
@@ -159,7 +162,7 @@ export async function registerAdminStockLocationRoutes(
         tags,
         params: AdminStockLocationParamsSchema,
         body: AdminStockLocationStatusBodySchema,
-        response: { 200: AdminStockLocationWriteResultSchema, ...WRITE_ERRORS },
+        response: { 200: AdminStockLocationWriteResultSchema, ...LIST_WRITE_ERRORS },
       },
     },
     async (request) => {

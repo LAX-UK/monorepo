@@ -22,6 +22,7 @@ import {
 } from "@auction/shop-contracts";
 import type { ShopStaffCapability } from "@auction/shop-domain";
 import { ShopApiError } from "../../errors/shop-api-error.js";
+import { StaleVersionError } from "../../errors/stale-version-error.js";
 import { withAdminIdempotency } from "../admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../ports/shop-unit-of-work.js";
 import type { StaffNameReader } from "../ports/staff-name.reader.js";
@@ -133,13 +134,20 @@ const parseNote = (raw: string | null | undefined) =>
     too_long: `Keep the note to ${LOCATION_NOTE_MAX} characters or fewer.`,
   });
 
-/** A list write that did not happen, in the words the Locations page shows. */
-function refuseListWrite(result: Exclude<StockLocationWriteResult, { ok: true }>): never {
+/**
+ * A list write that did not happen, in the words the Locations page shows. A stale version carries
+ * the version the location had when the write began, so the page can tell it from a taken name
+ * and offer to reload.
+ */
+function refuseListWrite(
+  result: Exclude<StockLocationWriteResult, { ok: true }>,
+  before: StockLocation | null = null,
+): never {
   switch (result.reason) {
     case "not_found":
       throw notFound("Location not found");
     case "stale":
-      throw conflict("Someone else changed this location. Reload it and try again.");
+      throw new StaleVersionError("This location", String(before?.version ?? 0));
     case "name_taken":
       throw conflict("Another location already has this name.");
   }
@@ -184,7 +192,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
             status: command.status,
             now: now(),
           });
-          if (!result.ok) refuseListWrite(result);
+          if (!result.ok) refuseListWrite(result, before);
           // Already so: nothing was written, so there is nothing to audit.
           if (result.changed) {
             await tx.audit.append({
@@ -291,7 +299,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
               note,
               now: now(),
             });
-            if (!result.ok) refuseListWrite(result);
+            if (!result.ok) refuseListWrite(result, before);
             // Saved as it was: nothing was written, so there is nothing to audit.
             if (result.changed) {
               await tx.audit.append({

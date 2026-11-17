@@ -53,6 +53,17 @@ export const AdminStockLocationStatusBodySchema = Type.Object({
   expectedVersion: Type.Integer({ minimum: 1 }),
 });
 
+/**
+ * 409 body of a list write: a stale version carries `currentVersion`, so the page offers to
+ * reload; a taken name does not.
+ */
+export const AdminStockLocationConflictSchema = Type.Object({
+  code: Type.String(),
+  message: Type.String(),
+  requestId: Type.Optional(Type.String()),
+  currentVersion: Type.Optional(Type.String()),
+});
+
 export const AdminStockLocationWriteResultSchema = Type.Object({
   /** False when the location was already so (retiring a retired one): nothing was written. */
   changed: Type.Boolean(),
