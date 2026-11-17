@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { seedAcceptancePortal, seedAcceptanceStaffOperations } from "./acceptance-seed-target.js";
 import { runShopDemoFull } from "./demo-full-runner.js";
 import { grantLocalAdminStaff } from "./local-admin-staff-seed.js";
+import { seedReleaseAlertSendFixtures } from "./release-alert-sends-seed.js";
 import { seedStockLocationE2eFixtures } from "./stock-location-e2e-seed.js";
 import { seedZohoMirrorBadgeFixtures } from "./zoho-mirror-badge-seed.js";
 
@@ -103,6 +104,14 @@ const CASES: Case[] = [
       ),
   },
   {
+    name: "seed:release-alert-sends",
+    run: (db, url, write) =>
+      seedReleaseAlertSendFixtures(db, { databaseUrl: url }, new Date(), async () => {
+        write();
+        return { created: [] };
+      }),
+  },
+  {
     name: "seed:stock-location",
     // Every read and write runs in one transaction; the spy stands for it.
     run: (db, url, write) =>
@@ -146,6 +155,7 @@ describe.each(CASES)("$name", ({ name, run }) => {
   if (
     name === "seed:local-admin-staff" ||
     name === "seed:zoho-mirror-badge" ||
+    name === "seed:release-alert-sends" ||
     name === "seed:stock-location"
   ) {
     it("writes nothing on a database marked test, even through a loopback tunnel", async () => {
@@ -172,6 +182,7 @@ describe("Shop seed script wiring", () => {
     ["seed-demo-full.ts", "runShopDemoFull(", "seedDemoFull("],
     ["seed-local-admin-staff.ts", "grantLocalAdminStaff(", "grantShopStaffRole"],
     ["seed-zoho-mirror-badge.ts", "seedZohoMirrorBadgeFixtures(", "INSERT INTO"],
+    ["seed-release-alert-sends.ts", "seedReleaseAlertSendFixtures(", "INSERT INTO"],
     ["seed-stock-location-e2e.ts", "seedStockLocationE2eFixtures(", "moveArtworks("],
   ])("%s goes through the guarded function", (file, guarded, raw) => {
     const source = read(file);

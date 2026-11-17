@@ -23,15 +23,15 @@ export default async function LeadsPage({
   ]);
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") return <AdminFailedPage title="Leads" status={result.status} />;
-  const releaseAlerts = await loadReleaseAlertSummary(
-    session.status === "ok" ? session.data.capabilities : [],
-  );
+  const capabilities = session.status === "ok" ? session.data.capabilities : [];
+  const releaseAlerts = await loadReleaseAlertSummary(capabilities);
   return (
     <LeadList
       query={query}
       page={result.data}
       now={new Date().toISOString()}
       releaseAlerts={releaseAlerts}
+      capabilities={capabilities}
     />
   );
 }

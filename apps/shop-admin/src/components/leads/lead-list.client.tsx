@@ -13,10 +13,11 @@ import {
   leadListPageHref,
   leadName,
   leadsCsv,
+  leadsViews,
   presentLeadCrm,
   presentLeadStatus,
 } from "@/server/domain/lead-list.vm";
-import { releaseAlertMetrics } from "@/server/domain/release-alert-metrics";
+import { releaseAlertMetricStrip } from "@/server/domain/release-alert-metrics";
 import {
   ADMIN_LEAD_SEARCH_MAX_LENGTH,
   type AdminLeadListResponse,
@@ -26,8 +27,6 @@ import {
 import {
   GUEST_LEAD_CRM_STATE_LABEL,
   GUEST_LEAD_SOURCE_LABEL,
-  GUEST_LEAD_TABS,
-  GUEST_LEAD_TAB_LABEL,
   type GuestLeadCrmState,
   type GuestLeadSource,
 } from "@auction/shop-domain";
@@ -68,23 +67,21 @@ export function LeadList({
   page,
   now,
   releaseAlerts,
+  capabilities,
 }: {
   query: LeadListQuery;
   page: AdminLeadListResponse;
   now: string;
   /** Who is on the release alert list; null when the figure could not be read. */
   releaseAlerts: AdminReleaseAlertSummary | null;
+  /** The viewer's capabilities: the Release alerts tab shows only to roles that can read it. */
+  capabilities: readonly string[];
 }) {
   const { pending, navigate, Link: ListLink } = useListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const filtered = hasActiveLeadFilters(query);
 
-  const views = GUEST_LEAD_TABS.map((tab) => ({
-    id: tab,
-    label: GUEST_LEAD_TAB_LABEL[tab],
-    href: leadListHref(query, { tab: tab === "all" ? null : tab }),
-    count: page.counts[tab] ?? 0,
-  }));
+  const views = leadsViews(query, page.counts, capabilities);
 
   const exportRows = (rows: readonly AdminLeadSummary[]) => {
     download(`leads-${londonToday(new Date(now))}.csv`, leadsCsv(rows));
@@ -211,15 +208,7 @@ export function LeadList({
       description="People who checked out or enquired without a LAX account. A lead moves to Joined LAX when they open an account with the same email."
       Link={ListLink}
       listKey="leads"
-      {...(releaseAlerts
-        ? {
-            metrics: {
-              label: "Release alerts",
-              period: "People who asked to hear about new editions",
-              items: releaseAlertMetrics(releaseAlerts),
-            },
-          }
-        : {})}
+      {...releaseAlertMetricStrip(releaseAlerts)}
       exportAction={
         page.items.length > 0 ? (
           <StaffButton
