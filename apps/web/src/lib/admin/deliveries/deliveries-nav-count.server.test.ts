@@ -10,7 +10,7 @@ import { withDeliveriesNavCount } from "./deliveries-nav-count.server";
 beforeEach(() => reader.getAdminDeliveriesWaitingCount.mockReset());
 
 describe("withDeliveriesNavCount", () => {
-  it.each(["fulfilment", "administrator", "read_only"] as const)(
+  it.each(["fulfilment", "administrator"] as const)(
     "counts buyers waiting for a price for %s",
     async (role) => {
       reader.getAdminDeliveriesWaitingCount.mockResolvedValue(3);
@@ -19,15 +19,19 @@ describe("withDeliveriesNavCount", () => {
     },
   );
 
-  it("does not ask the API of someone who cannot open the page", async () => {
-    const counts = await withDeliveriesNavCount(
-      { ...EMPTY_ADMIN_NAV_COUNTS, deliveriesWaiting: 5 },
-      "staff",
-      ["finance"],
-    );
-    expect(counts.deliveriesWaiting).toBe(0);
-    expect(reader.getAdminDeliveriesWaitingCount).not.toHaveBeenCalled();
-  });
+  // D5: whoever cannot open Lot fulfilment does not see Deliveries, read-only staff included.
+  it.each(["finance", "read_only"] as const)(
+    "does not ask the API for %s, who cannot open the page",
+    async (role) => {
+      const counts = await withDeliveriesNavCount(
+        { ...EMPTY_ADMIN_NAV_COUNTS, deliveriesWaiting: 5 },
+        "staff",
+        [role],
+      );
+      expect(counts.deliveriesWaiting).toBe(0);
+      expect(reader.getAdminDeliveriesWaitingCount).not.toHaveBeenCalled();
+    },
+  );
 
   it("shows no count when the API does not answer", async () => {
     reader.getAdminDeliveriesWaitingCount.mockRejectedValueOnce(new Error("down"));

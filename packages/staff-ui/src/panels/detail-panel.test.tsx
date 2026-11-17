@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { DetailPanel } from "./detail-panel.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { BesidePanelInset, DetailPanel } from "./detail-panel.js";
 
 function renderPanel(dirty: boolean) {
   const onOpenChange = vi.fn();
@@ -134,5 +134,73 @@ describe("DetailPanel", () => {
     expect(footer?.className).toContain("env(safe-area-inset-bottom)");
     // Full width below 640px: the panel's own width only applies from `sm`.
     expect(screen.getByRole("dialog")).toHaveClass("w-full", "sm:w-[480px]");
+  });
+});
+
+describe("DetailPanel beside its list", () => {
+  const original = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+  const screenWide = (wide: boolean) => {
+    window.matchMedia = (query: string) =>
+      ({
+        matches: wide && query === "(min-width: 80rem)",
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList;
+  };
+
+  function renderBeside() {
+    const onOpenChange = vi.fn();
+    render(
+      <>
+        <BesidePanelInset open>
+          <button type="button">Next row</button>
+        </BesidePanelInset>
+        <DetailPanel open beside onOpenChange={onOpenChange} title="Lot 42">
+          <p>Delivery</p>
+        </DetailPanel>
+      </>,
+    );
+    return onOpenChange;
+  }
+
+  it("from 1280px has no scrim, and a click on the list beside it does not close it", () => {
+    screenWide(true);
+    const onOpenChange = renderBeside();
+    expect(document.querySelector("[data-staff-panel-beside]")).not.toBeNull();
+    expect(document.querySelector("[data-lax-motion='scrim']")).toBeNull();
+    const row = screen.getByRole("button", { name: "Next row" });
+    fireEvent.pointerDown(row);
+    fireEvent.mouseDown(row);
+    fireEvent.click(row);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    // The panel's title takes focus on open, as in the usual panel.
+    expect(screen.getByRole("heading", { name: "Lot 42" })).toHaveFocus();
+  });
+
+  it("is the usual panel over the list on a narrower screen", () => {
+    screenWide(false);
+    renderBeside();
+    expect(document.querySelector("[data-staff-panel-beside]")).toBeNull();
+    expect(document.querySelector("[data-lax-motion='scrim']")).not.toBeNull();
+  });
+
+  it("keeps the panel's 480px clear on the list only while it is open", () => {
+    const { rerender, container } = render(
+      <BesidePanelInset open={false}>
+        <p>List</p>
+      </BesidePanelInset>,
+    );
+    const inset = container.firstElementChild as HTMLElement;
+    expect(inset).not.toHaveClass("xl:pr-[480px]");
+    rerender(
+      <BesidePanelInset open>
+        <p>List</p>
+      </BesidePanelInset>,
+    );
+    expect(inset).toHaveClass("xl:pr-[480px]");
   });
 });

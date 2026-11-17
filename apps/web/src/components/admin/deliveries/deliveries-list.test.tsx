@@ -1,7 +1,9 @@
 import {
   BOOKED_UNPAID,
+  COLLECTED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
+  REFUNDED,
   WAITING_DELIVERIES,
   deliveriesPageFixture,
 } from "@/lib/admin/deliveries/deliveries.fixture";
@@ -76,7 +78,8 @@ describe("DeliveriesList", () => {
     const nav = screen.getByRole("navigation", { name: "Views" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
-      "Waiting for a price3",
+      // The Waiting tab's count is said as the sidebar says it: ", 3 waiting" (NAV-3).
+      "Waiting for a price3 waiting",
       "Quoted1",
       "To dispatch1",
       "On the way1",
@@ -88,6 +91,31 @@ describe("DeliveriesList", () => {
       "page",
     );
     expect(screen.getAllByText("Example Couriers · EX123456789GB").length).toBeGreaterThan(0);
+  });
+
+  it("announces the Waiting for a price count as waiting, and only that tab's", () => {
+    renderList();
+    const nav = screen.getByRole("navigation", { name: "Views" });
+    const waiting = within(nav).getByRole("link", { name: /Waiting for a price/ });
+    expect(within(waiting).getByText("waiting")).toHaveClass("sr-only");
+    expect(within(nav).getByRole("link", { name: /^Quoted/ }).textContent).toBe("Quoted1");
+  });
+
+  it("names the step alone when no time is recorded, never a made-up time", () => {
+    renderList({
+      search: { view: "closed" },
+      page: deliveriesPageFixture({ items: [REFUNDED, COLLECTED] }),
+    });
+    const rows = within(screen.getByRole("grid")).getAllByRole("row");
+    const refunded = rows[1] as HTMLElement;
+    expect(within(refunded).getByText("Cancelled", { selector: "span[title]" })).toHaveAttribute(
+      "title",
+      "Time not recorded",
+    );
+    expect(refunded.querySelector("time")).toBeNull();
+    const collected = rows[2] as HTMLElement;
+    expect(within(collected).getByText("Collected in person")).toBeInTheDocument();
+    expect(within(collected).getByText("Collected 1 hour ago")).toBeInTheDocument();
   });
 
   it("shows the price once quoted, and Awaiting payment beside an unpaid booking", () => {
@@ -193,6 +221,25 @@ describe("DeliveriesList queue panel", () => {
     });
     expect(queuePanel.title("Lot 42 · Harbour at dusk")).toBeVisible();
     expect(within(queuePanel.get() as HTMLElement).getByText("On the way")).toBeVisible();
+  });
+
+  it("says a lot in the address has no delivery, with a way back to the list", () => {
+    const gone = "10700000-0000-4000-8000-000000000999";
+    window.history.replaceState(null, "", `/admin/deliveries?record=${gone}`);
+    renderList({ search: { record: gone }, selected: null });
+    const panel = within(screen.getByRole("dialog"));
+    expect(panel.getByText("This delivery could not be found")).toBeVisible();
+    fireEvent.click(panel.getByRole("button", { name: "Back to the list" }));
+    expect(window.location.search).toBe("");
+  });
+
+  it("keeps the list clear of the panel beside it while it is open", () => {
+    const { container } = renderList();
+    const inset = () => container.querySelector("[data-staff-panel-inset]");
+    expect(inset()).toHaveAttribute("data-staff-panel-inset", "closed");
+    fireEvent.click(screen.getAllByText("Lot 42 · Harbour at dusk")[0] as HTMLElement);
+    expect(inset()).toHaveAttribute("data-staff-panel-inset", "open");
+    expect(inset()).toHaveClass("xl:pr-[480px]");
   });
 
   it("closes on Back", async () => {

@@ -1,12 +1,15 @@
 import {
   BOOKED_UNPAID,
+  COLLECTED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
+  REFUNDED,
   deliveryFixture,
 } from "@/lib/admin/deliveries/deliveries.fixture";
+import type { DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { StaffTooltipProvider } from "@auction/staff-ui";
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeliveryPanel } from "./delivery-panel";
 
 const now = new Date(DELIVERY_FIXTURE_NOW);
@@ -74,5 +77,116 @@ describe("DeliveryPanel", () => {
     expect(panel.getByText("View only")).toBeVisible();
     expect(panel.queryByRole("link", { name: /Open full page/ })).toBeNull();
     expect(panel.queryByRole("button", { name: /Send quote/ })).toBeNull();
+  });
+
+  it("shows the buyer and paddle on one line in the header, as the mockup does", () => {
+    const panel = renderPanel();
+    expect(panel.getByText("Example Trading Ltd · Paddle 118")).toBeVisible();
+  });
+
+  it("says when a step's time is not recorded, rather than making one up", () => {
+    const panel = renderPanel(ON_THE_WAY);
+    const step = panel.getByText("Handed to the courier").closest("li") as HTMLElement;
+    expect(within(step).getByText("Time not recorded")).toBeVisible();
+    expect(step.querySelector("time")).toBeNull();
+  });
+
+  it("closes a lot collected in person, dated when it was collected", () => {
+    const panel = renderPanel(COLLECTED);
+    expect(panel.getByText("Collected in person")).toBeVisible();
+    const step = panel.getByText("Buyer collected it in person").closest("li") as HTMLElement;
+    expect(step.querySelector("time")).toHaveAttribute("datetime", "2026-11-16T11:00:00.000Z");
+  });
+
+  it("names a refunded purchase as the purchase cancelled", () => {
+    const panel = renderPanel(REFUNDED);
+    expect(panel.getByText("Purchase cancelled")).toBeVisible();
+    expect(panel.queryByText("Sale cancelled")).toBeNull();
+  });
+});
+
+describe("DeliveryPanel states (D6)", () => {
+  function Harness({ row, missing = false }: { row: DeliveryView | null; missing?: boolean }) {
+    return (
+      <StaffTooltipProvider>
+        <DeliveryPanel
+          row={row}
+          canWork
+          panelProps={{ open: row !== null, onOpenChange }}
+          now={now}
+          missing={missing}
+        />
+      </StaffTooltipProvider>
+    );
+  }
+  const onOpenChange = vi.fn();
+
+  it("says a lot in the URL has no delivery, with a way back to the list", () => {
+    onOpenChange.mockReset();
+    render(<Harness row={null} missing />);
+    const panel = within(screen.getByRole("dialog"));
+    expect(panel.getByText("This delivery could not be found")).toBeVisible();
+    expect(
+      panel.getByText("It may have been withdrawn, or the link is out of date."),
+    ).toBeVisible();
+    fireEvent.click(panel.getByRole("button", { name: "Back to the list" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("stays closed when no lot is open", () => {
+    render(<Harness row={null} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("says the buyer changed the request when it moves on while open", () => {
+    const first = deliveryFixture();
+    const { rerender } = render(<Harness row={first} />);
+    expect(screen.queryByText(/The buyer changed this request/)).toBeNull();
+    // The list refreshed: the same lot, now withdrawn by the buyer.
+    rerender(
+      <Harness
+        row={deliveryFixture({
+          status: "closed",
+          closedReason: "withdrawn",
+          quote: { ...first.quote, status: "withdrawn" },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("The buyer changed this request while you were looking at it."),
+    ).toBeVisible();
+  });
+
+  it("does not call another lot a change: stepping to the next row starts again", () => {
+    const { rerender } = render(<Harness row={deliveryFixture()} />);
+    rerender(<Harness row={ON_THE_WAY} />);
+    rerender(<Harness row={{ ...ON_THE_WAY, lotId: "10700000-0000-4000-8000-000000000007" }} />);
+    expect(screen.queryByText(/The buyer changed this request/)).toBeNull();
+  });
+});
+
+describe("DeliveryPanel beside the list", () => {
+  const original = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it("sits beside the list from 1280px, with no scrim, so the list stays in use", () => {
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query === "(min-width: 80rem)",
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList;
+    renderPanel();
+    expect(document.querySelector("[data-staff-panel-beside]")).not.toBeNull();
+    expect(document.querySelector("[data-lax-motion='scrim']")).toBeNull();
+  });
+
+  it("is the usual panel over the list on a narrower screen", () => {
+    renderPanel();
+    expect(document.querySelector("[data-staff-panel-beside]")).toBeNull();
+    expect(document.querySelector("[data-lax-motion='scrim']")).not.toBeNull();
   });
 });

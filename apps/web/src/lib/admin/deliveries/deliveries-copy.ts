@@ -1,5 +1,16 @@
 import type { DeliveryStatus } from "@auction/domain";
 
+/** The badge each row can carry: its status (closed says why) and "Awaiting payment". */
+export type DeliveryBadgeKey =
+  | Exclude<DeliveryStatus, "closed">
+  | "withdrawn"
+  | "cancelled"
+  | "collected"
+  | "awaiting_payment";
+
+/** What the "Waiting" column and the badge key a closed delivery by: why it closed. */
+export type DeliverySinceKey = Exclude<DeliveryBadgeKey, "awaiting_payment">;
+
 /**
  * Every word on the staff Deliveries screen (docs/design/staff-gaps-delivery-zoho-alerts.md,
  * D2–D6), in one place. Tables keyed by the domain's own unions fail the build when a new status
@@ -21,8 +32,40 @@ export const DELIVERIES_COPY = {
     delivered: "Delivered",
     closed: "Closed",
   } satisfies Record<DeliveryStatus, string>,
-  /** Said after the count on the Waiting tab and the sidebar: "3, 3 waiting". */
-  waitingCountLabel: (count: number) => `${count} waiting`,
+  /**
+   * Said after the count on the Waiting for a price tab, as the sidebar says it (NAV-3): "3,
+   * 3 waiting".
+   */
+  waitingCountLabel: "waiting",
+  /** The status badges (D2): words, not colour alone. */
+  badges: {
+    waiting: "Waiting for a price",
+    quoted: "Quote sent",
+    to_dispatch: "Booked, not dispatched",
+    on_the_way: "On the way",
+    delivered: "Delivered",
+    withdrawn: "Withdrawn by buyer",
+    cancelled: "Cancelled",
+    collected: "Collected in person",
+    awaiting_payment: "Awaiting payment",
+  } satisfies Record<DeliveryBadgeKey, string>,
+  /** "Lot 42 · Harbour at dusk". */
+  lotTitle: (lotNumber: number, title: string) => `Lot ${lotNumber} · ${title}`,
+  /** "Paddle 118". */
+  paddle: (paddleNumber: number) => `Paddle ${paddleNumber}`,
+  /** "Modern British · Thu 12 Nov". */
+  saleLine: (sale: string, closed: string) => `${sale} · ${closed}`,
+  /** "Example Trading Ltd · Paddle 118". */
+  buyerLine: (name: string, paddle: string | null) => (paddle ? `${name} · ${paddle}` : name),
+  /** The phone row's one meta line, its parts joined. */
+  phoneMeta: (parts: readonly string[]) => parts.join(" · "),
+  /** The courier and tracking number, in the Waiting column once on the way. */
+  courierLine: (parts: readonly string[]) => parts.join(" · "),
+  /** "1–50 of 312 deliveries". */
+  range: (from: number, to: number, total: string, count: number) =>
+    `${from}–${to} of ${total} ${count === 1 ? "delivery" : "deliveries"}`,
+  /** What the queue panel steps through, singular: "Next delivery". */
+  queueNoun: "delivery",
   columns: {
     lot: "Lot",
     buyer: "Buyer",
@@ -42,7 +85,24 @@ export const DELIVERIES_COPY = {
     delivered: (relative: string) => `Delivered ${relative}`,
     withdrawn: (relative: string) => `Withdrawn ${relative}`,
     cancelled: (relative: string) => `Cancelled ${relative}`,
-  },
+    collected: (relative: string) => `Collected ${relative}`,
+  } satisfies Record<DeliverySinceKey, (relative: string) => string>,
+  /**
+   * The same column when no recorded time says when (dispatch, delivery and cancellation keep
+   * none): the step alone, never a made-up time.
+   */
+  untimed: {
+    waiting: "Asked",
+    quoted: "Quoted",
+    to_dispatch: "Accepted",
+    on_the_way: "Dispatched",
+    delivered: "Delivered",
+    withdrawn: "Withdrawn",
+    cancelled: "Cancelled",
+    collected: "Collected",
+  } satisfies Record<DeliverySinceKey, string>,
+  /** Said where a time would be, when none is recorded. */
+  timeNotRecorded: "Time not recorded",
   search: {
     label: "Search deliveries",
     placeholder: "Search lot, paddle, buyer or destination",
@@ -51,6 +111,7 @@ export const DELIVERIES_COPY = {
     title: "Filter deliveries",
     description: "Where a delivery stands is set by the tabs above the list.",
     sale: "Sale",
+    saleChip: (title: string) => `Sale: ${title}`,
     anySale: "Any sale",
     unknownSale: "Unknown sale",
     order: "Order",
@@ -89,7 +150,6 @@ export const DELIVERIES_COPY = {
   },
   panel: {
     fallbackTitle: "Delivery",
-    openFulfilment: "Open lot fulfilment",
     meta: { buyer: "Buyer", sale: "Sale", asked: "Asked" },
     summary: {
       destination: "Destination",
@@ -117,20 +177,30 @@ export const DELIVERIES_COPY = {
       collection: "Collection",
       notStarted: "Not started",
     },
-    activity: "Activity",
     activityLabel: "Delivery activity",
     noActivity: "Nothing has happened yet.",
-    notFound: "This delivery could not be found. It may have been withdrawn.",
+    notFound: {
+      title: "This delivery could not be found",
+      description: "It may have been withdrawn, or the link is out of date.",
+      back: "Back to the list",
+    },
+    /** D6: the request moved on while its panel was open. */
+    changed: {
+      title: "The buyer changed this request while you were looking at it.",
+      description: "Check it again before you act on it.",
+    },
   },
   /** One line per step in the Activity timeline. */
   history: {
     requested: "Buyer asked for a delivery price",
     quoted: "LAX sent a quote",
+    quotedOf: (price: string) => `LAX sent a quote of ${price}`,
     accepted: "Buyer accepted the quote",
     withdrawn: "Buyer withdrew the request",
     dispatched: "Handed to the courier",
     delivered: "Delivered",
-    cancelled: "Sale cancelled",
+    collected: "Buyer collected it in person",
+    cancelled: "Purchase cancelled",
   },
   actors: { buyer: "Buyer", staff: "LAX" },
 } as const;

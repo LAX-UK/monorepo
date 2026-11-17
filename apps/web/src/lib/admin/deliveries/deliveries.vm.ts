@@ -10,7 +10,7 @@ import {
   formatStaffNumber,
   formatStaffRelative,
 } from "@auction/staff-ui";
-import { DELIVERIES_COPY } from "./deliveries-copy";
+import { DELIVERIES_COPY, type DeliveryBadgeKey, type DeliverySinceKey } from "./deliveries-copy";
 
 export const DELIVERIES_PATH = "/admin/deliveries";
 /** The search param that holds the lot whose panel is open (PRD-7). */
@@ -102,7 +102,14 @@ export function lotFulfilmentHref(lotId: string): string {
 }
 
 /** `count` is left out when the counts did not load, so a failed read never shows zeros. */
-export type DeliveryTab = { id: DeliveryStatus; label: string; href: string; count?: number };
+export type DeliveryTab = {
+  id: DeliveryStatus;
+  label: string;
+  href: string;
+  count?: number;
+  /** What the count means, read after it (", 3 waiting"), on the tab the sidebar counts. */
+  countLabel?: string;
+};
 
 /** The six view tabs (TBL-6), each with how many deliveries it holds for the search and sale. */
 export function deliveryTabs(
@@ -114,47 +121,61 @@ export function deliveryTabs(
     label: DELIVERIES_COPY.views[id],
     href: deliveriesHref(current, { view: id }),
     ...(counts ? { count: counts[id] } : {}),
+    ...(counts && id === "waiting" ? { countLabel: DELIVERIES_COPY.waitingCountLabel } : {}),
   }));
 }
 
+const BADGE = DELIVERIES_COPY.badges;
+
 /**
- * The badges, one table (CRF-7): the page never picks a tone. Words and shape carry the status
- * as well as colour does.
+ * The badges, one table (CRF-7): the page never picks a tone. Words (from the copy file) and
+ * shape carry the status as well as colour does.
  */
-export const deliveryBadge = defineStatusMap<
-  Exclude<DeliveryStatus, "closed"> | "withdrawn" | "cancelled" | "awaiting_payment"
->({
-  waiting: { label: "Waiting for a price", tone: "warning", shape: "dot" },
-  quoted: { label: "Quote sent", tone: "info", shape: "dot" },
-  to_dispatch: { label: "Booked, not dispatched", tone: "info", shape: "dot" },
-  on_the_way: { label: "On the way", tone: "info", shape: "dot" },
-  delivered: { label: "Delivered", tone: "success", shape: "check" },
-  withdrawn: { label: "Withdrawn by buyer", tone: "neutral", shape: "ring" },
-  cancelled: { label: "Cancelled", tone: "neutral", shape: "ring" },
-  awaiting_payment: { label: "Awaiting payment", tone: "neutral", shape: "ring" },
+export const deliveryBadge = defineStatusMap<DeliveryBadgeKey>({
+  waiting: { label: BADGE.waiting, tone: "warning", shape: "dot" },
+  quoted: { label: BADGE.quoted, tone: "info", shape: "dot" },
+  to_dispatch: { label: BADGE.to_dispatch, tone: "info", shape: "dot" },
+  on_the_way: { label: BADGE.on_the_way, tone: "info", shape: "dot" },
+  delivered: { label: BADGE.delivered, tone: "success", shape: "check" },
+  withdrawn: { label: BADGE.withdrawn, tone: "neutral", shape: "ring" },
+  cancelled: { label: BADGE.cancelled, tone: "neutral", shape: "ring" },
+  collected: { label: BADGE.collected, tone: "neutral", shape: "ring" },
+  awaiting_payment: { label: BADGE.awaiting_payment, tone: "neutral", shape: "ring" },
 });
+
+/** The status a row is keyed by: its view, or for a closed one, why it closed. */
+function sinceKey(row: Pick<DeliveryView, "status" | "closedReason">): DeliverySinceKey {
+  return row.status === "closed" ? (row.closedReason ?? "withdrawn") : row.status;
+}
 
 /** At most two badges a row: the status, and "Awaiting payment" on an unpaid booking. */
 export function deliveryBadges(
   row: Pick<DeliveryView, "status" | "closedReason" | "awaitingPayment">,
 ): StatusPresentation[] {
-  const key = row.status === "closed" ? (row.closedReason ?? "withdrawn") : row.status;
-  return [deliveryBadge(key), ...(row.awaitingPayment ? [deliveryBadge("awaiting_payment")] : [])];
+  return [
+    deliveryBadge(sinceKey(row)),
+    ...(row.awaitingPayment ? [deliveryBadge("awaiting_payment")] : []),
+  ];
 }
 
 /** "Lot 42 · Harbour at dusk", or the title alone for a lot without a number. */
 export function deliveryLotTitle(lot: Pick<DeliveryView["lot"], "title" | "lotNumber">): string {
-  return lot.lotNumber === null ? lot.title : `Lot ${lot.lotNumber} · ${lot.title}`;
+  return lot.lotNumber === null ? lot.title : DELIVERIES_COPY.lotTitle(lot.lotNumber, lot.title);
 }
 
 /** The sale and the day it closed: "Modern British · 12 Nov". */
 export function deliverySaleLine(sale: DeliveryView["sale"], now: Date): string | null {
-  return sale ? `${sale.title} · ${formatStaffDate(sale.endsAt, now)}` : null;
+  return sale ? DELIVERIES_COPY.saleLine(sale.title, formatStaffDate(sale.endsAt, now)) : null;
 }
 
 /** "Paddle 118", when the buyer has one in the lot's sale. */
 export function paddleLine(buyer: DeliveryView["buyer"]): string | null {
-  return buyer.paddleNumber === null ? null : `Paddle ${buyer.paddleNumber}`;
+  return buyer.paddleNumber === null ? null : DELIVERIES_COPY.paddle(buyer.paddleNumber);
+}
+
+/** The buyer and their paddle on one line, as the panel header shows them. */
+export function deliveryBuyerLine(buyer: DeliveryView["buyer"]): string {
+  return DELIVERIES_COPY.buyerLine(buyer.name, paddleLine(buyer));
 }
 
 /** The quoted price, "£180.00", or null before a quote. */
@@ -166,24 +187,29 @@ export function deliveryPrice(row: Pick<DeliveryView, "quote">): string | null {
 
 /**
  * The "Waiting" column: how long the delivery has been where it is ("Asked 2 days ago"), or the
- * courier and tracking number once it is on the way.
+ * courier and tracking number once it is on the way. With no recorded time it names the step
+ * alone ("Delivered"), never a time made up from the record's last edit.
  */
 export function deliverySince(
   row: Pick<DeliveryView, "status" | "closedReason" | "statusSince" | "fulfilment">,
   now: Date,
 ): string {
   if (row.status === "on_the_way" && row.fulfilment) {
-    const parts = [row.fulfilment.carrier, row.fulfilment.trackingNumber].filter(Boolean);
-    if (parts.length > 0) return parts.join(" · ");
+    const parts = [row.fulfilment.carrier, row.fulfilment.trackingNumber].filter(
+      (part): part is string => Boolean(part),
+    );
+    if (parts.length > 0) return DELIVERIES_COPY.courierLine(parts);
   }
-  const relative = formatStaffRelative(row.statusSince, now);
-  const key = row.status === "closed" ? (row.closedReason ?? "withdrawn") : row.status;
-  return DELIVERIES_COPY.since[key](relative);
+  const key = sinceKey(row);
+  if (row.statusSince === null) return DELIVERIES_COPY.untimed[key];
+  return DELIVERIES_COPY.since[key](formatStaffRelative(row.statusSince, now));
 }
 
-/** The exact London time behind the "Waiting" column. */
+/** The exact London time behind the "Waiting" column, or that none is recorded. */
 export function deliverySinceExact(row: Pick<DeliveryView, "statusSince">, now: Date): string {
-  return formatStaffDateTime(row.statusSince, now);
+  return row.statusSince === null
+    ? DELIVERIES_COPY.timeNotRecorded
+    : formatStaffDateTime(row.statusSince, now);
 }
 
 /** "1–50 of 312 deliveries". */
@@ -192,8 +218,12 @@ export function deliveriesRangeSummary(page: {
   itemCount: number;
   total: number;
 }): string {
-  const noun = page.total === 1 ? "delivery" : "deliveries";
-  return `${page.offset + 1}–${page.offset + page.itemCount} of ${formatStaffNumber(page.total)} ${noun}`;
+  return DELIVERIES_COPY.range(
+    page.offset + 1,
+    page.offset + page.itemCount,
+    formatStaffNumber(page.total),
+    page.total,
+  );
 }
 
 /** Previous and next links for the page the list is on, or null when it all fits on one. */
@@ -230,7 +260,7 @@ export function deliveriesFilterChips(
   return [
     {
       id: "sale",
-      label: `${DELIVERIES_COPY.filters.sale}: ${title}`,
+      label: DELIVERIES_COPY.filters.saleChip(title),
       clearHref: deliveriesHref(current, { sale: null }),
     },
   ];
@@ -239,7 +269,9 @@ export function deliveriesFilterChips(
 export type DeliveryTimelineEvent = {
   id: string;
   title: string;
-  at: string;
+  /** Null when nothing records when it happened; `noTime` says so instead. */
+  at: string | null;
+  noTime: string;
   actor: string;
   tone: "neutral" | "info" | "success" | "warning";
 };
@@ -251,28 +283,33 @@ const EVENT_TONE: Record<DeliveryEvent["kind"], DeliveryTimelineEvent["tone"]> =
   withdrawn: "neutral",
   dispatched: "info",
   delivered: "success",
+  collected: "neutral",
   cancelled: "neutral",
 };
 
-/** The panel's Activity, newest first, each step with who took it. */
+/**
+ * The panel's Activity, newest first, each step with who took it. The API sends the history in
+ * the order it happened (a step with no recorded time last, in its place), so this reverses it
+ * rather than sorting by a time some steps do not have.
+ */
 export function deliveryTimeline(
   row: Pick<DeliveryView, "history" | "quote">,
 ): DeliveryTimelineEvent[] {
-  return [...row.history]
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .map((event, index) => {
-      const price =
+  return row.history
+    .map((event, index) => ({
+      id: `${event.kind}-${index}`,
+      title:
         event.kind === "quoted" && row.quote.amountMinor !== null
-          ? ` of ${formatStaffMoney(row.quote.amountMinor, row.quote.currency)}`
-          : "";
-      return {
-        id: `${event.kind}-${index}`,
-        title: `${DELIVERIES_COPY.history[event.kind]}${price}`,
-        at: event.at,
-        actor: DELIVERIES_COPY.actors[event.by],
-        tone: EVENT_TONE[event.kind],
-      };
-    });
+          ? DELIVERIES_COPY.history.quotedOf(
+              formatStaffMoney(row.quote.amountMinor, row.quote.currency),
+            )
+          : DELIVERIES_COPY.history[event.kind],
+      at: event.at,
+      noTime: DELIVERIES_COPY.timeNotRecorded,
+      actor: DELIVERIES_COPY.actors[event.by],
+      tone: EVENT_TONE[event.kind],
+    }))
+    .reverse();
 }
 
 /** Whether the buyer has paid for the lot, as the panel says it. */
@@ -287,5 +324,14 @@ export function deliveryPaidLine(row: Pick<DeliveryView, "fulfilment">, now: Dat
 export function deliveryPhoneMeta(
   row: Pick<DeliveryView, "buyer" | "destination" | "quote">,
 ): string {
-  return [row.buyer.name, row.destination, deliveryPrice(row)].filter(Boolean).join(" · ");
+  const price = deliveryPrice(row);
+  return DELIVERIES_COPY.phoneMeta([row.buyer.name, row.destination, ...(price ? [price] : [])]);
+}
+
+/**
+ * What the panel shows changing under it (D6 stale state): the delivery's status and its quote's.
+ * Two snapshots that differ mean the buyer (or the courier) moved it on while it was open.
+ */
+export function deliveryStateKey(row: Pick<DeliveryView, "status" | "quote">): string {
+  return `${row.status}:${row.quote.status}`;
 }

@@ -106,7 +106,8 @@ export const BOOKED_UNPAID = deliveryFixture({
 
 export const ON_THE_WAY = deliveryFixture({
   status: "on_the_way",
-  statusSince: "2026-11-16T08:00:00.000Z",
+  // The dispatch time is not recorded: the API sends none rather than the record's last edit.
+  statusSince: null,
   quote: BOOKED_UNPAID.quote,
   fulfilment: {
     status: "in_transit",
@@ -114,12 +115,44 @@ export const ON_THE_WAY = deliveryFixture({
     carrier: "Example Couriers",
     trackingNumber: "EX123456789GB",
     paidAt: "2026-11-15T13:00:00.000Z",
-    updatedAt: "2026-11-16T08:00:00.000Z",
+    collectedAt: null,
+  },
+  history: [...BOOKED_UNPAID.history, { kind: "dispatched", at: null, by: "staff" }],
+});
+
+/** Bought with a courier quote, then collected in person: closed, not delivered. */
+export const COLLECTED = deliveryFixture({
+  lotId: "10700000-0000-4000-8000-000000000051",
+  quoteId: "40070000-0000-4000-8000-000000000051",
+  status: "closed",
+  closedReason: "collected",
+  statusSince: "2026-11-16T11:00:00.000Z",
+  quote: BOOKED_UNPAID.quote,
+  lot: { ...deliveryFixture().lot, title: "Quay in winter", lotNumber: 51 },
+  fulfilment: {
+    status: "delivered",
+    method: "collection",
+    carrier: null,
+    trackingNumber: null,
+    paidAt: "2026-11-15T13:00:00.000Z",
+    collectedAt: "2026-11-16T11:00:00.000Z",
   },
   history: [
     ...BOOKED_UNPAID.history,
-    { kind: "dispatched", at: "2026-11-16T08:00:00.000Z", by: "staff" },
+    { kind: "collected", at: "2026-11-16T11:00:00.000Z", by: "buyer" },
   ],
+});
+
+/** A booked delivery whose purchase was refunded: closed as cancelled, with no recorded time. */
+export const REFUNDED = deliveryFixture({
+  lotId: "10700000-0000-4000-8000-000000000064",
+  quoteId: "40070000-0000-4000-8000-000000000064",
+  status: "closed",
+  closedReason: "cancelled",
+  statusSince: null,
+  quote: BOOKED_UNPAID.quote,
+  lot: { ...deliveryFixture().lot, title: "Orchard study", lotNumber: 64 },
+  history: [...BOOKED_UNPAID.history, { kind: "cancelled", at: null, by: "staff" }],
 });
 
 const COUNTS = { waiting: 3, quoted: 1, to_dispatch: 1, on_the_way: 1, delivered: 4, closed: 2 };

@@ -20,9 +20,11 @@ export const deliveryEventSchema = z.object({
     "withdrawn",
     "dispatched",
     "delivered",
+    "collected",
     "cancelled",
   ]),
-  at: z.string(),
+  /** Null when nothing records the time (dispatch, delivery and cancellation keep none). */
+  at: z.string().nullable(),
   by: z.enum(["buyer", "staff"]),
 });
 export type DeliveryEvent = z.infer<typeof deliveryEventSchema>;
@@ -31,9 +33,10 @@ export const deliveryViewSchema = z.object({
   lotId: z.string(),
   quoteId: z.string(),
   status: z.enum(DELIVERY_STATUSES),
-  closedReason: z.enum(["withdrawn", "cancelled"]).nullable(),
+  closedReason: z.enum(["withdrawn", "cancelled", "collected"]).nullable(),
   awaitingPayment: z.boolean(),
-  statusSince: z.string(),
+  /** Null when no recorded event time says when the delivery reached its status. */
+  statusSince: z.string().nullable(),
   destination: z.string(),
   quote: z.object({
     status: z.enum(DELIVERY_QUOTE_STATUSES),
@@ -64,7 +67,7 @@ export const deliveryViewSchema = z.object({
       carrier: z.string().nullable(),
       trackingNumber: z.string().nullable(),
       paidAt: z.string().nullable(),
-      updatedAt: z.string(),
+      collectedAt: z.string().nullable(),
     })
     .nullable(),
   history: z.array(deliveryEventSchema),
