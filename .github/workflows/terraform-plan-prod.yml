@@ -114,6 +114,7 @@ jobs:
       TF_VAR_admin_email_address: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
       TF_VAR_xero_client_id: ${{ secrets.XERO_CLIENT_ID }}
       TF_VAR_xero_client_secret: ${{ secrets.XERO_CLIENT_SECRET }}
+      TF_VAR_xero_token_dek_key: ${{ secrets.XERO_TOKEN_DEK_KEY }}
       TF_VAR_xero_redirect_uri: ${{ secrets.XERO_REDIRECT_URI }}
       TF_VAR_xero_webhook_key: ${{ secrets.XERO_WEBHOOK_KEY }}
       TF_VAR_xero_default_revenue_account_code: "200"
