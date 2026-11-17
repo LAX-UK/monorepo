@@ -163,7 +163,10 @@ test.describe("LAX Admin stock locations @a11y", () => {
     }
   });
 
-  test("an Administrator moves an artwork from its record", async ({ browser, baseURL }) => {
+  test("an Administrator moves an artwork from its record, then a selection from All artworks", async ({
+    browser,
+    baseURL,
+  }) => {
     const opened = await session(browser, baseURL, "light");
     try {
       const { page } = opened;
@@ -199,25 +202,19 @@ test.describe("LAX Admin stock locations @a11y", () => {
       await expect(page.getByRole("list", { name: "Artwork history" })).toContainText(
         "Location changed",
       );
-    } finally {
-      await closeStaffSession(opened);
-    }
-  });
 
-  test("an Administrator moves a selection from All artworks", async ({ browser, baseURL }) => {
-    const opened = await session(browser, baseURL, "light");
-    try {
-      const { page } = opened;
+      // Then a selection from All artworks, in the same sign-in: the sign-in service limits auth
+      // calls per minute, and the gate signs in many times already.
       await openFixtureList(page);
       await rowOf(page, FIXTURE.toMove).getByRole("checkbox").check();
       await rowOf(page, FIXTURE.alreadyThere).getByRole("checkbox").check();
       await page.getByRole("button", { name: "Move selected…" }).click();
 
-      const dialog = page.getByRole("dialog", { name: "Move 2 artworks" });
-      await chooseFixtureLocation(page, dialog);
-      await dialog.getByLabel(/^Note/).fill("Winter hang");
-      await dialog.getByRole("button", { name: "Move 2 artworks" }).click();
-      await expect(dialog).toBeHidden();
+      const many = page.getByRole("dialog", { name: "Move 2 artworks" });
+      await chooseFixtureLocation(page, many);
+      await many.getByLabel(/^Note/).fill("Winter hang");
+      await many.getByRole("button", { name: "Move 2 artworks" }).click();
+      await expect(many).toBeHidden();
       // The seed already moved one of them there.
       await expect(
         page.getByText(
@@ -237,24 +234,7 @@ test.describe("LAX Admin stock locations @a11y", () => {
   });
 
   for (const theme of ["light", "dark"] as const) {
-    test(`an artwork's record with its Location panel has no serious axe violations, ${theme}`, async ({
-      browser,
-      baseURL,
-    }) => {
-      const opened = await session(browser, baseURL, theme);
-      try {
-        // The seeded move gives the panel a current location and a history to check.
-        const path = await openFixtureRecord(opened.page, FIXTURE.alreadyThere);
-        await expect(nowAt(opened.page)).toHaveText(FIXTURE_LOCATION);
-        await expectNoSeriousAxeViolations(opened.page, path);
-      } finally {
-        await closeStaffSession(opened);
-      }
-    });
-  }
-
-  for (const theme of ["light", "dark"] as const) {
-    test(`the Locations tab and All artworks have no serious axe violations, ${theme}`, async ({
+    test(`the Locations tab, All artworks and a record's Location panel have no serious axe violations, ${theme}`, async ({
       browser,
       baseURL,
     }) => {
@@ -265,6 +245,10 @@ test.describe("LAX Admin stock locations @a11y", () => {
         // The fixture rows, so axe checks the Location column and the selection checkboxes.
         await openFixtureList(opened.page);
         await expectNoSeriousAxeViolations(opened.page, FIXTURE_LIST_PATH);
+        // The seeded move gives the panel a current location and a history to check.
+        const record = await openFixtureRecord(opened.page, FIXTURE.alreadyThere);
+        await expect(nowAt(opened.page)).toHaveText(FIXTURE_LOCATION);
+        await expectNoSeriousAxeViolations(opened.page, record);
       } finally {
         await closeStaffSession(opened);
       }
