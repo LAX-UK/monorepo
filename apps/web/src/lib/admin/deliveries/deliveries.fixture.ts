@@ -85,6 +85,23 @@ export const WAITING_DELIVERIES: DeliveryView[] = [
   }),
 ];
 
+/** A quote sent and waiting for the buyer: staff can change it. */
+export const QUOTED = deliveryFixture({
+  status: "quoted",
+  statusSince: "2026-11-15T09:00:00.000Z",
+  quote: {
+    ...deliveryFixture().quote,
+    status: "quoted",
+    amountMinor: 18_000,
+    note: "Insured, two-person delivery",
+    quotedAt: "2026-11-15T09:00:00.000Z",
+  },
+  history: [
+    { kind: "requested", at: "2026-11-14T10:12:00.000Z", by: "buyer" },
+    { kind: "quoted", at: "2026-11-15T09:00:00.000Z", by: "staff" },
+  ],
+});
+
 /** A booked delivery not paid for yet, and one with the courier. */
 export const BOOKED_UNPAID = deliveryFixture({
   status: "to_dispatch",
@@ -119,6 +136,40 @@ export const ON_THE_WAY = deliveryFixture({
     collectedAt: null,
   },
   history: [...BOOKED_UNPAID.history, { kind: "dispatched", at: null, by: "staff" }],
+});
+
+/** A paid, released lot whose delivery was accepted: To dispatch, waiting to be shipped. */
+export const TO_DISPATCH = deliveryFixture({
+  lotId: "10700000-0000-4000-8000-000000000071",
+  quoteId: "40070000-0000-4000-8000-000000000071",
+  status: "to_dispatch",
+  statusSince: "2026-11-15T12:30:00.000Z",
+  quote: BOOKED_UNPAID.quote,
+  lot: { ...deliveryFixture().lot, title: "Tide line", lotNumber: 71 },
+  fulfilment: {
+    status: "released",
+    method: "shipping",
+    carrier: null,
+    trackingNumber: null,
+    paidAt: "2026-11-15T13:00:00.000Z",
+    collectedAt: null,
+  },
+  history: BOOKED_UNPAID.history,
+});
+
+/** Delivered to the buyer's door: nothing left to do on Lot fulfilment. */
+export const DELIVERED = deliveryFixture({
+  lotId: "10700000-0000-4000-8000-000000000072",
+  quoteId: "40070000-0000-4000-8000-000000000072",
+  status: "delivered",
+  statusSince: null,
+  quote: BOOKED_UNPAID.quote,
+  lot: { ...deliveryFixture().lot, title: "Salt marsh", lotNumber: 72 },
+  fulfilment: {
+    ...(ON_THE_WAY.fulfilment as NonNullable<DeliveryView["fulfilment"]>),
+    status: "delivered",
+  },
+  history: [...ON_THE_WAY.history, { kind: "delivered", at: null, by: "staff" }],
 });
 
 /** Bought with a courier quote, then collected in person: closed, not delivered. */

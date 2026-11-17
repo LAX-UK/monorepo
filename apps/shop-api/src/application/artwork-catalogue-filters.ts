@@ -1,4 +1,11 @@
-import { type CatalogueSizeBandKey, isCatalogueSizeBandKey } from "@auction/shop-domain";
+import {
+  type CatalogueFramingKey,
+  type CatalogueOrientationKey,
+  type CatalogueSizeBandKey,
+  isCatalogueFramingKey,
+  isCatalogueOrientationKey,
+  isCatalogueSizeBandKey,
+} from "@auction/shop-domain";
 import type { ArtworkCatalogueSort } from "./artwork-catalogue-sort.js";
 import { DEFAULT_ARTWORK_CATALOGUE_SORT } from "./artwork-catalogue-sort.js";
 
@@ -48,6 +55,10 @@ export type NormalizedArtworkCatalogueFilters = {
   maxPricePence?: number;
   /** Size by the longest side (`CATALOGUE_SIZE_BANDS`). */
   sizeBand?: CatalogueSizeBandKey;
+  /** Portrait, landscape or square by the image size (`catalogueOrientationFor`). */
+  orientation?: CatalogueOrientationKey;
+  /** Available framed or unframed (`CATALOGUE_FRAMING_RULES`). */
+  framing?: CatalogueFramingKey;
   /** The catalogued medium, matched exactly (case-insensitive). */
   technique?: string;
   sort: ArtworkCatalogueSort;
@@ -71,6 +82,8 @@ export type RawArtworkCatalogueFilters = {
   minPricePence?: number;
   maxPricePence?: number;
   sizeBand?: string;
+  orientation?: string;
+  framing?: string;
   technique?: string;
   sort?: ArtworkCatalogueSort;
   editionEligible?: boolean;
@@ -149,6 +162,10 @@ export function normalizeArtworkCatalogueFilters(
     ...(minPricePence !== undefined ? { minPricePence } : {}),
     ...(maxPricePence !== undefined ? { maxPricePence } : {}),
     ...(raw.sizeBand && isCatalogueSizeBandKey(raw.sizeBand) ? { sizeBand: raw.sizeBand } : {}),
+    ...(raw.orientation && isCatalogueOrientationKey(raw.orientation)
+      ? { orientation: raw.orientation }
+      : {}),
+    ...(raw.framing && isCatalogueFramingKey(raw.framing) ? { framing: raw.framing } : {}),
     ...(technique ? { technique } : {}),
     sort: raw.sort ?? DEFAULT_ARTWORK_CATALOGUE_SORT,
     ...(raw.editionEligible !== undefined ? { editionEligible: raw.editionEligible } : {}),

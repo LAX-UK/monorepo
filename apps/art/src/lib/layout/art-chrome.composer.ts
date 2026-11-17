@@ -1,17 +1,14 @@
-import { loadArtAccountChromeState } from "@/lib/ecosystem/art-account-chrome.server";
 import {
   loadArtCrossProductFooterLinks,
   loadArtFamilyLinks,
   loadArtProductDirectoryLinks,
 } from "@/lib/ecosystem/product-directory.server";
-import { loadArtEnquiryReplyDot } from "@/lib/layout/art-enquiry-reply.server";
-import { toArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
 import { buildArtFooterVm } from "@/lib/layout/art-footer.vm";
 import type { ArtFooterVm } from "@/lib/layout/art-footer.vm";
 import { loadArtHeaderNav } from "@/lib/layout/art-header-nav.server";
 import type { ArtHeaderNavData } from "@/lib/layout/art-nav.vm";
 import { loadLinkableArtPolicies } from "@/lib/legal/art-policy-publication.server";
-import type { AccountChromeState, LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { LaxArtPolicySlug } from "@auction/marketing-ui";
 
 export type ArtChromeVm = {
@@ -19,38 +16,28 @@ export type ArtChromeVm = {
   /** The LAX top bar: the products, then LAX Account. */
   familyLinks: LaxFamilyLinkVm[];
   crossProductLinks: LaxProductLinkVm[];
-  account: AccountChromeState;
-  /** A gallery reply to an enquiry is waiting (dot on Account). */
-  replyDot: boolean;
   headerNav: ArtHeaderNavData | null;
   footer: ArtFooterVm;
   /** Policies that can be linked on this deployment. */
   linkablePolicies: LaxArtPolicySlug[];
 };
 
-/** Root layout chrome — product directory, account, header mega-menu data and footer. */
+/**
+ * Root layout chrome: product directory, header mega-menu data and footer. Nothing here depends on
+ * the visitor, so the layout's HTML can be shared between visitors; the account parts are read by
+ * the browser (`/api/viewer`, ArtViewerChromeProvider).
+ */
 export async function composeArtChrome(): Promise<ArtChromeVm> {
-  const [account, productLinks, crossProductLinks, headerNav] = await Promise.all([
-    loadArtAccountChromeState(),
-    Promise.resolve(loadArtProductDirectoryLinks()),
-    Promise.resolve(loadArtCrossProductFooterLinks()),
-    loadArtHeaderNav(),
-  ]);
-
-  const replyDot = await loadArtEnquiryReplyDot(account);
+  const productLinks = loadArtProductDirectoryLinks();
+  const crossProductLinks = loadArtCrossProductFooterLinks();
+  const headerNav = await loadArtHeaderNav();
   const linkablePolicies = loadLinkableArtPolicies();
   return {
-    replyDot,
     linkablePolicies,
     productLinks,
     familyLinks: loadArtFamilyLinks(),
     crossProductLinks,
-    account,
     headerNav,
-    footer: buildArtFooterVm({
-      crossProductLinks,
-      accountState: toArtFooterAccountState(account),
-      linkablePolicies,
-    }),
+    footer: buildArtFooterVm({ crossProductLinks, linkablePolicies }),
   };
 }

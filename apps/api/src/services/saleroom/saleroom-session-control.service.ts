@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { SaleroomEventKind } from "@auction/persistence/interfaces";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -164,7 +165,8 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
     lotId?: string;
   }): Promise<Result<{ lotId: string }, SaleroomServiceError>> {
     return this.resolveLotOutcome(input, {
-      finalize: (lotId) => this.ctx.lotLifecycle.finalizeActiveLotFromClerkHammer(lotId),
+      finalize: (lotId, inOutcomeTransaction) =>
+        this.ctx.lotLifecycle.finalizeActiveLotFromClerkHammer(lotId, { inOutcomeTransaction }),
       failureMessage: "Could not hammer this lot (not active or already closed)",
       eventKind: "hammer",
     });
@@ -176,7 +178,8 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
     lotId?: string;
   }): Promise<Result<{ lotId: string }, SaleroomServiceError>> {
     return this.resolveLotOutcome(input, {
-      finalize: (lotId) => this.ctx.lotLifecycle.noSaleEndActiveLotFromClerk(lotId),
+      finalize: (lotId, inOutcomeTransaction) =>
+        this.ctx.lotLifecycle.noSaleEndActiveLotFromClerk(lotId, { inOutcomeTransaction }),
       failureMessage: "Could not declare no sale for this lot",
       eventKind: "no_sale",
     });
@@ -206,7 +209,10 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
   private async resolveLotOutcome(
     input: { saleId: string; actorUserId: string; lotId?: string },
     options: {
-      finalize: (lotId: string) => Promise<unknown>;
+      finalize: (
+        lotId: string,
+        inOutcomeTransaction: (tx: Database) => Promise<void>,
+      ) => Promise<unknown>;
       failureMessage: string;
       eventKind: Extract<SaleroomEventKind, "hammer" | "no_sale">;
     },
@@ -233,10 +239,26 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       });
     }
 
-    const outcome = await options.finalize(lotId);
+    // Take the lot off the block in the same transaction as its outcome write, and only if it is
+    // still the session's current lot. An advance that has already put the next lot up wins.
+    let clearedFromBlock = false;
+    const outcome = await options.finalize(lotId, async (tx) => {
+      ({ cleared: clearedFromBlock } = await this.ctx.sessionRepo.clearCurrentLotIfCurrent(
+        { sessionId: session.id, lotId },
+        tx,
+      ));
+    });
     if (!outcome) {
       return err({ message: options.failureMessage, status: 400 });
     }
+
+    // What is on the block once the outcome has committed. When this lot was cleared the run order
+    // still anchors on it (the next lot is the one after it). When an advance won the race, the
+    // lot it put up is current, and the next lot must be computed from that one.
+    const lotOnBlockAfterOutcome = clearedFromBlock
+      ? null
+      : ((await this.ctx.sessionRepo.findBySaleId(input.saleId))?.currentLotId ?? null);
+    const runOrderAnchorLotId = lotOnBlockAfterOutcome ?? lotId;
 
     const eventPayload =
       options.eventKind === "hammer"
@@ -244,6 +266,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
             const hammer = outcome as { winnerId: string | null; voided: boolean };
             return {
               lotId,
+              clearedFromBlock,
               lotStatus: hammer.voided ? ("voided" as const) : ("ended" as const),
               winnerId: hammer.winnerId,
               ...(hammer.voided
@@ -255,14 +278,15 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
           })()
         : {
             lotId,
+            clearedFromBlock,
             lotStatus: "ended" as const,
             winnerId: null,
             lotOutcome: "no_sale" as const,
           };
 
     await this.ctx.lotJobs?.cancelLotJobs(lotId);
-    await this.ctx.sessionRepo.clearCurrentLot(session.id);
-    await this.display.clearDisplayOverlayIfAny(input.saleId);
+    // The overlay belongs to whatever is on the block; leave it alone if the room has moved on.
+    if (clearedFromBlock) await this.display.clearDisplayOverlayIfAny(input.saleId);
     await this.ctx.telephoneBidBookingService?.completeLinesForLot(input.saleId, lotId);
     await this.appendEventAndPublish(
       session,
@@ -270,7 +294,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       options.eventKind,
       eventPayload,
       input.actorUserId,
-      lotId,
+      runOrderAnchorLotId,
     );
     return ok({ lotId });
   }

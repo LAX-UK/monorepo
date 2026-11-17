@@ -47,6 +47,10 @@ export type ArtworkFacetCountsReadModel = {
   priceBands: Array<{ key: string; count: number }>;
   /** Every size band in band order, empty ones included. */
   sizes: Array<{ key: string; count: number }>;
+  /** Portrait, landscape and square in that order, empty ones included. */
+  orientations: Array<{ key: string; count: number }>;
+  /** Available framed, then available unframed, empty ones included; a work can be in both. */
+  framing: Array<{ key: string; count: number }>;
   /** Techniques with works, most works first. */
   techniques: Array<{ value: string; count: number }>;
   /** Object types (the medium on lax.art) with works, in canonical type order. */

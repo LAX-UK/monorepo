@@ -18,9 +18,10 @@ import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
 import { decideConsignLink } from "@/lib/seller/consign-link";
+import { loadCopyFrom, startedFromNotice } from "@/lib/seller/sell-another-like-this";
 import { actingForOrganisation, sellerAccountChoice } from "@/lib/seller/seller-account-options";
 import { Notice } from "@auction/ui/lax/notice";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 /**
  * The details of a work the account already has, to start selling it again: one it bought (from
@@ -87,14 +88,20 @@ export default async function NewSubmissionPage({
     fromLot?: string;
     /** "Consign again": a consigned work that came back unsold. */
     fromSubmission?: string;
+    /** "Sell another like this": a work of the client's whose shared facts start the next one. */
+    copyFrom?: string;
   }>;
 }) {
   const sp = await searchParams;
   const categorySlug =
     typeof sp.categorySlug === "string" && sp.categorySlug.length > 0 ? sp.categorySlug : null;
-  const loginNext = categorySlug
-    ? `/selling/new?categorySlug=${encodeURIComponent(categorySlug)}`
-    : "/selling/new";
+  const copyFromId =
+    typeof sp.copyFrom === "string" && sp.copyFrom.length > 0 ? sp.copyFrom : undefined;
+  const loginNext = copyFromId
+    ? `/selling/new?copyFrom=${encodeURIComponent(copyFromId)}`
+    : categorySlug
+      ? `/selling/new?categorySlug=${encodeURIComponent(categorySlug)}`
+      : "/selling/new";
   const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext,
@@ -129,12 +136,21 @@ export default async function NewSubmissionPage({
     sp,
     sellerCtx.sellerEntityId,
   );
+  // Read as the signed-in client, by the rule for viewing that consignment: someone else's is a 404.
+  // An earlier source (sent back, or consigned again) wins, so only one notice explains the form.
+  const copied =
+    resubmitFrom || consignFrom
+      ? ({ kind: "none" } as const)
+      : await loadCopyFrom(copyFromId, (id) => c.submissions.getMineById(id));
+  if (copied.kind === "not-found") notFound();
+  const copyFrom = copied.kind === "found" ? copied : null;
   const preselectedCategoryId = categorySlug
     ? findCategoryIdBySlug(categories, categorySlug)
     : null;
   const initialValues =
     resubmitFrom?.initialValues ??
     consignFrom ??
+    copyFrom?.values ??
     (preselectedCategoryId
       ? { ...EMPTY_SUBMISSION_FORM_VALUES, categoryIds: [preselectedCategoryId] }
       : undefined);
@@ -151,6 +167,11 @@ export default async function NewSubmissionPage({
           rejectionReason={resubmitFrom.rejectionReason}
           reviewNotes={resubmitFrom.reviewNotes}
         />
+      ) : null}
+      {copyFrom ? (
+        <Notice tone="info" title={startedFromNotice(copyFrom.sourceTitle).title}>
+          {startedFromNotice(copyFrom.sourceTitle).detail}
+        </Notice>
       ) : null}
       {consignRefusal ? (
         <Notice tone="info" title="We didn't start from that work.">

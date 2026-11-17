@@ -4,7 +4,7 @@ import { createHttpArtCacheInvalidator } from "./http-art-cache-invalidator.js";
 const config = { url: "https://art.example/api/revalidate", secret: "s".repeat(32) };
 
 describe("createHttpArtCacheInvalidator", () => {
-  it("posts the editorial tag with the shared secret", async () => {
+  it("posts the editorial and home tags with the shared secret", async () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
     await createHttpArtCacheInvalidator({ ...config, fetchImpl }).invalidateEditorial();
 
@@ -13,7 +13,7 @@ describe("createHttpArtCacheInvalidator", () => {
     expect(url).toBe(config.url);
     expect(init.method).toBe("POST");
     expect((init.headers as Record<string, string>)["x-revalidate-secret"]).toBe(config.secret);
-    expect(JSON.parse(init.body as string)).toEqual({ tags: ["art:editorial"] });
+    expect(JSON.parse(init.body as string)).toEqual({ tags: ["art:editorial", "art:home"] });
   });
 
   it("retries once after a failure and then succeeds", async () => {
@@ -57,14 +57,17 @@ describe("createHttpArtCacheInvalidator", () => {
 
 describe("createHttpArtCacheInvalidator catalogue refresh", () => {
   it.each([
-    ["artworks", ["art:artworks", "art:editorial"]],
-    ["artists", ["art:artists", "art:artworks", "art:editorial"]],
-  ] as const)("purges the %s lists and the editorial pages that show them", async (scope, tags) => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
-    await createHttpArtCacheInvalidator({ ...config, fetchImpl }).invalidateCatalogue(scope);
-    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect(JSON.parse(init.body as string)).toEqual({ tags });
-  });
+    ["artworks", ["art:artworks", "art:editorial", "art:home"]],
+    ["artists", ["art:artists", "art:artworks", "art:editorial", "art:home"]],
+  ] as const)(
+    "purges the %s lists, the editorial pages and the home page that show them",
+    async (scope, tags) => {
+      const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
+      await createHttpArtCacheInvalidator({ ...config, fetchImpl }).invalidateCatalogue(scope);
+      const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).toEqual({ tags });
+    },
+  );
 
   it("retries once, then rejects so the caller can log it", async () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 503 }));

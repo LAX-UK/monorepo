@@ -156,9 +156,23 @@ export const DELIVERIES_COPY = {
     resource: "Deliveries",
     roles: ["Fulfilment", "Administrator"],
   },
+  /**
+   * The next Lot fulfilment step for a booked delivery (D9 part 4): the panel's footer link and
+   * the row menu's first item in To dispatch and On the way. Each opens the lot on Lot
+   * fulfilment, where the step is taken; nothing is recorded from here.
+   */
+  fulfilmentStep: {
+    awaiting_release: "Release lot on Lot fulfilment",
+    released: "Ship lot on Lot fulfilment",
+    ready_for_collection: "Mark collected on Lot fulfilment",
+    in_transit: "Mark delivered on Lot fulfilment",
+  },
   rowActions: {
     label: (lot: string) => `Actions for ${lot}`,
     open: "Open details",
+    /** D3: the row menu's first action, the same as the panel's footer. */
+    send: "Send quote",
+    change: "Change quote",
     fulfilment: "Open lot fulfilment",
     copyLot: "Copy lot number",
     lotNumber: "Lot number",
@@ -193,6 +207,10 @@ export const DELIVERIES_COPY = {
       shipping: "Courier",
       collection: "Collection",
       notStarted: "Not started",
+      /** Under the Delivery section: where its steps are taken. */
+      recordedOn: "Release, dispatch, tracking and delivery are recorded on Lot fulfilment.",
+      /** A booking the buyer has not paid for: Lot fulfilment has no step for it yet. */
+      awaitingPayment: "Lot fulfilment opens the next step once the buyer has paid.",
     },
     activityLabel: "Delivery activity",
     noActivity: "Nothing has happened yet.",
@@ -214,6 +232,74 @@ export const DELIVERIES_COPY = {
       title: "The buyer changed this request while you were looking at it.",
       description: "Check it again before you act on it.",
     },
+  },
+  /**
+   * Send quote and Change quote (D5, D6): a dialog with the price and a note, then a confirmation,
+   * since the price goes to a customer by email.
+   */
+  quote: {
+    send: "Send quote",
+    change: "Change quote",
+    /** The dialog's title, with the lot: "Send quote for Lot 42 · Harbour at dusk". */
+    title: (action: string, lot: string) => `${action} for ${lot}`,
+    /** Under the title: who and where the price is for. */
+    description: (buyer: string, destination: string) => `For ${buyer}, to ${destination}.`,
+    price: "Price",
+    priceHint: "The delivery price in pounds, insurance included.",
+    note: "Note to the buyer",
+    noteHint: "What the price covers, for example the carrier or how long it takes.",
+    /** Shown under the fields while changing a quote. */
+    current: (price: string) => `The buyer was quoted ${price}.`,
+    continue: "Continue",
+    cancel: "Cancel",
+    back: "Back",
+    /** The confirmation (D5: money to a customer). */
+    confirmTitle: { send: "Send this quote?", change: "Send the new quote?" },
+    confirm: {
+      send: (price: string, buyer: string) =>
+        `Send a quote of ${price} to ${buyer}? They are emailed and can accept it from their purchase page.`,
+      change: (price: string, buyer: string) =>
+        `Send a new quote of ${price} to ${buyer}? The buyer is emailed the new price. The old one can no longer be accepted.`,
+    },
+    confirmNote: "Note to the buyer",
+    submit: { send: "Send quote", change: "Send the new quote" },
+    /** Field errors: the route's own words for the price. */
+    errors: {
+      priceMissing: "Enter an amount above zero",
+      priceZero: "Enter an amount above zero",
+      priceInvalid: "Enter an amount in pounds, like 240 or 240.50",
+      noteTooLong: (max: number) => `Keep the note to ${max} characters or fewer`,
+    },
+    /** The summary's line for a field: "Price: Enter an amount above zero". */
+    summaryLine: (label: string, message: string) => `${label}: ${message}`,
+    /** D6: toast once sent, for 5 seconds. */
+    sent: (lot: string) => `Quote sent for ${lot}`,
+    failed: {
+      title: "The quote wasn't sent",
+      unavailable: "The Bid API didn't answer. Nothing was sent to the buyer. Try again.",
+      busy: "This quote is still being sent. Wait a moment, then check the delivery.",
+    },
+    /** D6: the buyer withdrew or accepted while the dialog was open. */
+    stale: {
+      title: "The buyer changed this request while you were pricing it.",
+      description: "Check it and try again.",
+    },
+    /** Someone else at LAX priced it while the dialog was open. */
+    alreadyQuoted: {
+      title: "Someone at LAX quoted this delivery while you were pricing it.",
+      description: (price: string | null) =>
+        price
+          ? `The buyer was sent ${price}. Check it before you change it.`
+          : "Check the new price before you change it.",
+    },
+    /** The Bid API refused the write (D5: Fulfilment and Administrators send quotes). */
+    denied: {
+      title: "You can't send delivery quotes",
+      description: "Fulfilment and Administrators send them. Nothing was sent to the buyer.",
+    },
+    backToDelivery: "Back to the delivery",
+    /** The step-up dialog's verb phrase: "To send a quote of £180.00, sign in again." */
+    stepUp: (price: string) => `send a quote of ${price}`,
   },
   /** One line per step in the Activity timeline. */
   history: {

@@ -68,4 +68,16 @@ describe("normalizeArtworkCatalogueFilters", () => {
     expect(normalized).not.toHaveProperty("sizeBand");
     expect(normalized).not.toHaveProperty("technique");
   });
+
+  it("keeps a known orientation and framing and drops unknown ones", () => {
+    expect(
+      normalizeArtworkCatalogueFilters({ orientation: "square", framing: "unframed" }),
+    ).toMatchObject({ orientation: "square", framing: "unframed" });
+    const normalized = normalizeArtworkCatalogueFilters({
+      orientation: "round",
+      framing: "framed_only",
+    });
+    expect(normalized).not.toHaveProperty("orientation");
+    expect(normalized).not.toHaveProperty("framing");
+  });
 });

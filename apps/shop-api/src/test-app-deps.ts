@@ -183,6 +183,8 @@ export function createMinimalShopApiTestDeps(
         artists: [],
         priceBands: [],
         sizes: [],
+        orientations: [],
+        framing: [],
         techniques: [],
         objectTypes: [],
         saleStates: [],

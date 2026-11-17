@@ -109,6 +109,9 @@ jobs:
       PLAYWRIGHT_BASE_URL: http://localhost:3050
       ART_E2E_BUYER_EMAIL: estate-owner@lax.bid
       ART_E2E_BUYER_PASSWORD: Password123!
+      # Given to lax.art alone (shop-api needs ART_REVALIDATE_URL with it), so e2e/home-prerendered
+      # can revalidate the home page's `art:home` tag the way shop-api does after a write.
+      ART_E2E_REVALIDATE_SECRET: ci-art-revalidate-secret-at-least-32-characters
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -145,6 +148,10 @@ jobs:
           --filter=@auction/shop-identity
           --filter=@auction/shop-api
           --filter=@auction/art
+      # The home page every document request for `/` is served from must stay prerendered: it
+      # becomes dynamic as soon as anything in its render reads cookies, headers or the session.
+      - name: lax.art home is prerendered
+        run: node apps/art/scripts/check-prerendered-routes.mjs
       - name: Seed catalogue and editorial showcase
         run: |
           pnpm --filter @auction/shop-api seed:catalogue
@@ -157,6 +164,7 @@ jobs:
           PORT=3011 pnpm --filter @auction/shop-api start > /tmp/art-e2e-logs/shop-api.log 2>&1 &
           # Lets a hung Art process be asked for a diagnostic report (open sockets, pending handles).
           NODE_OPTIONS="--report-on-signal --report-signal=SIGUSR2 --report-directory=/tmp/art-e2e-logs" \
+            ART_REVALIDATE_SECRET="$ART_E2E_REVALIDATE_SECRET" \
             pnpm --filter @auction/art start > /tmp/art-e2e-logs/art.log 2>&1 &
           npx --yes wait-on http://localhost:3003/health/live http://localhost:3051/health/ready http://localhost:3011/health/ready http://localhost:3050/health/live --timeout 120000
       - name: Run Art journeys, a11y, viewport audit and loading screens

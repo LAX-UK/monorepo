@@ -14,6 +14,8 @@ function handlerFor(artwork: ArtworkDetailReadModel | null) {
       artists: [],
       priceBands: [],
       sizes: [],
+      orientations: [],
+      framing: [],
       techniques: [],
       objectTypes: [],
       saleStates: [],

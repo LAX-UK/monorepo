@@ -80,7 +80,10 @@ export const SHOP_STAFF_CAPABILITIES = [
    * `artwork_register.read`: anyone who can open the record sees its location.
    */
   "artwork_location.read",
-  /** Moving an artwork, or a selection of them, to another location. */
+  /**
+   * Moving an artwork, or a selection of them, to another location. Catalogue editors and
+   * Administrators only (owner decision, 17 Nov 2026).
+   */
   "artwork_location.move",
   /**
    * Keeping the list of locations: adding, renaming and retiring them. Administrators only: a
@@ -140,8 +143,8 @@ export const READ_IMPLIED_BY_WRITE = {
   "artwork_register.review": "artwork_register.read",
   "order.write": "order.read",
   /**
-   * Moving an artwork shows where it is. It does not open the From Zoho register: Fulfilment and
-   * Gallery staff stay out of its queues and Sync health.
+   * Moving an artwork shows where it is. It does not open the From Zoho register by itself: a role
+   * given the move is given the register read beside it, where the Move action sits.
    */
   "artwork_location.move": "artwork_location.read",
   "artwork_location.manage": "artwork_location.read",
@@ -192,7 +195,6 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "order.read",
     "order.write",
     "lead.read",
-    "artwork_location.move",
   ],
   broker: [
     "stock_hold.write",
@@ -207,7 +209,6 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "order.read",
     "order.write",
     "enquiry.read",
-    "artwork_location.move",
   ],
   finance: [
     "retained_invoice_data.read",
@@ -218,11 +219,17 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "order.read",
     "artwork_price.write",
   ],
-  /** Artworks, edition runs and stock, artists, artists' applications and the From Zoho queue. */
+  /**
+   * Artworks, edition runs and stock, artists, artists' applications and the From Zoho queue. The
+   * people responsible for the catalogue also move artworks (owner decision, 17 Nov 2026), from the
+   * From Zoho record and list, so the register read is listed with the move.
+   */
   catalogue_editor: [
     "catalogue.write",
     "artist_application.review",
     "artwork_register.review",
+    "artwork_register.read",
+    "artwork_location.move",
     "consignor_agreement.manage",
   ],
   /** Stories, exhibitions, venues, pages and help, written and published. */

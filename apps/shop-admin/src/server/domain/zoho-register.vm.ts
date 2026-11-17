@@ -1,4 +1,5 @@
 import type {
+  AdminRegisterAllSort,
   AdminRegisterConflict,
   AdminRegisterDetail,
   AdminRegisterEvent,
@@ -9,12 +10,13 @@ import type {
   ZohoDriftList,
 } from "@auction/shop-contracts";
 import {
+  REGISTER_ALL_SORT_VALUES,
   REGISTER_GAP_VALUES,
   REGISTER_LOCATION_NONE,
   REGISTER_PLACE_VALUES,
   ZOHO_DRIFT_LISTS,
 } from "@auction/shop-contracts";
-import type { TimelineEvent } from "@auction/staff-ui";
+import { type SortState, type TimelineEvent, decodeSort, encodeSort } from "@auction/staff-ui";
 import { bidLotUrl } from "../../lib/offer-at-auction-links";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
 
@@ -59,8 +61,11 @@ export type ZohoQueueQuery = {
   matched?: ZohoLinkRule;
   /** Link lax.art: only live or only draft listings. */
   on?: "live" | "draft";
-  /** Link lax.art: the order of the rows (by title when absent). */
-  sort?: "artist";
+  /**
+   * Link lax.art: the order of the rows (by title when absent). All artworks: by Zoho's price
+   * across every page (newest Zoho edit when absent).
+   */
+  sort?: "artist" | AdminRegisterAllSort;
   /** Sync health: one drift list instead of the summary. */
   drift?: ZohoDriftList;
 };
@@ -108,7 +113,10 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const q = singleParam(params.q)?.trim().slice(0, ZOHO_LINK_SEARCH_MAX);
   const matched = oneOf(singleParam(params.matched), ZOHO_LINK_RULES);
   const on = oneOf(singleParam(params.on), ["live", "draft"] as const);
-  const sort = oneOf(singleParam(params.sort), ["artist"] as const);
+  const sort =
+    tab === "all"
+      ? oneOf(singleParam(params.sort), REGISTER_ALL_SORT_VALUES)
+      : oneOf(singleParam(params.sort), ["artist"] as const);
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
   const place = oneOf(singleParam(params.place), REGISTER_PLACE_VALUES);
   const location = singleParam(params.location);
@@ -162,12 +170,28 @@ export function zohoQueueApiQuery(query: ZohoQueueQuery): Record<string, string>
     missing: query.missing,
     place: query.place,
     location: query.location,
+    // Only the All list is ordered by the server; Link lax.art orders its report itself.
+    sort: query.sort === "artist" ? undefined : query.sort,
     page: query.page,
   };
   return Object.fromEntries(Object.entries(api).filter(([, value]) => Boolean(value))) as Record<
     string,
     string
   >;
+}
+
+/** The All list's column sort, as the table draws it; null for the default order. */
+export function zohoAllSortState(query: ZohoQueueQuery): SortState | null {
+  return query.sort && query.sort !== "artist" ? decodeSort(query.sort) : null;
+}
+
+/**
+ * The All list in a new order, from page one: the server orders every page, so the page a
+ * staff member was on holds different rows now.
+ */
+export function zohoAllSortHref(query: ZohoQueueQuery, sort: SortState): string {
+  const next = oneOf(encodeSort(sort), REGISTER_ALL_SORT_VALUES);
+  return zohoQueueHref(query, { sort: next ?? null });
 }
 
 /** "1–25 of 312" for a page of a queue. */

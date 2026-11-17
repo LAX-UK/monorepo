@@ -1,9 +1,12 @@
 import {
   BOOKED_UNPAID,
   COLLECTED,
+  DECLINED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
+  QUOTED,
   REFUNDED,
+  TO_DISPATCH,
   WAITING_DELIVERIES,
   deliveriesPageFixture,
 } from "@/lib/admin/deliveries/deliveries.fixture";
@@ -14,14 +17,17 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeliveriesList, type DeliveriesListProps } from "./deliveries-list";
 
-vi.mock("@/lib/actions/admin/admin-deliveries", () => ({ declineDeliveryAction: vi.fn() }));
-
 const push = vi.fn();
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh, replace: vi.fn() }),
   usePathname: () => "/admin/deliveries",
   useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/lib/actions/admin/admin-deliveries", () => ({
+  sendDeliveryQuoteAction: vi.fn(),
+  declineDeliveryAction: vi.fn(),
 }));
 
 const LOT_42 = "10700000-0000-4000-8000-000000000042";
@@ -222,6 +228,42 @@ describe("DeliveriesList", () => {
     const menu = within(screen.getByRole("menu"));
     expect(menu.getByRole("menuitem", { name: "Open details" })).toBeInTheDocument();
     expect(menu.queryByRole("menuitem", { name: "Open lot fulfilment" })).toBeNull();
+    expect(menu.queryByRole("menuitem", { name: "Send quote" })).toBeNull();
+  });
+
+  it("puts Send quote first in the row menu (D3); it opens the panel and the quote dialog", async () => {
+    renderList({ canWork: true });
+    const trigger = screen.getAllByRole("button", {
+      name: "Actions for Lot 42 · Harbour at dusk",
+    })[0];
+    fireEvent.keyDown(trigger as HTMLElement, { key: "Enter" });
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    expect(items[0]).toHaveAccessibleName("Send quote");
+    fireEvent.click(items[0] as HTMLElement);
+    expect(window.location.search).toBe(`?record=${LOT_42}`);
+    expect(
+      await screen.findByRole("dialog", { name: "Send quote for Lot 42 · Harbour at dusk" }),
+    ).toBeVisible();
+  });
+
+  it("offers Change quote in the row menu once quoted, and nothing once accepted", () => {
+    renderList({
+      page: deliveriesPageFixture({
+        items: [
+          { ...QUOTED, lotId: LOT_42 },
+          { ...BOOKED_UNPAID, lotId: WAITING_DELIVERIES[1]?.lotId as string },
+        ],
+      }),
+    });
+    const [quoted, booked] = screen.getAllByRole("button", { name: /^Actions for / });
+    fireEvent.keyDown(quoted as HTMLElement, { key: "Enter" });
+    expect(within(screen.getByRole("menu")).getAllByRole("menuitem")[0]).toHaveAccessibleName(
+      "Change quote",
+    );
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    fireEvent.keyDown(booked as HTMLElement, { key: "Enter" });
+    const menu = within(screen.getAllByRole("menu").at(-1) as HTMLElement);
+    expect(menu.queryByRole("menuitem", { name: /quote/ })).toBeNull();
   });
 
   it("links Fulfilment to the lot's fulfilment record from the row menu", () => {
@@ -233,7 +275,60 @@ describe("DeliveriesList", () => {
     fireEvent.keyDown(trigger as HTMLElement, { key: "Enter" });
     expect(
       within(screen.getByRole("menu")).getByRole("menuitem", { name: "Open lot fulfilment" }),
-    ).toHaveAttribute("href", `/admin/lot-fulfilment?lot=${LOT_42}`);
+    ).toHaveAttribute("href", `/admin/lot-fulfilment?q=${LOT_42}&lot=${LOT_42}`);
+  });
+});
+
+describe("DeliveriesList Lot fulfilment steps (D9 part 4)", () => {
+  function menuFor(name: string) {
+    const trigger = screen.getAllByRole("button", { name: `Actions for ${name}` })[0];
+    fireEvent.keyDown(trigger as HTMLElement, { key: "Enter" });
+    return within(screen.getAllByRole("menu").at(-1) as HTMLElement);
+  }
+
+  it("puts the next step first in the row menu of a booked delivery, in place of the plain link", () => {
+    renderList({
+      search: { view: "to_dispatch" },
+      page: deliveriesPageFixture({ items: [TO_DISPATCH] }),
+    });
+    const menu = menuFor("Lot 71 · Tide line");
+    const items = menu.getAllByRole("menuitem");
+    expect(items[0]).toHaveAccessibleName("Ship lot on Lot fulfilment");
+    expect(items[0]).toHaveAttribute(
+      "href",
+      `/admin/lot-fulfilment?q=${TO_DISPATCH.lotId}&lot=${TO_DISPATCH.lotId}`,
+    );
+    expect(menu.queryByRole("menuitem", { name: "Open lot fulfilment" })).toBeNull();
+  });
+
+  it("offers Mark delivered on Lot fulfilment in On the way", () => {
+    renderList({
+      search: { view: "on_the_way" },
+      page: deliveriesPageFixture({ items: [ON_THE_WAY] }),
+    });
+    expect(menuFor("Lot 42 · Harbour at dusk").getAllByRole("menuitem")[0]).toHaveAccessibleName(
+      "Mark delivered on Lot fulfilment",
+    );
+  });
+
+  it("keeps the plain Lot fulfilment link while the buyer has not paid", () => {
+    renderList({
+      search: { view: "to_dispatch" },
+      page: deliveriesPageFixture({ items: [BOOKED_UNPAID] }),
+    });
+    const menu = menuFor("Lot 42 · Harbour at dusk");
+    expect(menu.queryByRole("menuitem", { name: /on Lot fulfilment/ })).toBeNull();
+    expect(menu.getByRole("menuitem", { name: "Open lot fulfilment" })).toBeVisible();
+  });
+
+  it("leaves step links out for read-only staff", () => {
+    renderList({
+      canWork: false,
+      search: { view: "to_dispatch" },
+      page: deliveriesPageFixture({ items: [TO_DISPATCH] }),
+    });
+    const menu = menuFor("Lot 71 · Tide line");
+    expect(menu.queryByRole("menuitem", { name: /Lot fulfilment/ })).toBeNull();
   });
 });
 
@@ -261,6 +356,36 @@ describe("DeliveriesList queue panel", () => {
         panel.queryByRole("button", { name: "Can't deliver" }) !== null,
         `${row.status} canWork=${canWork}`,
       ).toBe(offered);
+      unmount();
+    }
+  });
+
+  it("puts Can't deliver before Send or Change quote in the panel footer, and neither on a declined request", () => {
+    const cases = [
+      { row: WAITING_DELIVERIES[0], primary: "Send quote" },
+      // Lot ids of their own, so the panel shows them rather than the waiting row on the page.
+      {
+        row: { ...QUOTED, lotId: "10700000-0000-4000-8000-000000000098" },
+        primary: "Change quote",
+      },
+      { row: { ...DECLINED, lotId: "10700000-0000-4000-8000-000000000097" }, primary: null },
+    ];
+    for (const { row, primary } of cases) {
+      if (!row) throw new Error("fixture");
+      const { unmount } = renderList({
+        canWork: true,
+        search: { record: row.lotId },
+        selected: row,
+      });
+      const footer = screen.getByRole("dialog").querySelector("[data-staff-panel-footer]");
+      if (primary === null) {
+        expect(footer).toBeNull();
+      } else {
+        const names = within(footer as HTMLElement)
+          .getAllByRole("button")
+          .map((button) => button.textContent?.trim());
+        expect(names).toEqual(["Can't deliver", primary]);
+      }
       unmount();
     }
   });

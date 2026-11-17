@@ -1054,6 +1054,12 @@ jobs:
       - name: Build
         run: pnpm turbo run build --affected --concurrency="$BUILD_CONCURRENCY"
 
+      # lax.art's home page must stay prerendered (static or ISR, regenerated within 5 minutes);
+      # it turns dynamic as soon as anything in its render reads cookies, headers or the session.
+      # Reads the build output above; skipped when the affected build left lax.art out.
+      - name: lax.art home is prerendered
+        run: node apps/art/scripts/check-prerendered-routes.mjs --skip-unbuilt
+
       # Reads the .next output the Build step just produced; it never rebuilds. Apps the affected
       # build skipped are reported and left out. Groups with `enforce: true` fail the job when a
       # route is over budget; the others warn.

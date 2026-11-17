@@ -10,6 +10,16 @@ export function parseArtConsent(raw: string | undefined): ArtConsentChoice | nul
   return raw === "granted" || raw === "denied" ? raw : null;
 }
 
+/** The stored choice, from a `document.cookie` string. */
+export function readArtConsent(cookieHeader: string): ArtConsentChoice | null {
+  const prefix = `${ART_CONSENT_COOKIE}=`;
+  const entry = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return parseArtConsent(entry?.slice(prefix.length));
+}
+
 export function artConsentCookie(choice: ArtConsentChoice, secure: boolean): string {
   return [
     `${ART_CONSENT_COOKIE}=${choice}`,

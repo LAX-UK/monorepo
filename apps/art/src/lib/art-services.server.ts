@@ -127,3 +127,21 @@ export const artServices: ArtServices = {
   },
   ecosystem: { crossProductLinks: loadArtCrossProductFooterLinks },
 };
+
+/**
+ * The services for a page prerendered and shared between visitors (the home page). Every read it
+ * makes is cached and tagged, so Next can regenerate the page without it turning dynamic: detail
+ * reads by slug are cached here (see ArtSlugReadMode), where everywhere else they are read fresh.
+ */
+export const artPrerenderedPageServices: ArtServices = {
+  ...artServices,
+  catalogue: {
+    ...artServices.catalogue,
+    getArtist: (slug) => fetchArtChannelArtistBySlug(slug, "cached"),
+  },
+  editorial: {
+    ...artServices.editorial,
+    getExhibition: (slug) => fetchEditorialExhibitionBySlug(slug, "cached"),
+    getVenue: (slug) => fetchEditorialVenueBySlug(slug, "cached"),
+  },
+};
