@@ -9,6 +9,7 @@ import {
   StatusMismatchList,
 } from "@/components/from-zoho/sync-health-drift-list.client";
 import { SyncHealthView } from "@/components/from-zoho/sync-health-view.client";
+import { LocationsList } from "@/components/stock-location/locations-list.client";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { getShopAdminContainer } from "@/server/container";
@@ -25,6 +26,7 @@ import type {
   AdminRegisterLastCheck,
   AdminRegisterNewList,
   AdminSoldAttentionList,
+  AdminStockLocationList,
   AdminZohoLinkCount,
   AdminZohoLinkReport,
   AdminZohoProductWithoutRegisterList,
@@ -115,6 +117,28 @@ export default async function FromZohoPage({
     );
   }
 
+  if (tab === "locations") {
+    const [counts, locations] = await Promise.all([
+      fetchAdminJson<AdminRegisterCounts>("artwork-register/counts"),
+      fetchAdminJson<AdminStockLocationList>("artwork-locations?includeRetired=true"),
+    ]);
+    if (counts.status === "unauthorized" || locations.status === "unauthorized") {
+      redirect("/login");
+    }
+    if (counts.status !== "ok") return <AdminFailedPage title={TITLE} status={counts.status} />;
+    if (locations.status !== "ok") {
+      return <AdminFailedPage title={TITLE} status={locations.status} />;
+    }
+    return (
+      <LocationsList
+        query={query}
+        counts={counts.data}
+        unlinked={unlinked}
+        locations={locations.data.items}
+      />
+    );
+  }
+
   if (tab === "check") {
     const result = await fetchAdminJson<AdminRegisterLastCheck>("artwork-register/last-check");
     if (result.status === "unauthorized") redirect("/login");
@@ -154,13 +178,18 @@ export default async function FromZohoPage({
   }
 
   if (tab === "all") {
-    const result = await fetchAdminJson<AdminRegisterAllList>(`artwork-register/all${suffix}`);
+    const [result, locations] = await Promise.all([
+      fetchAdminJson<AdminRegisterAllList>(`artwork-register/all${suffix}`),
+      // For the Location filter and Move selected. A failed read leaves both out, not the list.
+      fetchAdminJson<AdminStockLocationList>("artwork-locations?includeRetired=true"),
+    ]);
     if (result.status === "unauthorized") redirect("/login");
     if (result.status !== "ok") return <AdminFailedPage title={TITLE} status={result.status} />;
     return (
       <AllFromZohoList
         query={query}
         page={result.data}
+        locations={locations.status === "ok" ? locations.data.items : null}
         unlinked={unlinked}
         bidAdminUrl={await loadBidAdminUrl()}
         zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}

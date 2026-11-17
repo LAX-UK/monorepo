@@ -44,6 +44,7 @@ import {
 } from "@auction/staff-ui";
 import { Copy, ExternalLink, Gavel, Globe, MoveRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -70,12 +71,15 @@ export function FromZohoRecord({
   detail,
   zohoUrl,
   bidAdminUrl = null,
+  locationPanel = null,
 }: {
   detail: AdminRegisterDetail;
   /** The Product's page in Zoho; null when no CRM address is set. */
   zohoUrl: string | null;
   /** Where Bid admin lives, for a person who can open it; null for everyone else. */
   bidAdminUrl?: string | null;
+  /** Where the artwork physically is and has been, streamed in by the page. */
+  locationPanel?: ReactNode;
 }) {
   const open = detail.conflicts.filter((conflict) => conflict.status === "open");
   const decided = detail.conflicts.filter((conflict) => conflict.status === "resolved");
@@ -254,6 +258,8 @@ export function FromZohoRecord({
             ) : undefined
           }
         />
+
+        {locationPanel}
 
         <Section title="Catalogue" description="Edited in Zoho and kept up to date here.">
           <KeyValueList
