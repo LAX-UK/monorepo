@@ -117,10 +117,6 @@
       "types": "./dist/header/header-chrome-tone.d.ts",
       "default": "./dist/header/header-chrome-tone.js"
     },
-    "./header/header-offset": {
-      "types": "./dist/header/header-offset.d.ts",
-      "default": "./dist/header/header-offset.js"
-    },
     "./header/hero-presence": {
       "types": "./dist/header/hero-presence.d.ts",
       "default": "./dist/header/hero-presence.js"

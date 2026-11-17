@@ -161,8 +161,6 @@ describe("useHeaderChrome", () => {
 
     scrollToFrame(500);
     expect(rootStyle.getPropertyValue("--header-offset")).toBe(withBanner(74));
-    // The banner itself sits where the header element ends.
-    expect(rootStyle.getPropertyValue("--header-bar-offset")).toBe("74px");
     expect(rootStyle.getPropertyValue("--header-height")).toBe(withBanner(110));
 
     scrollToFrame(0);

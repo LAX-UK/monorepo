@@ -17,7 +17,6 @@ export function MarketingLiveConnectivityBanner({ enabled = true }: Props) {
 
   return (
     <ConnectivityBannerShell
-      variant="fixed-top"
       tone={state === "offline" ? "error" : "warning"}
       testId="marketing-live-connectivity-banner"
       message={message}

@@ -50,7 +50,7 @@ describe("MarketingLiveConnectivityBanner", () => {
     const root = document.documentElement.style;
     expect(root.getPropertyValue("--connectivity-banner-height")).toBe("31px");
     unmount();
-    expect(root.getPropertyValue("--connectivity-banner-height")).toBe("");
+    expect(root.getPropertyValue("--connectivity-banner-height")).toBe("0px");
   });
 
   it("renders nothing when disabled", () => {

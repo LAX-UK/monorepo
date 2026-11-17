@@ -14,9 +14,6 @@ export const HEADER_OFFSET_VAR = "--header-offset";
  */
 export const CONNECTIVITY_BANNER_HEIGHT_VAR = "--connectivity-banner-height";
 
-/** Where the header element itself ends, without the banner: the banner's own `top`. Published on the root. */
-export const HEADER_BAR_OFFSET_VAR = "--header-bar-offset";
-
 /** Selector of the LAX top bar inside the header; its height is how far the header can slide. */
 export const TOP_BAR_SELECTOR = '[data-testid="lax-family-bar"]';
 
@@ -30,10 +27,8 @@ export function publishHeaderVars(
   root: HTMLElement,
   vars: { height: number; shift: number },
 ): void {
-  const offset = vars.height - vars.shift;
-  const withBanner = (px: number) => `calc(${px}px + var(${CONNECTIVITY_BANNER_HEIGHT_VAR}, 0px))`;
-  root.style.setProperty(HEADER_HEIGHT_VAR, withBanner(vars.height));
+  const banner = ` + var(${CONNECTIVITY_BANNER_HEIGHT_VAR}, 0px))`;
+  root.style.setProperty(HEADER_HEIGHT_VAR, `calc(${vars.height}px${banner}`);
   root.style.setProperty(TOP_BAR_SHIFT_VAR, `${vars.shift}px`);
-  root.style.setProperty(HEADER_OFFSET_VAR, withBanner(offset));
-  root.style.setProperty(HEADER_BAR_OFFSET_VAR, `${offset}px`);
+  root.style.setProperty(HEADER_OFFSET_VAR, `calc(${vars.height - vars.shift}px${banner}`);
 }

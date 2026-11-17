@@ -19,12 +19,5 @@ export function LiveConnectivityNoticeBanner({ scope, testId }: Props) {
 
   if (!browserOnline || !notice) return null;
 
-  return (
-    <ConnectivityBannerShell
-      variant="fixed-top"
-      tone="warning"
-      testId={testId}
-      message={notice.message}
-    />
-  );
+  return <ConnectivityBannerShell tone="warning" testId={testId} message={notice.message} />;
 }

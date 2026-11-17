@@ -25,6 +25,5 @@ describe("publishHeaderVars", () => {
     expect(root.style.getPropertyValue("--header-offset")).toBe(
       "calc(74px + var(--connectivity-banner-height, 0px))",
     );
-    expect(root.style.getPropertyValue("--header-bar-offset")).toBe("74px");
   });
 });
