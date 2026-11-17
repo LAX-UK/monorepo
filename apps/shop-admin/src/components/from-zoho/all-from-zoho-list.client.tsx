@@ -7,6 +7,8 @@ import {
   useQueueFrame,
 } from "@/components/from-zoho/use-queue-frame.client";
 import { useRegisterRowActions } from "@/components/from-zoho/use-register-row-actions.client";
+import { MoveArtworksDialog } from "@/components/stock-location/move-artworks-dialog.client";
+import { LOCATION_NOT_RECORDED, locationFilterOptions } from "@/server/domain/stock-location.vm";
 import {
   type ZohoQueueQuery,
   hasActiveZohoFilters,
@@ -15,15 +17,22 @@ import {
   pageSummary,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
-import type { AdminRegisterAllItem, AdminRegisterAllList } from "@auction/shop-contracts";
+import type {
+  AdminRegisterAllItem,
+  AdminRegisterAllList,
+  AdminStockLocation,
+} from "@auction/shop-contracts";
 import {
   type DataColumn,
   FilterSheet,
   ListPage,
+  StaffButton,
   StaffDate,
   WhereItIsChip,
+  useStaffCan,
 } from "@auction/staff-ui";
-import { useMemo } from "react";
+import { MapPin } from "@auction/staff-ui/icons";
+import { useMemo, useState } from "react";
 
 const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
   { id: "artwork", header: "Artwork", mobile: "title", cell: artworkCell },
@@ -34,6 +43,15 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     mobile: "badge",
     truncate: false,
     cell: (row) => <WhereItIsChip chip={row.whereItIs.chip} />,
+  },
+  {
+    id: "location",
+    header: "Location",
+    width: "180px",
+    mobile: "meta",
+    // Says "Location" itself, since on a phone the column header is gone and this reads as meta.
+    cell: (row) =>
+      row.location?.label ?? <span className="text-staff-muted">{LOCATION_NOT_RECORDED}</span>,
   },
   {
     id: "kind",
@@ -54,8 +72,10 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
 
 /**
  * Every artwork Zoho has sent, wherever it is now, so staff can find one after it leaves "New from
- * Zoho". Each row says where the artwork is; the filters narrow by artist and by that place. An
- * artwork that is not offered anywhere can still be offered from its row's "…" menu.
+ * Zoho". Each row says where the artwork is offered and where it physically is; the filters
+ * narrow by artist, by that place and by location. An artwork that is not offered anywhere can
+ * still be offered from its row's "…" menu. People who can move artworks select rows and use
+ * "Move selected" to move a hang or a shipment in one go.
  */
 export function AllFromZohoList({
   query,
@@ -63,18 +83,26 @@ export function AllFromZohoList({
   zohoUrlTemplate = null,
   unlinked = 0,
   bidAdminUrl = null,
+  locations = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterAllList;
   zohoUrlTemplate?: string | null;
   unlinked?: number;
   bidAdminUrl?: string | null;
+  /** Every location, for the Location filter and Move selected; null when it did not load. */
+  locations?: readonly AdminStockLocation[] | null;
 }) {
   const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
   const { actionsFor, dialogs } = useRegisterRowActions({ navigate, zohoUrlTemplate, bidAdminUrl });
   const links = pageLinks(query, page);
   const artistName = page.artists.find((artist) => artist.code === query.artist)?.name;
   const placeLabel = page.places.find((place) => place.value === query.place)?.label;
+  const locationOptions = locations ? locationFilterOptions(locations) : [];
+  const locationLabel = locationOptions.find((option) => option.value === query.location)?.label;
+  const canMove = useStaffCan("artwork_location.move") && locations !== null;
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [moving, setMoving] = useState<AdminRegisterAllItem[] | null>(null);
 
   const activeFilters = useMemo(
     () => [
@@ -96,8 +124,17 @@ export function AllFromZohoList({
             },
           ]
         : []),
+      ...(query.location
+        ? [
+            {
+              id: "location",
+              label: `Location: ${locationLabel ?? "Unknown"}`,
+              onRemove: () => navigate(zohoQueueHref(query, { location: null })),
+            },
+          ]
+        : []),
     ],
-    [query, artistName, placeLabel, navigate],
+    [query, artistName, placeLabel, locationLabel, navigate],
   );
 
   return (
@@ -123,6 +160,18 @@ export function AllFromZohoList({
                 })),
                 value: query.place ?? "",
               },
+              ...(locationOptions.length > 0
+                ? [
+                    {
+                      kind: "radio" as const,
+                      id: "location",
+                      label: "Location",
+                      anyLabel: "Any location",
+                      options: locationOptions,
+                      value: query.location ?? "",
+                    },
+                  ]
+                : []),
               {
                 kind: "radio",
                 id: "artist",
@@ -140,6 +189,7 @@ export function AllFromZohoList({
                 zohoQueueHref(query, {
                   artist: (values.artist as string) || null,
                   place: (values.place as ZohoQueueQuery["place"] | "") || null,
+                  location: (values.location as string) || null,
                 }),
               )
             }
@@ -165,6 +215,23 @@ export function AllFromZohoList({
             label: (row) => `Actions for ${row.title}`,
             actions: (row) => actionsFor(row, row.whereItIs.key === "not_offered"),
           },
+          ...(canMove
+            ? {
+                selectedIds: selected,
+                onSelectedIdsChange: setSelected,
+                bulkNoun: { one: "artwork", other: "artworks" },
+                bulkActions: (picked: AdminRegisterAllItem[]) => (
+                  <StaffButton
+                    size="sm"
+                    variant="primary"
+                    icon={<MapPin aria-hidden />}
+                    onClick={() => setMoving(picked)}
+                  >
+                    Move selected…
+                  </StaffButton>
+                ),
+              }
+            : {}),
         }}
         pagination={
           page.items.length > 0
@@ -173,6 +240,17 @@ export function AllFromZohoList({
         }
       />
       {dialogs}
+      {moving && locations ? (
+        <MoveArtworksDialog
+          registerIds={moving.map((row) => row.registerId)}
+          subject={
+            moving.length === 1 ? (moving[0]?.title ?? "1 artwork") : `${moving.length} artworks`
+          }
+          locations={locations}
+          onClose={() => setMoving(null)}
+          onMoved={() => setSelected(new Set())}
+        />
+      ) : null}
     </>
   );
 }

@@ -230,6 +230,29 @@ async function withOwnerDocuments<T>(
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
+  it("declines a delivery quote: writes its reason and the audit event (0406)", async () => {
+    await withApiClient(async (client) => {
+      for (const privilege of ["SELECT", "UPDATE"]) {
+        const result = await client.query<{ allowed: boolean }>(
+          "select has_column_privilege(current_user, 'public.delivery_quote', 'decline_reason', $1) as allowed",
+          [privilege],
+        );
+        expect(result.rows[0]?.allowed, `decline_reason:${privilege}`).toBe(true);
+      }
+      const audit = await client.query<{ allowed: boolean }>(
+        "select has_table_privilege(current_user, 'public.domain_events', 'INSERT') as allowed",
+      );
+      expect(audit.rows[0]?.allowed).toBe(true);
+      // The probe itself: the decline's own statement runs (on no row) under api_app's grants.
+      await expect(
+        client.query(
+          `update delivery_quote set status = 'withdrawn', decline_reason = 'probe'
+            where id = '00000000-0000-4000-8000-000000000000' and status = 'quoted'`,
+        ),
+      ).resolves.toMatchObject({ rowCount: 0 });
+    });
+  });
+
   it("has no privilege on stock locations, so it cannot change or truncate the moves", async () => {
     await withApiClient(async (client) => {
       for (const table of ["artwork_location", "artwork_location_move"]) {

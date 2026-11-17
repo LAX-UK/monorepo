@@ -10,6 +10,7 @@ import type {
 } from "@auction/shop-contracts";
 import {
   REGISTER_GAP_VALUES,
+  REGISTER_LOCATION_NONE,
   REGISTER_PLACE_VALUES,
   ZOHO_DRIFT_LISTS,
 } from "@auction/shop-contracts";
@@ -19,13 +20,22 @@ import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-s
 
 export const ZOHO_QUEUE_PATH = "/from-zoho";
 
-export const ZOHO_QUEUE_TABS = ["new", "decisions", "all", "link", "check", "health"] as const;
+export const ZOHO_QUEUE_TABS = [
+  "new",
+  "decisions",
+  "all",
+  "locations",
+  "link",
+  "check",
+  "health",
+] as const;
 export type ZohoQueueTab = (typeof ZOHO_QUEUE_TABS)[number];
 
 export const ZOHO_QUEUE_TAB_LABEL: Record<ZohoQueueTab, string> = {
   new: "New from Zoho",
   decisions: "Needs a decision",
   all: "All artworks",
+  locations: "Locations",
   link: "Link lax.art",
   check: "Last check",
   health: "Sync health",
@@ -38,6 +48,8 @@ export type ZohoQueueQuery = {
   missing?: AdminRegisterGap;
   /** All artworks: where the artwork is. */
   place?: AdminRegisterPlace;
+  /** All artworks: where the artwork physically is, a location id or `none` (not recorded). */
+  location?: string;
   page?: string;
   /** Link lax.art: the part of the report shown (Matched when absent). */
   view?: Exclude<ZohoLinkView, "matched">;
@@ -76,10 +88,17 @@ export const GAP_OPTIONS = REGISTER_GAP_VALUES.map((value) => ({
   label: GAP_LABEL[value],
 }));
 
+/** A location id, or `none` for artworks with no location recorded. */
+const LOCATION_FILTER = new RegExp(
+  `^(?:${REGISTER_LOCATION_NONE}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`,
+  "i",
+);
+
 export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const tab = oneOf(singleParam(params.tab), [
     "decisions",
     "all",
+    "locations",
     "link",
     "check",
     "health",
@@ -92,6 +111,7 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const sort = oneOf(singleParam(params.sort), ["artist"] as const);
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
   const place = oneOf(singleParam(params.place), REGISTER_PLACE_VALUES);
+  const location = singleParam(params.location);
   const drift = oneOf(singleParam(params.drift), ZOHO_DRIFT_LISTS);
   const page = singleParam(params.page);
   return {
@@ -99,6 +119,7 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
     ...(artist ? { artist } : {}),
     ...(missing ? { missing } : {}),
     ...(place ? { place } : {}),
+    ...(location && LOCATION_FILTER.test(location) ? { location } : {}),
     ...(view ? { view } : {}),
     ...(q ? { q } : {}),
     ...(matched ? { matched } : {}),
@@ -115,7 +136,12 @@ export function activeZohoTab(query: ZohoQueueQuery): ZohoQueueTab {
 
 export function hasActiveZohoFilters(query: ZohoQueueQuery): boolean {
   // "Missing" belongs to New from Zoho; the other tabs have no chip for it.
-  return Boolean(query.artist || query.place || (activeZohoTab(query) === "new" && query.missing));
+  return Boolean(
+    query.artist ||
+      query.place ||
+      query.location ||
+      (activeZohoTab(query) === "new" && query.missing),
+  );
 }
 
 /** The queue's URL with `change` applied; changing anything but the page returns to page one. */
@@ -135,6 +161,7 @@ export function zohoQueueApiQuery(query: ZohoQueueQuery): Record<string, string>
     artist: query.artist,
     missing: query.missing,
     place: query.place,
+    location: query.location,
     page: query.page,
   };
   return Object.fromEntries(Object.entries(api).filter(([, value]) => Boolean(value))) as Record<
@@ -516,6 +543,9 @@ function describeEvent(
       return describeMove(payload);
     case "zoho_writeback_recorded":
       return describeWriteback(payload);
+    case "location_moved":
+      // The event holds ids only; the Location panel names the places as they are now.
+      return { title: "Location changed" };
     default:
       return { title: "Something changed" };
   }

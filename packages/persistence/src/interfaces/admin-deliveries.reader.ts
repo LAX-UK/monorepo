@@ -35,6 +35,8 @@ export type AdminDeliveryRecord = {
     requestedAt: Date;
     quotedAt: Date | null;
     decidedAt: Date | null;
+    /** Why the team declined it, as the buyer was told; `null` unless staff declined it. */
+    declineReason: string | null;
   };
   lot: {
     title: string;

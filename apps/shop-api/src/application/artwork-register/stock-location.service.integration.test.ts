@@ -25,11 +25,16 @@ import {
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
 import type { ShopUnitOfWorkFactory } from "../ports/shop-unit-of-work.js";
+import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import { createStockLocationService } from "./stock-location.service.js";
 
 const NOW = new Date("2026-11-17T09:00:00.000Z");
 const storeOn = (session: Database) => new DrizzleStockLocationStore(session);
 const key = () => `idem-${integrationSuffix("k")}`;
+/** Staff names are read elsewhere; here every mover is named after their id. */
+const staffNames: StaffNameReader = {
+  namesFor: async (subjects) => new Map(subjects.map((subject) => [subject, `Name of ${subject}`])),
+};
 
 /**
  * Runs as `shop_app`, the role shop-api uses, so the grants from #1518 are shown to be enough
@@ -56,6 +61,7 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
       uow: uow ?? createDrizzleShopUnitOfWork(db, "off"),
       reads: createDrizzleStockLocationReads(db, storeOn),
       writesFor: createDrizzleStockLocationWritesFor(storeOn),
+      staffNames,
       clock: () => NOW,
     });
   }
@@ -286,6 +292,46 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
       expect(await moves([a])).toHaveLength(1);
     });
 
+    it("refuses the same key with a different note, recording only the first move", async () => {
+      const a = await artwork();
+      const store = await addLocation();
+      const idempotencyKey = key();
+      await service().moveArtworks({
+        actorSubjectId: "ops-1",
+        idempotencyKey,
+        request: { registerIds: [a], locationId: store.id, note: "For the winter hang" },
+      });
+      await expect(
+        service().moveArtworks({
+          actorSubjectId: "ops-1",
+          idempotencyKey,
+          request: { registerIds: [a], locationId: store.id, note: "For packing" },
+        }),
+      ).rejects.toMatchObject({ statusCode: 409 });
+      const recorded = await moves([a]);
+      expect(recorded.map((row) => row.note)).toEqual(["For the winter hang"]);
+    });
+
+    it("replays the same key with the ids reordered and repeated, auditing once", async () => {
+      const [a, b] = [await artwork(), await artwork()];
+      const store = await addLocation();
+      const idempotencyKey = key();
+      const once = await service().moveArtworks({
+        actorSubjectId: "ops-1",
+        idempotencyKey,
+        request: { registerIds: [a, b], locationId: store.id },
+      });
+      const replay = await service().moveArtworks({
+        actorSubjectId: "ops-1",
+        idempotencyKey,
+        request: { registerIds: [b, a, b], locationId: store.id },
+      });
+      expect(replay).toEqual(once);
+      expect(await moves([a, b])).toHaveLength(2);
+      expect(await auditRows([a, b], "artwork_location.move")).toHaveLength(2);
+      expect(await locationEvents([a, b])).toHaveLength(2);
+    });
+
     it("refuses a retired location and audits nothing", async () => {
       const a = await artwork();
       const store = await addLocation();
@@ -322,6 +368,7 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
         uow: createDrizzleShopUnitOfWork(createShopDb(shopPool), "off"),
         reads: createDrizzleStockLocationReads(createShopDb(shopPool), storeOn),
         writesFor: createDrizzleStockLocationWritesFor(storeOn),
+        staffNames,
         clock: () => later,
       }).moveArtworks({
         actorSubjectId: "ops-1",
@@ -330,6 +377,14 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
       });
       const read = await service().artworkLocation(a);
       expect(read?.label).toBe(second.name);
+      // The current location is the newest move of the same read.
+      expect(read?.current).toEqual({
+        location: { id: second.id, name: second.name, status: "active", label: second.name },
+        movedAt: later.toISOString(),
+        movedBy: "staff:ops-1",
+        movedByName: "Name of ops-1",
+      });
+      expect(read?.moves.map((m) => m.movedByName)).toEqual(["Name of ops-1", "Name of ops-1"]);
       expect(read?.moves.map((m) => [m.from?.id ?? null, m.to.id, m.note])).toEqual([
         [first.id, second.id, "For packing"],
         [null, first.id, null],
@@ -358,13 +413,47 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
           name: name.toUpperCase(),
           note: null,
         }),
-      ).rejects.toMatchObject({ statusCode: 409 });
+      ).rejects.toSatisfy(
+        // A taken name is not a stale version: no version to reload to.
+        (error: ShopApiError) => error.statusCode === 409 && !("currentVersion" in error),
+      );
       const rows = await owner()
         .select()
         .from(artworkLocation)
         .where(inArray(artworkLocation.name, [name, name.toUpperCase()]));
       expect(rows).toHaveLength(1);
       expect(await auditRows([rows[0]?.id ?? ""])).toHaveLength(1);
+    });
+
+    it("names every field at fault, so the form can show each beside its field", async () => {
+      await expect(
+        service().addLocation({
+          actorSubjectId: "admin-1",
+          idempotencyKey: key(),
+          name: "  ",
+          note: "x".repeat(201),
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        message: "Give the location a name.",
+        issues: [
+          { field: "name", message: "Give the location a name." },
+          { field: "note", message: "Keep the note to 200 characters or fewer." },
+        ],
+      });
+      const a = await artwork();
+      const store = await addLocation();
+      await expect(
+        service().moveArtworks({
+          actorSubjectId: "ops-1",
+          idempotencyKey: key(),
+          request: { registerIds: [a], locationId: store.id, note: "x".repeat(501) },
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        issues: [{ field: "note", message: "Keep the note to 500 characters or fewer." }],
+      });
+      expect(await moves([a])).toHaveLength(0);
     });
 
     it("refuses an empty or over-long name before opening a transaction", async () => {
@@ -401,8 +490,32 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
           expectedVersion: added.version,
           name: "Overwritten",
         }),
-      ).rejects.toMatchObject({ statusCode: 409 });
+      ).rejects.toMatchObject({ statusCode: 409, currentVersion: String(added.version + 1) });
       expect(await auditRows([added.id], "artwork_location.update")).toHaveLength(1);
+    });
+
+    it("changes nothing for a rename to the name and note it has: no version, audit or event", async () => {
+      const a = await artwork();
+      const added = await addLocation();
+      await service().moveArtworks({
+        actorSubjectId: "ops-1",
+        idempotencyKey: key(),
+        request: { registerIds: [a], locationId: added.id },
+      });
+      const eventsBefore = (await locationEvents([a])).length;
+      const same = await service().updateLocation({
+        actorSubjectId: "admin-1",
+        idempotencyKey: key(),
+        locationId: added.id,
+        expectedVersion: added.version,
+        // Trimmed to the same name; no note either way.
+        name: `  ${added.name} `,
+        note: "",
+      });
+      expect(same.changed).toBe(false);
+      expect(same.location.version).toBe(added.version);
+      expect(await auditRows([added.id], "artwork_location.update")).toHaveLength(0);
+      expect(await locationEvents([a])).toHaveLength(eventsBefore);
     });
 
     it("audits retiring once; retiring again changes nothing and writes no audit row", async () => {

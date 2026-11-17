@@ -142,7 +142,7 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "organisation_member_left") {
     return { label: "Member left", Icon: Users, tone: "neutral" };
   }
-  if (type === "delivery_quote_ready") {
+  if (type === "delivery_quote_ready" || type === "delivery_quote_declined") {
     return { label: "Delivery quote", Icon: Truck, tone: "info" };
   }
   if (type === "payout_problem" || type === "payout_bank_changed") {

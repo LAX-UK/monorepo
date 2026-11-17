@@ -344,6 +344,8 @@ export type {
   ConfirmReason,
   StaffDialogProps,
 } from "./panels/staff-dialog.js";
+export { StaffFormDialog } from "./panels/staff-form-dialog.js";
+export type { StaffFormDialogProps } from "./panels/staff-form-dialog.js";
 export { StaffToaster } from "./panels/toaster.js";
 export { toastUndo } from "./panels/feedback.js";
 export { StepUpDialog, isStaffStepUpRequired, useStaffStepUp } from "./panels/step-up.js";

@@ -34,6 +34,7 @@ const NOTIFICATION_TYPES = [
   "lot_shipped",
   "lot_delivered",
   "delivery_quote_ready",
+  "delivery_quote_declined",
   "payout_problem",
   "bid_refused_limit",
   "access_requested",
@@ -151,6 +152,13 @@ const EXPECTED: Record<(typeof NOTIFICATION_TYPES)[number], ExpectedRow> = {
     template: "lot-fulfilment-update",
   },
   delivery_quote_ready: {
+    email: "paymentEmail",
+    whatsapp: null,
+    inApp: "paymentInApp",
+    push: null,
+    template: "lot-fulfilment-update",
+  },
+  delivery_quote_declined: {
     email: "paymentEmail",
     whatsapp: null,
     inApp: "paymentInApp",
