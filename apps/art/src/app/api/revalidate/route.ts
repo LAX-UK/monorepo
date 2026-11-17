@@ -1,4 +1,5 @@
 import { loadArtEnv } from "@/env.server";
+import { revalidateArtCache } from "@/lib/revalidate/revalidate-art-cache";
 import {
   REVALIDATE_SECRET_HEADER,
   createRevalidateRateLimiter,
@@ -6,7 +7,6 @@ import {
   secretMatches,
 } from "@/lib/revalidate/revalidate-request";
 import { createServerClientIpResolver } from "@auction/http-headers/client-ip";
-import { revalidateTag } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +21,10 @@ function respond(status: number, error?: string) {
 }
 
 /**
- * Called by shop-api after a staff editorial or catalogue write so published changes show immediately
- * instead of when the 120 second cache expires. The route is outside the page middleware
- * (`/api` is excluded from its matcher), so the shared secret is the only gate.
+ * Called by shop-api after a staff editorial or catalogue write so published changes show
+ * immediately instead of when the cache expires (120 seconds for editorial reads, 300 for catalogue
+ * reads and the prerendered home page). The route is outside the page middleware (`/api` is
+ * excluded from its matcher), so the shared secret is the only gate.
  */
 const resolveCallerIp = createServerClientIpResolver();
 
@@ -47,6 +48,6 @@ export async function POST(request: NextRequest) {
   const tags = parseRevalidateTags(body);
   if (!tags) return respond(400, "invalid_tags");
 
-  for (const tag of tags) revalidateTag(tag);
+  revalidateArtCache(tags);
   return respond(204);
 }

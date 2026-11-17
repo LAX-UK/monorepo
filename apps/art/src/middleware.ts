@@ -3,6 +3,10 @@ import { shopBaseUrl } from "@/lib/artwork/shop-editions.vm";
 import { loadArtCrossProductFooterLinks } from "@/lib/ecosystem/product-directory.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { ART_REQUEST_PATH_HEADER } from "@/lib/request-path-header";
+import {
+  resolvePrerenderedDirectVisit,
+  resolvePrerenderedRewrite,
+} from "@/lib/routing/prerendered-routes";
 import { followRetiredArtRoute, resolveRetiredArtRoute } from "@/lib/routing/retired-art-routes";
 import {
   X_ROBOTS_TAG_NOINDEX,
@@ -43,12 +47,26 @@ export function middleware(request: NextRequest) {
     );
   }
 
+  const directVisit = resolvePrerenderedDirectVisit(request.nextUrl.pathname);
+  if (directVisit) {
+    return NextResponse.redirect(new URL(directVisit, request.url), 308);
+  }
+
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set(
     ART_REQUEST_PATH_HEADER,
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
   );
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  const prerendered = resolvePrerenderedRewrite({
+    method: request.method,
+    pathname: request.nextUrl.pathname,
+    headers: request.headers,
+  });
+  const response = prerendered
+    ? NextResponse.rewrite(new URL(`${prerendered}${request.nextUrl.search}`, request.url), {
+        request: { headers: requestHeaders },
+      })
+    : NextResponse.next({ request: { headers: requestHeaders } });
   const host = publicRequestHost(request.headers);
   if (!isArtIndexingAllowedForHost(host, loadArtEnv().ART_ALLOW_INDEXING)) {
     response.headers.set("X-Robots-Tag", X_ROBOTS_TAG_NOINDEX);

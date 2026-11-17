@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const cache = vi.hoisted(() => ({ revalidateTag: vi.fn() }));
+const cache = vi.hoisted(() => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 vi.mock("next/cache", () => cache);
 
 import { POST } from "./route";
@@ -24,6 +24,7 @@ function call(body: unknown, headers: Record<string, string> = {}) {
 describe("POST /api/revalidate", () => {
   beforeEach(() => {
     cache.revalidateTag.mockReset();
+    cache.revalidatePath.mockReset();
     vi.stubEnv("ART_REVALIDATE_SECRET", SECRET);
   });
 
@@ -72,6 +73,17 @@ describe("POST /api/revalidate", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(cache.revalidateTag).toHaveBeenCalledTimes(1);
     expect(cache.revalidateTag).toHaveBeenCalledWith("art:editorial");
+    expect(cache.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("drops the prerendered home page for the home tag shop-api sends with a write", async () => {
+    const response = await call(
+      { tags: ["art:editorial", "art:home"] },
+      { "x-revalidate-secret": SECRET },
+    );
+    expect(response.status).toBe(204);
+    expect(cache.revalidateTag.mock.calls).toEqual([["art:editorial"], ["art:home"]]);
+    expect(cache.revalidatePath.mock.calls).toEqual([["/prerendered/home", "page"]]);
   });
 
   it("answers 429 once a caller exceeds the limit", async () => {

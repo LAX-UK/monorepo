@@ -26,8 +26,28 @@ import { useRef, useState } from "react";
 
 const ITEM = "min-h-11 cursor-pointer font-label text-sm font-medium text-on-surface";
 
+/**
+ * The account slot's width from 1024px, the same for every visitor: room for the signed-in
+ * trigger (avatar, first name, chevron), whose name is cut to fit. Guests' "Account" sits at its
+ * right edge. Because the width never follows the visitor, the header does not move when the
+ * browser reads who they are.
+ */
+export const ART_ACCOUNT_SLOT_WIDTH = "lg:w-40";
+
+/** What the slot holds, invisibly, while the visitor is unknown or has no control to show. */
+const PLACEHOLDER: AccountChromeState = {
+  kind: "guest",
+  loginHref: "/login",
+  registerHref: "/register",
+};
+
 type ArtAccountEntryProps = {
   account: AccountChromeState;
+  /**
+   * The browser has read the visitor. Until then the slot keeps its place but draws nothing, so a
+   * signed-in visitor never sees the guest control first. Defaults to true (a server-read visitor).
+   */
+  settled?: boolean;
   productLinks: LaxProductLinkVm[];
   pathname: string;
   headerTone: MarketingHeaderTone;
@@ -103,21 +123,51 @@ function SignedInRows({
  */
 export function ArtAccountEntry({
   account,
+  settled = true,
   productLinks,
   pathname,
   headerTone,
   replyDot,
 }: ArtAccountEntryProps) {
+  // A disabled or unavailable account has no header control. The slot keeps its place, empty,
+  // so nothing is drawn and then taken away, and nothing moves.
+  const ready = settled && (account.kind === "guest" || account.kind === "authenticated");
+  return (
+    <div
+      data-testid="art-header-account-slot"
+      data-account-ready={ready ? "true" : "false"}
+      aria-hidden={ready ? undefined : true}
+      inert={!ready}
+      className={cn("flex justify-end", ART_ACCOUNT_SLOT_WIDTH, !ready && "invisible")}
+    >
+      <AccountControl
+        account={ready ? account : PLACEHOLDER}
+        productLinks={productLinks}
+        pathname={pathname}
+        headerTone={headerTone}
+        replyDot={ready && replyDot}
+      />
+    </div>
+  );
+}
+
+function AccountControl({
+  account,
+  productLinks,
+  pathname,
+  headerTone,
+  replyDot,
+}: Omit<ArtAccountEntryProps, "settled">) {
   const [sheetOpen, setSheetOpen] = useState(false);
   if (account.kind === "disabled" || account.kind === "unavailable") return null;
-
   const signedIn = account.kind === "authenticated";
   const sheetTitle = signedIn ? account.displayName || "Account" : "Account";
 
   return (
     <>
-      <div className="hidden lg:block" data-testid="art-header-desktop-account">
+      <div className="hidden min-w-0 max-w-full lg:block" data-testid="art-header-desktop-account">
         <MarketingAccountEntry
+          className="max-w-full"
           viewer={signedIn ? { displayName: account.displayName, email: account.email } : null}
           signInHref={artSignInHref(pathname)}
           createAccountHref={account.kind === "guest" ? account.registerHref : "/register"}

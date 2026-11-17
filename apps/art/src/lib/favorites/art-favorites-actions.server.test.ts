@@ -28,6 +28,20 @@ describe("art favorites server actions", () => {
     expect(cache.revalidatePath).toHaveBeenCalledWith("/account/favourites");
   });
 
+  it("leaves the page alone for a page that draws favourites in the browser", async () => {
+    bff.mutate.mockResolvedValue({ kind: "response", status: 200, body: { status: "saved" } });
+    await expect(saveArtworkFavorite("work", { revalidate: false })).resolves.toEqual({
+      ok: true,
+      active: true,
+    });
+    bff.mutate.mockResolvedValue({ kind: "response", status: 200, body: { status: "followed" } });
+    await expect(followArtist("flora", { revalidate: false })).resolves.toEqual({
+      ok: true,
+      active: true,
+    });
+    expect(cache.revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("removes an artwork", async () => {
     bff.mutate.mockResolvedValue({ kind: "response", status: 200, body: { status: "removed" } });
     await expect(removeArtworkFavorite("work")).resolves.toEqual({ ok: true, active: false });

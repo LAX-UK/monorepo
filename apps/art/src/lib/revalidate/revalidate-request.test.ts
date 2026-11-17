@@ -24,6 +24,7 @@ describe("parseRevalidateTags", () => {
       "art:artworks",
       "art:artists",
     ]);
+    expect(parseRevalidateTags({ tags: ["art:home"] })).toEqual(["art:home"]);
     expect(parseRevalidateTags({ tags: ["art:catalogue"] })).toBeNull();
     expect(parseRevalidateTags({ tags: ["art:categories"] })).toBeNull();
     expect(parseRevalidateTags({ tags: [] })).toBeNull();

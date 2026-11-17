@@ -1,13 +1,12 @@
 import { LAX_ART_POLICY_ORDER } from "@auction/marketing-ui";
 import { describe, expect, it } from "vitest";
-import { buildArtFooterVm } from "./art-footer.vm";
+import { artFooterAccountLinks, buildArtFooterVm } from "./art-footer.vm";
 
 const ALL_POLICIES = LAX_ART_POLICY_ORDER;
 
 function legalLinks() {
   const vm = buildArtFooterVm({
     crossProductLinks: [],
-    accountState: { kind: "guest" },
     linkablePolicies: ALL_POLICIES,
   });
   return vm.columns.find((column) => column.id === "legal")?.links ?? [];
@@ -29,7 +28,6 @@ describe("buildArtFooterVm", () => {
           external: true,
         },
       ],
-      accountState: { kind: "guest" },
       linkablePolicies: ALL_POLICIES,
     });
     expect(vm.columns.map((column) => column.id)).toEqual([
@@ -45,10 +43,16 @@ describe("buildArtFooterVm", () => {
     ]);
   });
 
+  it("draws the Account column as a guest's; the browser redraws it for the visitor", () => {
+    const vm = buildArtFooterVm({ crossProductLinks: [], linkablePolicies: ALL_POLICIES });
+    expect(vm.columns.find((column) => column.id === "account")?.links).toEqual(
+      artFooterAccountLinks({ kind: "guest" }),
+    );
+  });
+
   it("fills the columns with Figma's links that have Art routes", () => {
     const vm = buildArtFooterVm({
       crossProductLinks: [],
-      accountState: { kind: "authenticated" },
       linkablePolicies: ALL_POLICIES,
     });
     const linksOf = (id: string) => vm.columns.find((column) => column.id === id)?.links ?? [];
@@ -81,12 +85,35 @@ describe("buildArtFooterVm", () => {
   it("leaves out policies that cannot be linked, such as drafts on production", () => {
     const vm = buildArtFooterVm({
       crossProductLinks: [],
-      accountState: { kind: "guest" },
       linkablePolicies: ["terms"],
     });
     const legal = vm.columns.find((column) => column.id === "legal")?.links ?? [];
     expect(legal.map((link) => link.href)).not.toContain("/legal/privacy");
     expect(legal.map((link) => link.href)).not.toContain("/legal/cookies");
     expect(legal.map((link) => link.href)).toContain("/legal/terms");
+  });
+});
+
+describe("artFooterAccountLinks", () => {
+  it("offers sign-in to a guest, and when the sign-in status could not be read", () => {
+    const guestLinks = [
+      { label: "Sign in", href: "/login" },
+      { label: "Create account", href: "/register" },
+    ];
+    expect(artFooterAccountLinks({ kind: "guest" })).toEqual(guestLinks);
+    expect(artFooterAccountLinks({ kind: "unavailable" })).toEqual(guestLinks);
+  });
+
+  it("links a signed-in visitor to their account and favourites", () => {
+    expect(artFooterAccountLinks({ kind: "authenticated" })).toEqual([
+      { label: "Your account", href: "/account" },
+      { label: "Favourites", href: "/account/favourites" },
+    ]);
+  });
+
+  it("links a disabled account to its status page", () => {
+    expect(artFooterAccountLinks({ kind: "disabled", accountHref: "/account/disabled" })).toEqual([
+      { label: "Account status", href: "/account/disabled" },
+    ]);
   });
 });
