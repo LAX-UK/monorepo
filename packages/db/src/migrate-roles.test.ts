@@ -819,6 +819,12 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("keeps the Bid API away from stock locations, so it cannot change or truncate the moves", () => {
+    for (const table of [...SHOP_ARTWORK_LOCATION_TABLES, ...SHOP_ARTWORK_LOCATION_MOVE_TABLES]) {
+      expect([...API_DENY_TABLES]).toContain(table);
+    }
+  });
+
   it("lets Shop move an original's offer through the register", () => {
     expect([...SHOP_ARTWORK_REGISTER_OFFER_TABLES]).toEqual(["artwork_register"]);
   });

@@ -173,6 +173,13 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
   "shop_edition_stock_batch",
 ] as const;
 export const API_DENY_TABLES = [
+  /**
+   * Stock location (0404): only LAX Admin (shop_app) keeps the list and records moves. The Bid API
+   * neither reads nor writes where an artwork physically is, and the moves are the only record
+   * of it, so api_app holds nothing that could change or truncate them.
+   */
+  "artwork_location",
+  "artwork_location_move",
   /** Sealed Zoho Books OAuth tokens: only the worker, the process that calls Books, may touch them. */
   "zoho_books_connection",
   /** The demo seeds' database mark (0398): only the owner writes it; the Shop seed reads it. */

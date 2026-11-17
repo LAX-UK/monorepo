@@ -13,8 +13,8 @@ import { artworkRegister } from "./artwork-register.js";
 
 /**
  * The places an artwork can physically be, kept by staff in LAX Admin. Retired rather than
- * deleted, so history keeps reading. Names are unique ignoring case. The constraints are in
- * migration 0404; they are repeated here where drizzle-kit needs them.
+ * deleted, so history keeps reading. Names are unique ignoring case. Every constraint in
+ * migration 0404 is repeated here, so drizzle-kit never proposes dropping one (the 0404 test checks).
  */
 export const artworkLocation = pgTable(
   "artwork_location",
@@ -32,7 +32,19 @@ export const artworkLocation = pgTable(
   },
   (table) => [
     uniqueIndex("artwork_location_name_uid").on(sql`lower(${table.name})`),
+    check(
+      "artwork_location_name_check",
+      sql`char_length(${table.name}) BETWEEN 1 AND 80 AND ${table.name} = btrim(${table.name})`,
+    ),
+    check(
+      "artwork_location_note_check",
+      sql`${table.note} IS NULL OR (char_length(${table.note}) BETWEEN 1 AND 200 AND ${table.note} = btrim(${table.note}))`,
+    ),
     check("artwork_location_status_check", sql`${table.status} IN ('active', 'retired')`),
+    check(
+      "artwork_location_retired_check",
+      sql`(${table.status} = 'retired') = (${table.retiredAt} IS NOT NULL)`,
+    ),
     check("artwork_location_version_check", sql`${table.version} >= 1`),
   ],
 );
@@ -59,5 +71,9 @@ export const artworkLocationMove = pgTable(
   (table) => [
     uniqueIndex("artwork_location_move_register_uid").on(table.registerId, table.movedAt),
     index("artwork_location_move_location_idx").on(table.locationId),
+    check(
+      "artwork_location_move_note_check",
+      sql`${table.note} IS NULL OR (char_length(${table.note}) BETWEEN 1 AND 500 AND ${table.note} = btrim(${table.note}))`,
+    ),
   ],
 );

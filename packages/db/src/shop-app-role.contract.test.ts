@@ -65,9 +65,21 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
     await withShopClient(async (client) => {
       const expected: Record<string, Record<string, boolean>> = {};
       for (const table of SHOP_ARTWORK_LOCATION_TABLES)
-        expected[table] = { SELECT: true, INSERT: true, UPDATE: true, DELETE: false };
+        expected[table] = {
+          SELECT: true,
+          INSERT: true,
+          UPDATE: true,
+          DELETE: false,
+          TRUNCATE: false,
+        };
       for (const table of SHOP_ARTWORK_LOCATION_MOVE_TABLES)
-        expected[table] = { SELECT: true, INSERT: true, UPDATE: false, DELETE: false };
+        expected[table] = {
+          SELECT: true,
+          INSERT: true,
+          UPDATE: false,
+          DELETE: false,
+          TRUNCATE: false,
+        };
       for (const [table, privileges] of Object.entries(expected)) {
         for (const [privilege, allowed] of Object.entries(privileges)) {
           const result = await client.query<{ allowed: boolean }>(

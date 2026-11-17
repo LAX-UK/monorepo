@@ -52,9 +52,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS "artwork_location_move_register_uid"
 CREATE INDEX IF NOT EXISTS "artwork_location_move_location_idx"
   ON "artwork_location_move" ("location_id");
 --> statement-breakpoint
+-- Moves are never edited or removed, by any role. Grants already keep UPDATE, DELETE and TRUNCATE
+-- from every application role; the triggers hold for the owner too (TRUNCATE skips row triggers,
+-- so it has its own statement trigger).
 CREATE OR REPLACE FUNCTION artwork_location_move_append_only() RETURNS trigger AS $$
 BEGIN
-  RAISE EXCEPTION 'artwork_location_move is append-only';
+  RAISE EXCEPTION 'artwork_location_move is append-only (% refused)', TG_OP
+    USING ERRCODE = 'restrict_violation';
 END;
 $$ LANGUAGE plpgsql;
 --> statement-breakpoint
@@ -63,6 +67,12 @@ DROP TRIGGER IF EXISTS "artwork_location_move_append_only" ON "artwork_location_
 CREATE TRIGGER "artwork_location_move_append_only"
   BEFORE UPDATE OR DELETE ON "artwork_location_move"
   FOR EACH ROW EXECUTE FUNCTION artwork_location_move_append_only();
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "artwork_location_move_no_truncate" ON "artwork_location_move";
+--> statement-breakpoint
+CREATE TRIGGER "artwork_location_move_no_truncate"
+  BEFORE TRUNCATE ON "artwork_location_move"
+  FOR EACH STATEMENT EXECUTE FUNCTION artwork_location_move_append_only();
 --> statement-breakpoint
 -- The rebuilt check allows every type the previous one did, and that one already held for every
 -- row, so it is added NOT VALID: no scan of the history while the table is locked.

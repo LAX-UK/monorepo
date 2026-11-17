@@ -109,6 +109,8 @@ describe.skipIf(!migrationUrl)(
       expect(await refused("delete from artwork_location_move where id = $1", [moveId])).toMatch(
         /append-only/,
       );
+      // TRUNCATE skips row triggers; its own statement trigger refuses it, even for the owner.
+      expect(await refused("truncate artwork_location_move")).toMatch(/append-only \(TRUNCATE/);
       expect(await refused("delete from artwork_location where id = $1", [id])).toMatch(/^23503/);
     });
 

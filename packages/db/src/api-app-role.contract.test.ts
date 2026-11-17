@@ -230,6 +230,32 @@ async function withOwnerDocuments<T>(
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
+  it("has no privilege on stock locations, so it cannot change or truncate the moves", async () => {
+    await withApiClient(async (client) => {
+      for (const table of ["artwork_location", "artwork_location_move"]) {
+        for (const privilege of [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE",
+          "TRUNCATE",
+          "REFERENCES",
+          "TRIGGER",
+        ]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+        }
+      }
+      // The probe itself: the statement that would wipe the history is refused by the grants.
+      await expect(client.query("truncate artwork_location_move")).rejects.toMatchObject({
+        code: "42501",
+      });
+    });
+  });
+
   it("has no privilege at all on the sealed Zoho Books tokens", async () => {
     await withApiClient(async (client) => {
       await expectZohoBooksConnectionGrants(client);
