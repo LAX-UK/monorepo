@@ -1,4 +1,4 @@
-import type { EntityActor, SubmissionMutation } from "@auction/domain";
+import type { EntityActor, SubmissionMutation, SubmissionMutationDenial } from "@auction/domain";
 import type { SubmissionSenderFilter } from "@auction/persistence/interfaces";
 
 /** The account a client request acts for, and the signed-in member's standing with it. */
@@ -13,7 +13,12 @@ export type SubmissionMutationAccess =
   | { kind: "allowed" }
   /** The member may not see the submission, so it answers "Not found". */
   | { kind: "not_found" }
-  | { kind: "forbidden"; message: string };
+  | {
+      kind: "forbidden";
+      message: string;
+      /** Why: the account's role, a support session, or someone else's submission. */
+      reason?: SubmissionMutationDenial;
+    };
 
 /**
  * Decides which of an account's submissions the signed-in member may reach, from the domain rule

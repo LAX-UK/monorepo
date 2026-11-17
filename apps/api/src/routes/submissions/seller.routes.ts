@@ -225,6 +225,25 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     },
   );
 
+  // GAP-53: delete a draft never sent. The policy (owners, admins and the consignor who started
+  // it, as for withdraw) and the draft-only rule are the application service's.
+  r.delete(
+    "/:id",
+    requireAuth,
+    requireBuyerRole,
+    requireSubmissionEntityContext,
+    requireChangeSubmissions,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const response = await sellerHttp.deleteDraft({
+        submissionId: id,
+        legalEntity: legalEntityFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
+
   r.post(
     "/:id/withdraw",
     requireAuth,

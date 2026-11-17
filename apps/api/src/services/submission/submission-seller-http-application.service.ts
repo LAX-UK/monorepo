@@ -174,4 +174,35 @@ export class SubmissionSellerHttpApplicationService
     );
     return mapSubmissionResult(result);
   }
+
+  /**
+   * Deletes a draft (GAP-53): owners, admins and the consignor who started it, as for withdraw.
+   * Someone else's draft answers "Not found" (404) whether it is in another account or a
+   * colleague's that the member may not delete; a submission that was sent answers 409 with
+   * `submission_not_a_draft`; done is 204.
+   */
+  async deleteDraft(input: {
+    submissionId: string;
+    legalEntity: SubmissionLegalEntityContext;
+  }): Promise<SubmissionHttpJson> {
+    const access = await this.access.authoriseMutation(
+      input.legalEntity,
+      input.submissionId,
+      "delete_draft",
+    );
+    if (access.kind === "not_found") return NOT_FOUND;
+    if (access.kind === "forbidden") {
+      if (access.reason === "not_sender") return NOT_FOUND;
+      return mutationRefusal(access) ?? NOT_FOUND;
+    }
+    const result = await this.itemSubmissionSellerApi.deleteDraftForSellerApi(
+      input.legalEntity.legalEntityId,
+      input.submissionId,
+    );
+    if (result.isErr()) {
+      const { status, message, code } = result.error;
+      return { status, body: { error: message, ...(code ? { code } : {}) } };
+    }
+    return { status: 204, body: null };
+  }
 }

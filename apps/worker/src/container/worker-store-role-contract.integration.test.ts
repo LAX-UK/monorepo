@@ -176,7 +176,14 @@ const COVERED_ELSEWHERE: Record<string, string> = {
  * rightly cannot run them. Everything not listed here must be allowed.
  */
 const API_ONLY_METHODS: Record<string, readonly string[]> = {
-  DrizzleItemSubmissionRepository: ["findByIdForUpdate", "update", "create"],
+  // Deleting a draft and purging deleted drafts (GAP-53) run in the API only.
+  DrizzleItemSubmissionRepository: [
+    "findByIdForUpdate",
+    "update",
+    "create",
+    "softDeleteDraft",
+    "purgeDeletedDrafts",
+  ],
   DrizzlePaymentRepository: ["isVoidedByBuyerDefault"],
   DrizzleUnsoldLotFollowUpRepository: ["completeByStaff", "settleOnReturn"],
   DrizzleLotRepository: ["create", "update"],

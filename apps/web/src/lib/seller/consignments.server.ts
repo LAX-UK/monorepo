@@ -9,7 +9,7 @@ import {
   type SellerWorkspaceContext,
   sellerCan,
 } from "@/lib/legal-entity/seller-acting-context.server";
-import { consignedLotScope } from "@auction/domain";
+import { consignedLotScope, submissionMutationPolicy } from "@auction/domain";
 import type {
   ConsignmentAgreement,
   ItemSubmission,
@@ -80,16 +80,30 @@ export async function loadConsignments(
     ? consignmentTasksFromNeedsYou(needsYou.tasks)
     : NO_CONSIGNMENT_TASKS;
   const saleTitleById = await resolveSaleTitles(lots.map((lot) => lot.saleId));
+  // GAP-53: Delete draft for the drafts this person may delete, by the same policy as the API.
+  const actor = ctx.actor ? { userId: viewerUserId, member: ctx.actor } : null;
+  const deletable = new Set(
+    (submissions ?? [])
+      .filter(
+        (s) => s.status === "draft" && submissionMutationPolicy(actor, s, "delete_draft").allowed,
+      )
+      .map((s) => s.id),
+  );
+  const records = buildConsignmentRecords({
+    submissions: submissions ?? [],
+    lots,
+    agreements,
+    unsold,
+    saleTitleById,
+    tasks,
+    now: new Date(),
+  }).map((record) =>
+    record.submissionId && deletable.has(record.submissionId)
+      ? { ...record, canDeleteDraft: true }
+      : record,
+  );
   return {
-    records: buildConsignmentRecords({
-      submissions: submissions ?? [],
-      lots,
-      agreements,
-      unsold,
-      saleTitleById,
-      tasks,
-      now: new Date(),
-    }),
+    records,
     truncated: [submissions ?? [], openLots ?? [], endedLots].some((rows) => rows.length >= limit),
   };
 }

@@ -2,10 +2,12 @@ import type { Database } from "@auction/db";
 import { AccountingReplayCronService } from "@auction/finance-cron-app";
 import { LifecycleCronService, PaymentMaintenanceCronService } from "@auction/finance-cron-app";
 import type { Env } from "../env.js";
+import { createBaseLogger } from "../lib/logger.js";
 import { AccountDeletionEligibilityService } from "../services/account-deletion-eligibility.service.js";
 import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
 import { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
 import { SettlementCronService } from "../services/cron/settlement-cron.service.js";
+import { SubmissionDraftPurgeService } from "../services/submission/submission-draft-purge.service.js";
 import { ZohoArtworkNoticeService } from "../services/zoho-artwork-notice.service.js";
 import { ZohoQcNoticeService } from "../services/zoho-qc-notice.service.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
@@ -109,6 +111,11 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     complianceMedia.amlService,
     biddingSaleroom.displayPairingService,
     catalog.consignmentAgreementService,
+    new SubmissionDraftPurgeService(
+      repos.itemSubmissionRepository,
+      complianceMedia.imageCleanupService,
+      createBaseLogger(env).child({ module: "purge-deleted-drafts" }),
+    ),
   );
 
   const accountDeletionEligibilityService = new AccountDeletionEligibilityService(

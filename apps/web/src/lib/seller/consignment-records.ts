@@ -79,6 +79,11 @@ export type ConsignmentRecord = {
   lotHref: string | null;
   /** The agreement as a PDF, once the specialist proposed one. */
   agreementHref: string | null;
+  /**
+   * The member may delete it: a draft they started, or any draft for owners and admins (GAP-53).
+   * Set by the loader, which knows who is asking; false otherwise.
+   */
+  canDeleteDraft?: boolean;
   /** For sorting: when it last changed, and when it was sent. */
   changedAt: number;
   sentAt: number;

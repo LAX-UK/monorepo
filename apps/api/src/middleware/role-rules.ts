@@ -7,6 +7,7 @@ export const buyerRoleProtectedOperations = [
   { method: "POST" as const, route: "submissions/", description: "POST /submissions (draft)" },
   { method: "POST" as const, route: "submissions/:id/submit", description: "submit for review" },
   { method: "POST" as const, route: "submissions/:id/withdraw", description: "withdraw" },
+  { method: "DELETE" as const, route: "submissions/:id", description: "delete a draft" },
   {
     method: "PATCH" as const,
     route: "submissions/:id",

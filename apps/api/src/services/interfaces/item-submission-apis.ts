@@ -77,6 +77,11 @@ export interface IItemSubmissionSellerApi {
     legalEntityId: string,
     id: string,
   ): Promise<Result<ItemSubmission, SubmissionError>>;
+  /** Deletes a draft the account never sent (GAP-53); see `deleteDraft`. */
+  deleteDraftForSellerApi(
+    legalEntityId: string,
+    id: string,
+  ): Promise<Result<{ id: string }, SubmissionError>>;
 }
 
 export interface IItemSubmissionAdminApi {
