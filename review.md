@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1553: Consignor agreements, part 3 (ZI-5), Consignor field on the From Zoho record and register list
 
@@ -182,3 +182,57 @@ Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_
 - **Typecheck:** shop-api, shop-admin and shop-contracts pass.
 - **Guards:** `lint:ui-guardrails`, `client-boundary`, `admin-capability-drift`, `layers`, `lib-admin-boundaries`, `datetime`, `staff-route-composition`, `staff-list-template`, `client-copy` and `test-mocks` pass. `biome check` on the changed files is clean.
 - **Not run:** a full `next build`.
+
+## Final recheck
+
+Rechecked head `cb2f9cee` (unchanged since the fixes). The PR branch was not changed. Verdict: SHIP.
+
+### Blocking 1: resolved
+
+- **Shared rule:** `consignorClientScope` (`admin-client-access.ts:37`) is `none` without `consignor_agreement.read`, `all` with `consignor_agreement.manage`, and otherwise `clientListScope`. It matches #1552's `requireAccess` rule.
+- **GET `/artwork-register/:registerId/consignor`** (`admin-artwork-consignor.routes.ts:62-71`): when the current consignor is a client and the scope is not `all`, `requireClientPartyReadAccess` runs on that party before anything is returned. A scope of `none` with read still gets 403 there. LAX and no consignor need no party check.
+- **GET `/artwork-register/all`** (`admin-artwork-register.routes.ts:74-93`):
+  - A client filter outside scope gets 403. "Not set" and LAX stay open. Without read, any consignor filter gets 403.
+  - In the column, `partyInScope` limits clients to `shop_client_assignment` for the broker. Out-of-scope rows become `not_shown`, and the service leaves `consignor` off them.
+  - In the counts, `or(isNull(partyId), partyInScope)` leaves out-of-scope clients out of the choices and counts; they are not folded into "Not set".
+- **Tests:** the Broker + Read-only tests are present and pass.
+  - Record: `admin-artwork-consignor.routes.test.ts:203`. An unassigned client gets 403 with no name in the body; an assigned client is shown.
+  - All list: `admin-artwork-register.routes.test.ts:282,310,337`.
+
+### The other fixes: correct, nothing broken
+
+- **Trimmed payload:** `presentRecordAgreement` sends id, status, places, dates and `createdAt` only. The contract test refuses the terms, and the shop-admin view model and section tests pass on the slimmer shape.
+- **Originals only:** a print gives 404 on GET and 409 on PUT, refused before the unit of work. The column, filter and counts use `kind = 'original'`.
+- **Name-only lookup:** applies only when the client scope is `none` and manage is the only party-lookup capability held. In that case email is neither matched nor returned; everyone else keeps the email.
+- **`id="consignor"`:** on the loaded and error states, so #1554's "Set consignor" link lands on the section.
+- **Reason `maxLength`:** 500 in the contract, the domain, the UI and 0407. The body limit is lowered to 4 KiB.
+
+### Merges
+
+- **With #1554:** clean (`git merge-tree`). The combined tree builds, typechecks (shop-api and shop-admin), and the four shared route suites pass (155 tests).
+- **With current `origin/main` (`bf18b243`):** one textual conflict, in `packages/shop-contracts/src/index.ts`. #1546's new `express-checkout-public.js` export block sits next to this PR's added `AdminArtworkConsignorAgreementSchema` export.
+  - It resolves by keeping both blocks. With that resolution, shop-contracts and shop-api typecheck.
+  - #1554 and #1552 merge with main cleanly.
+
+### Tests run
+
+Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_INTEGRATION_REQUIRED=true`, shop suites as `shop_app`, `--maxWorkers=2`. Everything passed:
+
+- **shop-api, 165 tests (6 files):**
+  - `admin-artwork-consignor.routes`
+  - `admin-artwork-register.routes`
+  - `admin-lookups.routes`
+  - `artwork-register-review.service`
+  - `artwork-consignor.service.integration`
+  - `drizzle-register-overview.integration`
+- **persistence:** `consignor-agreement.integration` (14).
+- **shop-admin, 145 tests (8 files):** the consignor section, All list, the view models, the From Zoho record page and the agreements section.
+- **shop-contracts:** 130 tests.
+- **Typecheck:** shop-api and shop-admin pass.
+- **Not run:** a full `next build`.
+
+### Later (not blocking)
+
+1. When #1552 lands and this is rebased onto main, resolve the `shop-contracts/src/index.ts` export conflict by keeping both blocks.
+2. Consignor history entries can still name an earlier client consignor outside a broker's scope. This is already noted for a follow-up.
+3. Item 7 (dropping a crafted `?consignor=` on the client) and item 8 (consolidating the duplicate reads with #1554) are still open, as planned.
