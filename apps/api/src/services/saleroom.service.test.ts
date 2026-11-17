@@ -14,7 +14,7 @@ function mockSessionRepo(
     markPaused: vi.fn(),
     markResumed: vi.fn(),
     setCurrentLot: vi.fn(),
-    clearCurrentLot: vi.fn(),
+    clearCurrentLotIfCurrent: vi.fn().mockResolvedValue({ cleared: true }),
     markEnded: vi.fn(),
     clearDisplayOverlay: vi.fn().mockResolvedValue({ cleared: false }),
     appendEvent: vi.fn(),
@@ -22,6 +22,8 @@ function mockSessionRepo(
     ...overrides,
   };
 }
+
+type OutcomeOpts = { inOutcomeTransaction: (tx: never) => Promise<void> };
 
 function createService(
   overrides: {
@@ -295,7 +297,10 @@ describe("SaleroomService.hammerCurrentLot", () => {
     });
 
     const lotLifecycle = {
-      finalizeActiveLotFromClerkHammer: vi.fn().mockResolvedValue({ lotId: "lot-1" }),
+      finalizeActiveLotFromClerkHammer: vi.fn(async (_lotId: string, opts: OutcomeOpts) => {
+        await opts.inOutcomeTransaction({} as never);
+        return { lotId: "lot-1" };
+      }),
     };
     const lotJobs = { cancelLotJobs: vi.fn().mockResolvedValue(undefined) };
     const telephoneBidBookingService = {
@@ -312,7 +317,10 @@ describe("SaleroomService.hammerCurrentLot", () => {
     const result = await service.hammerCurrentLot({ saleId: "sale-1", actorUserId: "staff-1" });
     expect(result.isOk()).toBe(true);
     expect(telephoneBidBookingService.completeLinesForLot).toHaveBeenCalledWith("sale-1", "lot-1");
-    expect(sessionRepo.clearCurrentLot).toHaveBeenCalledWith("session-1");
+    expect(sessionRepo.clearCurrentLotIfCurrent).toHaveBeenCalledWith(
+      { sessionId: "session-1", lotId: "lot-1" },
+      expect.anything(),
+    );
     expect(displayPublisher.publishDisplayControl).toHaveBeenCalledWith(
       "sale-1",
       expect.objectContaining({ kind: "clear" }),
@@ -360,7 +368,7 @@ describe("SaleroomService lot outcome names the lot", () => {
       });
     }
     expect(lotLifecycle.finalizeActiveLotFromClerkHammer).not.toHaveBeenCalled();
-    expect(sessionRepo.clearCurrentLot).not.toHaveBeenCalled();
+    expect(sessionRepo.clearCurrentLotIfCurrent).not.toHaveBeenCalled();
   });
 
   it("refuses a pass once the lot has left the block", async () => {
@@ -386,7 +394,146 @@ describe("SaleroomService lot outcome names the lot", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(lotLifecycle.finalizeActiveLotFromClerkHammer).toHaveBeenCalledWith("lot-1");
+    expect(lotLifecycle.finalizeActiveLotFromClerkHammer).toHaveBeenCalledWith("lot-1", {
+      inOutcomeTransaction: expect.any(Function),
+    });
+  });
+});
+
+describe("SaleroomService lot outcome takes only its own lot off the block", () => {
+  const OUTCOME_TX = { outcomeTx: true } as never;
+
+  /**
+   * A live room whose session row behaves like Postgres for the current lot: a compare-and-clear
+   * only clears the lot it names. `beforeOutcome` runs inside finalize, before the outcome
+   * transaction's write, to stage a concurrent advance.
+   */
+  function room(options: { beforeOutcome?: () => Promise<unknown> } = {}) {
+    const state = { currentLotId: "lot-1" as string | null };
+    const sessionRepo = mockSessionRepo({
+      findBySaleId: vi.fn(async () => ({
+        id: "session-1",
+        saleId: "sale-1",
+        status: "live",
+        currentLotId: state.currentLotId,
+      })) as never,
+      setCurrentLot: vi.fn(async (_sessionId: string, lotId: string) => {
+        state.currentLotId = lotId;
+      }),
+      clearCurrentLotIfCurrent: vi.fn(async ({ lotId }: { sessionId: string; lotId: string }) => {
+        if (state.currentLotId !== lotId) return { cleared: false };
+        state.currentLotId = null;
+        return { cleared: true };
+      }),
+      clearDisplayOverlay: vi.fn().mockResolvedValue({ cleared: true }),
+    });
+    const finalize = async (_lotId: string, opts: OutcomeOpts) => {
+      await options.beforeOutcome?.();
+      await opts.inOutcomeTransaction(OUTCOME_TX);
+    };
+    const lotLifecycle = {
+      finalizeActiveLotFromClerkHammer: vi.fn(async (lotId: string, opts: OutcomeOpts) => {
+        await finalize(lotId, opts);
+        return { winnerId: null, voided: false };
+      }),
+      noSaleEndActiveLotFromClerk: vi.fn(async (lotId: string, opts: OutcomeOpts) => {
+        await finalize(lotId, opts);
+        return true;
+      }),
+      processActivateJob: vi.fn(),
+    };
+    const lotRepo = {
+      findById: vi.fn(async (id: string) => ({ id, saleId: "sale-1", status: "active" })),
+      findRunOrderRefsBySaleId: vi.fn().mockResolvedValue([]),
+    };
+    const lotJobs = { cancelLotJobs: vi.fn().mockResolvedValue(undefined) };
+    const { service, redisPublish } = createService({
+      sessionRepo,
+      lotLifecycle,
+      lotRepo,
+      lotJobs,
+    });
+    return { service, state, sessionRepo, redisPublish };
+  }
+
+  it("resolving the current lot clears it, in the outcome transaction", async () => {
+    for (const resolve of ["hammerCurrentLot", "noSaleCurrentLot"] as const) {
+      const { service, state, sessionRepo } = room();
+
+      const result = await service[resolve]({
+        saleId: "sale-1",
+        actorUserId: "staff-1",
+        lotId: "lot-1",
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(state.currentLotId).toBeNull();
+      expect(sessionRepo.clearCurrentLotIfCurrent).toHaveBeenCalledWith(
+        { sessionId: "session-1", lotId: "lot-1" },
+        OUTCOME_TX,
+      );
+      expect(sessionRepo.clearDisplayOverlay).toHaveBeenCalledWith("sale-1");
+    }
+  });
+
+  it("resolving a lot that is no longer current leaves the current lot and its overlay", async () => {
+    for (const resolve of ["hammerCurrentLot", "noSaleCurrentLot"] as const) {
+      let advance: () => Promise<unknown> = async () => undefined;
+      const { service, state, sessionRepo, redisPublish } = room({
+        beforeOutcome: () => advance(),
+      });
+      advance = () =>
+        service.advanceToLot({ saleId: "sale-1", lotId: "lot-2", actorUserId: "staff-2" });
+
+      // The session read still saw lot-1; lot-2 goes up before the outcome is written.
+      const result = await service[resolve]({ saleId: "sale-1", actorUserId: "staff-1" });
+
+      expect(result.isOk() && result.value).toEqual({ lotId: "lot-1" });
+      expect(state.currentLotId).toBe("lot-2");
+      // Only the advance cleared the overlay; the late outcome did not clear lot-2's.
+      expect(sessionRepo.clearDisplayOverlay).toHaveBeenCalledTimes(1);
+      // The outcome itself is still recorded for lot-1.
+      const outcomeEvents = redisPublish.mock.calls
+        .map(([, body]) => JSON.parse(body as string) as { kind: string; lotId?: string })
+        .filter((event) => event.kind === "hammer" || event.kind === "no_sale");
+      expect(outcomeEvents).toEqual([expect.objectContaining({ lotId: "lot-1" })]);
+    }
+  });
+
+  it("a resolve and next-lot racing each other always leave the next lot on the block", async () => {
+    // Resolve first, then advance.
+    {
+      const { service, state } = room();
+      await service.hammerCurrentLot({ saleId: "sale-1", actorUserId: "staff-1", lotId: "lot-1" });
+      await service.advanceToLot({ saleId: "sale-1", lotId: "lot-2", actorUserId: "staff-1" });
+      expect(state.currentLotId).toBe("lot-2");
+    }
+    // Both in flight at once: the advance lands while the hammer is finalising.
+    {
+      let releaseOutcome: () => void = () => undefined;
+      const outcomeGate = new Promise<void>((resolve) => {
+        releaseOutcome = resolve;
+      });
+      const { service, state } = room({ beforeOutcome: () => outcomeGate });
+
+      const hammer = service.hammerCurrentLot({
+        saleId: "sale-1",
+        actorUserId: "staff-1",
+        lotId: "lot-1",
+      });
+      const advance = service.advanceToLot({
+        saleId: "sale-1",
+        lotId: "lot-2",
+        actorUserId: "staff-2",
+      });
+      await advance;
+      releaseOutcome();
+      const [hammered, advanced] = await Promise.all([hammer, advance]);
+
+      expect(hammered.isOk()).toBe(true);
+      expect(advanced.isOk()).toBe(true);
+      expect(state.currentLotId).toBe("lot-2");
+    }
   });
 });
 

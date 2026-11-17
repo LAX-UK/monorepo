@@ -100,4 +100,77 @@ describe("ClerkLotOutcomeService", () => {
     expect(lots.setWinner).not.toHaveBeenCalled();
     expect(clearWinningBid).toHaveBeenCalledWith("a1");
   });
+
+  describe("inOutcomeTransaction", () => {
+    /** A factory whose transaction hands out a recognisable tx and records when it is open. */
+    function stackWithTrackedTransaction(lotRow: ReturnType<typeof baseLot>, lockedRow = lotRow) {
+      const lots = {
+        findById: vi.fn().mockResolvedValue(lotRow),
+        findByIdForUpdate: vi.fn().mockResolvedValue(lockedRow),
+        updateStatus: vi.fn(),
+        setWinner: vi.fn(),
+        voidLotAntiShillingClose: vi.fn(),
+      } as unknown as ILotRepository;
+      const bids = {
+        findEligibleBidsForLotClose: vi.fn().mockResolvedValue([]),
+        listForLotSettlement: vi.fn().mockResolvedValue([]),
+        listDistinctBidderIds: vi.fn().mockResolvedValue([]),
+        listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
+        clearWinningBid: vi.fn(),
+      } as unknown as IBidRepository;
+      const base = createFactory(lots, bids);
+      const outcomeTx = { outcomeTx: true } as never;
+      const state = { inTransaction: false };
+      const repos = {
+        ...base,
+        runInTransaction: async <T>(fn: (r: typeof base.root, tx: never) => Promise<T>) => {
+          state.inTransaction = true;
+          try {
+            return await fn(base.root, outcomeTx);
+          } finally {
+            state.inTransaction = false;
+          }
+        },
+      };
+      const { clerkOutcomes } = createClerkOutcomeStack({ repos });
+      const hook = vi.fn(async (tx: unknown) => {
+        expect(tx).toBe(outcomeTx);
+        expect(state.inTransaction).toBe(true);
+        // The outcome is already written when the hook runs.
+        expect(lots.updateStatus).toHaveBeenCalledWith(lotRow.id, "ended");
+      });
+      return { clerkOutcomes, hook };
+    }
+
+    it("runs inside the hammer's outcome transaction, after the lot is ended", async () => {
+      const { clerkOutcomes, hook } = stackWithTrackedTransaction(baseLot());
+
+      await expect(
+        clerkOutcomes.finalizeActiveLotFromClerkHammer("a1", { inOutcomeTransaction: hook }),
+      ).resolves.toEqual({ winnerId: null, voided: false });
+      expect(hook).toHaveBeenCalledTimes(1);
+    });
+
+    it("runs inside the no-sale outcome transaction, after the lot is ended", async () => {
+      const { clerkOutcomes, hook } = stackWithTrackedTransaction(baseLot());
+
+      await expect(
+        clerkOutcomes.noSaleEndActiveLotFromClerk("a1", { inOutcomeTransaction: hook }),
+      ).resolves.toBe(true);
+      expect(hook).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not run when the lot was closed by someone else before the lock", async () => {
+      const lot = baseLot();
+      const { clerkOutcomes, hook } = stackWithTrackedTransaction(lot, { ...lot, status: "ended" });
+
+      await expect(
+        clerkOutcomes.finalizeActiveLotFromClerkHammer("a1", { inOutcomeTransaction: hook }),
+      ).resolves.toBeNull();
+      await expect(
+        clerkOutcomes.noSaleEndActiveLotFromClerk("a1", { inOutcomeTransaction: hook }),
+      ).resolves.toBe(false);
+      expect(hook).not.toHaveBeenCalled();
+    });
+  });
 });

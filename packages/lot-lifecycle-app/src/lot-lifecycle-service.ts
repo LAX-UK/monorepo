@@ -1,4 +1,5 @@
 import type { ClerkLotOutcomeService } from "./clerk-lot-outcome.service.js";
+import type { ClerkOutcomeOptions } from "./ports.js";
 import type { TimedLotTransitionRunner } from "./timed-lot-transition-runner.js";
 
 /** Scheduled status transitions (scheduled→active, active→ended + winner),
@@ -20,12 +21,16 @@ export class LotLifecycleService {
 
   async finalizeActiveLotFromClerkHammer(
     lotId: string,
+    options?: ClerkOutcomeOptions,
   ): Promise<{ winnerId: string | null; voided: boolean } | null> {
-    return this.clerkOutcomes.finalizeActiveLotFromClerkHammer(lotId);
+    return this.clerkOutcomes.finalizeActiveLotFromClerkHammer(lotId, options);
   }
 
-  async noSaleEndActiveLotFromClerk(lotId: string): Promise<boolean> {
-    return this.clerkOutcomes.noSaleEndActiveLotFromClerk(lotId);
+  async noSaleEndActiveLotFromClerk(
+    lotId: string,
+    options?: ClerkOutcomeOptions,
+  ): Promise<boolean> {
+    return this.clerkOutcomes.noSaleEndActiveLotFromClerk(lotId, options);
   }
 
   async finalizeActiveLotsPastEnd(saleId: string, now: Date = new Date()): Promise<number> {

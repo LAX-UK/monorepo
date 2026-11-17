@@ -100,11 +100,20 @@ export class DrizzleSaleroomSessionRepository implements ISaleroomSessionReposit
       .where(eq(saleroomSession.id, sessionId));
   }
 
-  async clearCurrentLot(sessionId: string): Promise<void> {
-    await this.db
+  async clearCurrentLotIfCurrent(
+    input: { sessionId: string; lotId: string },
+    tx?: Database,
+  ): Promise<{ cleared: boolean }> {
+    // One conditional UPDATE: Postgres re-checks the WHERE after taking the row lock, so a
+    // concurrent advance that committed first is never overwritten with null.
+    const [row] = await (tx ?? this.db)
       .update(saleroomSession)
       .set({ currentLotId: null, updatedAt: new Date() })
-      .where(eq(saleroomSession.id, sessionId));
+      .where(
+        and(eq(saleroomSession.id, input.sessionId), eq(saleroomSession.currentLotId, input.lotId)),
+      )
+      .returning({ id: saleroomSession.id });
+    return { cleared: Boolean(row) };
   }
 
   async markEnded(sessionId: string, endedAt: Date): Promise<void> {
