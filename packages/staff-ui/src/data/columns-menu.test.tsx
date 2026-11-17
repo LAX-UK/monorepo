@@ -37,6 +37,109 @@ describe("useColumnVisibility", () => {
     expect(window.localStorage.getItem("staff.columns.payments")).toBeNull();
   });
 
+  it("saves the hidden columns with every column the list knew", () => {
+    const { result } = renderHook(() =>
+      useColumnVisibility("payments", ["xero"], { columnIds: ["lot", "status", "xero"] }),
+    );
+    act(() => result.current.setHidden("status", true));
+    expect(JSON.parse(window.localStorage.getItem("staff.columns.payments") ?? "null")).toEqual({
+      hidden: ["xero", "status"],
+      known: ["lot", "status", "xero"],
+    });
+  });
+
+  it("reads the new form: the saved choice decides for every column it knew", () => {
+    // They showed Xero (default hidden) and hid Status.
+    window.localStorage.setItem(
+      "staff.columns.payments",
+      JSON.stringify({ hidden: ["status"], known: ["lot", "status", "xero"] }),
+    );
+    const { result } = renderHook(() =>
+      useColumnVisibility("payments", ["xero"], { columnIds: ["lot", "status", "xero"] }),
+    );
+    expect([...result.current.hidden]).toEqual(["status"]);
+    expect(result.current.changed).toBe(true);
+  });
+
+  it("keeps a default-hidden column added after the choice was saved hidden", () => {
+    window.localStorage.setItem(
+      "staff.columns.payments",
+      JSON.stringify({ hidden: ["status"], known: ["lot", "status"] }),
+    );
+    const { result } = renderHook(() =>
+      useColumnVisibility("payments", ["xero"], { columnIds: ["lot", "status", "xero"] }),
+    );
+    expect([...result.current.hidden].sort()).toEqual(["status", "xero"]);
+  });
+
+  it("shows a default-visible column added after the choice was saved", () => {
+    window.localStorage.setItem(
+      "staff.columns.payments",
+      JSON.stringify({ hidden: ["status"], known: ["lot", "status"] }),
+    );
+    const { result } = renderHook(() =>
+      useColumnVisibility("payments", [], { columnIds: ["lot", "status", "added"] }),
+    );
+    expect([...result.current.hidden]).toEqual(["status"]);
+  });
+
+  describe("the old plain-array form", () => {
+    it("is read as it always was when the list gives no legacy columns", () => {
+      // Someone who showed Xero (default hidden) and hid Status, saved before `known` existed.
+      window.localStorage.setItem("staff.columns.payments", '["status"]');
+      const { result } = renderHook(() =>
+        useColumnVisibility("payments", ["xero"], { columnIds: ["lot", "status", "xero"] }),
+      );
+      expect([...result.current.hidden]).toEqual(["status"]);
+    });
+
+    it("is read against the list's legacy columns, so a newer default-hidden column stays hidden", () => {
+      window.localStorage.setItem("staff.columns.orders", '["buyer"]');
+      const { result } = renderHook(() =>
+        useColumnVisibility("orders", ["zoho"], {
+          columnIds: ["order", "buyer", "total", "zoho"],
+          legacyColumnIds: ["order", "buyer", "total"],
+        }),
+      );
+      expect([...result.current.hidden].sort()).toEqual(["buyer", "zoho"]);
+    });
+
+    it("keeps a legacy default-hidden column the person had shown", () => {
+      window.localStorage.setItem("staff.columns.payments", '["status"]');
+      const { result } = renderHook(() =>
+        useColumnVisibility("payments", ["xero", "zoho"], {
+          columnIds: ["lot", "status", "xero", "zoho"],
+          legacyColumnIds: ["lot", "status", "xero"],
+        }),
+      );
+      expect([...result.current.hidden].sort()).toEqual(["status", "zoho"]);
+    });
+
+    it("is rewritten in the new form on the next change", () => {
+      window.localStorage.setItem("staff.columns.orders", '["buyer"]');
+      const { result } = renderHook(() =>
+        useColumnVisibility("orders", ["zoho"], {
+          columnIds: ["order", "buyer", "zoho"],
+          legacyColumnIds: ["order", "buyer"],
+        }),
+      );
+      act(() => result.current.setHidden("buyer", false));
+      // Back to the defaults: nothing is saved.
+      expect(window.localStorage.getItem("staff.columns.orders")).toBeNull();
+      act(() => result.current.setHidden("zoho", false));
+      expect(JSON.parse(window.localStorage.getItem("staff.columns.orders") ?? "null")).toEqual({
+        hidden: [],
+        known: ["order", "buyer", "zoho"],
+      });
+    });
+  });
+
+  it("ignores an unreadable saved choice", () => {
+    window.localStorage.setItem("staff.columns.payments", '{"hidden":"status"}');
+    const { result } = renderHook(() => useColumnVisibility("payments", ["xero"]));
+    expect([...result.current.hidden]).toEqual(["xero"]);
+  });
+
   it("never hides a locked column", () => {
     const shown = visibleColumns(columns, new Set(["lot", "xero"]), ["lot"]);
     expect(shown.map((column) => column.id)).toEqual(["lot", "status"]);

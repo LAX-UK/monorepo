@@ -350,9 +350,10 @@ jobs:
       - name: Start LAX Admin
         if: needs.changes.outputs.lax_admin == 'true'
         run: scripts/ci/start-lax-admin-stack.sh
-      # One paid order per "Mirrored to Zoho" badge state, so the badge checks below open every
-      # state; the badge spec fails in CI when one is missing rather than skipping it.
-      - name: Seed the Zoho badge fixture orders
+      # One paid order and one register artwork per "Mirrored to Zoho" badge state, so the badge
+      # and Orders column checks below open every state; the specs fail in CI when one is missing
+      # rather than skipping it.
+      - name: Seed the Zoho badge fixture orders and artworks
         if: needs.changes.outputs.lax_admin == 'true'
         run: pnpm --filter @auction/shop-api seed:zoho-mirror-badge
       # The release-alert send log spec (in the checks below) seeds its own fixture releases, one per
