@@ -13,12 +13,21 @@ name and title is made up; subscriber addresses are `@example.com` and never sho
 Send log (Leads › Release alerts):
 
 - `send-log`: one row per status: Sent, Sending, Not sent yet, Not announced, Queued, Counts not
-  kept. At 375 each row reads edition, status and "Emailed N of M".
+  kept. Every column, the 56px `…` last, fits the card at 1440 with no sideways scroll. The
+  Sending release has a long title, cut short on its row. At 375 each row reads edition, status
+  and "Emailed N of M"; Queued and Not announced show only their badge (no "Emailed 0 of 0").
+- `send-log-long-title`: the long-titled release's panel: the title wraps in the header, and the
+  place, ↑ ↓ and "Open artwork" stay on screen.
 - `send-log-panel`: a Sent release opened from its row: place in the list, published time and
   publisher, the counts, and why one was not sent. "Open artwork" for a role that can open it.
-- `send-log-panel-stuck`: a release with a digest unsent for more than a day, with its notice.
+- `send-log-panel-stuck`: a release with a digest unsent for more than a day, with its notice in
+  the danger tone.
+- `send-log-panel-off-page`: a panel link to a release that is not on the page shown (the page
+  just after it): it is read on its own and opens, with no place to step from (PRD-7).
+- `send-log-panel-not-found`: a panel link naming no release in the log: the panel says so.
 - `empty`: no release published yet (L5 copy).
-- `loading`: skeleton rows while the log loads (the next page held back).
+- `loading`: skeleton rows while the log loads (the list's next render held back), the same
+  columns as the table, fitting the card.
 - `error`: the read failed (an invalid page cursor): the frame stays, with Try again.
 - `permission-denied`: the operations role, which cannot read leads, opening the address.
 
