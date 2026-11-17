@@ -63,6 +63,23 @@ describe("artwork catalogue params", () => {
     expect(parseArtworkCatalogueParams({ size: "huge" })).not.toHaveProperty("size");
   });
 
+  it("reads orientation and framing into the URL and the request, and drops unknown values", () => {
+    const state = parseArtworkCatalogueParams({ orientation: "portrait", framing: "framed" });
+    expect(state).toMatchObject({ orientation: "portrait", framing: "framed" });
+    expect(artworkCatalogueFetchQuery(state)).toEqual({
+      orientation: "portrait",
+      framing: "framed",
+    });
+    expect(artworkCatalogueFilterHref(state)).toBe("/artworks?orientation=portrait&framing=framed");
+    expect(artworkCatalogueFilterHref(state, { framing: null })).toBe(
+      "/artworks?orientation=portrait",
+    );
+    expect(countActiveArtworkCatalogueFilters(state)).toBe(2);
+    const unknown = parseArtworkCatalogueParams({ orientation: "round", framing: "framed_only" });
+    expect(unknown).not.toHaveProperty("orientation");
+    expect(unknown).not.toHaveProperty("framing");
+  });
+
   it("counts each applied filter once, a free range included", () => {
     const state = parseArtworkCatalogueParams({
       q: "vessel",

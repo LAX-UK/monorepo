@@ -1,7 +1,11 @@
 import {
+  type CatalogueFramingKey,
+  type CatalogueOrientationKey,
   type CataloguePriceBandKey,
   type CatalogueSizeBandKey,
   cataloguePriceBandRange,
+  isCatalogueFramingKey,
+  isCatalogueOrientationKey,
   isCataloguePriceBandKey,
   isCatalogueSizeBandKey,
 } from "@auction/shop-domain";
@@ -31,6 +35,10 @@ export type ArtworkCatalogueUrlState = {
   minPrice?: number;
   maxPrice?: number;
   size?: CatalogueSizeBandKey;
+  /** Portrait, landscape or square, by the image size. */
+  orientation?: CatalogueOrientationKey;
+  /** Available framed, or available unframed. */
+  framing?: CatalogueFramingKey;
   technique?: string;
   sort: ArtworkCatalogueSort;
   /** How many editions the page shows; "Load more" raises it a page at a time. */
@@ -126,6 +134,10 @@ export function parseArtworkCatalogueParams(
   }
   const size = firstString(searchParams.size);
   if (size && isCatalogueSizeBandKey(size)) state.size = size;
+  const orientation = firstString(searchParams.orientation);
+  if (orientation && isCatalogueOrientationKey(orientation)) state.orientation = orientation;
+  const framing = firstString(searchParams.framing);
+  if (framing && isCatalogueFramingKey(framing)) state.framing = framing;
   const technique = firstString(searchParams.technique)?.trim();
   if (technique) state.technique = technique;
   const shown = parseShown(firstString(searchParams.shown));
@@ -143,6 +155,8 @@ export function artworkCatalogueHref(state: ArtworkCatalogueUrlState): string {
   if (state.minPrice !== undefined) params.set("minPrice", String(state.minPrice));
   if (state.maxPrice !== undefined) params.set("maxPrice", String(state.maxPrice));
   if (state.size) params.set("size", state.size);
+  if (state.orientation) params.set("orientation", state.orientation);
+  if (state.framing) params.set("framing", state.framing);
   if (state.technique) params.set("technique", state.technique);
   if (state.sort !== "newest") params.set("sort", state.sort);
   if (state.shown !== undefined) params.set("shown", String(state.shown));
@@ -205,6 +219,8 @@ const FILTER_KEYS = [
   "availability",
   "price",
   "size",
+  "orientation",
+  "framing",
   "technique",
 ] as const satisfies ReadonlyArray<keyof FilterState>;
 
@@ -227,6 +243,8 @@ export type ArtworkCatalogueFetchInput = {
   minPrice?: number;
   maxPrice?: number;
   size?: CatalogueSizeBandKey;
+  orientation?: CatalogueOrientationKey;
+  framing?: CatalogueFramingKey;
   technique?: string;
   sort?: ArtworkCatalogueSort;
   q?: string;
@@ -257,6 +275,8 @@ export function artworkCatalogueFetchQuery(
     ...(state.availability ? { availability: state.availability } : {}),
     ...pricePence(state),
     ...(state.size ? { size: state.size } : {}),
+    ...(state.orientation ? { orientation: state.orientation } : {}),
+    ...(state.framing ? { framing: state.framing } : {}),
     ...(state.technique ? { technique: state.technique } : {}),
     ...(state.sort !== "newest" ? { sort: state.sort } : {}),
   };
