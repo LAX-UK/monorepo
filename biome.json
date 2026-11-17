@@ -63,16 +63,6 @@
   },
   "overrides": [
     {
-      "include": ["packages/shop-portal/src/react/payout-account-panel.client.tsx"],
-      "linter": {
-        "rules": {
-          "nursery": {
-            "noRestrictedImports": "off"
-          }
-        }
-      }
-    },
-    {
       "include": ["apps/web/src/app/dashboard/**", "apps/web/src/app/admin/**"],
       "linter": {
         "rules": {

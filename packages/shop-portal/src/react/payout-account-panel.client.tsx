@@ -4,7 +4,7 @@ import type { PortalPayeeConnectSurface } from "@auction/shop-contracts";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js";
+import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js/pure";
 import {
   ConnectAccountManagement,
   ConnectAccountOnboarding,
