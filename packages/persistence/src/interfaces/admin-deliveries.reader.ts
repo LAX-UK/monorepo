@@ -16,8 +16,13 @@ export type AdminDeliveryRecord = {
   status: DeliveryStatus;
   closedReason: DeliveryClosedReason | null;
   awaitingPayment: boolean;
-  /** When the delivery reached its status: asked, quoted, accepted, or the fulfilment's last move. */
-  statusSince: Date;
+  /**
+   * When the delivery reached its status, from a recorded event time only: asked, quoted, accepted
+   * or withdrawn (the quote's stamps), or collected. `null` when nothing records it: the
+   * fulfilment keeps no dispatch, delivery or cancellation time, and its `updated_at` moves on any
+   * later edit, so it is never used as one.
+   */
+  statusSince: Date | null;
   quote: {
     status: DeliveryQuoteStatus;
     /** Where the buyer wants it delivered, as they wrote it. Personal data. */
@@ -47,7 +52,8 @@ export type AdminDeliveryRecord = {
         carrier: string | null;
         trackingNumber: string | null;
         paidAt: Date | null;
-        updatedAt: Date;
+        /** When the buyer collected the work in person, for a collection that is done. */
+        collectedAt: Date | null;
       })
     | null;
 };
@@ -73,8 +79,13 @@ export type AdminDeliveryStatusCounts = Record<DeliveryStatus, number>;
 export interface IAdminDeliveriesReader {
   list(query: AdminDeliveriesQuery): Promise<{ rows: AdminDeliveryRecord[]; total: number }>;
   counts(filters: AdminDeliveriesFilters): Promise<AdminDeliveryStatusCounts>;
-  /** The sales that have at least one delivery, for the sale filter. */
-  sales(): Promise<Array<{ id: string; title: string }>>;
+  /**
+   * The sales with a delivery asked for since `since`, latest sale first, at most `limit`, for the
+   * sale filter.
+   */
+  sales(options: { since: Date; limit: number }): Promise<Array<{ id: string; title: string }>>;
+  /** Buyers waiting for a price: the same number as `counts({}).waiting`, counted on its own. */
+  waitingCount(): Promise<number>;
   /** A lot's delivery, from its latest quote; null when nobody asked for one. */
   findByLotId(lotId: string): Promise<AdminDeliveryRecord | null>;
 }

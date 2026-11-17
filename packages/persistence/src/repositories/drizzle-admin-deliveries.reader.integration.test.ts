@@ -6,6 +6,7 @@ import {
   legalEntity,
   lot,
   lotFulfilment,
+  payment,
   sale,
   saleRegistration,
   user,
@@ -15,8 +16,10 @@ import {
   DELIVERY_STATUSES,
   type DeliveryQuoteStatus,
   type FulfilmentFacts,
+  type PurchaseInvoiceStatus,
   deliveryStatusOf,
 } from "@auction/domain";
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleAdminDeliveriesReader } from "./drizzle-admin-deliveries.reader.js";
 
@@ -86,6 +89,9 @@ async function seed(tx: Database) {
   async function wonLot(options: {
     quote?: DeliveryQuoteStatus;
     fulfilment?: FulfilmentFacts["status"] | null;
+    method?: FulfilmentFacts["method"];
+    /** The invoice's payment row, when one is raised. */
+    payment?: "pending" | "captured" | "refunded" | null;
     destination?: string;
     /** Hours ago the buyer asked. */
     askedHoursAgo?: number;
@@ -131,19 +137,42 @@ async function seed(tx: Database) {
         : {}),
     });
     if (options.fulfilment) {
+      const method = options.method === undefined ? "shipping" : options.method;
       await tx.insert(lotFulfilment).values({
         lotId,
         status: options.fulfilment,
-        fulfilmentMethod: "shipping",
+        fulfilmentMethod: method,
         ...(options.fulfilment === "in_transit"
           ? { shippingCarrier: "Example Couriers", trackingNumber: "EX123456789GB" }
           : {}),
+        ...(options.fulfilment === "delivered" && method === "collection"
+          ? { collectedBy: "A. Example", collectedAt: new Date(requestedAt.getTime() + 5 * HOUR) }
+          : {}),
+      });
+    }
+    if (options.payment) {
+      await tx.insert(payment).values({
+        lotId,
+        buyerId,
+        buyerLegalEntityId: buyerEntityId,
+        sellerLegalEntityId: sellerEntityId,
+        amount: "1250.00",
+        platformFee: "0.00",
+        status: options.payment,
       });
     }
     return lotId;
   }
   return { tag, saleId, buyerEntityId, wonLot };
 }
+
+/** The invoice the buyer's page reads from each payment row (a fresh invoice is not overdue). */
+const INVOICE_OF: Record<"none" | "pending" | "captured" | "refunded", PurchaseInvoiceStatus> = {
+  none: "not_invoiced",
+  pending: "due",
+  captured: "paid",
+  refunded: "refunded",
+};
 
 const FULFILMENT_STATUSES = [
   null,
@@ -157,21 +186,34 @@ const FULFILMENT_STATUSES = [
 ] as const;
 
 describe.skipIf(!HAS_DB)("admin deliveries reader (integration)", () => {
-  it("files every quote and fulfilment combination under the view deliveryStatusOf gives", async () => {
+  it("files every quote, fulfilment, method and invoice combination under the view deliveryStatusOf gives", async () => {
     await inRollback(async (tx) => {
       const { saleId, wonLot } = await seed(tx);
       const expected = new Map<string, string>();
       for (const quote of DELIVERY_QUOTE_STATUSES) {
         for (const fulfilment of FULFILMENT_STATUSES) {
-          const lotId = await wonLot({ quote, fulfilment });
-          const facts = fulfilment ? { status: fulfilment, method: "shipping" as const } : null;
-          expected.set(lotId, deliveryStatusOf({ quote, fulfilment: facts }).status);
+          for (const method of fulfilment ? (["shipping", "collection", null] as const) : [null]) {
+            for (const paid of ["none", "pending", "captured", "refunded"] as const) {
+              const lotId = await wonLot({
+                quote,
+                fulfilment,
+                method,
+                payment: paid === "none" ? null : paid,
+              });
+              const facts = fulfilment ? { status: fulfilment, method } : null;
+              const invoice = fulfilment === "cancelled" ? "cancelled" : INVOICE_OF[paid];
+              expected.set(lotId, deliveryStatusOf({ quote, fulfilment: facts, invoice }).status);
+            }
+          }
         }
       }
       const reader = new DrizzleAdminDeliveriesReader(tx);
       const counts = await reader.counts({ saleId });
+      // The sidebar count reads the waiting quotes on their own, and agrees with the tab.
+      const allWaiting = (await reader.counts({})).waiting;
+      expect(await reader.waitingCount()).toBe(allWaiting);
       for (const status of DELIVERY_STATUSES) {
-        const page = await reader.list({ status, saleId, limit: 100, offset: 0 });
+        const page = await reader.list({ status, saleId, limit: 1000, offset: 0 });
         const want = [...expected].filter(([, s]) => s === status).map(([id]) => id);
         expect(page.rows.map((row) => row.lotId).sort()).toEqual(want.sort());
         expect(page.total).toBe(want.length);
@@ -297,7 +339,109 @@ describe.skipIf(!HAS_DB)("admin deliveries reader (integration)", () => {
         },
       });
       expect(await reader.findByLotId(randomUUID())).toBeNull();
-      expect(await reader.sales()).toContainEqual({ id: saleId, title: `Modern British ${tag}` });
+      const recent = new Date(Date.now() - 30 * 24 * HOUR);
+      expect(await reader.sales({ since: recent, limit: 100 })).toContainEqual({
+        id: saleId,
+        title: `Modern British ${tag}`,
+      });
+    });
+  });
+
+  it("closes a refunded purchase's booked delivery, as the buyer's page shows it cancelled", async () => {
+    await inRollback(async (tx) => {
+      const { saleId, wonLot } = await seed(tx);
+      const unpaid = await wonLot({ quote: "accepted", fulfilment: "awaiting_payment" });
+      const refunded = await wonLot({
+        quote: "accepted",
+        fulfilment: "awaiting_payment",
+        payment: "refunded",
+      });
+      const noRecord = await wonLot({ quote: "accepted", payment: "refunded" });
+      const reader = new DrizzleAdminDeliveriesReader(tx);
+      expect(await reader.findByLotId(unpaid)).toMatchObject({
+        status: "to_dispatch",
+        awaitingPayment: true,
+      });
+      for (const lotId of [refunded, noRecord]) {
+        expect(await reader.findByLotId(lotId)).toMatchObject({
+          status: "closed",
+          closedReason: "cancelled",
+          awaitingPayment: false,
+          statusSince: null,
+        });
+      }
+      const counts = await reader.counts({ saleId });
+      expect(counts).toMatchObject({ to_dispatch: 1, closed: 2 });
+    });
+  });
+
+  it("is only on the way or delivered by courier: a lot collected in person closes the request", async () => {
+    await inRollback(async (tx) => {
+      const { saleId, wonLot } = await seed(tx);
+      const collected = await wonLot({
+        quote: "accepted",
+        fulfilment: "delivered",
+        method: "collection",
+      });
+      const couriered = await wonLot({ quote: "accepted", fulfilment: "delivered" });
+      const reader = new DrizzleAdminDeliveriesReader(tx);
+      const record = await reader.findByLotId(collected);
+      expect(record).toMatchObject({ status: "closed", closedReason: "collected" });
+      expect(record?.statusSince).toEqual(record?.fulfilment?.collectedAt);
+      expect(record?.fulfilment?.collectedAt).toBeInstanceOf(Date);
+      expect(await reader.findByLotId(couriered)).toMatchObject({ status: "delivered" });
+      expect(await reader.counts({ saleId })).toMatchObject({ delivered: 1, closed: 1 });
+    });
+  });
+
+  it("never takes the fulfilment's last edit as the dispatch time, so an edit does not reorder a view", async () => {
+    await inRollback(async (tx) => {
+      const { saleId, wonLot } = await seed(tx);
+      const first = await wonLot({
+        quote: "accepted",
+        fulfilment: "in_transit",
+        askedHoursAgo: 90,
+      });
+      const second = await wonLot({
+        quote: "accepted",
+        fulfilment: "in_transit",
+        askedHoursAgo: 10,
+      });
+      const reader = new DrizzleAdminDeliveriesReader(tx);
+      const view = async () =>
+        (await reader.list({ status: "on_the_way", saleId, limit: 50, offset: 0 })).rows;
+      const before = await view();
+      expect(before.map((row) => row.lotId)).toEqual([second, first]);
+      // The dispatch time is not recorded anywhere, so it is not made up.
+      for (const row of before) expect(row.statusSince).toBeNull();
+      // A later fix to the older lot's tracking number moves its updated_at to now.
+      await tx
+        .update(lotFulfilment)
+        .set({ trackingNumber: "EX987654321GB", updatedAt: new Date() })
+        .where(eq(lotFulfilment.lotId, first));
+      expect((await view()).map((row) => row.lotId)).toEqual([second, first]);
+    });
+  });
+
+  it("lists only sales with a recent request in the sale filter, at most the limit", async () => {
+    await inRollback(async (tx) => {
+      const { saleId, wonLot } = await seed(tx);
+      await wonLot({ askedHoursAgo: 24 * 400 });
+      const reader = new DrizzleAdminDeliveriesReader(tx);
+      const lastYear = new Date(Date.now() - 365 * 24 * HOUR);
+      expect((await reader.sales({ since: lastYear, limit: 100 })).map((s) => s.id)).not.toContain(
+        saleId,
+      );
+      await wonLot({ askedHoursAgo: 2 });
+      expect((await reader.sales({ since: lastYear, limit: 100 })).map((s) => s.id)).toContain(
+        saleId,
+      );
+      const other = await seed(tx);
+      await other.wonLot({ askedHoursAgo: 1 });
+      expect((await reader.sales({ since: lastYear, limit: 100 })).map((s) => s.id)).toEqual(
+        expect.arrayContaining([saleId, other.saleId]),
+      );
+      expect(await reader.sales({ since: lastYear, limit: 1 })).toHaveLength(1);
     });
   });
 });
