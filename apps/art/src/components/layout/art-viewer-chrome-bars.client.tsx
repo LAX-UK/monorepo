@@ -5,19 +5,31 @@ import { ArtBottomBar } from "@/components/layout/art-bottom-bar.client";
 import { useArtViewerChrome } from "@/components/viewer/art-viewer-chrome.client";
 import type { ComponentProps } from "react";
 
-type ArtHeaderStaticProps = Omit<ComponentProps<typeof ArtHeaderClient>, "account" | "replyDot">;
+type ArtHeaderStaticProps = Omit<
+  ComponentProps<typeof ArtHeaderClient>,
+  "account" | "accountSettled" | "replyDot"
+>;
 
-/** The header with the visitor the browser has read (a guest until then). */
+/**
+ * The header with the visitor the browser has read. Until then the account slot keeps its
+ * place, empty (ArtAccountEntry).
+ */
 export function ArtViewerHeader(props: ArtHeaderStaticProps) {
-  const { account, replyDot } = useArtViewerChrome();
-  return <ArtHeaderClient {...props} account={account} replyDot={replyDot} />;
+  const { account, replyDot, settled } = useArtViewerChrome();
+  return (
+    <ArtHeaderClient {...props} account={account} accountSettled={settled} replyDot={replyDot} />
+  );
 }
 
-/** The phone tab bar with the visitor the browser has read (a guest until then). */
+/**
+ * The phone tab bar with the visitor the browser has read. Until then the Account tab's icon is
+ * an empty space of the same size (ArtBottomBar `pending`).
+ */
 export function ArtViewerBottomBar() {
-  const { account, replyDot } = useArtViewerChrome();
+  const { account, replyDot, settled } = useArtViewerChrome();
   return (
     <ArtBottomBar
+      pending={!settled}
       signedOut={account.kind === "guest"}
       replyDot={replyDot}
       viewer={

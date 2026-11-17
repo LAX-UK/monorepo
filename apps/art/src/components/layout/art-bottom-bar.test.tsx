@@ -9,10 +9,17 @@ vi.mock("next/navigation", () => ({
 
 import { ArtBottomBar } from "./art-bottom-bar.client";
 
-function render(path: string, props: { signedOut?: boolean; replyDot?: boolean } = {}): string {
+function render(
+  path: string,
+  props: { signedOut?: boolean; replyDot?: boolean; pending?: boolean } = {},
+): string {
   pathname = path;
   return renderToStaticMarkup(
-    <ArtBottomBar signedOut={props.signedOut ?? false} replyDot={props.replyDot ?? false} />,
+    <ArtBottomBar
+      pending={props.pending ?? false}
+      signedOut={props.signedOut ?? false}
+      replyDot={props.replyDot ?? false}
+    />,
   );
 }
 
@@ -24,6 +31,18 @@ function tab(html: string, label: string): string {
 }
 
 describe("ArtBottomBar", () => {
+  it("draws neither a guest's nor a member's Account until the visitor is read", () => {
+    const html = render("/", { pending: true, signedOut: true, replyDot: true });
+    const account = tab(html, "Account");
+    // The label keeps its place; the icon is an empty space of the same size.
+    expect(account).toContain('data-testid="art-bottom-bar-account-pending"');
+    expect(account).toContain("size-6");
+    expect(account).toContain('href="/account"');
+    expect(tab(html, "Favourites")).toContain('href="/account/favourites"');
+    expect(html).not.toContain("login");
+    expect(html).not.toContain("tab-badge-Account");
+  });
+
   it("renders the docked bar with the five tabs", () => {
     const html = render("/");
     expect(html).toContain('data-testid="art-bottom-tab-bar"');

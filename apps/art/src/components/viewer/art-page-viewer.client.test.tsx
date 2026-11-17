@@ -36,9 +36,9 @@ let host: HTMLDivElement;
 let root: Root;
 
 function AccountName() {
-  const { account, replyDot } = useArtViewerChrome();
+  const { account, replyDot, settled } = useArtViewerChrome();
   return (
-    <p data-testid="account">
+    <p data-testid="account" data-settled={settled ? "true" : "false"}>
       {account.kind === "authenticated" ? account.displayName : account.kind}
       {replyDot ? " (reply)" : ""}
     </p>
@@ -131,11 +131,37 @@ describe("prerendered page viewer", () => {
     expect(fetchMock.mock.calls.map(([path]) => path)).toEqual(["/api/viewer"]);
   });
 
-  it("keeps the guest drawing when the visitor cannot be read", async () => {
+  it("is unsettled until the visitor is read, so the account controls can wait", async () => {
+    let answer: (response: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            answer = resolve;
+          }),
+      ),
+    );
+    await act(async () => {
+      root.render(page());
+    });
+    const account = () => host.querySelector('[data-testid="account"]');
+    expect(account()?.getAttribute("data-settled")).toBe("false");
+
+    await act(async () => answer(Response.json({ account: SIGNED_IN, replyDot: false })));
+    for (let i = 0; i < 3; i++) await act(async () => {});
+    expect(account()?.getAttribute("data-settled")).toBe("true");
+    expect(account()?.textContent).toBe("Ada Lovelace");
+  });
+
+  it("settles as the guest drawing when the visitor cannot be read", async () => {
     respond({});
 
     await renderAndSettle();
 
+    expect(host.querySelector('[data-testid="account"]')?.getAttribute("data-settled")).toBe(
+      "true",
+    );
     expect(host.querySelector('[data-testid="account"]')?.textContent).toBe("guest");
     expect(heart()?.getAttribute("aria-pressed")).toBe("false");
   });

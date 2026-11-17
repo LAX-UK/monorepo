@@ -10,7 +10,14 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { prerenderedFileBase, prerenderedRoutes } from "./prerendered-output.mjs";
+import {
+  REQUIRED_PRERENDERED_ROUTES,
+  prerenderedFileBase,
+  prerenderedRoutes,
+} from "./prerendered-output.mjs";
+
+/** Pages whose HTML must be where this expects it; a miss means a Next upgrade moved it. */
+const HTML_ROUTES = new Set([...REQUIRED_PRERENDERED_ROUTES, "/_not-found"]);
 
 const appDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const nextDir = join(appDir, ".next");
@@ -27,6 +34,12 @@ for (const route of prerenderedRoutes(manifest)) {
   const base = prerenderedFileBase(route);
   for (const dir of outputs) {
     if (!existsSync(join(dir, `${base}.html`))) {
+      // Another static route without HTML (a route handler such as robots.txt writes `.body`)
+      // has no page to drop; only the pages above must be found.
+      if (!HTML_ROUTES.has(route)) {
+        console.log(`drop-build-time-html: ${route} has no HTML in ${dir}; left as built`);
+        continue;
+      }
       console.error(`drop-build-time-html: no ${base}.html in ${dir} for ${route}`);
       failed = true;
       continue;

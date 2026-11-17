@@ -181,6 +181,7 @@ I could not find a failing run in the last 15 completed `art-e2e-pr.yml` runs, s
 - **D2.** Catalogue and editorial writes that change home content revalidate a `home` cache tag through the existing `/api/revalidate` route.
 - **D3.** `(home)/loading.tsx` stays, so in-app navigation to home keeps its loading screen and the lax.art loading spec's `home` case stays as is.
 - **D4.** Acceptance: with JavaScript disabled, `/` shows the hero heading and the first section titles, with no `.lax-skeleton` drawn in the first viewport, at 1440 and 375.
+  - *Recorded exception (#1541):* an image's own placeholder (`MediaImage`, `.lax-skeleton[role="img"]`) is not counted. With JavaScript off the hero picture's placeholder still draws, although the picture is already `priority`, because the placeholder is removed by script on load. That is the #1502 MediaImage follow-up; the e2e excludes `[role="img"]` until it lands.
 
 ### Open questions (with defaults)
 
