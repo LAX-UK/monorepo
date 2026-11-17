@@ -53,6 +53,8 @@ export type ArtistDetailPageVM = {
   relatedRows: PublicArtistDirectoryRow[];
   browseHref: string;
   breadcrumbItems: Array<{ label: string; href?: string; current?: boolean }>;
+  /** The viewer's watched lots: each work's card shows its save heart filled for these. */
+  watchedLotIds: readonly string[];
 };
 
 export type BuildArtistPageVMInput = {
@@ -64,6 +66,8 @@ export type BuildArtistPageVMInput = {
   aliases: string[];
   session: SessionUser | null;
   watchedArtistIds: string[];
+  /** The viewer's watched lots, for the save heart on each work's card; none when signed out. */
+  watchedLotIds?: readonly string[];
   relatedRows: PublicArtistDirectoryRow[];
 };
 
@@ -80,6 +84,7 @@ export function buildArtistPageVM(input: BuildArtistPageVMInput): ArtistDetailPa
   const isFeatured = registry.featured === true;
   const watching = watchedArtistIds.includes(id);
   const isAuthed = Boolean(session);
+  const watchedLotIds = input.watchedLotIds ?? [];
 
   const profilePath = artistPath({ id: registry.id, name: artistName });
   const profileUrl = `${base}${profilePath}`;
@@ -137,6 +142,7 @@ export function buildArtistPageVM(input: BuildArtistPageVMInput): ArtistDetailPa
     id,
     registry,
     artistLots,
+    watchedLotIds,
     works: splitArtistWorks(artistLots),
     activeWorksTab: parseArtistWorksTab(input.searchParams.tab),
     aliasesList,

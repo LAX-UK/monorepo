@@ -28,7 +28,9 @@ export function homeLotCard(
     imageUrl: lot.images[0] ?? null,
     displayStyle: lotMediaTreatment(lot, treatments).style,
     watchable: lot.status === "active" || lot.status === "scheduled",
-    details: [label.eyebrow],
+    status: lot.status,
+    ...(lot.atgSaleState ? { atgSaleState: lot.atgSaleState } : {}),
+    lotLabel: label.eyebrow,
     estimate: lotEstimateLine(lot),
     line: lotCardLineModel(lot, now, { premiumSale: sale }),
   };

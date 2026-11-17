@@ -5,6 +5,7 @@ import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.serv
 import { fetchPublicArtistAliases, fetchRegistryArtistById } from "@/lib/data/http/artist.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import {
   buildArtistPageJsonLd,
   ensureCanonicalArtistSlug,
@@ -58,13 +59,15 @@ export async function loadArtistDetailPage(input: {
   searchParams: Record<string, string | string[] | undefined>;
 }): Promise<ArtistDetailPageData> {
   const { id, slug, searchParams } = input;
-  const [artistLots, registry, aliases, session, watchedArtistIds] = await Promise.all([
-    loadArtistLots(id),
-    fetchRegistryArtistById(id),
-    fetchPublicArtistAliases(id),
-    getServerSessionUser(),
-    getServerMyArtistWatchIds(),
-  ]);
+  const [artistLots, registry, aliases, session, watchedArtistIds, watchedLotIds] =
+    await Promise.all([
+      loadArtistLots(id),
+      fetchRegistryArtistById(id),
+      fetchPublicArtistAliases(id),
+      getServerSessionUser(),
+      getServerMyArtistWatchIds(),
+      getServerWatchedLotIdSet(),
+    ]);
   if (!registry) notFound();
 
   ensureCanonicalArtistSlug(slug, { id: registry.id, name: registry.displayName }, searchParams);
@@ -80,6 +83,7 @@ export async function loadArtistDetailPage(input: {
     aliases,
     session,
     watchedArtistIds,
+    watchedLotIds: [...watchedLotIds],
     relatedRows,
   });
 

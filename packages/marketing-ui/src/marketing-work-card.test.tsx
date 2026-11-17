@@ -66,7 +66,7 @@ describe("MarketingWorkCard media style", () => {
   it.each([
     ["wall", "aspect-[4/5]", "object-contain"],
     ["object", "aspect-[4/5]", "object-contain"],
-    ["product", "aspect-[4/5]", "object-cover"],
+    ["product", "aspect-[4/5]", "object-contain"],
     ["showcase", "aspect-[4/5]", "object-contain"],
     ["document", "aspect-[4/5]", "object-contain"],
   ] as const)("frames a %s lot as %s and fits its picture with %s", (style, aspect, fit) => {
@@ -84,27 +84,20 @@ describe("MarketingWorkCard media style", () => {
     expect(container.querySelector("a > span")?.className).toContain(fit);
   });
 
-  it("puts the wall shadow on wall works only", () => {
-    const wall = render(
-      <MarketingWorkCard
-        href="/a"
-        title="A"
-        mediaStyle="wall"
-        media={<img src="/x.webp" alt="" />}
-      />,
-    );
-    expect(frameOf(wall.container)?.className).toContain("marketing-lot-wall");
-    wall.unmount();
-    const object = render(
-      <MarketingWorkCard
-        href="/a"
-        title="A"
-        mediaStyle="object"
-        media={<img src="/x.webp" alt="" />}
-      />,
-    );
-    expect(frameOf(object.container)?.className).not.toContain("marketing-lot-wall");
-    expect(frameOf(object.container)?.className).toContain("marketing-studio-ground");
+  it("gives every style one frame: the same mat and shadow", () => {
+    for (const style of ["wall", "object", "product", "showcase", "document"] as const) {
+      const card = render(
+        <MarketingWorkCard
+          href="/a"
+          title="A"
+          mediaStyle={style}
+          media={<img src="/x.webp" alt="" />}
+        />,
+      );
+      expect(frameOf(card.container)?.className).toContain("marketing-work-mat");
+      expect(frameOf(card.container)?.className).toContain("marketing-lot-wall");
+      card.unmount();
+    }
   });
 });
 
