@@ -1,5 +1,5 @@
 import type { DeliveryQuoteStatus } from "./delivery-quote.js";
-import type { PurchaseInvoiceStatus } from "./purchase-invoice-state.js";
+import { type PurchaseInvoiceStatus, purchaseInvoiceEnded } from "./purchase-invoice-state.js";
 
 /** The saleroom's fulfilment record for a won lot (`lot_fulfilment`), when one exists. */
 export type FulfilmentFacts = {
@@ -68,7 +68,7 @@ const QUOTE_STAGE: Record<DeliveryQuoteStatus, PurchaseDeliveryStage | null> = {
  */
 export function purchaseDeliveryStage(facts: PurchaseDeliveryFacts): PurchaseDeliveryStage {
   const { invoice, fulfilment, quote } = facts;
-  if (invoice === "refunded" || invoice === "cancelled") return "cancelled";
+  if (purchaseInvoiceEnded(invoice)) return "cancelled";
   const moved = fulfilment ? MOVED[fulfilment.status] : undefined;
   if (moved && fulfilment) return moved(fulfilment);
   const fromQuote = quote ? QUOTE_STAGE[quote] : null;

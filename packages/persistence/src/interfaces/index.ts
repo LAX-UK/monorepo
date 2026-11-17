@@ -1199,6 +1199,13 @@ export type {
   PurchaseProblemStatusCounts,
 } from "./purchase-problem-desk.repository.js";
 export type {
+  AdminDeliveriesFilters,
+  AdminDeliveriesQuery,
+  AdminDeliveryRecord,
+  AdminDeliveryStatusCounts,
+  IAdminDeliveriesReader,
+} from "./admin-deliveries.reader.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,
@@ -1390,6 +1397,17 @@ export type {
   SoldAttentionLiveRef,
   SoldAttentionRecord,
 } from "./artwork-register-sold-attention.js";
+export type {
+  AddLocationInput,
+  IStockLocationReader,
+  IStockLocationStore,
+  IStockLocationWriter,
+  LocationWriteResult,
+  MoveArtworksInput,
+  MoveArtworksResult,
+  SetLocationStatusInput,
+  UpdateLocationInput,
+} from "./artwork-location.js";
 export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,

@@ -2,6 +2,7 @@ import { SITE_CONTACT_EMAIL } from "@auction/branding";
 import { createDb } from "@auction/db";
 import { XeroTokenSealer } from "@auction/db/xero-token-sealing";
 import {
+  DrizzleAdminDeliveriesReader,
   DrizzleAdminDomainEventReader,
   DrizzleAdminSavedViewRepository,
   DrizzleBiddingExposureReader,
@@ -111,6 +112,7 @@ import { CollectionDeskService } from "./services/collection-desk/collection-des
 import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
 import { CollectionStorageFollowUpService } from "./services/collection-storage/collection-storage-follow-up.service.js";
 import { CollectionStorageAdminService } from "./services/collection-storage/collection-storage.service.js";
+import { AdminDeliveriesService } from "./services/deliveries/admin-deliveries.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
 import { EmailPurchaseProblemNotices } from "./services/purchase-problems/purchase-problem-notices.js";
@@ -887,6 +889,7 @@ export function createContainer(env: Env): Container {
       atg,
       buyerAgentAuthorisations,
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
+      deliveries: new AdminDeliveriesService(new DrizzleAdminDeliveriesReader(db)),
       marketingEnquiries: marketingEnquiries.desk,
       enquiryQuarantine: marketingEnquiries.quarantine,
       privateSaleDeals: payments.privateSaleDeals.desk,

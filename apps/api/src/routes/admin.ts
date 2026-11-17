@@ -35,6 +35,7 @@ import { attachAdminCollectionStorageRoutes } from "./admin/collection-storage.r
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
 import { attachAdminDataRequestsRoutes } from "./admin/data-requests.routes.js";
+import { attachAdminDeliveriesRoutes } from "./admin/deliveries.routes.js";
 import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
 import { attachAdminDisputeDeskRoutes } from "./admin/dispute-desk.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
@@ -144,7 +145,8 @@ export function createAdminRoutes(
   platform.route("/event-rsvps", createAdminOnsiteEventRoutes(container));
 
   attachAdminSaleroomSessionRoutes(platform, container);
-  attachAdminLotFulfilmentRoutes(platform, container);
+  attachAdminLotFulfilmentRoutes(platform, container, guards);
+  attachAdminDeliveriesRoutes(platform, container);
   attachAdminLotsCatalogRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container, guards);
