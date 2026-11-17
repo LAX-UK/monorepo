@@ -1242,6 +1242,9 @@ importers:
       '@auction/queues':
         specifier: workspace:*
         version: link:../../packages/queues
+      '@auction/stripe-connect':
+        specifier: workspace:*
+        version: link:../../packages/stripe-connect
       '@auction/types':
         specifier: workspace:*
         version: link:../../packages/types

@@ -24,7 +24,7 @@ function rowsOf(result: unknown): Record<string, unknown>[] {
  */
 export function demoSeedRefusal(mark: DemoSeedTargetMark, currentDatabase: string): string | null {
   if (!mark) {
-    return `this database is not marked as a demo seed target (no demo_seed_target row). On a test or local database only, as the owner: ${MARK_DEMO_SEED_TARGET_SQL}`;
+    return `this database is not marked as a demo seed target (no demo_seed_target row). A local database: run \`pnpm db:seed\` (it marks a fresh local database first), or for an existing one \`pnpm --filter @auction/db db:seed:mark-demo-target local <your name> --existing-local-database\`. A test database, as the owner: ${MARK_DEMO_SEED_TARGET_SQL}`;
   }
   if (mark.environment !== "test" && mark.environment !== "local") {
     return `this database's demo seed mark names an unknown environment (${mark.environment})`;
@@ -35,33 +35,52 @@ export function demoSeedRefusal(mark: DemoSeedTargetMark, currentDatabase: strin
   return null;
 }
 
-/**
- * Refuses, before anything is written, a database that has not said for itself that it takes the
- * demo seeds. This is the check the address heuristics cannot give: production has no mark, so it
- * is refused even behind an IP address or a renamed cluster. The full demo seeds (Bid and Shop) and the staff queue seeds call it.
- */
-export async function assertDemoSeedDatabase(db: Queryable, seed: string): Promise<void> {
+/** What a database says about itself: its name, whether it has the mark table, and the mark. */
+export type DemoSeedTargetState = {
+  currentDatabase: string;
+  hasTable: boolean;
+  mark: DemoSeedTargetMark;
+};
+
+export async function readDemoSeedTarget(db: Queryable): Promise<DemoSeedTargetState> {
   const [identity] = rowsOf(
     await db.execute(
       sql`select current_database() as name, to_regclass('public.demo_seed_target') is not null as has_table`,
     ),
   );
   const currentDatabase = String(identity?.name ?? "");
-  if (identity?.has_table !== true) {
-    throw new Error(
-      `[${seed}] refusing to seed: this database has no demo_seed_target table (migration 0398 not applied)`,
-    );
-  }
+  if (identity?.has_table !== true) return { currentDatabase, hasTable: false, mark: null };
   const [mark] = rowsOf(
     await db.execute(
       sql`select environment, database_name from demo_seed_target where id = true limit 1`,
     ),
   );
-  const refusal = demoSeedRefusal(
-    mark
+  return {
+    currentDatabase,
+    hasTable: true,
+    mark: mark
       ? { environment: String(mark.environment), databaseName: String(mark.database_name) }
       : null,
-    currentDatabase,
-  );
-  if (refusal) throw new Error(`[${seed}] refusing to seed: ${refusal}`);
+  };
+}
+
+/**
+ * Refuses, before anything is written, a database that has not said for itself that it takes the
+ * demo seeds. This is the check the address heuristics cannot give: production has no mark, so it
+ * is refused even behind an IP address or a renamed cluster. Every seed that writes accounts or
+ * staff grants reaches it through `assertSeedTarget` (seed-target-guard.ts). Returns the mark.
+ */
+export async function assertDemoSeedDatabase(
+  db: Queryable,
+  seed: string,
+): Promise<NonNullable<DemoSeedTargetMark>> {
+  const { currentDatabase, hasTable, mark } = await readDemoSeedTarget(db);
+  if (!hasTable) {
+    throw new Error(
+      `[${seed}] refusing to seed: this database has no demo_seed_target table (migration 0398 not applied)`,
+    );
+  }
+  const refusal = demoSeedRefusal(mark, currentDatabase);
+  if (refusal || !mark) throw new Error(`[${seed}] refusing to seed: ${refusal}`);
+  return mark;
 }

@@ -1,16 +1,37 @@
 import {
   adminSaleroomSaleIdParamSchema,
   adminSaleroomSessionBatchQuerySchema,
+  buildValidationFailedBody,
   displayApproveBodySchema,
   displayOverlayBodySchema,
   displayRevokeBodySchema,
   saleroomAdvanceLotBodySchema,
+  saleroomLotOutcomeBodySchema,
+  saleroomLotParamSchema,
 } from "@auction/validators";
+import type { Context } from "hono";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireSaleroomOperate } from "../../middleware/require-capability.js";
 import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
+
+/**
+ * Hammer and no sale take an optional `{ lotId }`: the lot the clerk saw on the block. The body
+ * may be missing altogether (a console from before lot ids were sent), which reads as no lot id.
+ */
+async function readLotOutcomeBody(c: Context) {
+  const raw = await c.req.text();
+  let json: unknown = {};
+  if (raw.trim() !== "") {
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      json = null;
+    }
+  }
+  return saleroomLotOutcomeBodySchema.safeParse(json);
+}
 
 export function attachAdminSaleroomSessionRoutes(
   platform: AdminHono,
@@ -34,6 +55,18 @@ export function attachAdminSaleroomSessionRoutes(
     async (c) => {
       const { saleId } = c.req.valid("param");
       const data = await container.admin.saleroom.getSessionWithRecentEvents(saleId);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
+    "/sales/:saleId/saleroom/lots/:lotId",
+    requireSaleroomOperate,
+    zValidator("param", saleroomLotParamSchema),
+    async (c) => {
+      const { saleId, lotId } = c.req.valid("param");
+      const data = await container.admin.saleroom.getLotSnapshot(saleId, lotId);
+      if (!data) return c.json({ error: "Lot not found in this sale", code: "not_found" }, 404);
       return c.json({ data });
     },
   );
@@ -114,10 +147,13 @@ export function attachAdminSaleroomSessionRoutes(
     zValidator("param", adminSaleroomSaleIdParamSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
+      const body = await readLotOutcomeBody(c);
+      if (!body.success) return c.json(buildValidationFailedBody(body.error), 400);
       const userId = c.get("userId") as string;
       const result = await container.admin.saleroom.hammerCurrentLot({
         saleId,
         actorUserId: userId,
+        ...(body.data.lotId ? { lotId: body.data.lotId } : {}),
       });
       return result.match(
         (body) => c.json({ data: body }),
@@ -133,10 +169,13 @@ export function attachAdminSaleroomSessionRoutes(
     zValidator("param", adminSaleroomSaleIdParamSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
+      const body = await readLotOutcomeBody(c);
+      if (!body.success) return c.json(buildValidationFailedBody(body.error), 400);
       const userId = c.get("userId") as string;
       const result = await container.admin.saleroom.noSaleCurrentLot({
         saleId,
         actorUserId: userId,
+        ...(body.data.lotId ? { lotId: body.data.lotId } : {}),
       });
       return result.match(
         (body) => c.json({ data: body }),

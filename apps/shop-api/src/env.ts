@@ -2,13 +2,28 @@ import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts"
 import { legalEntityFor } from "@auction/branding";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { parseFinancialYearEnd } from "@auction/shop-domain";
+import { allowsLiveStripeKeys, stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { z } from "zod";
 
 type AppEnv = "production" | "test" | "development";
 
+const APP_ENVS: readonly AppEnv[] = ["production", "test", "development"];
+
+/**
+ * APP_ENV as it was set, or undefined when it is unset. A value that is set but is not one of
+ * production/test/development is refused rather than replaced, so a typo on a deployed host
+ * cannot silently switch off the test-stack checks.
+ */
+function explicitAppEnv(source: NodeJS.ProcessEnv): AppEnv | undefined {
+  const raw = source.APP_ENV;
+  if (raw === undefined || raw === "") return undefined;
+  if ((APP_ENVS as readonly string[]).includes(raw)) return raw as AppEnv;
+  throw new Error(`APP_ENV must be one of ${APP_ENVS.join(", ")} (got "${raw}")`);
+}
+
 function resolveAppEnv(source: NodeJS.ProcessEnv): AppEnv {
-  const raw = source.APP_ENV?.trim();
-  if (raw === "production" || raw === "test" || raw === "development") return raw;
+  const explicit = explicitAppEnv(source);
+  if (explicit) return explicit;
   return (source.NODE_ENV ?? "development") === "production" ? "production" : "development";
 }
 
@@ -366,6 +381,27 @@ function assertStripeConfigured(env: ShopApiEnv): void {
   );
 }
 
+/**
+ * Only production may reach live Stripe. Unless APP_ENV is explicitly production, every key must
+ * be a test-mode key and Connect must use the sandbox platform, never the live lax.art one (the
+ * same rule as the Bid API and the worker). This reads APP_ENV as it was set, not the value
+ * derived from NODE_ENV: a deployed test host with APP_ENV unset runs NODE_ENV=production too, so
+ * an unset APP_ENV fails closed here.
+ */
+function assertStripeIsSandboxOutsideProduction(env: ShopApiEnv, appEnv: AppEnv | undefined): void {
+  const issues = stripeTestModeKeyIssues(appEnv, [
+    { name: "STRIPE_SECRET_KEY", kind: "secret", value: env.STRIPE_SECRET_KEY },
+    { name: "STRIPE_PUBLISHABLE_KEY", kind: "publishable", value: env.STRIPE_PUBLISHABLE_KEY },
+  ]);
+  if (!allowsLiveStripeKeys(appEnv) && env.STRIPE_SHOP_CONNECT_PLATFORM_KEY !== "bid_sandbox") {
+    issues.push({
+      name: "STRIPE_SHOP_CONNECT_PLATFORM_KEY",
+      message: "STRIPE_SHOP_CONNECT_PLATFORM_KEY must be bid_sandbox unless APP_ENV=production",
+    });
+  }
+  if (issues.length > 0) throw new Error(issues.map((issue) => issue.message).join("; "));
+}
+
 export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApiEnv {
   const normalized: NodeJS.ProcessEnv = { ...source };
   if (
@@ -383,6 +419,7 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
   if (Boolean(parsed.data.ART_REVALIDATE_URL) !== Boolean(parsed.data.ART_REVALIDATE_SECRET)) {
     throw new Error("ART_REVALIDATE_URL and ART_REVALIDATE_SECRET must be set together");
   }
+  assertStripeIsSandboxOutsideProduction(parsed.data, explicitAppEnv(normalized));
   if (parsed.data.NODE_ENV === "production") {
     if (!parsed.data.SHOP_API_BFF_TOKEN) {
       throw new Error("SHOP_API_BFF_TOKEN is required in production");

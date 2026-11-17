@@ -15,6 +15,8 @@ const SETTINGS = {
 function stubEnv(values: Record<string, string>) {
   vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
   vi.stubEnv("APP_ENV", "development");
+  // Outside production a live Zoho mode must be pinned to a sandbox CRM org.
+  vi.stubEnv("ZOHO_CRM_EXPECTED_ORG_TYPE", "sandbox");
   for (const [key, value] of Object.entries(values)) vi.stubEnv(key, value);
 }
 

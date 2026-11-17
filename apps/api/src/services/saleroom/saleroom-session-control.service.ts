@@ -161,6 +161,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
   async hammerCurrentLot(input: {
     saleId: string;
     actorUserId: string;
+    lotId?: string;
   }): Promise<Result<{ lotId: string }, SaleroomServiceError>> {
     return this.resolveLotOutcome(input, {
       finalize: (lotId) => this.ctx.lotLifecycle.finalizeActiveLotFromClerkHammer(lotId),
@@ -172,6 +173,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
   async noSaleCurrentLot(input: {
     saleId: string;
     actorUserId: string;
+    lotId?: string;
   }): Promise<Result<{ lotId: string }, SaleroomServiceError>> {
     return this.resolveLotOutcome(input, {
       finalize: (lotId) => this.ctx.lotLifecycle.noSaleEndActiveLotFromClerk(lotId),
@@ -202,7 +204,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
   }
 
   private async resolveLotOutcome(
-    input: { saleId: string; actorUserId: string },
+    input: { saleId: string; actorUserId: string; lotId?: string },
     options: {
       finalize: (lotId: string) => Promise<unknown>;
       failureMessage: string;
@@ -215,6 +217,15 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       return err({ message: "Saleroom must be live", status: 400 });
     }
     const lotId = session.currentLotId;
+    // The clerk names the lot they saw. A hammer that arrives late, or from a second tab, after
+    // the room has moved on must not end whichever lot is on the block now.
+    if (input.lotId !== undefined && input.lotId !== lotId) {
+      return err({
+        message: "This lot is no longer on the block",
+        status: 409,
+        code: "lot_not_on_block",
+      });
+    }
     if (!lotId) {
       return err({
         message: options.eventKind === "hammer" ? "No current lot to hammer" : "No current lot",

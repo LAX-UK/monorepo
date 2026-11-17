@@ -4,9 +4,6 @@
  * adding new ones.
  */
 
-/** Same password as every other seeded sign-in. Test and local environments only. */
-export const DEMO_PASSWORD = "Password123!";
-
 function id(group: string, n: number): string {
   return `${group}-0000-4000-8000-${n.toString().padStart(12, "0")}`;
 }

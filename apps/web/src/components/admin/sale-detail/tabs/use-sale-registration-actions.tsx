@@ -2,10 +2,8 @@
 
 import { AssignPaddleDialog } from "@/components/admin/assign-paddle-dialog";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
-import {
-  adminDecideSaleRegistrationResultAction,
-  adminSaleroomCheckInResultAction,
-} from "@/lib/actions/admin";
+import { adminDecideSaleRegistrationResultAction } from "@/lib/actions/admin";
+import { checkInBidder } from "@/lib/admin/saleroom/check-in.client";
 import type { AdminSaleRegistrationRow } from "@/lib/data/http/admin-sale-registrations.types";
 import { registrationBidderLabel } from "@/lib/data/view-models/sale-registrations-tab.vm";
 import { saleroomCheckInErrorMessage } from "@/lib/saleroom/check-in-error-messages";
@@ -79,7 +77,7 @@ export function useSaleRegistrationActions({ saleId, saleroom, hybrid }: Options
                 description: "They are recorded as attending without an in-room paddle.",
                 confirmLabel: "Mark present",
                 run: async () => {
-                  const result = await adminSaleroomCheckInResultAction({
+                  const result = await checkInBidder({
                     saleId,
                     userId: row.userId,
                     buyerLegalEntityId: row.buyerLegalEntityId,
