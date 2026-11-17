@@ -25,11 +25,28 @@ const SCHEMES = ["light", "dark"] as const;
 const TAG = `E2E ${randomUUID().slice(0, 6)}`;
 const REASON = "We can't insure a framed work of this size to this address.";
 
-async function shootAll(page: Page, testInfo: TestInfo, name: string) {
-  for (const scheme of SCHEMES) {
-    await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
-    for (const size of SIZES) {
-      await page.setViewportSize({ width: size.width, height: size.height });
+/**
+ * Shoots a state at 1440 and 375, light and dark. Going from the side panel to the phone one
+ * draws the panel again, which closes a dialog open in it, so `prepare` sets the state up again
+ * at each width (the colour scheme changes nothing).
+ */
+async function shootAll(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+  prepare: () => Promise<void> = async () => {},
+) {
+  for (const size of SIZES) {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await prepare();
+    for (const scheme of SCHEMES) {
+      await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
+      // Colours ease to the new scheme; shoot once they have arrived, not halfway.
+      await page.evaluate(() =>
+        Promise.all(
+          document.getAnimations().map((animation) => animation.finished.catch(() => {})),
+        ),
+      );
       await shoot(page, testInfo, `deliveries-decline-${name}-${size.name}-${scheme}`);
     }
   }
@@ -198,31 +215,42 @@ test.describe("deliveries: can't deliver @smoke @journey", () => {
       await expect(action).toBeFocused();
     });
 
-    await test.step("screenshots: the dialog, and the missing reason", async () => {
-      await action.click();
+    const openDecline = async () => {
+      if (!(await decline.isVisible())) await action.click();
       await expect(reason).toBeFocused();
-      await shootAll(page, testInfo, "1-dialog");
-      await submit.click();
-      await expect(decline.getByText("Tell the buyer why you can't deliver")).toBeVisible();
-      await shootAll(page, testInfo, "2-reason-missing");
-      await decline.getByRole("button", { name: "Cancel" }).click();
+    };
+    // Back at 1440 after the shots the panel was drawn again, which already closed the dialog.
+    const closeDecline = async () => {
+      if (await decline.isVisible()) await decline.getByRole("button", { name: "Cancel" }).click();
       await expect(decline).toHaveCount(0);
+    };
+
+    await test.step("screenshots: the dialog, and the missing reason", async () => {
+      await shootAll(page, testInfo, "1-dialog", openDecline);
+      await shootAll(page, testInfo, "2-reason-missing", async () => {
+        await openDecline();
+        await submit.click();
+        await expect(decline.getByText("Tell the buyer why you can't deliver")).toBeVisible();
+      });
+      await closeDecline();
     });
 
     await test.step("the buyer asked again meanwhile: the stale Notice, and nothing is declined", async () => {
-      await action.click();
-      await reason.fill(REASON);
-      if (!seeded) throw new Error("The journey's request was not added");
-      await buyerAsksAgain(seeded);
-      await submit.click();
-      await expect(decline.getByRole("alert")).toContainText(
-        "This request changed while you had it open.",
-      );
-      await shootAll(page, testInfo, "3-stale");
-      await decline.getByRole("button", { name: "Cancel" }).click();
-      await expect(decline).toHaveCount(0);
-      // The panel reloaded to the new request, still waiting for a price.
-      await expect(panel.getByText(`2 Example Row, ${TAG}, London`).first()).toBeVisible();
+      // Once at each width, so each shot shows a real refusal from the API.
+      await shootAll(page, testInfo, "3-stale", async () => {
+        if (!seeded) throw new Error("The journey's request was not added");
+        await openDecline();
+        await reason.fill(REASON);
+        await buyerAsksAgain(seeded);
+        await submit.click();
+        await expect(decline.getByRole("alert")).toContainText(
+          "This request changed while you had it open.",
+        );
+        // The panel reloads behind the dialog to the new request.
+        await expect(panel.getByText(`2 Example Row, ${TAG}, London`).first()).toBeAttached();
+      });
+      await closeDecline();
+      await expect(panel.getByText("Waiting for a price").first()).toBeVisible();
     });
 
     await test.step("declining the request as it is now closes it as Declined by LAX", async () => {
@@ -238,6 +266,10 @@ test.describe("deliveries: can't deliver @smoke @journey", () => {
       await expect(
         panel.getByText("The buyer changed this request while you were looking at it."),
       ).toHaveCount(0);
+      // The toast (5 s) sits over the Activity on a phone; shoot once it has gone.
+      await expect(page.getByText(/Declined the delivery request for Lot 963/)).toHaveCount(0, {
+        timeout: 15_000,
+      });
       await shootAll(page, testInfo, "4-declined");
     });
 
@@ -248,7 +280,10 @@ test.describe("deliveries: can't deliver @smoke @journey", () => {
             order by requested_at`,
           [lotId],
         );
+        // Two requests the buyer withdrew while the dialog was open (one per width shot), and
+        // the one declined as it is now.
         expect(quotes.rows).toEqual([
+          { status: "withdrawn", decline_reason: null },
           { status: "withdrawn", decline_reason: null },
           { status: "withdrawn", decline_reason: REASON },
         ]);
