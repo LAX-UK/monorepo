@@ -1,5 +1,5 @@
 import type { LaxStaffAccessProduct } from "./domain-event-catalog/lax-staff-access-payload-schemas.js";
-import type { FailedJobSource } from "./failed-jobs.js";
+import type { FailedJobSource } from "./failed-job-sources.js";
 import { type UserStaffRole, normalizeUserStaffRole, userStaffRoles } from "./user.js";
 
 /**
