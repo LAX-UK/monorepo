@@ -14,6 +14,8 @@ const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 const REGISTER_ID = "44444444-4444-4444-8444-444444444444";
 const SALE_ID = "55555555-5555-4555-8555-555555555555";
 const LOT_ID = "66666666-6666-4666-8666-666666666666";
+const PARTY_ID = "77777777-7777-4777-8777-777777777777";
+const AGREEMENT_ID = "88888888-8888-4888-8888-888888888888";
 
 const ALL_ROLES: ShopStaffRole[] = [
   "shop_admin",
@@ -40,6 +42,24 @@ const assessment = {
   eligible: true,
   zohoPrice: "4800.00",
   blockers: [],
+  consignorAgreement: {
+    place: "lax_bid",
+    state: "in_force",
+    outcome: "allowed",
+    checkboxFallbackUntil: "2027-01-31",
+    consignor: { partyId: PARTY_ID, displayName: "Example Gallery Ltd" },
+    agreement: {
+      id: AGREEMENT_ID,
+      agreementId: AGREEMENT_ID,
+      version: 1,
+      places: ["lax_bid", "lax_art"],
+      startsOn: "2026-03-03",
+      endsOn: "2027-03-02",
+      retiredOn: null,
+    },
+    lowestPricePence: 200_000,
+    canAddAgreement: false,
+  },
 };
 const body = { saleId: SALE_ID, startingPrice: "250.00", consignorAgreed: true };
 const done = {
@@ -139,9 +159,53 @@ describe("Offer at auction from a From Zoho record: routes", () => {
       registerId: REGISTER_ID,
       saleId: SALE_ID,
       startingPrice: "250.00",
+      consignorAgreed: true,
       actorSubjectId: "catalogue_editor-subject",
     });
     expect(invalidateCatalogue).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("takes a body without the checkbox, for a work an agreement covers", async () => {
+    const { app, offerRegisterAtAuction } = await buildApp("catalogue_editor");
+    const { consignorAgreed: _unused, ...withoutCheckbox } = body;
+    const response = await app.inject({
+      method: "POST",
+      url: offerUrl,
+      headers,
+      payload: withoutCheckbox,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(offerRegisterAtAuction).toHaveBeenCalledWith(
+      expect.objectContaining({ consignorAgreed: false }),
+    );
+    await app.close();
+  });
+
+  it.each([
+    ["shop_admin", true],
+    ["catalogue_editor", true],
+  ] as const)("shows %s the consignor and the agreement, with Add agreement", async (role) => {
+    const { app } = await buildApp(role);
+    const response = await app.inject({ method: "GET", url, headers });
+    expect(response.json().consignorAgreement).toMatchObject({
+      state: "in_force",
+      consignor: { displayName: "Example Gallery Ltd" },
+      agreement: { id: AGREEMENT_ID },
+      canAddAgreement: true,
+    });
+    await app.close();
+  });
+
+  it("hides the consignor and the agreement from someone who cannot read agreements", async () => {
+    const { app } = await buildApp("read_only");
+    const response = await app.inject({ method: "GET", url, headers });
+    expect(response.json().consignorAgreement).toEqual({
+      ...assessment.consignorAgreement,
+      consignor: null,
+      agreement: null,
+      canAddAgreement: false,
+    });
     await app.close();
   });
 

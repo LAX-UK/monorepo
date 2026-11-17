@@ -21,6 +21,7 @@ import type {
   OriginalForMove,
   OriginalMoveReader,
 } from "../ports/original-move.js";
+import type { MoveAgreementService } from "./move-agreement.service.js";
 
 /** The register, as far as a move needs to read it. */
 export type MoveRegisterReader = {
@@ -43,6 +44,8 @@ export type OfferAtAuctionTerms = {
   saleId: string;
   startingPrice: string;
   actorSubjectId: string;
+  /** The checkbox, needed only while a work with no consignor falls back to it. */
+  consignorAgreed?: boolean;
 };
 
 export type OfferAtAuctionCommand = OfferAtAuctionTerms & { artworkId: string };
@@ -69,6 +72,10 @@ const NOT_IN_REGISTER: LockMessage = {
  * that same lot and finishes the job, so nothing is duplicated or stranded. A record with no
  * lax.art listing has nothing to take down: the lot is filled from Zoho's details. Publishing the
  * draft in LAX Bid is what records the artwork as offered there.
+ *
+ * The move reads the consignor's agreement for LAX Bid: it is refused when no agreement covers
+ * it, or, after the transition period, when no consignor is set; until then a work with no
+ * consignor needs the old checkbox. History keeps the agreement version the move read.
  */
 export class OriginalMoveService {
   constructor(
@@ -77,6 +84,8 @@ export class OriginalMoveService {
       register: MoveRegisterReader;
       history: MoveHistory;
       auction: AuctionOfferGateway;
+      /** The consignor agreement each move reads, and is refused without. */
+      agreements: Pick<MoveAgreementService, "read">;
       /** Takes the listing off lax.art and records the withdrawal in the register. */
       withdrawFromLaxArt: (input: { artworkId: string; actorSubjectId: string }) => Promise<void>;
       resolveImageUrl: (value: string | null | undefined) => string | null;
@@ -95,6 +104,7 @@ export class OriginalMoveService {
         entry: null,
         draftLot: null,
         blockers: [NOT_IN_REGISTER],
+        consignorAgreement: null,
       });
     }
     return this.assessSubject({ entry, original });
@@ -169,10 +179,11 @@ export class OriginalMoveService {
     // The lot LAX Bid already holds is shown, not asked for again; an outage hides it, no more.
     const { state } = subject.entry.offer;
     const mayHoldDraft = blockers.length === 0 || state === "held" || state === "withdrawn";
-    const draftLot = mayHoldDraft
-      ? await this.deps.auction.findDraftLot(subject.entry.id).catch(() => null)
-      : null;
-    return this.assessment({ ...subject, draftLot, blockers });
+    const [draftLot, agreement] = await Promise.all([
+      mayHoldDraft ? this.deps.auction.findDraftLot(subject.entry.id).catch(() => null) : null,
+      this.deps.agreements.read(subject.entry.id, "lax_bid"),
+    ]);
+    return this.assessment({ ...subject, draftLot, blockers, consignorAgreement: agreement.view });
   }
 
   private assessment(input: {
@@ -180,8 +191,9 @@ export class OriginalMoveService {
     entry: ArtworkRegisterEntry | null;
     draftLot: { lotId: string; saleTitle: string | null } | null;
     blockers: readonly LockMessage[];
+    consignorAgreement: AdminAuctionOfferAssessment["consignorAgreement"];
   }): AdminAuctionOfferAssessment {
-    const { original, entry, draftLot, blockers } = input;
+    const { original, entry, draftLot, blockers, consignorAgreement } = input;
     const offer = entry?.offer;
     return {
       registerId: entry?.id ?? null,
@@ -196,6 +208,7 @@ export class OriginalMoveService {
       eligible: blockers.length === 0,
       zohoPrice: entry?.zohoPrice ?? null,
       blockers: blockers.map(({ message, link }) => ({ message, link })),
+      consignorAgreement,
     };
   }
 
@@ -230,6 +243,10 @@ export class OriginalMoveService {
     if (blockers.length > 0) {
       throw new ShopDomainError(blockers.map((blocker) => blocker.message).join(" "));
     }
+    // Read again here: an agreement may have ended, or a consignor been set, since the dialog opened.
+    const agreement = await this.deps.agreements.read(entry.id, "lax_bid");
+    const consignorAgreed = terms.consignorAgreed === true;
+    agreement.assertAllowed({ consignorAgreed });
 
     const { sales } = await this.listSales();
     const sale = sales.find((candidate) => candidate.id === terms.saleId);
@@ -275,7 +292,12 @@ export class OriginalMoveService {
         saleTitle: sale.title,
         lotId: draft.lotId,
         ...(takenDown ? { withdrawnFromLaxArt: true as const } : {}),
-        consignorAgreed: true,
+        ...(agreement.view.outcome === "checkbox_fallback" && consignorAgreed
+          ? { consignorAgreed: true as const }
+          : {}),
+        consignorAgreement: agreement.record({
+          belowLowestPrice: agreement.belowLowestPrice(poundsToPence(terms.startingPrice)),
+        }),
         confirmedBy: actor,
       },
       now: (this.deps.now ?? (() => new Date()))(),
@@ -308,4 +330,10 @@ export class OriginalMoveService {
       throw error;
     }
   }
+}
+
+/** "250" or "250.5" pounds to whole pence. The body schema has already checked the shape. */
+function poundsToPence(pounds: string): number {
+  const [whole = "0", fraction = ""] = pounds.split(".");
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0").slice(0, 2));
 }

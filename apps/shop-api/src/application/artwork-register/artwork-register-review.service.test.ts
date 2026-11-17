@@ -78,6 +78,7 @@ function assessment(over: Partial<AdminAuctionOfferAssessment> = {}): AdminAucti
     holdingLotId: null,
     eligible: true,
     zohoPrice: null,
+    consignorAgreement: null,
     blockers: [],
     ...over,
   };

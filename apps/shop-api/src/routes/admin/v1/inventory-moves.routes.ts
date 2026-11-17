@@ -1,4 +1,5 @@
 import {
+  type AdminAuctionOfferAssessment,
   AdminAuctionOfferAssessmentSchema,
   AdminAuctionSalesSchema,
   type AdminOfferAtAuctionBody,
@@ -14,6 +15,7 @@ import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { moveAgreementForViewer } from "./move-agreement-viewer.js";
 
 const ArtworkParams = Type.Object({ id: Type.String({ format: "uuid" }) });
 const RegisterParams = Type.Object({ registerId: Type.String({ format: "uuid" }) });
@@ -48,7 +50,7 @@ export async function registerAdminInventoryMoveRoutes(
     async (request) => {
       requireShopStaffCapability(request, "catalogue.read");
       const { id } = request.params as Static<typeof ArtworkParams>;
-      return deps.inventoryMoves.assess(id);
+      return forViewer(request, deps, await deps.inventoryMoves.assess(id));
     },
   );
 
@@ -78,7 +80,7 @@ export async function registerAdminInventoryMoveRoutes(
     async (request) => {
       requireShopStaffCapability(request, "artwork_register.read");
       const { registerId } = request.params as Static<typeof RegisterParams>;
-      return deps.inventoryMoves.assessRegister(registerId);
+      return forViewer(request, deps, await deps.inventoryMoves.assessRegister(registerId));
     },
   );
 
@@ -101,6 +103,7 @@ export async function registerAdminInventoryMoveRoutes(
         registerId,
         saleId: body.saleId,
         startingPrice: body.startingPrice,
+        consignorAgreed: body.consignorAgreed === true,
         actorSubjectId: requireShopAdminSubject(request),
       });
       invalidateIfTakenDown(deps, request, result.withdrawnFromLaxArt);
@@ -126,12 +129,26 @@ export async function registerAdminInventoryMoveRoutes(
         artworkId: id,
         saleId: body.saleId,
         startingPrice: body.startingPrice,
+        consignorAgreed: body.consignorAgreed === true,
         actorSubjectId: requireShopAdminSubject(request),
       });
       invalidateIfTakenDown(deps, request, result.withdrawnFromLaxArt);
       return result;
     },
   );
+}
+
+/** The consignor agreement line, with what this person may not read left out. */
+async function forViewer(
+  request: FastifyRequest,
+  deps: AdminRoutesDeps,
+  assessment: AdminAuctionOfferAssessment,
+): Promise<AdminAuctionOfferAssessment> {
+  if (!assessment.consignorAgreement) return assessment;
+  return {
+    ...assessment,
+    consignorAgreement: await moveAgreementForViewer(request, deps, assessment.consignorAgreement),
+  };
 }
 
 /** A listing taken off lax.art changes what buyers see, so the public catalogue is refreshed. */

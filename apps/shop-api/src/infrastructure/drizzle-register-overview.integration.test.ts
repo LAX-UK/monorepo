@@ -2,12 +2,14 @@ import type { NewArtworkRegisterEntry } from "@auction/artwork-register-contract
 import { createDbFromPool } from "@auction/db";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleConsignorAgreementStore,
   DrizzleStockLocationStore,
   registerRowToEntry,
 } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { MoveAgreementService } from "../application/admin/move-agreement.service.js";
 import { OfferOnLaxArtService } from "../application/artwork-register/offer-on-lax-art.service.js";
 import { integrationSuffix, uniqueStockCode } from "../test-support/shop-fixtures.js";
 import {
@@ -16,6 +18,7 @@ import {
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleArtistCatalogueWriter } from "./drizzle-artist-catalogue.writer.js";
+import { createDrizzleMoveAgreementReads } from "./drizzle-consignor-agreement.js";
 import {
   createDrizzleLaxArtArtistDirectory,
   createDrizzleLaxArtDraftWriter,
@@ -78,6 +81,12 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
       drafts: createDrizzleLaxArtDraftWriter(uow, {
         registerFor: (session) => shopRegister.withExecutor(session),
         listings,
+      }),
+      agreements: new MoveAgreementService({
+        reads: createDrizzleMoveAgreementReads(
+          db,
+          (session) => new DrizzleConsignorAgreementStore(session),
+        ),
       }),
     });
     const artist = await createDrizzleArtistCatalogueWriter(uow).createArtist({

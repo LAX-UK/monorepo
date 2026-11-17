@@ -44,6 +44,19 @@ const assessment = {
   eligible: true,
   zohoPrice: "4800.00",
   blockers: [],
+  consignorAgreement: {
+    place: "lax_art",
+    state: "none",
+    outcome: "allowed",
+    checkboxFallbackUntil: "2027-01-31",
+    consignor: {
+      partyId: "77777777-7777-4777-8777-777777777777",
+      displayName: "Example Gallery Ltd",
+    },
+    agreement: null,
+    lowestPricePence: null,
+    canAddAgreement: false,
+  },
 };
 
 const offerBody = { artistId: ARTIST_ID, saleState: "for_sale", slug: "ada-rowe-tidal-margin-iv" };
@@ -120,6 +133,26 @@ describe("Offer on lax.art routes", () => {
       zohoPrice: "4800.00",
     });
     await app.close();
+  });
+
+  it("shows the agreement line, with the consignor only to people who read agreements", async () => {
+    const editor = await buildApp("catalogue_editor");
+    const shown = await editor.app.inject({ method: "GET", url, headers: headers() });
+    expect(shown.json().consignorAgreement).toMatchObject({
+      state: "none",
+      consignor: { displayName: "Example Gallery Ltd" },
+      canAddAgreement: true,
+    });
+    await editor.app.close();
+
+    const reader = await buildApp("read_only");
+    const hidden = await reader.app.inject({ method: "GET", url, headers: headers() });
+    expect(hidden.json().consignorAgreement).toMatchObject({
+      state: "none",
+      consignor: null,
+      canAddAgreement: false,
+    });
+    await reader.app.close();
   });
 
   it("hands the staff member, the key and the choices to the use case", async () => {

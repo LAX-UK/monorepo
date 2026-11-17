@@ -13,6 +13,7 @@ import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { moveAgreementForViewer } from "./move-agreement-viewer.js";
 
 const RegisterParams = Type.Object({ registerId: Type.String({ format: "uuid" }) });
 
@@ -30,7 +31,7 @@ const ERRORS = {
  */
 export async function registerAdminOfferOnLaxArtRoutes(
   app: FastifyInstance,
-  deps: Pick<AdminRoutesDeps, "offerOnLaxArt">,
+  deps: Pick<AdminRoutesDeps, "offerOnLaxArt" | "staffReader">,
 ) {
   app.get(
     "/artwork-register/:registerId/lax-art-offer",
@@ -44,7 +45,15 @@ export async function registerAdminOfferOnLaxArtRoutes(
     async (request) => {
       requireShopStaffCapability(request, "artwork_register.read");
       const { registerId } = request.params as Static<typeof RegisterParams>;
-      return deps.offerOnLaxArt.assess(registerId);
+      const assessment = await deps.offerOnLaxArt.assess(registerId);
+      return {
+        ...assessment,
+        consignorAgreement: await moveAgreementForViewer(
+          request,
+          deps,
+          assessment.consignorAgreement,
+        ),
+      };
     },
   );
 

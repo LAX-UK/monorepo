@@ -44,6 +44,17 @@ const eligible = {
     eligible: true,
     zohoPrice: null,
     blockers: [],
+    // No consignor set yet: the checkbox is the fallback until 31 January 2027.
+    consignorAgreement: {
+      place: "lax_bid",
+      state: "no_consignor",
+      outcome: "checkbox_fallback",
+      checkboxFallbackUntil: "2027-01-31",
+      consignor: null,
+      agreement: null,
+      lowestPricePence: null,
+      canAddAgreement: false,
+    },
   },
 };
 const fromZoho = {
@@ -259,10 +270,12 @@ describe("OfferAtAuctionDialog", () => {
     sales.mockResolvedValue(oneSale);
     open();
     fireEvent.click(await screen.findByRole("button", { name: "Offer at auction" }));
-    // The placeholder and the error both read "Choose a sale".
-    await waitFor(() => expect(screen.getAllByText("Choose a sale")).toHaveLength(2));
-    expect(screen.getByText("Enter a starting price")).toBeInTheDocument();
-    expect(screen.getByText("Confirm the consignor agreed")).toBeInTheDocument();
+    // Three problems: the summary lists them and each field shows its own. The select's
+    // placeholder also reads "Choose a sale".
+    expect(await screen.findByText("There are 3 problems")).toBeInTheDocument();
+    expect(screen.getAllByText("Choose a sale")).toHaveLength(3);
+    expect(screen.getAllByText("Enter a starting price")).toHaveLength(2);
+    expect(screen.getAllByText("Confirm the consignor agreed")).toHaveLength(2);
     expect(offer).not.toHaveBeenCalled();
   });
 
@@ -413,5 +426,181 @@ describe("OfferAtAuctionDialog", () => {
       ([call]) => (call as { idempotencyKey: string }).idempotencyKey,
     );
     expect(keys[0]).toBe(keys[1]);
+  });
+});
+
+describe("OfferAtAuctionDialog and the consignor agreement", () => {
+  const PARTY_ID = "55555555-5555-4555-8555-555555555555";
+  const AGREEMENT_ID = "66666666-6666-4666-8666-666666666666";
+  const withAgreement = (agreement: Record<string, unknown>) => ({
+    ok: true,
+    data: {
+      ...eligible.data,
+      consignorAgreement: {
+        ...eligible.data.consignorAgreement,
+        consignor: { partyId: PARTY_ID, displayName: "Example Gallery Ltd" },
+        agreement: {
+          id: AGREEMENT_ID,
+          agreementId: AGREEMENT_ID,
+          version: 1,
+          places: ["lax_bid", "lax_art"],
+          startsOn: "2026-03-03",
+          endsOn: "2027-03-02",
+          retiredOn: null,
+        },
+        canAddAgreement: true,
+        ...agreement,
+      },
+    },
+  });
+
+  beforeEach(() => {
+    for (const fn of [assess, sales, offer, refresh]) fn.mockReset();
+    sales.mockResolvedValue(oneSale);
+  });
+
+  it("reads the agreement in force, with no checkbox, and sends no confirmation", async () => {
+    assess.mockResolvedValue(
+      withAgreement({ state: "in_force", outcome: "allowed", lowestPricePence: 200_000 }),
+    );
+    offer.mockResolvedValue({
+      ok: true,
+      data: {
+        lotId: LOT_ID,
+        saleId: SALE_ID,
+        saleTitle: "Winter sale",
+        withdrawnFromLaxArt: true,
+        created: true,
+      },
+    });
+    open();
+    expect(
+      await screen.findByText(
+        "Covered by agreement with Example Gallery Ltd, signed 3 Mar 2026, LAX Bid and lax.art, until 2 Mar 2027.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: /consignor agreed/ })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Starting price"), { target: { value: "1800" } });
+    expect(screen.getByText("Below the lowest price agreed (£2,000.00).")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Starting price"), { target: { value: "2000" } });
+    expect(screen.queryByText(/Below the lowest price agreed/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("combobox"));
+    fireEvent.click(await screen.findByRole("option", { name: /Winter sale/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Offer at auction" }));
+    await waitFor(() => expect(offer).toHaveBeenCalled());
+    expect(offer.mock.calls[0]?.[0].body).toEqual({ saleId: SALE_ID, startingPrice: "2000.00" });
+  });
+
+  it.each([
+    ["none", { agreement: null }, "No agreement covers LAX Bid for Example Gallery Ltd."],
+    [
+      "expired",
+      {
+        agreement: { ...withAgreement({}).data.consignorAgreement.agreement, endsOn: "2026-10-31" },
+      },
+      "No agreement covers LAX Bid for Example Gallery Ltd: the last one ended on 31 Oct 2026.",
+    ],
+    [
+      "not_started",
+      {
+        agreement: {
+          ...withAgreement({}).data.consignorAgreement.agreement,
+          startsOn: "2026-12-01",
+        },
+      },
+      "No agreement covers LAX Bid for Example Gallery Ltd: the next one starts on 1 Dec 2026.",
+    ],
+    [
+      "retired",
+      {
+        agreement: {
+          ...withAgreement({}).data.consignorAgreement.agreement,
+          retiredOn: "2026-10-01",
+        },
+      },
+      "No agreement covers LAX Bid for Example Gallery Ltd: the last one was retired on 1 Oct 2026.",
+    ],
+  ])("blocks the move when the agreement is %s, with Add agreement", async (state, over, line) => {
+    assess.mockResolvedValue(withAgreement({ state, outcome: "blocked", ...over }));
+    open();
+    expect(await screen.findByText(line)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Add agreement" }).getAttribute("href")).toBe(
+      `/clients/${PARTY_ID}#agreements`,
+    );
+    expect(
+      (screen.getByRole("button", { name: "Offer at auction" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(screen.queryByRole("checkbox", { name: /consignor agreed/ })).toBeNull();
+  });
+
+  it("names no one, and offers no link, to someone who cannot read agreements", async () => {
+    assess.mockResolvedValue(
+      withAgreement({
+        state: "none",
+        outcome: "blocked",
+        consignor: null,
+        agreement: null,
+        canAddAgreement: false,
+      }),
+    );
+    open();
+    expect(
+      await screen.findByText("No agreement covers LAX Bid for this work's consignor."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Add agreement" })).toBeNull();
+  });
+
+  it("asks for the checkbox while no consignor is set, with Set consignor", async () => {
+    assess.mockResolvedValue(eligible);
+    open();
+    expect(
+      await screen.findByText(
+        "No consignor is set for this work. Until 31 Jan 2027, confirm the consignor's agreement below.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Set consignor" }).getAttribute("href")).toBe(
+      `/from-zoho/${REGISTER_ID}#consignor`,
+    );
+    expect(screen.getByRole("checkbox", { name: /consignor agreed/ })).toBeTruthy();
+  });
+
+  it("blocks with Set consignor once the transition is over", async () => {
+    assess.mockResolvedValue(
+      withAgreement({
+        state: "no_consignor",
+        outcome: "blocked",
+        consignor: null,
+        agreement: null,
+      }),
+    );
+    open();
+    expect(await screen.findByText("Set who consigned this work first.")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Offer at auction" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("shows no line when LAX owns the work", async () => {
+    assess.mockResolvedValue(
+      withAgreement({ state: "lax_owns", outcome: "allowed", consignor: null, agreement: null }),
+    );
+    open();
+    await screen.findByLabelText("Starting price");
+    expect(screen.queryByText(/agreement/i)).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+
+  it("lists two or more problems above the form, and one problem only on its field", async () => {
+    assess.mockResolvedValue(withAgreement({ state: "in_force", outcome: "allowed" }));
+    open();
+    await screen.findByLabelText("Starting price");
+    fireEvent.click(screen.getByRole("button", { name: "Offer at auction" }));
+    expect(await screen.findByText("There are 2 problems")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Starting price"), { target: { value: "250" } });
+    await waitFor(() => expect(screen.queryByText("There are 2 problems")).toBeNull());
+    // The one problem left shows on its field only (the placeholder reads the same).
+    expect(screen.getAllByText("Choose a sale")).toHaveLength(2);
   });
 });

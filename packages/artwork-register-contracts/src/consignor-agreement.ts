@@ -10,7 +10,8 @@ import { LONDON_TIME_ZONE, dayKey } from "@auction/datetime";
  *
  * These are the rules every caller shares: the limits (the database repeats them), whether an
  * agreement covers a place on a day, the lowest-price check and what a move does when nothing
- * covers it. No screen reads them yet.
+ * covers it. The move dialogs ("Offer at auction" and "Offer on lax.art") read them through
+ * `readMoveAgreement`.
  */
 
 /** Where an original can be offered. Stored as one flag each. */
@@ -408,4 +409,130 @@ export function planConsignorChange(input: {
  */
 export function nextConsignorSetTime(now: Date, previous: Date | null): Date {
   return previous && previous.getTime() >= now.getTime() ? new Date(previous.getTime() + 1) : now;
+}
+
+// ---------------------------------------------------------------------------------------------
+// What a move reads
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Where the consignor's agreement stands for one move, as the move dialogs show it: in force, not
+ * started yet, past its end date, retired, none at all for that place, no consignor set, or LAX
+ * owns the work.
+ */
+export const MOVE_AGREEMENT_STATES = [
+  "in_force",
+  "not_started",
+  "expired",
+  "retired",
+  "none",
+  "no_consignor",
+  "lax_owns",
+] as const;
+export type MoveAgreementState = (typeof MOVE_AGREEMENT_STATES)[number];
+
+export type MoveAgreementReading<A> = {
+  state: MoveAgreementState;
+  /** The client who consigned the work; null when none is set or LAX owns it. */
+  partyId: string | null;
+  /**
+   * The agreement the state is about: the one in force, the next to start, or the one that ended
+   * last. Null for `none`, `no_consignor` and `lax_owns`.
+   */
+  agreement: A | null;
+  /** What the move does with it (owner decisions Q1 and Q2). */
+  check: MoveAgreementCheck;
+};
+
+type ReadableAgreement = Pick<
+  ConsignorAgreement,
+  "id" | "partyId" | "status" | "places" | "startsOn" | "endsOn" | "createdAt" | "retiredAt"
+>;
+
+/** The day an agreement stopped covering anything: its end date, or the London day it was retired. */
+function endedOn(agreement: ReadableAgreement): string | null {
+  if (agreement.status === "retired")
+    return agreement.retiredAt ? agreementDay(agreement.retiredAt) : null;
+  return agreement.endsOn;
+}
+
+/**
+ * Reads the consignor and their agreements for a move to `place` on `day`. When nothing covers
+ * the place, the agreement that explains why is picked: one that starts later comes first (it is
+ * the one staff are waiting on), then the one that stopped most recently, expired or retired.
+ * Replaced versions are ignored; another client's agreements are too.
+ */
+export function readMoveAgreement<A extends ReadableAgreement>(input: {
+  consignor: Consignor | null;
+  agreements: readonly A[];
+  place: ConsignmentPlace;
+  day: string;
+}): MoveAgreementReading<A> {
+  const cover = assessConsignorCover(input);
+  const check = checkMoveAgreement({ cover, place: input.place, day: input.day });
+  if (cover.kind === "no_consignor")
+    return { state: "no_consignor", partyId: null, agreement: null, check };
+  if (cover.kind === "lax_owns")
+    return { state: "lax_owns", partyId: null, agreement: null, check };
+  if (cover.kind === "covered")
+    return { state: "in_force", partyId: cover.partyId, agreement: cover.agreement, check };
+
+  const forPlace = input.agreements.filter(
+    (agreement) =>
+      agreement.partyId === cover.partyId &&
+      agreement.status !== "replaced" &&
+      agreement.places.includes(input.place),
+  );
+  const upcoming = forPlace
+    .filter((agreement) => agreement.status === "current" && agreement.startsOn > input.day)
+    .sort((a, b) => (a.startsOn < b.startsOn ? -1 : a.startsOn > b.startsOn ? 1 : 0))[0];
+  if (upcoming) return { state: "not_started", partyId: cover.partyId, agreement: upcoming, check };
+
+  const ended = forPlace
+    .map((agreement) => ({ agreement, on: endedOn(agreement) ?? "" }))
+    .sort((a, b) => (a.on < b.on ? 1 : a.on > b.on ? -1 : 0))[0];
+  if (ended) {
+    const state = ended.agreement.status === "retired" ? "retired" : "expired";
+    return { state, partyId: cover.partyId, agreement: ended.agreement, check };
+  }
+  return { state: "none", partyId: cover.partyId, agreement: null, check };
+}
+
+/**
+ * What the register history keeps about the agreement a move read: the place, the state and, when
+ * there was one, the agreement version. `belowLowestPrice` marks a move to auction that went ahead
+ * below the lowest price agreed (a warning, not a refusal).
+ */
+export type MoveAgreementRecord = {
+  place: ConsignmentPlace;
+  state: MoveAgreementState;
+  consignorPartyId?: string;
+  /** The agreement across its versions. */
+  agreementId?: string;
+  /** The version's own row. */
+  agreementVersionId?: string;
+  version?: number;
+  belowLowestPrice?: true;
+};
+
+/** The history record for a reading. */
+export function moveAgreementRecord(
+  reading: MoveAgreementReading<Pick<ConsignorAgreement, "id" | "agreementId" | "version">>,
+  place: ConsignmentPlace,
+  options: { belowLowestPrice?: boolean } = {},
+): MoveAgreementRecord {
+  const { agreement } = reading;
+  return {
+    place,
+    state: reading.state,
+    ...(reading.partyId ? { consignorPartyId: reading.partyId } : {}),
+    ...(agreement
+      ? {
+          agreementId: agreement.agreementId,
+          agreementVersionId: agreement.id,
+          version: agreement.version,
+        }
+      : {}),
+    ...(options.belowLowestPrice ? { belowLowestPrice: true as const } : {}),
+  };
 }

@@ -921,6 +921,7 @@ export class DrizzleArtworkRegisterRepository
     await this.db.transaction(async (tx) => {
       await this.record(tx, input.registerId, "lax_art_draft_created", input.actor, input.now, {
         artworkId: input.artworkId,
+        ...(input.consignorAgreement ? { consignorAgreement: input.consignorAgreement } : {}),
       });
     });
   }
