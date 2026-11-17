@@ -6,6 +6,11 @@ type Logger = {
   warn: (obj: unknown, msg?: string) => void;
 };
 
+/** Runs once a day at 02:00 UTC, matching the fixed crontab of its Sentry cron monitor. */
+export const FAILED_JOB_PAYLOADS_PURGE_PATTERN = "0 2 * * *";
+export const FAILED_JOB_PAYLOADS_PURGE_TIME_ZONE = "UTC";
+export const FAILED_JOB_PAYLOADS_PURGE_JOB_ID = "purge-failed-job-payloads-daily";
+
 const DAY_MS = 86_400_000;
 const DEFAULT_BATCH_SIZE = 500;
 /** Bounds one run; the next day's run takes up what is left. */

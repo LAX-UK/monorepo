@@ -35,6 +35,7 @@ const CAPABILITIES_BEFORE: Readonly<Record<string, readonly ShopStaffCapability[
     "artwork_register.review",
     "artwork_register.read",
     "artwork_location.read",
+    "artwork_location.move",
   ],
 };
 

@@ -63,7 +63,7 @@ Deploy catalogue performance indexes before measuring search/saleroom wins:
 | `0113_catalogue_perf_indexes.sql` | Bid + watchlist recency indexes |
 | `0115_lot_title_trgm.sql` | `pg_trgm` GIN on `lower(lot.title)` for `%term%` search |
 
-Apply via standard Drizzle migrate flow; use `CREATE INDEX CONCURRENTLY` in production for `0115`.
+Apply via standard Drizzle migrate flow; use `CREATE INDEX CONCURRENTLY` in production for `0115`. New index migrations on large or write-heavy tables declare an online build instead: see [online-index-builds.md](./online-index-builds.md).
 
 ## Target improvements (post-optimization)
 

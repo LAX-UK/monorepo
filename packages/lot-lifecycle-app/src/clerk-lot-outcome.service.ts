@@ -4,6 +4,7 @@ import type { Bid, Lot } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import type { LotCloseOutcome } from "./lot-lifecycle-types.js";
 import type {
+  ClerkOutcomeOptions,
   ILifecycleDomainEventSink,
   ILotLifecycleNotifications,
   ILotLifecycleTransitionRecorder,
@@ -23,18 +24,22 @@ export class ClerkLotOutcomeService {
   /** Same settlement rules as timed close, but ignores the auction clock (clerk hammer). */
   async finalizeActiveLotFromClerkHammer(
     lotId: string,
+    options: ClerkOutcomeOptions = {},
   ): Promise<{ winnerId: string | null; voided: boolean } | null> {
     const lots = this.repos.root.lot;
     const a = await lots.findById(lotId);
     if (!a || a.status !== "active") return null;
-    const outcome = await this.runFinalizeLotTransaction(a, new Date(), true);
+    const outcome = await this.runFinalizeLotTransaction(a, new Date(), true, options);
     if (!outcome) return null;
     await this.notifications.notifyBiddersAfterLotClose(a, outcome);
     return { winnerId: outcome.winnerId, voided: outcome.voided };
   }
 
   /** Clerk declares no sale: end the active lot without a winner (reserve not met / passed). */
-  async noSaleEndActiveLotFromClerk(lotId: string): Promise<boolean> {
+  async noSaleEndActiveLotFromClerk(
+    lotId: string,
+    options: ClerkOutcomeOptions = {},
+  ): Promise<boolean> {
     const lots = this.repos.root.lot;
     const a = await lots.findById(lotId);
     if (!a || a.status !== "active") return false;
@@ -60,6 +65,7 @@ export class ClerkLotOutcomeService {
         bid,
         tx,
       });
+      await options.inOutcomeTransaction?.(tx);
       return true;
     });
     if (!ok) return false;
@@ -104,6 +110,7 @@ export class ClerkLotOutcomeService {
     a: Lot,
     now: Date,
     ignoreEndTime: boolean,
+    options: ClerkOutcomeOptions = {},
   ): Promise<LotCloseOutcome | null> {
     return this.repos.runInTransaction(async ({ lot, bid }, tx) => {
       const row = await lot.findByIdForUpdate(a.id);
@@ -189,6 +196,7 @@ export class ClerkLotOutcomeService {
           tx,
         });
       }
+      await options.inOutcomeTransaction?.(tx);
       return {
         lotId: row.id,
         winnerId,

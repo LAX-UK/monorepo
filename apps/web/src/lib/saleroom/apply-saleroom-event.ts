@@ -11,6 +11,25 @@ function applyNextLotId(
   return prev.nextLotId;
 }
 
+/**
+ * True when a hammer/no_sale event resolves the lot this client has on the block.
+ *
+ * An outcome for an earlier lot can arrive after the room has already advanced (the advance and
+ * the outcome publish independently). The server leaves the newer lot on the block in that case,
+ * so the client must too. `clearedFromBlock: false` is the server saying so explicitly; older
+ * servers omit it, and then the lot id comparison alone decides. An event with no `lotId` (very
+ * old payloads) is treated as resolving the current lot.
+ */
+export function isOutcomeForCurrentLot(
+  currentLotId: string | null | undefined,
+  event: SaleroomRealtimePayload,
+): boolean {
+  if (event.kind !== "hammer" && event.kind !== "no_sale") return false;
+  if (event.clearedFromBlock === false) return false;
+  if (event.lotId === undefined) return true;
+  return event.lotId === currentLotId;
+}
+
 export function applySaleroomEvent(
   prev: PublicSaleroomSessionStatus,
   event: SaleroomRealtimePayload,
@@ -47,7 +66,7 @@ export function applySaleroomEvent(
     case "no_sale":
       return {
         ...prev,
-        currentLotId: null,
+        currentLotId: isOutcomeForCurrentLot(prev.currentLotId, event) ? null : prev.currentLotId,
         nextLotId: applyNextLotId(prev, event) ?? null,
       };
     default:

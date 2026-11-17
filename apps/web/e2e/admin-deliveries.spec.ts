@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { type Page, type TestInfo, expect, test } from "@playwright/test";
-import pg from "pg";
-import { e2eEnabled, hasStaffCredentials } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 import { shoot } from "./helpers/collection-journeys";
+import {
+  type SeededDeliveries,
+  removeDeliveryRequests,
+  requireDeliveriesStack,
+  seedDeliveryRequests,
+} from "./helpers/deliveries-seed";
 
 /**
  * Bid admin › Operations › Deliveries (docs/design/staff-gaps-delivery-zoho-alerts.md, D1–D6):
@@ -37,113 +41,16 @@ async function shootAll(page: Page, testInfo: TestInfo, name: string) {
   await page.setViewportSize({ width: 1440, height: 1000 });
 }
 
-type Seeded = { userId: string; entityIds: string[]; saleId: string; lotIds: string[] };
-
-/** Fails, never skips, when the run cannot reach what the journey needs. */
-function requireStack() {
-  if (!e2eEnabled)
-    throw new Error("Set PLAYWRIGHT_E2E=1 and start the e2e stack to run Deliveries");
-  if (!hasStaffCredentials()) {
-    throw new Error("PLAYWRIGHT_STAFF_EMAIL and PLAYWRIGHT_STAFF_PASSWORD are required");
-  }
-}
-
-function database(): pg.Client {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is required to add the journey's requests");
-  return new pg.Client({ connectionString });
-}
-
-/**
- * A made-up buyer and seller, a closed sale, and two lots the buyer won, each with a request for
- * a delivery price to a made-up address carrying the journey's tag.
- */
-async function seedRequests(): Promise<Seeded> {
-  const client = database();
-  await client.connect();
-  const userId = `e2e-deliveries-${randomUUID().slice(0, 8)}`;
-  const [seller, buyer] = [randomUUID(), randomUUID()];
-  const saleId = randomUUID();
-  const lotIds = [randomUUID(), randomUUID()];
-  try {
-    await client.query("begin");
-    await client.query(
-      `insert into "user" (id, name, email, email_verified, created_at, updated_at)
-       values ($1, $1, $2, true, now(), now())`,
-      [userId, `${userId}@example.test`],
-    );
-    await client.query(
-      "insert into bid_user_profile (user_id, created_at, updated_at) values ($1, now(), now())",
-      [userId],
-    );
-    for (const [id, name] of [
-      [seller, `Example Seller ${TAG}`],
-      [buyer, `Example Buyer ${TAG}`],
-    ] as const) {
-      await client.query(
-        `insert into legal_entity (id, display_name, kind, subkind, created_by_user_id, status)
-         values ($1, $2, 'organisation', 'gallery', $3, 'approved')`,
-        [id, name, userId],
-      );
-    }
-    await client.query(
-      `insert into sale (id, title, start_time, end_time, created_by_legal_entity_id)
-       values ($1, $2, now() - interval '2 days', now() - interval '1 day', $3)`,
-      [saleId, `Example sale ${TAG}`, seller],
-    );
-    for (const [index, lotId] of lotIds.entries()) {
-      await client.query(
-        `insert into lot (id, seller_legal_entity_id, sale_id, lot_number, title, auction_type,
-           starting_price, current_price, start_time, end_time, status, winner_id,
-           buyer_legal_entity_id)
-         values ($1, $2, $3, $4, $5, 'english', 100, 1250, now() - interval '2 days',
-           now() - interval '1 day', 'ended', $6, $7)`,
-        [lotId, seller, saleId, 900 + index, `Harbour study ${index + 1}`, userId, buyer],
-      );
-      await client.query(
-        `insert into delivery_quote (lot_id, buyer_legal_entity_id, status, destination, requested_at)
-         values ($1, $2, 'requested', $3, now() - ($4 || ' hours')::interval)`,
-        [lotId, buyer, `${index + 1} Example Lane, ${TAG}, France`, String(index + 2)],
-      );
-    }
-    await client.query("commit");
-    return { userId, entityIds: [buyer, seller], saleId, lotIds };
-  } catch (error) {
-    await client.query("rollback");
-    throw error;
-  } finally {
-    await client.end();
-  }
-}
-
-async function removeRequests(seeded: Seeded | null) {
-  if (!seeded) return;
-  const client = database();
-  await client.connect();
-  try {
-    await client.query("delete from delivery_quote where lot_id = any($1::uuid[])", [
-      seeded.lotIds,
-    ]);
-    await client.query("delete from lot where id = any($1::uuid[])", [seeded.lotIds]);
-    await client.query("delete from sale where id = $1", [seeded.saleId]);
-    await client.query("delete from legal_entity where id = any($1::uuid[])", [seeded.entityIds]);
-    await client.query("delete from bid_user_profile where user_id = $1", [seeded.userId]);
-    await client.query('delete from "user" where id = $1', [seeded.userId]);
-  } finally {
-    await client.end();
-  }
-}
-
 test.describe("deliveries @smoke @journey", () => {
   test.describe.configure({ retries: 0 });
 
-  let seeded: Seeded | null = null;
+  let seeded: SeededDeliveries | null = null;
   test.beforeAll(async () => {
-    requireStack();
-    seeded = await seedRequests();
+    requireDeliveriesStack();
+    seeded = await seedDeliveryRequests(TAG);
   });
   test.afterAll(async () => {
-    await removeRequests(seeded);
+    await removeDeliveryRequests(seeded);
   });
 
   test("finds a buyer's request, opens it in the queue panel and steps through", async ({
@@ -246,7 +153,7 @@ test.describe("deliveries @smoke @journey", () => {
  */
 test.describe("deliveries access @roles", () => {
   test.describe.configure({ retries: 0 });
-  test.beforeAll(() => requireStack());
+  test.beforeAll(() => requireDeliveriesStack());
 
   test.describe("operations @roles", () => {
     test.use({ storageState: roleAuthState.operations });
