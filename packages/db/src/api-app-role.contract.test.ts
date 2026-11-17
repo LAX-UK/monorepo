@@ -253,6 +253,28 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
     });
   });
 
+  it("has no privilege on consignor agreements or the consignor of an original", async () => {
+    await withApiClient(async (client) => {
+      for (const table of ["consignor_agreement", "artwork_consignor_link"]) {
+        for (const privilege of [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE",
+          "TRUNCATE",
+          "REFERENCES",
+          "TRIGGER",
+        ]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+        }
+      }
+    });
+  });
+
   it("has no privilege on stock locations, so it cannot change or truncate the moves", async () => {
     await withApiClient(async (client) => {
       for (const table of ["artwork_location", "artwork_location_move"]) {
