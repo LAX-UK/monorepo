@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1525 (Load Stripe Connect only when payout setup opens, everywhere)
 
@@ -59,3 +59,22 @@ I reviewed head `9aa56f0d` and checked out the PR to run the tests and lint on i
 ### 4. Other gaps
 - The PR checklist leaves "lint/typecheck/tests pass" and the E2E gates unchecked. Confirm CI is green after the rebase.
 - No test covers the shop-portal panel. The body acknowledges this.
+
+
+## Final recheck
+
+Head `b9b53db2` (4 commits over main `efcc59a6`).
+
+- **Finding 1 fixed.** The merge into `origin/main` is clean (`git merge-tree` reports no conflicts). `packages/shop-portal/src/react/payout-account-panel.client.tsx` is identical to main and not in the PR diff. The diff is 7 files and does not touch shop-portal. `a28be1bb` is a normal merge commit with parents `9aa56f0d` (the old head) and main, so history was appended and not force-pushed.
+- **PR body is accurate.** It makes no shop-portal claim. The web payouts wording is softened ("the shell mounts when the page shows embedded panels"). The measurements are labelled static analysis for account only, and web, Bid and Shop are stated as not measured.
+- **Lazy-boundary guard works.** I added a static import of `connect-components-shell` to `connect-workspace.tsx`. `connect-components-shell-lazy-boundary.test.ts` then failed ("is imported only through connect-components-shell-lazy.tsx"). I reverted the change.
+- **Biome guard holds.** A bare `@stripe/connect-js` import in `apps/web` fails with the `/pure` message.
+- **Local checks pass.**
+  - `biome check` passes in `apps/web`, `packages/shop-portal` and `apps/account/src/components/selling`.
+  - Vitest passes: web connect 5/5, account selling 12/12.
+  - `tsc` in `apps/account` is clean.
+  - `tsc` in `apps/web` reports only the unrelated `@auction/api/app` missing type module. That module is not touched by this PR, and the CI build job passed.
+- **CI.** The completed jobs are green: build, static-checks, ui-chromium, web, api and shop-api vitest, account-browser-gates and the docker images. The `test` and `browser-gates` jobs were still in progress when I checked, so those two are unconfirmed. Nothing has failed. The two PR checklist boxes for lint/tests and E2E remain unticked in the body.
+- **Commits.** All 4 are authored and committed by `mahmoudamrspace` with no trailers. The body has no AI footer.
+
+The remaining risk is the two in-progress CI jobs. The change is small and mechanical, so I rate it SHIP.
