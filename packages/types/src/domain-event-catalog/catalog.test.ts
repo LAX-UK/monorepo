@@ -101,6 +101,7 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       registerId: "11111111-1111-4111-8111-111111111111",
       zohoProductId: "5000000000001000001",
       stockCode: "LAX-ORI-PH-GAC-26-0001",
+      reason: "moved",
       fromLocationId: null,
       toLocationId: "22222222-2222-4222-8222-222222222222",
     };
@@ -124,6 +125,43 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       parseDomainEventPayload("artwork_register.location_changed", 1, {
         ...payload,
         toLocationId: undefined,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("describes a change to the location an artwork is at, naming that location twice", () => {
+    const at = "22222222-2222-4222-8222-222222222222";
+    const payload = {
+      schemaVersion: 1,
+      registerId: "11111111-1111-4111-8111-111111111111",
+      zohoProductId: "5000000000001000001",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      fromLocationId: at,
+      toLocationId: at,
+    };
+    for (const reason of ["location_updated", "location_retired", "location_restored"]) {
+      expect(
+        parseDomainEventPayload("artwork_register.location_changed", 1, { ...payload, reason }).ok,
+      ).toBe(true);
+    }
+    // A move must change location, and a list change must not.
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        reason: "moved",
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        reason: "location_updated",
+        fromLocationId: null,
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        reason: undefined,
       }).ok,
     ).toBe(false);
   });

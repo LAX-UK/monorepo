@@ -5,6 +5,7 @@ import {
   type StockLocation,
   nextMoveTime,
   planLocationMove,
+  planMoveBatch,
 } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
@@ -13,6 +14,7 @@ import {
   artworkLocationMove as move,
   artworkRegister as register,
 } from "@auction/db/schema";
+import type { ArtworkRegisterLocationChangedPayloadV1 } from "@auction/types";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   AddLocationInput,
@@ -42,6 +44,11 @@ function toLocation(row: typeof location.$inferSelect): StockLocation {
     retiredAt: row.retiredAt,
   };
 }
+
+/** Domain events go in one statement per this many rows, so a busy location stays one short write. */
+const EVENT_INSERT_CHUNK = 500;
+
+type LocationChangeReason = ArtworkRegisterLocationChangedPayloadV1["reason"];
 
 /** The latest move per artwork. Moves of one artwork never share a time (unique index). */
 type LatestMove = { registerId: string; locationId: string; movedAt: Date; movedBy: string };
@@ -152,7 +159,8 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
         })
         .returning();
       if (!row) throw new Error("artwork_location insert returned no row");
-      return { ok: true, location: toLocation(row) };
+      // A new location has no artworks yet, so there is nothing to publish.
+      return { ok: true, changed: true, location: toLocation(row) };
     } catch (error) {
       if (isPgUniqueViolation(error)) return NAME_TAKEN;
       throw error;
@@ -161,10 +169,15 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
 
   async updateLocation(input: UpdateLocationInput): Promise<LocationWriteResult> {
     try {
-      return await this.writeVersioned(input.id, input.expectedVersion, {
-        name: input.name,
-        note: input.note,
-        updatedAt: input.now,
+      return await this.db.transaction(async (tx) => {
+        const result = await this.writeVersioned(tx, input.id, input.expectedVersion, {
+          name: input.name,
+          note: input.note,
+          updatedAt: input.now,
+        });
+        // Zoho shows the location's name, so every artwork at it is told the list changed.
+        if (result.ok) await this.publishListChange(tx, input.id, "location_updated");
+        return result;
       });
     } catch (error) {
       if (isPgUniqueViolation(error)) return NAME_TAKEN;
@@ -173,15 +186,40 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
   }
 
   async setLocationStatus(input: SetLocationStatusInput): Promise<LocationWriteResult> {
-    return this.writeVersioned(input.id, input.expectedVersion, {
-      status: input.status,
-      retiredAt: input.status === "retired" ? input.now : null,
-      updatedAt: input.now,
+    return this.db.transaction(async (tx) => {
+      // Locked first: a move share-locks the location, so retiring waits for moves into it to
+      // commit, and a move started after this waits and then sees the retired status.
+      const [current] = await tx
+        .select()
+        .from(location)
+        .where(eq(location.id, input.id))
+        .for("update");
+      if (!current) return { ok: false, reason: "not_found" } as const;
+      // Already so: nothing changes, so the version and the time it was retired stay true.
+      if (current.status === input.status) {
+        return { ok: true, changed: false, location: toLocation(current) } as const;
+      }
+      const result = await this.writeVersioned(tx, input.id, input.expectedVersion, {
+        status: input.status,
+        retiredAt: input.status === "retired" ? input.now : null,
+        updatedAt: input.now,
+      });
+      if (result.ok) {
+        await this.publishListChange(
+          tx,
+          input.id,
+          input.status === "retired" ? "location_retired" : "location_restored",
+        );
+      }
+      return result;
     });
   }
 
   async moveArtworks(input: MoveArtworksInput): Promise<MoveArtworksResult> {
-    const ids = [...new Set(input.registerIds)].sort();
+    // Refused before the transaction opens, so a large selection never holds locks.
+    const batch = planMoveBatch(input.registerIds);
+    if (!batch.ok) return batch;
+    const ids = batch.registerIds;
     return this.db.transaction(async (tx) => {
       // A share lock keeps the location from being retired while artworks move into it.
       const [target] = await tx
@@ -260,21 +298,76 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
       now: movedAt,
       payload: { moveId: row.id, fromLocationId, toLocationId: input.locationId },
     });
-    await tx.insert(domainEvent).values({
-      aggregateType: "artwork_register",
-      aggregateId: artwork.id,
-      eventType: "artwork_register.location_changed",
-      producer: "packages/db",
-      payload: {
+    await this.insertLocationChanged(tx, [
+      {
         schemaVersion: 1,
         registerId: artwork.id,
         zohoProductId: artwork.zohoProductId,
         stockCode: artwork.stockCode,
+        reason: "moved",
         fromLocationId,
         toLocationId: input.locationId,
       },
-      schemaVersion: 1,
-    });
+    ]);
+  }
+
+  /**
+   * A list change (rename, note, retire, restore) changes how every artwork at the location reads,
+   * so each of them gets `location_changed` naming the location twice. Runs in the transaction
+   * that holds the location's row lock, so no move into it can commit in between.
+   */
+  private async publishListChange(
+    tx: Tx,
+    locationId: string,
+    reason: Exclude<LocationChangeReason, "moved">,
+  ): Promise<void> {
+    const rows = await tx.execute<{
+      register_id: string;
+      zoho_product_id: string;
+      stock_code: string;
+    }>(sql`
+      SELECT r.id AS register_id, r.zoho_product_id, r.stock_code
+        FROM (
+          SELECT DISTINCT ON (m.register_id) m.register_id, m.location_id
+            FROM ${move} m
+           WHERE m.register_id IN (SELECT register_id FROM ${move} WHERE location_id = ${locationId})
+           ORDER BY m.register_id, m.moved_at DESC
+        ) latest
+        JOIN ${register} r ON r.id = latest.register_id
+       WHERE latest.location_id = ${locationId}
+       ORDER BY r.id
+    `);
+    await this.insertLocationChanged(
+      tx,
+      rows.rows.map((row) => ({
+        schemaVersion: 1,
+        registerId: row.register_id,
+        zohoProductId: row.zoho_product_id,
+        stockCode: row.stock_code,
+        reason,
+        fromLocationId: locationId,
+        toLocationId: locationId,
+      })),
+    );
+  }
+
+  /** The only place this store builds `artwork_register.location_changed`, typed to its schema. */
+  private async insertLocationChanged(
+    tx: Tx,
+    payloads: readonly ArtworkRegisterLocationChangedPayloadV1[],
+  ): Promise<void> {
+    for (let at = 0; at < payloads.length; at += EVENT_INSERT_CHUNK) {
+      await tx.insert(domainEvent).values(
+        payloads.slice(at, at + EVENT_INSERT_CHUNK).map((payload) => ({
+          aggregateType: "artwork_register",
+          aggregateId: payload.registerId,
+          eventType: "artwork_register.location_changed",
+          producer: "packages/db",
+          payload,
+          schemaVersion: payload.schemaVersion,
+        })),
+      );
+    }
   }
 
   private async latestMoves(
@@ -297,17 +390,18 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
 
   /** Writes when the version still matches; otherwise says whether the location is gone or moved on. */
   private async writeVersioned(
+    tx: Tx,
     id: string,
     expectedVersion: number,
     values: Partial<typeof location.$inferInsert>,
   ): Promise<LocationWriteResult> {
-    const [row] = await this.db
+    const [row] = await tx
       .update(location)
       .set({ ...values, version: sql`${location.version} + 1` })
       .where(and(eq(location.id, id), eq(location.version, expectedVersion)))
       .returning();
-    if (row) return { ok: true, location: toLocation(row) };
-    const exists = await this.findLocation(id);
+    if (row) return { ok: true, changed: true, location: toLocation(row) };
+    const [exists] = await tx.select({ id: location.id }).from(location).where(eq(location.id, id));
     return { ok: false, reason: exists ? "stale" : "not_found" };
   }
 }

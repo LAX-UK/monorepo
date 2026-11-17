@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 import {
   LOCATION_NAME_MAX,
   LOCATION_NOT_RECORDED,
+  MOVE_BATCH_MAX,
   MOVE_NOTE_MAX,
   currentLocationLabel,
   locationLabel,
   locationNameKey,
+  moveArtworksRequestSchema,
   nextMoveTime,
   parseLocationName,
   parseLocationNote,
   parseMoveNote,
   planLocationMove,
+  planMoveBatch,
 } from "./stock-location.js";
 
 describe("location names", () => {
@@ -113,5 +116,33 @@ describe("move times", () => {
     expect(nextMoveTime(now, new Date("2026-11-17T10:00:00.000Z"))).toEqual(
       new Date("2026-11-17T10:00:00.001Z"),
     );
+  });
+});
+
+describe("move batches", () => {
+  const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const ids = (count: number) => Array.from({ length: count }, (_, n) => id(n + 1));
+
+  it("takes up to MOVE_BATCH_MAX artworks, each once, in id order", () => {
+    expect(planMoveBatch([id(2), id(1), id(2)])).toEqual({ ok: true, registerIds: [id(1), id(2)] });
+    expect(planMoveBatch(ids(MOVE_BATCH_MAX)).ok).toBe(true);
+    // Repeats count once, so a selection with duplicates is not refused for them.
+    expect(planMoveBatch([...ids(MOVE_BATCH_MAX), id(1)]).ok).toBe(true);
+  });
+
+  it("refuses one more than MOVE_BATCH_MAX", () => {
+    expect(planMoveBatch(ids(MOVE_BATCH_MAX + 1))).toEqual({ ok: false, reason: "too_many" });
+  });
+
+  it("holds the request body to the same limit", () => {
+    const body = { locationId: id(999), note: null };
+    expect(
+      moveArtworksRequestSchema.safeParse({ ...body, registerIds: ids(MOVE_BATCH_MAX) }).success,
+    ).toBe(true);
+    expect(
+      moveArtworksRequestSchema.safeParse({ ...body, registerIds: ids(MOVE_BATCH_MAX + 1) })
+        .success,
+    ).toBe(false);
+    expect(moveArtworksRequestSchema.safeParse({ ...body, registerIds: [] }).success).toBe(false);
   });
 });

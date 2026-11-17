@@ -469,7 +469,12 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "artwork_register.catalogue_changed": new Set(["stockCode", "fields"]),
   "artwork_register.offer_changed": new Set(["stockCode", "fromState", "toState"]),
   /** Location ids only; the names are staff-typed and stay out of the event. */
-  "artwork_register.location_changed": new Set(["stockCode", "fromLocationId", "toLocationId"]),
+  "artwork_register.location_changed": new Set([
+    "stockCode",
+    "reason",
+    "fromLocationId",
+    "toLocationId",
+  ]),
   "artwork_register.stock_code_assigned": new Set(["stockCode"]),
   "data_request.viewed": new Set(["reference"]),
   "data_request.logged": new Set(["reference"]),

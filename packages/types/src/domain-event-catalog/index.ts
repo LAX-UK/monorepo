@@ -91,6 +91,7 @@ export {
   type StaffRoleRemovedPayloadV1,
 } from "./lax-staff-access-payload-schemas.js";
 export {
+  ARTWORK_LOCATION_CHANGE_REASONS,
   artworkRegisterCatalogueChangedPayloadSchemaV1,
   artworkRegisterLocationChangedPayloadSchemaV1,
   artworkRegisterOfferChangedPayloadSchemaV1,

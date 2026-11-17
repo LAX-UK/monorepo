@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * Stock location: where an original physically is (a room, the store, the framer), kept apart
  * from where it is offered (`offer-state.ts`, "Where it is"). Design: docs/design/stock-location.md.
@@ -106,7 +108,36 @@ export function currentLocationLabel(current: CurrentLocation | null): string {
   return current ? locationLabel(current.location) : LOCATION_NOT_RECORDED;
 }
 
-export type LocationMoveRefusal = "location_not_found" | "location_retired";
+export type LocationMoveRefusal = "location_not_found" | "location_retired" | "too_many";
+
+/**
+ * The artworks one move takes: each once, in id order (the order they are locked in), and no
+ * more than `MOVE_BATCH_MAX`. The route and the store both apply it, so no caller can open a long
+ * transaction by sending a large selection.
+ */
+export function planMoveBatch(
+  registerIds: readonly string[],
+): { ok: true; registerIds: string[] } | { ok: false; reason: "too_many" } {
+  const unique = [...new Set(registerIds)].sort();
+  if (unique.length > MOVE_BATCH_MAX) return { ok: false, reason: "too_many" };
+  return { ok: true, registerIds: unique };
+}
+
+/**
+ * The body of a move request ("Move" on a record, or "Move selected"). Repeats count once toward
+ * `MOVE_BATCH_MAX`, as in `planMoveBatch`.
+ */
+export const moveArtworksRequestSchema = z.object({
+  registerIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .refine((ids) => planMoveBatch(ids).ok, {
+      message: `Move at most ${MOVE_BATCH_MAX} artworks at a time.`,
+    }),
+  locationId: z.string().uuid(),
+  note: z.string().nullable().optional(),
+});
+export type MoveArtworksRequest = z.infer<typeof moveArtworksRequestSchema>;
 
 /**
  * Whether moving an artwork to `target` is allowed and changes anything. Only active locations

@@ -23,7 +23,8 @@ export interface IStockLocationReader {
 }
 
 export type LocationWriteResult =
-  | { ok: true; location: StockLocation }
+  /** `changed` is false when the location was already so (retiring a retired one): nothing written. */
+  | { ok: true; changed: boolean; location: StockLocation }
   | { ok: false; reason: "not_found" | "stale" | "name_taken" };
 
 /** Inputs are already checked with the rules in `stock-location.ts`; the database repeats them. */
@@ -75,15 +76,23 @@ export type MoveArtworksResult =
 /**
  * Stock location writes. Locations are retired, never deleted. A move records the move, the
  * record's history entry and `artwork_register.location_changed` in one transaction, so none
- * exists without the others.
+ * exists without the others; a list change and its events are one transaction too.
  */
 export interface IStockLocationWriter {
   /** False with `name_taken` when another location already has the name, ignoring case. */
   addLocation(input: AddLocationInput): Promise<LocationWriteResult>;
-  /** Renames a location or changes its note. Moves keep pointing at it, so history reads the new name. */
+  /**
+   * Renames a location or changes its note. Moves keep pointing at it, so history reads the new
+   * name. Publishes `location_changed` (`location_updated`) for every artwork at it.
+   */
   updateLocation(input: UpdateLocationInput): Promise<LocationWriteResult>;
-  /** Retires a location (it takes no new moves) or brings it back. */
+  /**
+   * Retires a location (it takes no new moves) or brings it back, publishing `location_changed`
+   * for every artwork at it. Asking for the status it already has changes nothing: no version
+   * bump, the retire time kept, no event, `changed: false`.
+   */
   setLocationStatus(input: SetLocationStatusInput): Promise<LocationWriteResult>;
+  /** Refuses with `too_many` above `MOVE_BATCH_MAX` distinct artworks, before taking any lock. */
   moveArtworks(input: MoveArtworksInput): Promise<MoveArtworksResult>;
 }
 
