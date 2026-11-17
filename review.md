@@ -1,101 +1,87 @@
 Verdict: FIX FIRST
 
-# Review of PR #1530: Tell the clerk which limit refused a staff-placed bid, and audit it
+# Final recheck of PR #1530: Tell the clerk which limit refused a staff-placed bid
 
-Reviewed head `9b27ec34` against `origin/main` `2646590a`. It merges cleanly.
+I rechecked head `c647fecd` (6 commits, all by mahmoudamrspace, no trailers) against `origin/main` `310c9417`. The merge base is `2646590a`. The previous review is in the git history of this branch (`2fdd1d1a`).
 
-**Register item BS-11:** I could not find it. `docs/` on `origin/main` has no MASTER plan and no "BS-11", and neither do `cloud/register-gaps`, `plan/overnight-decision-pack` or the git history (`git log --all -S BS-11`). I reviewed against the gap the PR quotes from #799: staff-placed refusals were shown to the clerk on the spot but not observed.
+The decided rule is privacy-first: the clerk sees only the room left on this lot. They never see the bidder's other limits, totals or exposure on other lots.
 
-## What holds
+## Previous FIX FIRST findings
 
-- **Limit types.** I listed every limit the engine can refuse a staff-placed bid with, from `packages/bidding-runtime/src`:
-  - the paddle cap and the telephone-booking cap (`operator-placement-policy.ts`)
-  - the per-lot limit, the authorisation total and the organisation limit (`bidding-limit.gate.ts`, both pre-check and in-transaction)
-  - the sale-registration approved limit (`sale-registration-bid.gate.ts`)
-  - the API-side booking maximum (`telephone-bid-booking-bid-policy.service.ts`)
-
-  The first six map to the right `kind`, `limit` and `available`. The paddle cap and the per-lot limit share the code `bid_limit_exceeded`, and `limitKind` tells them apart correctly. The registration limit is the exception (finding 1). Increment and amount refusals (`bid-amount-refusal.ts`) are not limits, and they keep the old error and toast path. That is correct.
-- **Authorization.** It is server-side and unchanged. Both routes are still behind `requireSaleroomOperate` (`apps/api/src/routes/admin/saleroom.routes.ts:105`, `:139`).
-- **Bid acceptance rules and timing.** These are unchanged. The engine diff only adds `details` to the operator-cap `BidError`, with the same codes, statuses and messages. These suites pass on the PR head:
-  - bidding-runtime: 110 tests
-  - domain: 3937 tests
-  - types: 338 tests
-  - api admin, routes, telephone booking and bid: 1836 tests
-  - web saleroom and admin: 2000 tests
-- **Hot path.** The success path has no new database round trip. `record()` runs only on `out.type === "err"`, and it returns before any I/O for refusals that aren't limits.
-- **Audit write.** One insert happens only on a limit refusal. Nothing is written on success or on replay.
-  - The bid path is read-only on refusal: pre-checks don't write, and the in-transaction limit check rolls back. So a write outside the transaction is acceptable in principle.
-  - The payload is strict, has `piiClassification: none` and is allowlisted.
-- **Privacy.** The clerk only sees the limit of the bidder they are bidding for. No other bidder's data is exposed. See the note under finding 6.
-- **UI.** The Notice is `role="alert"` (`packages/ui/src/lax/notice.tsx:70`), and the copy is sentence case. The screenshots at 1440 and 375, light and dark, render correctly.
-- **Gates.** No budget or baseline files changed, no migration was added, and `lint:deps` and `lint:layers` pass. Commits are by mahmoudamrspace with no trailers, and the PR body has no AI footer.
+| # | Finding | Status |
+|---|---|---|
+| 1 | Registration limit not reported or audited | **Fixed.** `registration` kind added in `packages/domain/src/staff-bid-limit-refusal.ts:15,73`, the event schema, the web reader and the copy. Tested through `placeTelephoneBid` with no booking (`admin-live-bidding-application.service.test.ts:345`). `available` is dropped, so it reads as a per-bid cap. |
+| 2 | Surviving mutants M2–M4 and W2–W8 | **Fixed.** Replay and success paths now assert `publish` is not called (`…service.test.ts:75,99,127`). The `maxAutoBidAmount` refusal is covered (`:414`). Hook tests cover line change, quick amount, a new bid and channel (`use-clerk-bid-entry.test.ts:323–382`). The copy is pinned. |
+| 3 | Audit best-effort, duplicates | **Fixed at the root, as far as this codebase allows.** `request_key` is required in the schema. Failures are counted on `staff_bid_refusal_audit_failed`, with a PromQL alert and a runbook entry. A throwing counter is swallowed. The decision against a unique index is recorded with reasons. |
+| 4 | Notice below the form (FBK-1) | **Fixed.** The notice is under the group title and above the inputs (`lot-on-block-panel.tsx:237,322`). |
+| 5 | A repeat refusal is not announced again | **Fixed.** `setLimitRefusal(null)` runs before each placement (`use-clerk-bid-entry.ts:267,314`). |
+| 6 | Organisation limit exposed | **Fixed for `organisation`.** The domain, the web reader and the schema all refuse the total. **Not fixed for `authorisation_total`**, which breaks the same rule (see F1 below). |
+| 7 | Copy, e2e, PR body | **Fixed.** The copy is in `clerk-command-copy.ts`. The `@journey` Playwright case was added (compiled, not run against a stack). The broken image rows are gone. |
 
 ## Findings
 
-### 1. The sale-registration (approved) limit is not reported or audited (medium)
+### F1. The clerk is told a buyer agent's total authorisation, which reveals their exposure on other lots (FIX FIRST, privacy)
 - **Where:**
-  - `packages/domain/src/staff-bid-limit-refusal.ts:57` returns `null` for `limitKind === "registration"`.
-  - The engine produces that kind at `packages/bidding-runtime/src/bid/sale-registration-bid.gate.ts:57`.
-- **How it happens:** `operatorBypass` (`packages/bidding-runtime/src/bid-eligibility.rules.ts:150`) is false for a telephone bid sent without a `telephoneBookingId`. The route allows that (`packages/validators/src/lot/lifecycle.ts:58`, optional). It is also false when the booking isn't `confirmed` or `in_progress`. In either case the registration gate runs, and its cap applies.
-- **Failure scenario:** a clerk, or an API client, places a £9,000 telephone bid for a buyer whose sale registration is approved to £5,000. The response is the old `{ error: "Bid exceeds your approved limit for this sale", code: "bid_limit_exceeded" }`. There is no `refusal`, so no Notice and a toast instead. No audit row is written. This is exactly the bidder credit/approval limit that BS-11 is about.
-- **Fix:**
-  - Add a `registration` kind to `StaffBidLimitKind`, the payload `limit_kind` enum, the web `KINDS` set and the copy. Suggested copy: "Their approved limit for this sale is £5,000.00." with a next step such as "Take a bid within the limit. To bid higher, their registration limit must be raised first."
-  - Or, if the decision is that this path should not exist, reject telephone bids without an active booking at the route, and record that decision.
-  - Test it with a registration-limit refusal through `placeTelephoneBid`.
-
-### 2. Tests don't fail without several of the behaviours (medium)
-I ran my own mutations. The PR's ten killed mutations are real, but these survived:
-
-| # | Mutation | File |
-|---|---|---|
-| M2 | Audit a limit refusal on the `replay` branch | `apps/api/src/services/admin/admin-live-bidding-application.service.ts:158` |
-| M3 | Audit on a successful paddle bid | same file, after `recordBidPlaced()` |
-| M4 | `committedAmount` returns `input.amount`, ignoring `maxAutoBidAmount` | same file `:258`; the paddle validator accepts `maxAutoBidAmount`, `packages/validators/src/paddle.ts:29` |
-| W2 | Changing the telephone line doesn't clear the notice | `apps/web/src/features/saleroom/hooks/use-clerk-bid-entry.ts:233` |
-| W3 | A quick-amount increment doesn't clear the notice | same file `:246` |
-| W5 | A telephone refusal is stored under the `paddle` channel | same file `:322` |
-| W6 | The refusal isn't cleared after a later successful bid | same file `:284` / `:332` |
-| W8 | The telephone next-step copy is changed | `apps/web/src/features/saleroom/lib/clerk-bid-refusal-copy.ts` |
-
+  - `packages/domain/src/staff-bid-limit-refusal.ts:90` passes `limit` (the total) through for `authorisation_total`.
+  - `apps/api/src/services/admin/clerk-bid-error-body.ts:19` sends it to the console.
+  - `apps/web/src/features/saleroom/lib/clerk-bid-refusal.ts:82-83` shows it, using `apps/web/src/features/saleroom/lib/clerk-command-copy.ts:29-30`.
+  - `apps/api/src/services/admin/staff-bid-limit-refusal.recorder.ts:67` writes it to the audit row, which is shown in Bid admin's audit log.
 - **Failure scenario:**
-  - A refactor that audits on success, or on replay, would put false "refused" rows in the compliance log, and CI stays green.
-  - A paddle bid with a £7,000 maximum refused at a £5,000 paddle cap would be audited as `amount: "6000.00"` with no failing test.
-- **Fix:**
-  - Assert `publish` is not called on the success and replay tests.
-  - Add a refusal test with `maxAutoBidAmount` above `amount`.
-  - Add hook tests for clearing on line change, on increment and on success, and for keeping the channel on a telephone refusal.
-  - Pin the telephone next-step string.
+  - A telephone bid of £2,000 is placed for a buyer agent with a £30,000 total authorisation and £28,500 already committed on other lots.
+  - The clerk reads: "It would take them past the £30,000.00 their buyer agent authorisation allows in total. They can bid up to £1,500.00 on this lot."
+  - That gives the clerk the bidder's total limit and their £28,500 exposure across other lots and sales. The PR's own test pins this text (`clerk-bid-refusal.test.ts:32`).
+  - This is the same leak the PR closed for `organisation`. The decided rule ("never the bidder's other limits, totals or exposure on other lots") covers both.
+- **Fix at the root:** treat `authorisation_total` like `organisation`, a shared limit shown only as room on this lot.
+  - **Domain:** widen the `limit: null` branch of `StaffBidLimitRefusal` to `kind: "organisation" | "authorisation_total"`, and drop `limit` at `staff-bid-limit-refusal.ts:87-90`.
+  - **Schema:** extend the `superRefine` in `packages/types/src/domain-event-catalog/payload-schemas.ts` so it refuses `limit` and requires `available` for that kind too.
+  - **Web reader and copy:**
+    - Mirror the change in `readClerkBidLimitRefusal`.
+    - Change the reason copy to name no amount, for example: "It's above what their buyer agent authorisation allows in total."
+    - Follow it with the room ("They can bid up to £1,500.00 on this lot.") or with `noRoom`.
+  - **Tests:** update the pinned copy, and add the D2, T1 and W9 mutation tests for this kind.
+- **Kinds that are fine:**
+  - `per_lot` is acceptable as it is: it is the cap on this lot, and `available` equals `limit`.
+  - The paddle, telephone booking and registration caps are per-bid caps that apply to this bid. Showing them is the room on this lot.
 
-### 3. The audit is best-effort, not reliable or exactly-once (medium)
-- **Where:** `apps/api/src/services/admin/staff-bid-limit-refusal.recorder.ts:64` catches and `console.error`s a failed insert. There is no retry, outbox or metric.
-- **Duplicates:** the event carries no request or idempotency key, and `domain_events` has no dedupe index for it.
-  - The idempotency executor deletes the key on error (`packages/bidding-runtime/src/bid/idempotent-bid.executor.ts`), so each retry runs the refusal again.
-  - A transport retry of the same request (same `Idempotency-Key`) writes a second row. The two rows can't be told apart from two separate clerk attempts.
-- **Failure scenario:**
-  - A brief database or pool error during a refusal loses the audit row. The only trace is a log line.
-  - A proxy retry doubles the row, so "how many times was this bidder refused" is overstated.
-- **Fix:**
-  - Put the request idempotency key (or a request id) in the payload as `request_key`, so readers can collapse retries. A partial unique index on `(event_type, payload->>'request_key')` would need a migration, numbered after main's latest.
-  - On publish failure, increment a counter or alert metric, and enqueue a retry if the codebase has a job queue for this. Otherwise, document in the PR that the audit is best-effort. Keeping the clerk's answer independent of the write is right; only the silent loss is the problem.
+### F2. The audit-failure log line can carry payload values (low, not blocking)
+- **Where:** `apps/api/src/services/admin/staff-bid-limit-refusal.recorder.ts:80` logs the raw `err`.
+- **Why it matters:** a Zod or Postgres error from the sink can echo payload fields such as `limit`, `available` or `request_key`.
+- **Fix:** log `err.name` / `err.message` only, or the error code. This is minor once F1 has removed the totals from the payload.
 
-### 4. The notice is placed below the form, against FBK-1 (low)
-- **Where:** `apps/web/src/features/saleroom/components/clerk-console/lot-on-block-panel.tsx:291`, `:360`.
-- **The rule:** `docs/design/staff-design-standard.md` FBK-1 says a Notice goes "above the section it concerns".
-- **Today:** the notice sits between the submit button and the quick amounts. In practice it reads well (see screenshots).
-- **Fix:** move it above the inputs of its group, or record why this placement is an exception.
+### F3. A long header idempotency key silently loses the audit row (nit)
+- **Where:** `request_key` is capped at 256 (`payload-schemas.ts`). The body key is validated 8–128 (`packages/validators/src/paddle.ts:30`, `lot/lifecycle.ts:59`). The `Idempotency-Key` header used at `apps/api/src/routes/admin/saleroom.routes.ts:110-113,144-147` is not length-checked on these routes.
+- **Failure scenario:** an API client sends a key over 256 characters. The schema rejects the row and it is only counted. The console always sends short keys.
+- **Fix:** apply the same 8–128 check to the header, or truncate or hash the key into `request_key`.
 
-### 5. A repeat refusal isn't announced again (low, accessibility)
-- **Where:** `apps/web/src/features/saleroom/hooks/use-clerk-bid-entry.ts:269–284`.
-- **Failure scenario:** the clerk presses "Place paddle bid" again without changing anything. A second refusal and a second audit row happen. But the `role="alert"` node stays mounted with the same text, so screen readers say nothing. There is no visible change either, and `pending` toggles silently.
-- **Fix:** clear `limitRefusal` when a new placement starts (`setLimitRefusal(null)` before the request), so the alert is re-inserted. Alternatively, key the Notice on an attempt counter.
+## Independent pass
 
-### 6. The organisation limit and room are shown to the clerk (low, needs an owner decision)
-- The `organisation` refusal gives the clerk the organisation's private bidding limit. The room left also reveals its open exposure across other lots and sales.
-- No staff screen exposes organisation limits today: no admin route reads `organisation_bidding_limits`.
-- This is the bidder's own data, and the clerk is speaking for that bidder, so I don't consider it a leak to a third party. It is still a new staff visibility.
-- **Fix:** get an owner sign-off in the PR. Alternatively, show the room without the organisation's total ("They can bid up to £5,200.00 on this lot").
+- **Bid acceptance rules and timing are unchanged.**
+  - The engine diff only attaches `details` to the operator-cap `BidError`. The codes, statuses and messages are the same.
+  - The telephone `idempotencyKey` derivation moved above the booking check, which is a pure computation with the same value.
+  - The audit is awaited only on `err`, never on success or replay. The recorder returns before any I/O when the refusal is not a limit.
+- **Security.**
+  - Both routes are still behind `requireSaleroomOperate`.
+  - No new endpoints, capabilities or migrations.
+  - The `error` message strings carry no amounts.
+  - `refusal` is only computed from the engine's own `details`.
+  - The web reader validates kind and money format.
+- **SOLID and clean code.**
+  - The dependency direction is right: the domain parses the refusal, the API records it through `IDomainEventSink` behind the narrow `IStaffBidLimitRefusalRecorder`, and the web only draws it.
+  - The copy is centralised. The metric is injectable and tested.
+- **States and design.** I checked the committed screenshots:
+  - widths 1440 and 375, light and dark
+  - paddle, account-limit and registration cases
+  - a long body wraps cleanly at 375
+  - kit `Notice`, danger tone with `role="alert"`
+  - placed above the form per FBK-1
+  - sentence case, staff money formatter
+  - the unnamed telephone bidder falls back to "The telephone bidder"
+- **Suites on the PR head (all green):**
+  - bidding-runtime: 110 passed
+  - domain: 3938 passed, 1 skipped
+  - types: 339 passed
+  - api (`src/services/admin`, `src/routes`, telephone booking): 2913 passed, 13 skipped
+  - web clerk console and admin (`src/features/saleroom`, `src/lib/admin`): 2054 passed
+- **Not run:** the Playwright `@journey` case (no seeded stack here).
 
-### 7. Copy, evidence and PR hygiene (nits)
-- The refusal copy is in a new `clerk-bid-refusal-copy.ts`, while the console's copy file is `apps/web/src/features/saleroom/lib/clerk-command-copy.ts`. Consider moving the static strings there, or say why they're separate.
-- No e2e test covers the UI change. Unit and render tests cover rendering, but nothing drives the console end to end against a 403 with `refusal`. Add a Playwright case on the clerk console (mock the BFF response) that checks the alert text and that no toast appears.
-- In the PR body's screenshot table, the "Account limit" rows are broken markup (`&lt;img src="`` …`` "`). Those four images don't render on GitHub.
+Only F1 blocks shipping. Once `authorisation_total` follows the room-only rule, this is ready to ship.
