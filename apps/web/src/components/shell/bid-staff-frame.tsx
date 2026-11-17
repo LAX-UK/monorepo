@@ -75,7 +75,7 @@ async function searchRecords(query: string): Promise<StaffCommand[]> {
   return results.flat();
 }
 
-function toStaffNav(
+export function toStaffNav(
   user: Pick<SessionUser, "role" | "staffRoles">,
   pendingSubmissionCount: number,
   pendingArtistCount: number,

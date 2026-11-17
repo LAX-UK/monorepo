@@ -87,6 +87,13 @@ export type DetailPanelProps<L extends string = string> = {
   /** Wider for forms with side-by-side fields. */
   size?: "md" | "lg";
   /**
+   * A work queue's panel beside the list rather than over it (PRD-7), from 1024px wide: no scrim,
+   * the page keeps the panel's width clear so the list stays in view and usable, and a click on
+   * another row opens that record here. Escape and Close still close it, and focus still starts
+   * on the title and returns to the row. Below 1024px it covers the screen like any panel.
+   */
+  beside?: boolean;
+  /**
    * The panel holds a form with unsaved changes: closing it (close button, Escape, the scrim)
    * asks "Discard changes?" first.
    */
@@ -118,6 +125,7 @@ export function DetailPanel<L extends string = string>({
   activity,
   footer,
   size = "md",
+  beside = false,
   dirty = false,
   dirtyLabel,
   children,
@@ -159,11 +167,18 @@ export function DetailPanel<L extends string = string>({
   };
   const stepping = useQueueStepping(open ? queue : undefined, dirty);
   const actions = fullPage || headerActions || overflow || queue;
+  const wide = useWideViewport();
+  const docked = beside && wide;
   return (
     <>
-      <Sheet open={open} onOpenChange={requestOpenChange}>
+      <Sheet open={open} onOpenChange={requestOpenChange} modal={!docked}>
         <SheetContent
           {...STAFF_LAYER}
+          // The page keeps this width clear for the panel (theme.css), so nothing sits under it.
+          {...(docked ? { "data-staff-panel-beside": size === "lg" ? "640" : "480" } : {})}
+          // Beside the list, a click on the list is work on the list (another row, a tab), never
+          // a way to close the panel.
+          {...(docked ? { onInteractOutside: (event: Event) => event.preventDefault() } : {})}
           side="right"
           overlayClassName="bg-staff-scrim"
           className={cn(
@@ -282,6 +297,24 @@ export function DetailPanel<L extends string = string>({
         }}
       />
     </>
+  );
+}
+
+const WIDE_QUERY = "(min-width: 64rem)";
+
+function subscribeWide(onChange: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const query = window.matchMedia(WIDE_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+/** Whether the screen is wide enough (1024px) for a panel beside the list. */
+function useWideViewport(): boolean {
+  return React.useSyncExternalStore(
+    subscribeWide,
+    () => typeof window.matchMedia === "function" && window.matchMedia(WIDE_QUERY).matches,
+    () => false,
   );
 }
 

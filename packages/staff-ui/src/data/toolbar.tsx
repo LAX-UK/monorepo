@@ -338,6 +338,10 @@ export type DataView = {
   label: string;
   href: string;
   count?: number;
+  /** `attention` fills the count in ink, for the view whose rows wait on the reader. */
+  countTone?: "attention";
+  /** What the count means, read after the number by assistive technology: "3 waiting". */
+  countLabel?: string;
 };
 
 /**

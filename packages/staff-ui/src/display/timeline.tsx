@@ -17,6 +17,12 @@ export type TimelineEvent = {
   tone?: StaffStatusTone | "live";
 };
 
+/**
+ * A step that keeps no time of its own: it shows who took it and `undated` in place of the time
+ * ("Time not recorded"), never a made-up one.
+ */
+export type UndatedTimelineEvent = Omit<TimelineEvent, "at"> & { at?: undefined; undated: string };
+
 const dotTone: Record<StaffStatusTone | "live", string> = {
   neutral: "bg-staff-neutral-dot",
   info: "bg-staff-info-dot",
@@ -37,7 +43,7 @@ export function Timeline({
   empty = "Nothing has happened yet.",
   className,
 }: {
-  events: readonly TimelineEvent[];
+  events: readonly (TimelineEvent | UndatedTimelineEvent)[];
   label: string;
   empty?: string;
   className?: string;
@@ -68,8 +74,14 @@ export function Timeline({
               <div className="mt-0.5 text-staff-sm text-staff-muted">{event.detail}</div>
             ) : null}
             <p className="mt-0.5 text-staff-xs text-staff-subtle">
-              {event.actor ? <span>{event.actor} · </span> : null}
-              <time dateTime={event.at}>{formatStaffDateTime(event.at)}</time>
+              {event.at ? (
+                <>
+                  {event.actor ? <span>{event.actor} · </span> : null}
+                  <time dateTime={event.at}>{formatStaffDateTime(event.at)}</time>
+                </>
+              ) : (
+                [event.actor, "undated" in event ? event.undated : null].filter(Boolean).join(" · ")
+              )}
             </p>
           </div>
         </li>

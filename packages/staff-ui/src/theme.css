@@ -228,6 +228,18 @@
   }
 }
 
+/* A queue panel beside the list (DetailPanel `beside`, from 1024px): the page beside it keeps the
+   panel's width clear, so the list's columns and the top bar's controls stay in view and usable. */
+@media (min-width: 64rem) {
+  :root:has([data-staff-panel-beside="480"]) [data-staff-content] {
+    padding-right: 480px;
+  }
+
+  :root:has([data-staff-panel-beside="640"]) [data-staff-content] {
+    padding-right: 640px;
+  }
+}
+
 :root:has([data-staff-bulk-bar]) {
   scroll-padding-bottom: var(--spacing-staff-bulk-bar-clearance);
 }

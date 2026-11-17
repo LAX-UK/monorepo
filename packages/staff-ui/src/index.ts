@@ -122,7 +122,7 @@ export type { StepItem, StepState } from "./display/step-list.js";
 export type { ChecklistItem } from "./display/checklist.js";
 export type { IssueItem } from "./display/issue-list.js";
 export type { AttentionItem } from "./display/attention-list.js";
-export type { TimelineEvent } from "./display/timeline.js";
+export type { TimelineEvent, UndatedTimelineEvent } from "./display/timeline.js";
 export {
   AccessDeniedState,
   EmptyState,
@@ -364,7 +364,7 @@ export {
   staffThemeHtmlAttributes,
 } from "./shell/theme.js";
 export type { OverflowAction } from "./shell/overflow-menu.js";
-export { resolveActiveItem } from "./shell/sidebar-nav.js";
+export { SidebarNav, resolveActiveItem } from "./shell/sidebar-nav.js";
 export { PlainLink } from "@auction/ui/lax";
 export type {
   LinkComponent as StaffLinkComponent,

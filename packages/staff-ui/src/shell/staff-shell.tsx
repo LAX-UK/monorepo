@@ -184,7 +184,7 @@ export function StaffShell({
                 </aside>
               </div>
 
-              <div className="flex min-w-0 flex-1 flex-col">
+              <div data-staff-content="" className="flex min-w-0 flex-1 flex-col">
                 <header className="sticky top-0 z-30 flex h-staff-top-bar shrink-0 items-center gap-2 border-b border-staff-line bg-staff-canvas/95 px-3 backdrop-blur-sm supports-[backdrop-filter]:bg-staff-canvas/85 md:gap-3 md:px-6 lg:px-8">
                   <StaffButton
                     variant="ghost"

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DetailPanel } from "./detail-panel.js";
 
 function renderPanel(dirty: boolean) {
@@ -134,5 +134,58 @@ describe("DetailPanel", () => {
     expect(footer?.className).toContain("env(safe-area-inset-bottom)");
     // Full width below 640px: the panel's own width only applies from `sm`.
     expect(screen.getByRole("dialog")).toHaveClass("w-full", "sm:w-[480px]");
+  });
+
+  describe("beside the list", () => {
+    function stubViewport(wide: boolean) {
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn(() => ({
+          matches: wide,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        })),
+      );
+    }
+    afterEach(() => vi.unstubAllGlobals());
+
+    function renderBeside() {
+      const onOpenChange = vi.fn();
+      render(
+        <>
+          <button type="button">Lot 7 · Still life</button>
+          <DetailPanel beside open onOpenChange={onOpenChange} title="Lot 42 · Harbour at dusk">
+            <p>Delivery</p>
+          </DetailPanel>
+        </>,
+      );
+      return onOpenChange;
+    }
+
+    it("leaves the list in view and usable from 1024px: no scrim, the page keeps 480px clear", async () => {
+      stubViewport(true);
+      const onOpenChange = renderBeside();
+      const panel = await screen.findByRole("dialog", { name: "Lot 42 · Harbour at dusk" });
+      expect(panel).toHaveAttribute("data-staff-panel-beside", "480");
+      expect(document.querySelector('[data-lax-motion="scrim"]')).toBeNull();
+      // The list is not hidden from assistive technology, and a click on it keeps the panel.
+      const row = screen.getByRole("button", { name: "Lot 7 · Still life" });
+      fireEvent.pointerDown(row);
+      fireEvent.click(row);
+      expect(onOpenChange).not.toHaveBeenCalled();
+      await vi.waitFor(() =>
+        expect(screen.getByRole("heading", { name: "Lot 42 · Harbour at dusk" })).toHaveFocus(),
+      );
+      fireEvent.keyDown(document.activeElement as Element, { key: "Escape" });
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("covers the screen below 1024px, as any panel does", async () => {
+      stubViewport(false);
+      renderBeside();
+      const panel = await screen.findByRole("dialog", { name: "Lot 42 · Harbour at dusk" });
+      expect(panel).not.toHaveAttribute("data-staff-panel-beside");
+      expect(document.querySelector('[data-lax-motion="scrim"]')).not.toBeNull();
+    });
   });
 });
