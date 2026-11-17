@@ -15,8 +15,14 @@ export type AdminDeliveryEvent = {
     | "withdrawn"
     | "dispatched"
     | "delivered"
+    | "collected"
     | "cancelled";
-  at: string;
+  /**
+   * When it happened, from a recorded event time. `null` when nothing records it: dispatch,
+   * delivery and cancellation keep no time of their own (the fulfilment's `updated_at` moves on
+   * any later edit, so it is never shown as one).
+   */
+  at: string | null;
   /** Who took the step: the buyer, or the LAX team. */
   by: "buyer" | "staff";
 };
@@ -31,8 +37,8 @@ export type AdminDeliveryView = {
   status: DeliveryStatus;
   closedReason: DeliveryClosedReason | null;
   awaitingPayment: boolean;
-  /** When the delivery reached its status. */
-  statusSince: string;
+  /** When the delivery reached its status, when a recorded event time says so; else `null`. */
+  statusSince: string | null;
   /** Where the buyer wants it delivered, as they wrote it. Personal data. */
   destination: string;
   quote: {
@@ -58,10 +64,11 @@ export type AdminDeliveryView = {
         carrier: string | null;
         trackingNumber: string | null;
         paidAt: string | null;
-        updatedAt: string;
+        /** When the buyer collected the work in person. */
+        collectedAt: string | null;
       })
     | null;
-  /** Oldest first. */
+  /** Oldest first; steps with no recorded time come last, in the order they happen. */
   history: AdminDeliveryEvent[];
 };
 
@@ -72,7 +79,7 @@ export type AdminDeliveriesPage = {
   limit: number;
   /** Deliveries per status for the same search and sale, whichever view is shown. */
   counts: Record<DeliveryStatus, number>;
-  /** The sales that have deliveries, for the sale filter. */
+  /** The sales with a delivery asked for in the last year, latest first, at most 100. */
   sales: Array<{ id: string; title: string }>;
 };
 

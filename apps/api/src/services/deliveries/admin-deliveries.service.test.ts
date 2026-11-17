@@ -54,6 +54,7 @@ function reader(rows: AdminDeliveryRecord[] = [record()]) {
       closed: 1,
     }),
     sales: vi.fn().mockResolvedValue([{ id: SALE, title: "Modern British" }]),
+    waitingCount: vi.fn().mockResolvedValue(3),
     findByLotId: vi.fn().mockResolvedValue(rows[0] ?? null),
   } satisfies IAdminDeliveriesReader;
 }
@@ -61,7 +62,8 @@ function reader(rows: AdminDeliveryRecord[] = [record()]) {
 describe("AdminDeliveriesService", () => {
   it("lists a view with counts for the same search and sale, and the sales to filter by", async () => {
     const fake = reader();
-    const page = await new AdminDeliveriesService(fake).list({
+    const now = () => at("2026-11-17T09:00:00Z");
+    const page = await new AdminDeliveriesService(fake, now).list({
       view: "waiting",
       q: "Lyon",
       saleId: SALE,
@@ -78,6 +80,8 @@ describe("AdminDeliveriesService", () => {
       offset: 0,
     });
     expect(fake.counts).toHaveBeenCalledWith({ search: "Lyon", saleId: SALE });
+    // The sale filter is bounded: sales asked about in the last year, at most 100.
+    expect(fake.sales).toHaveBeenCalledWith({ since: at("2025-11-17T09:00:00Z"), limit: 100 });
     expect(page).toMatchObject({
       total: 1,
       offset: 0,
@@ -98,10 +102,22 @@ describe("AdminDeliveriesService", () => {
     });
   });
 
-  it("gives the sidebar the number of buyers waiting for a price, over every sale", async () => {
+  it("gives the sidebar the number of buyers waiting for a price, without counting every view", async () => {
     const fake = reader();
-    expect(await new AdminDeliveriesService(fake).summary()).toEqual({ waitingCount: 3 });
-    expect(fake.counts).toHaveBeenCalledWith({});
+    fake.waitingCount.mockResolvedValue(4);
+    expect(await new AdminDeliveriesService(fake).summary()).toEqual({ waitingCount: 4 });
+    expect(fake.counts).not.toHaveBeenCalled();
+  });
+
+  it("leaves a status time out when nothing records it", async () => {
+    const fake = reader([record({ status: "on_the_way", statusSince: null })]);
+    const page = await new AdminDeliveriesService(fake).list({
+      view: "on_the_way",
+      sort: "newest",
+      limit: 50,
+      offset: 0,
+    });
+    expect(page.items[0]?.statusSince).toBeNull();
   });
 
   it("reads one lot's delivery, or null", async () => {
@@ -152,15 +168,67 @@ describe("deliveryHistory", () => {
           carrier: "Example Couriers",
           trackingNumber: "EX123456789GB",
           paidAt: at("2026-11-15T13:00:00Z"),
-          updatedAt: at("2026-11-18T15:00:00Z"),
+          collectedAt: null,
         },
       }),
     );
-    expect(history.map((event) => [event.kind, event.by])).toEqual([
-      ["requested", "buyer"],
-      ["quoted", "staff"],
-      ["accepted", "buyer"],
-      ["delivered", "staff"],
+    expect(history.map((event) => [event.kind, event.by, event.at])).toEqual([
+      ["requested", "buyer", "2026-11-14T10:12:00.000Z"],
+      ["quoted", "staff", "2026-11-15T09:00:00.000Z"],
+      ["accepted", "buyer", "2026-11-15T12:30:00.000Z"],
+      // No delivery time is recorded, so none is made up from the record's last edit.
+      ["delivered", "staff", null],
+    ]);
+  });
+
+  it("dates a collection in person from when it was collected, and closes it", () => {
+    const history = deliveryHistory(
+      record({
+        status: "closed",
+        closedReason: "collected",
+        quote: {
+          ...record().quote,
+          status: "accepted",
+          amount: "180.00",
+          quotedAt: at("2026-11-15T09:00:00Z"),
+          decidedAt: at("2026-11-15T12:30:00Z"),
+        },
+        fulfilment: {
+          status: "delivered",
+          method: "collection",
+          carrier: null,
+          trackingNumber: null,
+          paidAt: at("2026-11-15T13:00:00Z"),
+          collectedAt: at("2026-11-16T11:00:00Z"),
+        },
+      }),
+    );
+    expect(history.at(-1)).toEqual({
+      kind: "collected",
+      at: "2026-11-16T11:00:00.000Z",
+      by: "buyer",
+    });
+  });
+
+  it("ends a refunded or cancelled purchase with its cancellation, with no made-up time", () => {
+    const history = deliveryHistory(
+      record({
+        status: "closed",
+        closedReason: "cancelled",
+        quote: {
+          ...record().quote,
+          status: "accepted",
+          amount: "180.00",
+          quotedAt: at("2026-11-15T09:00:00Z"),
+          decidedAt: at("2026-11-15T12:30:00Z"),
+        },
+      }),
+    );
+    expect(history.map((event) => [event.kind, event.at])).toEqual([
+      ["requested", "2026-11-14T10:12:00.000Z"],
+      ["quoted", "2026-11-15T09:00:00.000Z"],
+      ["accepted", "2026-11-15T12:30:00.000Z"],
+      ["cancelled", null],
     ]);
   });
 
@@ -176,7 +244,7 @@ describe("deliveryHistory", () => {
           carrier: null,
           trackingNumber: null,
           paidAt: null,
-          updatedAt: at("2026-11-20T10:00:00Z"),
+          collectedAt: at("2026-11-20T10:00:00Z"),
         },
       }),
     );

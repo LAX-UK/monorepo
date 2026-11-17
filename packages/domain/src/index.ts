@@ -752,6 +752,7 @@ export {
 export {
   invoiceDueAt,
   invoiceIsOwed,
+  purchaseInvoiceEnded,
   purchaseInvoiceState,
   storedDueAt,
   type PurchaseInvoiceFacts,

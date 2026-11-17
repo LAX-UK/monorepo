@@ -98,6 +98,14 @@ export function purchaseInvoiceState(facts: PurchaseInvoiceFacts, now: Date): Pu
   return { status: SETTLED[payment.status], dueAt };
 }
 
+/**
+ * Whether the purchase ended with its invoice: refunded, or voided because the sale was cancelled.
+ * The buyer's delivery stage and the staff Deliveries list both read it as cancelled.
+ */
+export function purchaseInvoiceEnded(status: PurchaseInvoiceStatus): boolean {
+  return status === "refunded" || status === "cancelled";
+}
+
 /** Whether the invoice is still owed by the buyer (it can be paid now). */
 export function invoiceIsOwed(status: PurchaseInvoiceStatus): boolean {
   return status === "due" || status === "overdue" || status === "not_invoiced";

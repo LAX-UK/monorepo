@@ -182,10 +182,17 @@ export const COLLECTIONS_READ_ACCESS: CapabilityRequirement = readOrWrite(COLLEC
 /**
  * Deliveries (docs/design/staff-gaps-delivery-zoho-alerts.md, D5): courier quotes buyers asked
  * for on won lots, from the price to the door. Pricing them is the Fulfilment role's work, as lot
- * fulfilment is; read-only staff see the list and its panel without the actions.
+ * fulfilment is.
+ *
+ * D5 word for word: the page "is hidden from roles without `LOT_FULFILMENT_ACCESS`", and View
+ * only is for "roles that can read Lot fulfilment but not write". So reading Deliveries is exactly
+ * reading Lot fulfilment, not `readOrWrite`: `admin.read` (the read-only role) cannot open Lot
+ * fulfilment, and the list carries buyers' delivery addresses. Today every role that can read Lot
+ * fulfilment can also write it, so nobody is View only yet; the two stay separate names so a
+ * read-only Lot fulfilment capability would give View only here without another change.
  */
 export const DELIVERIES_ACCESS: CapabilityRequirement = LOT_FULFILMENT_ACCESS;
-export const DELIVERIES_READ_ACCESS: CapabilityRequirement = readOrWrite(DELIVERIES_ACCESS);
+export const DELIVERIES_READ_ACCESS: CapabilityRequirement = LOT_FULFILMENT_ACCESS;
 
 /**
  * A place's storage terms and its "Raise storage invoices" switch (docs/design/storage-terms.md,

@@ -31,8 +31,10 @@ function createApp(staffRoles: StaffRoles | undefined) {
 const reads = ["/deliveries", "/deliveries/summary", `/deliveries/${LOT}`];
 
 describe("deliveries access", () => {
-  it.each(userStaffRoles)("%s: reads follow the Deliveries permission", async (role) => {
-    const canRead = role === "administrator" || role === "fulfilment" || role === "read_only";
+  // D5: the page is hidden from roles without LOT_FULFILMENT_ACCESS (PRM-1), so the reads are
+  // refused to exactly the roles that cannot open Lot fulfilment, read-only staff included.
+  it.each(userStaffRoles)("%s: reads follow Lot fulfilment access", async (role) => {
+    const canRead = role === "administrator" || role === "fulfilment";
     for (const path of reads) {
       const { app, deliveries } = createApp([role]);
       const res = await app.request(`http://test${path}`);
@@ -43,6 +45,14 @@ describe("deliveries access", () => {
         expect(deliveries.detail).not.toHaveBeenCalled();
       }
     }
+  });
+
+  it("refuses read-only staff, who cannot open Lot fulfilment either", async () => {
+    const { app, deliveries } = createApp(["read_only"]);
+    for (const path of reads) {
+      expect((await app.request(`http://test${path}`)).status, path).toBe(403);
+    }
+    expect(deliveries.list).not.toHaveBeenCalled();
   });
 
   it("refuses someone with no staff role", async () => {
@@ -66,7 +76,7 @@ describe("GET /deliveries", () => {
   });
 
   it("passes the view, search, sale, order and page", async () => {
-    const { app, deliveries } = createApp(["read_only"]);
+    const { app, deliveries } = createApp(["fulfilment"]);
     await app.request(
       `http://test/deliveries?view=on_the_way&q=Lyon&saleId=${SALE}&sort=oldest&limit=25&offset=25`,
     );

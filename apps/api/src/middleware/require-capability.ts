@@ -157,7 +157,7 @@ export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_M
 export const requireEnquiryWork = createRequireAccess(ENQUIRY_ASSIGN_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireCollectionsRead = createRequireAccess(COLLECTIONS_READ_ACCESS);
-/** The Deliveries list and panel: Fulfilment, Administrators and read-only staff. */
+/** The Deliveries list and panel: whoever can read Lot fulfilment (D5), not read-only staff. */
 export const requireDeliveriesRead = createRequireAccess(DELIVERIES_READ_ACCESS);
 /** The Collections page's list of places: everyone with a tab on it, Finance included. */
 export const requireCollectionsPage = createRequireAccess(COLLECTIONS_PAGE_ACCESS);
