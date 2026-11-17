@@ -12,10 +12,10 @@ import {
   type LocationFormField,
   type LocationFormValues,
   NAME_TAKEN,
-  checkLocationForm,
+  fieldErrorsFromIssues,
+  locationFormBody,
   locationFormValues,
 } from "@/server/domain/stock-location.vm";
-import { LOCATION_NAME_MAX, LOCATION_NOTE_MAX } from "@auction/artwork-register-contracts";
 import type { AdminStockLocation } from "@auction/shop-contracts";
 import { Field, FormErrorSummary, TextInput } from "@auction/staff-ui";
 import { useId, useState } from "react";
@@ -24,19 +24,17 @@ const FIELDS: readonly LocationFormField[] = ["name", "note"];
 
 /**
  * Add a location, or rename one and change its note (`location` set). Two fields, so a failed
- * save lists every problem at the top and again beside each field; the same rules run on the
- * server. A rename saves against the version it was opened at: if someone else changed the
- * location since, the dialog says so and offers Reload, keeping what was typed.
+ * save lists every problem at the top and again beside each field: shop-api applies the shared
+ * rules and names each field at fault, and a name in use comes back as its own refusal. A rename
+ * saves against the version it was opened at: if someone else changed the location since, the
+ * dialog says so and offers Reload, keeping what was typed.
  */
 export function LocationDialog({
   location,
-  locations,
   onClose,
 }: {
   /** The location being changed, as the page has it now; null to add one. */
   location: AdminStockLocation | null;
-  /** Every location, retired ones too, so a name in use is caught before saving. */
-  locations: readonly AdminStockLocation[];
   onClose: () => void;
 }) {
   const write = useLocationWrite();
@@ -44,19 +42,15 @@ export function LocationDialog({
   const fieldId = (field: LocationFormField) => `${base}-${field}`;
   const [values, setValues] = useState<LocationFormValues>(() => locationFormValues(location));
   const [submits, setSubmits] = useState(0);
-  const checked = checkLocationForm(values, locations, location?.id ?? null);
   const errors: LocationFormErrors = {
-    ...(submits > 0 && !checked.ok ? checked.errors : {}),
-    // Someone added the same name since the page loaded.
+    ...fieldErrorsFromIssues(write.issues, FIELDS),
     ...(write.refusal === "name_taken" ? { name: NAME_TAKEN } : {}),
   };
   const set = (field: LocationFormField, value: string) =>
     setValues((current) => ({ ...current, [field]: value }));
 
   async function submit() {
-    setSubmits((count) => count + 1);
-    if (!checked.ok) return;
-    const { name, note } = checked.body;
+    const { name, note } = locationFormBody(values);
     const ok = await write.run(
       () =>
         location
@@ -68,10 +62,12 @@ export function LocationDialog({
               idempotencyKey: write.idempotencyKey,
             })
           : addStockLocation({ name, note, idempotencyKey: write.idempotencyKey }),
-      location ? `${name} saved` : `${name} added`,
+      location ? `${name.trim()} saved` : `${name.trim()} added`,
       location ? "change this location" : "add a location",
     );
     if (ok) onClose();
+    // Moves focus to the summary when the API named a field.
+    else setSubmits((count) => count + 1);
   }
 
   const summary = FIELDS.flatMap((field) =>
@@ -98,7 +94,7 @@ export function LocationDialog({
         <Field
           id={fieldId("name")}
           label={LOCATION_FIELD_LABELS.name}
-          description={`For example "Gallery, main room" or "Framer". Up to ${LOCATION_NAME_MAX} characters.`}
+          description='For example "Gallery, main room" or "Framer".'
           error={errors.name}
         >
           <TextInput
@@ -110,7 +106,7 @@ export function LocationDialog({
         <Field
           id={fieldId("note")}
           label={LOCATION_FIELD_LABELS.note}
-          description={`Where to find it, or who to ask. Up to ${LOCATION_NOTE_MAX} characters.`}
+          description="Where to find it, or who to ask."
           error={errors.note}
           optional
         >

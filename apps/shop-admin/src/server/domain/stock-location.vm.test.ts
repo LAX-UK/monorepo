@@ -1,10 +1,10 @@
 import type { AdminArtworkLocation, AdminStockLocation } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
-  NAME_TAKEN,
-  checkLocationForm,
   checkMoveForm,
+  fieldErrorsFromIssues,
   locationFilterOptions,
+  locationFormBody,
   locationHistory,
   moveOptions,
   moveOutcomeMessage,
@@ -19,6 +19,7 @@ function location(id: string, name: string, status: "active" | "retired"): Admin
     name,
     note: null,
     status,
+    label: status === "retired" ? `${name} (retired)` : name,
     version: 1,
     createdAt: "2026-11-01T09:00:00.000Z",
     updatedAt: "2026-11-01T09:00:00.000Z",
@@ -29,55 +30,50 @@ function location(id: string, name: string, status: "active" | "retired"): Admin
 const LIST = [location(ROOM, "Store room", "active"), location(FRAMER, "Framer", "retired")];
 
 describe("the location form", () => {
-  it("takes a trimmed name and a blank note as none", () => {
-    expect(checkLocationForm({ name: "  Gallery, main room ", note: "  " }, LIST)).toEqual({
-      ok: true,
-      body: { name: "Gallery, main room", note: null },
+  it("sends the name as typed and a blank note as none; shop-api trims and checks both", () => {
+    expect(locationFormBody({ name: "  Gallery, main room ", note: "  " })).toEqual({
+      name: "  Gallery, main room ",
+      note: null,
+    });
+    expect(locationFormBody({ name: "Framer", note: "Fridays" })).toEqual({
+      name: "Framer",
+      note: "Fridays",
     });
   });
 
-  it("says what is wrong with each field at once", () => {
-    expect(checkLocationForm({ name: " ", note: "x".repeat(201) }, LIST)).toEqual({
-      ok: false,
-      errors: {
-        name: "Give the location a name.",
-        note: "Keep the note to 200 characters or fewer.",
-      },
+  it("reads the fields the API named, ignoring anything it does not know", () => {
+    expect(
+      fieldErrorsFromIssues(
+        [
+          { field: "name", message: "Give the location a name." },
+          { field: "note", message: "Keep the note to 200 characters or fewer." },
+          { field: "other", message: "Not this form's" },
+          "not an issue",
+          null,
+        ],
+        ["name", "note"] as const,
+      ),
+    ).toEqual({
+      name: "Give the location a name.",
+      note: "Keep the note to 200 characters or fewer.",
     });
-    // Counted as characters, as Postgres counts them: 80 emoji fit, 81 do not.
-    expect(checkLocationForm({ name: "🖼".repeat(80), note: "" }, LIST).ok).toBe(true);
-    expect(checkLocationForm({ name: "🖼".repeat(81), note: "" }, LIST)).toMatchObject({
-      errors: { name: "Keep the name to 80 characters or fewer." },
-    });
-  });
-
-  it("refuses a name another location has, ignoring case, retired ones included", () => {
-    expect(checkLocationForm({ name: "store ROOM", note: "" }, LIST)).toEqual({
-      ok: false,
-      errors: { name: NAME_TAKEN },
-    });
-    expect(checkLocationForm({ name: "framer", note: "" }, LIST)).toMatchObject({ ok: false });
-    // A location keeps its own name, in another case too.
-    expect(checkLocationForm({ name: "Store Room", note: "" }, LIST, ROOM).ok).toBe(true);
+    expect(fieldErrorsFromIssues(undefined, ["name"] as const)).toEqual({});
   });
 });
 
 describe("the move form", () => {
   const active = [{ id: ROOM }];
 
-  it("needs an active location and keeps a note to 500 characters", () => {
-    expect(checkMoveForm({ locationId: null, note: "x".repeat(501) }, active)).toEqual({
+  it("needs an active location; the note goes as typed, blank as none", () => {
+    expect(checkMoveForm({ locationId: null, note: "" }, active)).toEqual({
       ok: false,
-      errors: {
-        locationId: "Choose where the artwork is going.",
-        note: "Keep the note to 500 characters or fewer.",
-      },
+      errors: { locationId: "Choose where the artwork is going." },
     });
     // A place no longer offered (retired since the dialog opened) is not taken.
     expect(checkMoveForm({ locationId: FRAMER, note: "" }, active)).toMatchObject({ ok: false });
     expect(checkMoveForm({ locationId: ROOM, note: " Winter hang " }, active)).toEqual({
       ok: true,
-      body: { locationId: ROOM, note: "Winter hang" },
+      body: { locationId: ROOM, note: " Winter hang " },
     });
   });
 

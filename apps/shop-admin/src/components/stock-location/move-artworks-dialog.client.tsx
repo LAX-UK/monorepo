@@ -8,10 +8,10 @@ import {
   type MoveFormField,
   type MoveFormValues,
   checkMoveForm,
+  fieldErrorsFromIssues,
   moveOptions,
   moveOutcomeMessage,
 } from "@/server/domain/stock-location.vm";
-import { MOVE_NOTE_MAX } from "@auction/artwork-register-contracts";
 import type { AdminStockLocation } from "@auction/shop-contracts";
 import { EnumSelect, Field, FormErrorSummary, Notice, TextArea } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
@@ -51,12 +51,17 @@ export function MoveArtworksDialog({
   const fieldId = (field: MoveFormField) => `${base}-${field}`;
   const [values, setValues] = useState<MoveFormValues>({ locationId: null, note: "" });
   const [submits, setSubmits] = useState(0);
+  /** The note's rules are shop-api's: a refused note comes back named. */
+  const [issues, setIssues] = useState<readonly unknown[] | undefined>(undefined);
   const options = moveOptions(locations, currentLocationId);
   const checked = checkMoveForm(
     values,
     options.map((option) => ({ id: option.value })),
   );
-  const errors = submits > 0 && !checked.ok ? checked.errors : {};
+  const errors = {
+    ...fieldErrorsFromIssues(issues, FIELDS),
+    ...(submits > 0 && !checked.ok ? checked.errors : {}),
+  };
   const many = registerIds.length > 1;
 
   async function submit() {
@@ -72,6 +77,7 @@ export function MoveArtworksDialog({
         });
         // A place retired since the page loaded: fetch the list as it is now.
         if (!result.ok && result.kind === "conflict") router.refresh();
+        setIssues(!result.ok && result.kind === "validation" ? result.issues : undefined);
         return result;
       },
       (result) => moveOutcomeMessage(result, name),
@@ -79,7 +85,7 @@ export function MoveArtworksDialog({
     if (ok) {
       onMoved?.();
       onClose();
-    }
+    } else setSubmits((count) => count + 1);
   }
 
   const summary = FIELDS.flatMap((field) =>
@@ -105,7 +111,7 @@ export function MoveArtworksDialog({
       onSubmit={() => void submit()}
     >
       <FormErrorSummary focusKey={submits} errors={summary} />
-      {action.error}
+      {issues?.length ? null : action.error}
       {options.length === 0 ? (
         <Notice tone="warning" title="No locations to move to">
           An Administrator adds them in From Zoho, under Locations.
@@ -128,7 +134,7 @@ export function MoveArtworksDialog({
       <Field
         id={fieldId("note")}
         label={MOVE_FIELD_LABELS.note}
-        description={`Why it moved, or for how long. Up to ${MOVE_NOTE_MAX} characters.`}
+        description="Why it moved, or for how long."
         error={errors.note}
         optional
       >

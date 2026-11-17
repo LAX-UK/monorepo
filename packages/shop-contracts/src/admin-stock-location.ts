@@ -17,6 +17,8 @@ export const AdminStockLocationSchema = Type.Object({
   name: Type.String(),
   note: Type.Union([Type.String(), Type.Null()]),
   status: StatusSchema,
+  /** The name, marked "(retired)" when the location has been retired. */
+  label: Type.String(),
   /** Sent back with a rename, retire or restore, so two people cannot overwrite each other. */
   version: Type.Integer({ minimum: 1 }),
   createdAt: Type.String({ format: "date-time" }),
@@ -51,6 +53,17 @@ export const AdminStockLocationUpdateBodySchema = Type.Object({
 
 export const AdminStockLocationStatusBodySchema = Type.Object({
   expectedVersion: Type.Integer({ minimum: 1 }),
+});
+
+/**
+ * 400 body of a location or move write: `issues` names each field at fault (`name`, `note`) with
+ * the sentence to show beside it. A body the route's schema refuses has no `issues`.
+ */
+export const AdminStockLocationValidationSchema = Type.Object({
+  code: Type.String(),
+  message: Type.String(),
+  requestId: Type.Optional(Type.String()),
+  issues: Type.Optional(Type.Array(Type.Object({ field: Type.String(), message: Type.String() }))),
 });
 
 /**

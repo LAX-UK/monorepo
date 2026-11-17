@@ -1,15 +1,4 @@
 import {
-  LOCATION_NAME_MAX,
-  LOCATION_NOTE_MAX,
-  LOCATION_NOT_RECORDED,
-  MOVE_NOTE_MAX,
-  locationLabel,
-  locationNameKey,
-  parseLocationName,
-  parseLocationNote,
-  parseMoveNote,
-} from "@auction/artwork-register-contracts";
-import {
   type AdminArtworkLocation,
   type AdminArtworkLocationMoveResult,
   type AdminStockLocation,
@@ -19,13 +8,17 @@ import type { TimelineEvent } from "@auction/staff-ui";
 
 /*
  * Stock location in LAX Admin (docs/design/stock-location.md): the list of places an original can
- * physically be, and where each artwork is and has been. The rules for names and notes are the
- * shared ones the API applies again, so the form and the server never disagree.
+ * physically be, and where each artwork is and has been. The rules for names and notes live in
+ * `artwork-register-contracts` and run in shop-api, which names each field at fault (`issues`);
+ * the forms show those beside their fields rather than repeating the rules.
  */
 
 export const LOCATIONS_TITLE = "Locations";
 export const LOCATIONS_DESCRIPTION =
   "Where originals physically are. Moves pick from this list; retire a place instead of deleting it, so history keeps reading.";
+
+/** An artwork with no move recorded, as the Location filter offers it. */
+export const LOCATION_NOT_RECORDED = "Location not recorded";
 
 /** Who moved an artwork, when the name is not known. */
 export const UNNAMED_MOVER = "LAX staff";
@@ -48,34 +41,27 @@ export function locationFormValues(location: AdminStockLocation | null): Locatio
   return { name: location?.name ?? "", note: location?.note ?? "" };
 }
 
-/**
- * The name and note as the API takes them, or what is wrong with each. A name another location
- * already has, ignoring case, is refused here too, so the person sees it beside the field.
- */
-export function checkLocationForm(
-  values: LocationFormValues,
-  others: readonly Pick<AdminStockLocation, "id" | "name">[],
-  selfId: string | null = null,
-):
-  | { ok: true; body: { name: string; note: string | null } }
-  | { ok: false; errors: LocationFormErrors } {
-  const errors: LocationFormErrors = {};
-  const name = parseLocationName(values.name);
-  if (!name.ok) {
-    errors.name =
-      name.reason === "empty"
-        ? "Give the location a name."
-        : `Keep the name to ${LOCATION_NAME_MAX} characters or fewer.`;
-  } else {
-    const key = locationNameKey(name.value);
-    if (others.some((other) => other.id !== selfId && locationNameKey(other.name) === key)) {
-      errors.name = NAME_TAKEN;
+/** The name and note as typed; shop-api trims them and treats a blank note as none. */
+export function locationFormBody(values: LocationFormValues): {
+  name: string;
+  note: string | null;
+} {
+  return { name: values.name, note: values.note.trim() === "" ? null : values.note };
+}
+
+/** The API's `issues` (`[{ field, message }]`) for the fields a form has, by field. */
+export function fieldErrorsFromIssues<F extends string>(
+  issues: readonly unknown[] | undefined,
+  fields: readonly F[],
+): Partial<Record<F, string>> {
+  const errors: Partial<Record<F, string>> = {};
+  for (const issue of issues ?? []) {
+    const { field, message } = (issue ?? {}) as { field?: unknown; message?: unknown };
+    if (typeof field === "string" && typeof message === "string" && fields.includes(field as F)) {
+      errors[field as F] = message;
     }
   }
-  const note = parseLocationNote(values.note);
-  if (!note.ok) errors.note = `Keep the note to ${LOCATION_NOTE_MAX} characters or fewer.`;
-  if (!name.ok || !note.ok || errors.name) return { ok: false, errors };
-  return { ok: true, body: { name: name.value, note: note.value } };
+  return errors;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -90,22 +76,23 @@ export const MOVE_FIELD_LABELS: Record<MoveFormField, string> = {
   note: "Note",
 };
 
+/**
+ * The place chosen, which must be one the dialog offers, or what is wrong. The note's rules are
+ * shop-api's, which names the note when it is refused.
+ */
 export function checkMoveForm(
   values: MoveFormValues,
   active: readonly Pick<AdminStockLocation, "id">[],
 ):
   | { ok: true; body: { locationId: string; note: string | null } }
   | { ok: false; errors: MoveFormErrors } {
-  const errors: MoveFormErrors = {};
   const locationId =
     values.locationId && active.some((location) => location.id === values.locationId)
       ? values.locationId
       : null;
-  if (!locationId) errors.locationId = "Choose where the artwork is going.";
-  const note = parseMoveNote(values.note);
-  if (!note.ok) errors.note = `Keep the note to ${MOVE_NOTE_MAX} characters or fewer.`;
-  if (!locationId || !note.ok) return { ok: false, errors };
-  return { ok: true, body: { locationId, note: note.value } };
+  if (!locationId)
+    return { ok: false, errors: { locationId: "Choose where the artwork is going." } };
+  return { ok: true, body: { locationId, note: values.note.trim() === "" ? null : values.note } };
 }
 
 const artworks = (count: number) => (count === 1 ? "1 artwork" : `${count} artworks`);
@@ -160,10 +147,7 @@ export function locationFilterOptions(
 ): { value: string; label: string }[] {
   return [
     { value: REGISTER_LOCATION_NONE, label: LOCATION_NOT_RECORDED },
-    ...locations.map((location) => ({
-      value: location.id,
-      label: locationLabel(location),
-    })),
+    ...locations.map((location) => ({ value: location.id, label: location.label })),
   ];
 }
 

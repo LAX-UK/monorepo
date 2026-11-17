@@ -649,9 +649,6 @@ importers:
 
   apps/shop-admin:
     dependencies:
-      '@auction/artwork-register-contracts':
-        specifier: workspace:*
-        version: link:../../packages/artwork-register-contracts
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding

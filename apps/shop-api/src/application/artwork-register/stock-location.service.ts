@@ -9,6 +9,7 @@ import {
   type StockLocation,
   type TextRefusal,
   currentLocationLabel,
+  locationLabel,
   parseLocationName,
   parseLocationNote,
   parseMoveNote,
@@ -21,6 +22,7 @@ import {
   SHOP_API_ERROR_CODES,
 } from "@auction/shop-contracts";
 import type { ShopStaffCapability } from "@auction/shop-domain";
+import { FieldValidationError } from "../../errors/field-validation-error.js";
 import { ShopApiError } from "../../errors/shop-api-error.js";
 import { StaleVersionError } from "../../errors/stale-version-error.js";
 import { withAdminIdempotency } from "../admin/with-admin-idempotency.js";
@@ -60,6 +62,7 @@ function presentLocation(location: StockLocation): AdminStockLocation {
     name: location.name,
     note: location.note,
     status: location.status,
+    label: locationLabel(location),
     version: location.version,
     createdAt: iso(location.createdAt),
     updatedAt: iso(location.updatedAt),
@@ -114,24 +117,44 @@ const conflict = (message: string) => new ShopApiError(SHOP_API_ERROR_CODES.CONF
 const notFound = (message: string) =>
   new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, message, 404);
 
-function textOrRefuse<T>(
-  parsed: { ok: true; value: T } | { ok: false; reason: TextRefusal },
-  messages: Record<TextRefusal, string>,
-): T {
-  if (!parsed.ok) throw validation(messages[parsed.reason]);
-  return parsed.value;
-}
+type Parsed<T> = { ok: true; value: T } | { ok: false; reason: TextRefusal };
 
-const parseName = (raw: string) =>
-  textOrRefuse(parseLocationName(raw), {
+/** What is wrong with each field, in the words the form shows beside it. */
+const TEXT_REFUSALS = {
+  name: {
     empty: "Give the location a name.",
     too_long: `Keep the name to ${LOCATION_NAME_MAX} characters or fewer.`,
-  });
+  },
+  note: { empty: "", too_long: `Keep the note to ${LOCATION_NOTE_MAX} characters or fewer.` },
+  moveNote: { empty: "", too_long: `Keep the note to ${MOVE_NOTE_MAX} characters or fewer.` },
+} as const satisfies Record<string, Record<TextRefusal, string>>;
 
-const parseNote = (raw: string | null | undefined) =>
-  textOrRefuse(parseLocationNote(raw), {
-    empty: "",
-    too_long: `Keep the note to ${LOCATION_NOTE_MAX} characters or fewer.`,
+/**
+ * The parsed values, or a 400 naming every field at fault (`issues`), so LAX Admin shows each
+ * message beside its field. These are the shared rules; the screens do not repeat them.
+ */
+function fieldsOrRefuse<K extends string, V extends Record<K, unknown>>(
+  fields: {
+    [F in K]: { parsed: Parsed<V[F]>; messages: Record<TextRefusal, string> };
+  },
+): V {
+  const values = {} as V;
+  const issues: { field: string; message: string }[] = [];
+  for (const field of Object.keys(fields) as K[]) {
+    const { parsed, messages } = fields[field];
+    if (parsed.ok) values[field] = parsed.value;
+    else issues.push({ field, message: messages[parsed.reason] });
+  }
+  const [first, ...rest] = issues;
+  if (first) throw new FieldValidationError([first, ...rest]);
+  return values;
+}
+
+/** A location's name and note, checked together. */
+const parseNameAndNote = (raw: { name: string; note?: string | null | undefined }) =>
+  fieldsOrRefuse<"name" | "note", { name: string; note: string | null }>({
+    name: { parsed: parseLocationName(raw.name), messages: TEXT_REFUSALS.name },
+    note: { parsed: parseLocationNote(raw.note), messages: TEXT_REFUSALS.note },
   });
 
 /**
@@ -236,8 +259,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
     async addLocation(
       command: Actor & { name: string; note?: string | null | undefined },
     ): Promise<AdminStockLocationWriteResult> {
-      const name = parseName(command.name);
-      const note = parseNote(command.note);
+      const { name, note } = parseNameAndNote(command);
       return deps.uow.run((tx) =>
         withAdminIdempotency({
           tx,
@@ -275,8 +297,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
         note?: string | null | undefined;
       },
     ): Promise<AdminStockLocationWriteResult> {
-      const name = parseName(command.name);
-      const note = parseNote(command.note);
+      const { name, note } = parseNameAndNote(command);
       return deps.uow.run((tx) =>
         withAdminIdempotency({
           tx,
@@ -334,9 +355,8 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
     async moveArtworks(
       command: Actor & { request: MoveArtworksRequest },
     ): Promise<AdminArtworkLocationMoveResult> {
-      const note = textOrRefuse(parseMoveNote(command.request.note), {
-        empty: "",
-        too_long: `Keep the note to ${MOVE_NOTE_MAX} characters or fewer.`,
+      const { note } = fieldsOrRefuse<"note", { note: string | null }>({
+        note: { parsed: parseMoveNote(command.request.note), messages: TEXT_REFUSALS.moveNote },
       });
       const { registerIds, locationId } = command.request;
       return deps.uow.run((tx) =>

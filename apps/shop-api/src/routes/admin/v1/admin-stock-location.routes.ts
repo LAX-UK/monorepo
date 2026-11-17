@@ -15,6 +15,7 @@ import {
   AdminStockLocationStatusBodySchema,
   type AdminStockLocationUpdateBody,
   AdminStockLocationUpdateBodySchema,
+  AdminStockLocationValidationSchema,
   AdminStockLocationWriteResultSchema,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
@@ -41,8 +42,9 @@ const MOVE_BODY_LIMIT = 16_384;
 const LIST_BODY_LIMIT = 4_096;
 
 const READ_ERRORS = { 403: ShopApiErrorBodySchema, 404: ShopApiErrorBodySchema } as const;
+/** A 400 from the service names each field at fault (`issues`). */
 const WRITE_ERRORS = {
-  400: ShopApiErrorBodySchema,
+  400: AdminStockLocationValidationSchema,
   403: ShopApiErrorBodySchema,
   404: ShopApiErrorBodySchema,
   409: ShopApiErrorBodySchema,

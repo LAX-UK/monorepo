@@ -205,6 +205,7 @@ describe("AllFromZohoList: where each artwork physically is", () => {
     name,
     note: null,
     status,
+    label: status === "retired" ? `${name} (retired)` : name,
     version: 1,
     createdAt: "2026-11-01T09:00:00.000Z",
     updatedAt: "2026-11-01T09:00:00.000Z",

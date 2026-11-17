@@ -56,6 +56,7 @@ function location(
     name,
     note: n === 1 ? "By the loading bay" : null,
     status,
+    label: status === "retired" ? `${name} (retired)` : name,
     version: 3,
     createdAt: "2026-11-01T09:00:00.000Z",
     updatedAt: "2026-11-10T14:30:00.000Z",
@@ -135,7 +136,16 @@ describe("From Zoho › Locations", () => {
 });
 
 describe("adding and renaming a location", () => {
-  it("lists every problem at the top and beside each field, and sends nothing", async () => {
+  it("lists every field the API refused at the top and beside each field", async () => {
+    addStockLocation.mockResolvedValue({
+      ok: false,
+      kind: "validation",
+      message: "Give the location a name.",
+      issues: [
+        { field: "name", message: "Give the location a name." },
+        { field: "note", message: "Keep the note to 200 characters or fewer." },
+      ],
+    });
     show(LOCATIONS);
     fireEvent.click(screen.getByRole("button", { name: "Add location" }));
     const dialog = within(await screen.findByRole("dialog", { name: "Add location" }));
@@ -143,22 +153,11 @@ describe("adding and renaming a location", () => {
     fireEvent.click(dialog.getByRole("button", { name: "Add location" }));
     expect(await dialog.findByText("Name: Give the location a name.")).toBeInTheDocument();
     expect(dialog.getByText("Note: Keep the note to 200 characters or fewer.")).toBeInTheDocument();
-    expect(addStockLocation).not.toHaveBeenCalled();
+    // The dialog stays open on what was typed.
+    expect(screen.getByRole("dialog", { name: "Add location" })).toBeInTheDocument();
   });
 
-  it("refuses a name in use, ignoring case, before saving", async () => {
-    show(LOCATIONS);
-    fireEvent.click(screen.getByRole("button", { name: "Add location" }));
-    const dialog = within(await screen.findByRole("dialog", { name: "Add location" }));
-    fireEvent.change(dialog.getByLabelText(/^Name/), { target: { value: "framer" } });
-    fireEvent.click(dialog.getByRole("button", { name: "Add location" }));
-    expect(
-      await dialog.findByText("Name: Another location already has this name."),
-    ).toBeInTheDocument();
-    expect(addStockLocation).not.toHaveBeenCalled();
-  });
-
-  it("adds a trimmed name with no note", async () => {
+  it("adds the name as typed with no note; shop-api trims it", async () => {
     addStockLocation.mockResolvedValue({
       ok: true,
       data: { changed: true, location: location(4, "On loan") },
@@ -169,7 +168,7 @@ describe("adding and renaming a location", () => {
     fireEvent.change(dialog.getByLabelText(/^Name/), { target: { value: "  On loan " } });
     fireEvent.click(dialog.getByRole("button", { name: "Add location" }));
     await waitFor(() => expect(addStockLocation).toHaveBeenCalledOnce());
-    expect(addStockLocation.mock.calls[0]?.[0]).toMatchObject({ name: "On loan", note: null });
+    expect(addStockLocation.mock.calls[0]?.[0]).toMatchObject({ name: "  On loan ", note: null });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
@@ -212,7 +211,7 @@ describe("adding and renaming a location", () => {
     expect(dialog.queryByText("Someone else changed this location")).toBeNull();
   });
 
-  it("puts a name taken since the page loaded beside the field, with no Reload", async () => {
+  it("puts a name in use beside the field, with no Reload", async () => {
     addStockLocation.mockResolvedValue({
       ok: false,
       kind: "conflict",

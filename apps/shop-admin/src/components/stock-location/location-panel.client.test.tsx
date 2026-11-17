@@ -46,6 +46,7 @@ const list = (id: string, name: string, status: "active" | "retired"): AdminStoc
   name,
   note: null,
   status,
+  label: status === "retired" ? `${name} (retired)` : name,
   version: 1,
   createdAt: "2026-11-01T09:00:00.000Z",
   updatedAt: "2026-11-01T09:00:00.000Z",
@@ -197,6 +198,26 @@ describe("the Location panel", () => {
       await dialog.findByText("This location has been retired. Choose another."),
     ).toBeInTheDocument();
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("shows a note the API refused beside the Note field and in the summary", async () => {
+    moveArtworksToLocation.mockResolvedValue({
+      ok: false,
+      kind: "validation",
+      message: "Keep the note to 500 characters or fewer.",
+      issues: [{ field: "note", message: "Keep the note to 500 characters or fewer." }],
+    });
+    show(NOWHERE);
+    fireEvent.click(screen.getByRole("button", { name: "Move…" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Move Salt marsh, dusk" }));
+    fireEvent.click(dialog.getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Store room" }));
+    fireEvent.change(dialog.getByRole("textbox"), { target: { value: "x".repeat(501) } });
+    fireEvent.click(dialog.getByRole("button", { name: "Move artwork" }));
+    expect(
+      await dialog.findByText("Note: Keep the note to 500 characters or fewer."),
+    ).toBeInTheDocument();
+    expect(dialog.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("says there is nowhere to move to while no place is active", async () => {

@@ -1296,6 +1296,7 @@ export {
   AdminStockLocationSchema,
   AdminStockLocationStatusBodySchema,
   AdminStockLocationUpdateBodySchema,
+  AdminStockLocationValidationSchema,
   AdminStockLocationWriteResultSchema,
   type AdminArtworkLocation,
   type AdminArtworkLocationMoveBody,

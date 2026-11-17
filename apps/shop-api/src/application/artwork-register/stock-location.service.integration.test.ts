@@ -425,6 +425,37 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
       expect(await auditRows([rows[0]?.id ?? ""])).toHaveLength(1);
     });
 
+    it("names every field at fault, so the form can show each beside its field", async () => {
+      await expect(
+        service().addLocation({
+          actorSubjectId: "admin-1",
+          idempotencyKey: key(),
+          name: "  ",
+          note: "x".repeat(201),
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        message: "Give the location a name.",
+        issues: [
+          { field: "name", message: "Give the location a name." },
+          { field: "note", message: "Keep the note to 200 characters or fewer." },
+        ],
+      });
+      const a = await artwork();
+      const store = await addLocation();
+      await expect(
+        service().moveArtworks({
+          actorSubjectId: "ops-1",
+          idempotencyKey: key(),
+          request: { registerIds: [a], locationId: store.id, note: "x".repeat(501) },
+        }),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        issues: [{ field: "note", message: "Keep the note to 500 characters or fewer." }],
+      });
+      expect(await moves([a])).toHaveLength(0);
+    });
+
     it("refuses an empty or over-long name before opening a transaction", async () => {
       for (const name of ["   ", "x".repeat(81)]) {
         await expect(

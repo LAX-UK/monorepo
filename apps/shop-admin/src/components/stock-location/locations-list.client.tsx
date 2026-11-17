@@ -153,12 +153,8 @@ export function LocationsList({
             : {}),
         }}
       />
-      {dialog?.kind === "add" ? (
-        <LocationDialog location={null} locations={locations} onClose={close} />
-      ) : null}
-      {dialog?.kind === "edit" && open ? (
-        <LocationDialog location={open} locations={locations} onClose={close} />
-      ) : null}
+      {dialog?.kind === "add" ? <LocationDialog location={null} onClose={close} /> : null}
+      {dialog?.kind === "edit" && open ? <LocationDialog location={open} onClose={close} /> : null}
       {dialog?.kind === "status" && open ? (
         <LocationStatusDialog location={open} onClose={close} />
       ) : null}

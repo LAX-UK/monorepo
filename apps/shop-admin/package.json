@@ -19,7 +19,6 @@
     "test:e2e:visual-update": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test e2e/pages-visual.spec.ts --update-snapshots --workers=1"
   },
   "dependencies": {
-    "@auction/artwork-register-contracts": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/datetime": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
