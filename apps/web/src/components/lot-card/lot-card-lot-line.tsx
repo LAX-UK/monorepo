@@ -6,7 +6,6 @@ type Props = {
   label: string | null;
   /** The save heart, at the right end of the line. */
   save?: ReactNode;
-  className?: string;
 };
 
 /**
@@ -14,11 +13,11 @@ type Props = {
  * itself carries nothing but the sale status pill. The heart keeps its 44px tap area by reaching
  * past the line's own height (negative margins), so the line stays a quiet 24px row.
  */
-export function LotCardLotLine({ label, save, className }: Props) {
+export function LotCardLotLine({ label, save }: Props) {
   return (
     <div
       data-testid="lot-card-lot-line"
-      className={cn("flex min-h-6 items-center justify-between gap-2", className)}
+      className="flex min-h-6 items-center justify-between gap-2"
     >
       <p
         className={cn(

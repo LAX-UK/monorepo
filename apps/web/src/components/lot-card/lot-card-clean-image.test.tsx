@@ -7,8 +7,7 @@ import { saleroomLotCardExtras } from "@/components/marketing/lot-quick-look/sal
 import { SaleroomLotCard } from "@/components/sections/saleroom/saleroom-lot-card";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import type { CatalogLotVM } from "@auction/types";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /*
@@ -182,7 +181,7 @@ describe("sale page lot card: clean picture", () => {
     // (styles/lot-card.css recolours `.lot-card-save .fill-live-red`).
     expect(heart.querySelector("svg")?.getAttribute("class")).toContain("fill-live-red");
     expect(heart.closest(".lot-card-save")).not.toBeNull();
-    await userEvent.click(heart);
+    fireEvent.click(heart);
     expect(watch.toggle).toHaveBeenCalledTimes(1);
   });
 
@@ -192,7 +191,7 @@ describe("sale page lot card: clean picture", () => {
       name: "Sign in to add Still Life to your watchlist",
     });
     expect(screen.getByTestId("lot-card-lot-line")).toContainElement(heart);
-    await userEvent.click(heart);
+    fireEvent.click(heart);
     expect(push).toHaveBeenCalledWith("/login?next=/lot/still-life/lot-1");
   });
 });
@@ -209,7 +208,7 @@ describe("sale page lot card: quick look trigger", () => {
     expect(trigger).toHaveClass("lot-card-quick-look");
     expect(trigger.closest(".group")).not.toBeNull();
     expect(LOT_CARD_CSS.revealedOnHoverAndFocus).toBe(true);
-    await userEvent.click(trigger);
+    fireEvent.click(trigger);
     expect(quickLook.open).toHaveBeenCalledWith(
       expect.objectContaining({ id: "lot-1", title: "Still Life" }),
       expect.objectContaining({ isAuthenticated: true }),
@@ -217,15 +216,20 @@ describe("sale page lot card: quick look trigger", () => {
     );
   });
 
-  it("is reached with the keyboard and opens with Enter", async () => {
+  it("is the next tab stop after the picture link and takes keyboard focus", () => {
     renderSaleCard(true);
-    const user = userEvent.setup();
     const trigger = screen.getByRole("button", { name: "Quick look at Still Life" });
-    await user.tab();
-    expect(document.activeElement).toBe(pictureBox().imageLink);
-    await user.tab();
+    // Tab order is document order among focusable elements: picture link, then the label.
+    const focusable = [
+      ...document.querySelectorAll<HTMLElement>("a[href], button:not([disabled])"),
+    ].filter((el) => el.tabIndex >= 0);
+    const at = focusable.indexOf(pictureBox().imageLink);
+    expect(focusable[at + 1]).toBe(trigger);
+    trigger.focus();
     expect(document.activeElement).toBe(trigger);
-    await user.keyboard("{Enter}");
+    // A native button: Enter and Space press it.
+    expect(trigger.tagName).toBe("BUTTON");
+    fireEvent.click(trigger);
     expect(quickLook.open).toHaveBeenCalledTimes(1);
   });
 

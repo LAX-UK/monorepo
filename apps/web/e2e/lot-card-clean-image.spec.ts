@@ -102,27 +102,32 @@ test.describe("sale page lot card: clean picture @smoke", () => {
     await context.close();
   });
 
-  test("every card button names what it does: Bid on an open lot, never on a closed one", async ({
-    page,
-  }) => {
+  test("every card button names what it does, and goes where its label says", async ({ page }) => {
     await page.goto(`${salePath}?view=grid`);
     const tiles = lotTiles(page);
     await expect(tiles.first()).toBeVisible();
+    // The live and viewer reads settle before the buttons show their final label.
+    await expect(page.locator("#catalog [aria-busy='true']")).toHaveCount(0);
     const count = await tiles.count();
+    let seen = 0;
     for (let i = 0; i < count; i += 1) {
       const tile = tiles.nth(i);
-      const buttons = tile.locator("a[data-bid-action]");
-      if ((await buttons.count()) === 0) continue;
-      const label = (await buttons.first().innerText()).trim();
-      expect(CARD_BUTTON_LABELS).toContain(label);
-      const kind = await buttons.first().getAttribute("data-bid-action");
-      expect({ kind, label }).toEqual(
-        kind === "bid"
-          ? { kind, label: "Bid" }
-          : kind === "register"
-            ? { kind, label: "Register to bid" }
-            : { kind: "leave_bid", label: "Leave a bid" },
-      );
+      const pictureHref = await pictureBox(tile)
+        .locator("a[aria-label]")
+        .first()
+        .getAttribute("href");
+      // The full-width button is the card's last link (after the picture and the title).
+      const buttons = tile.getByRole("link", { name: /bid/i });
+      for (const button of await buttons.all()) {
+        const label = (await button.innerText()).trim();
+        expect(CARD_BUTTON_LABELS).toContain(label);
+        const href = (await button.getAttribute("href")) ?? "";
+        if (label === "Bid") expect(href).toBe(pictureHref);
+        if (label === "Leave a bid") expect(href).toBe(`${pictureHref}?bid=open`);
+        if (label === "Register to bid") expect(href).not.toBe(pictureHref);
+        seen += 1;
+      }
     }
+    expect(seen).toBeGreaterThan(0);
   });
 });

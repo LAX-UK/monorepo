@@ -44,6 +44,7 @@
     left: 50%;
     z-index: 10;
     display: inline-flex;
+    height: auto;
     translate: -50% 0;
     border: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
     border-radius: 9999px;

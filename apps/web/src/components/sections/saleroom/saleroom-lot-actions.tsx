@@ -17,9 +17,8 @@ export function SaleroomLotActions({ action }: Props) {
       Link={Link}
       href={action.href}
       variant="secondary"
-      {...(action.kind === "register" ? {} : { icon: <Gavel aria-hidden /> })}
+      icon={<Gavel aria-hidden />}
       className="w-full"
-      data-bid-action={action.kind}
     >
       {action.label}
     </ButtonLink>

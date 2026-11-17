@@ -7,7 +7,7 @@ import type {
   LotQuickLookVM,
 } from "@/components/marketing/lot-quick-look/types";
 import { LOT_CARD_COPY } from "@/lib/lot-card/lot-card-copy";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
+import { Button } from "@auction/ui/lax/button";
 import { type MouseEvent, useRef } from "react";
 
 type Props = {
@@ -16,8 +16,8 @@ type Props = {
 };
 
 /**
- * Quick look's trigger on a lot card: a quiet "Quick look" label at the bottom of the picture, an
- * ordinary button. Its look and when it shows are in styles/lot-card.css: invisible at rest, shown
+ * Quick look's trigger on a lot card: a quiet "Quick look" label at the bottom of the picture, a kit
+ * button (with its focus ring). Its look and when it shows are in styles/lot-card.css: invisible at rest, shown
  * while the card is hovered with a mouse or holds keyboard focus, and not displayed at all without
  * a hovering fine pointer (phones, tablets), where a tap on the card opens the lot page. The card
  * must be a `group` and the label's parent the positioned picture box.
@@ -34,16 +34,16 @@ export function LotCardQuickLook({ vm, options }: Props) {
   }
 
   return (
-    <button
+    <Button
       ref={ref}
       type="button"
       aria-label={LOT_CARD_COPY.quickLookAt(vm.title)}
       onClick={onClick}
       onPointerEnter={preloadLotQuickLookDialog}
       onFocus={preloadLotQuickLookDialog}
-      className={`lot-card-quick-look ${FOCUS_RING}`}
+      className="lot-card-quick-look"
     >
       {LOT_CARD_COPY.quickLook}
-    </button>
+    </Button>
   );
 }
