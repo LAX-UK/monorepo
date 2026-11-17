@@ -1282,6 +1282,28 @@ export {
   type AdminSoldAttentionDealtWithResult,
 } from "./admin-sold-attention.js";
 export {
+  AdminArtworkLocationMoveResultSchema,
+  AdminArtworkLocationParamsSchema,
+  AdminArtworkLocationSchema,
+  AdminStockLocationCreateBodySchema,
+  AdminStockLocationListQuerySchema,
+  AdminStockLocationListSchema,
+  AdminStockLocationParamsSchema,
+  AdminStockLocationSchema,
+  AdminStockLocationStatusBodySchema,
+  AdminStockLocationUpdateBodySchema,
+  AdminStockLocationWriteResultSchema,
+  type AdminArtworkLocation,
+  type AdminArtworkLocationMoveResult,
+  type AdminStockLocation,
+  type AdminStockLocationCreateBody,
+  type AdminStockLocationList,
+  type AdminStockLocationListQuery,
+  type AdminStockLocationStatusBody,
+  type AdminStockLocationUpdateBody,
+  type AdminStockLocationWriteResult,
+} from "./admin-stock-location.js";
+export {
   AdminHomeCoverIssueSchema,
   AdminHomeCoverPictureCandidateSchema,
   AdminHomeCoverPictureCandidatesSchema,
