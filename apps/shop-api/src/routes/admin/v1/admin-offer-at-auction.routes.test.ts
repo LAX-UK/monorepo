@@ -182,20 +182,20 @@ describe("Offer at auction from a From Zoho record: routes", () => {
     await app.close();
   });
 
-  it.each([
-    ["shop_admin", true],
-    ["catalogue_editor", true],
-  ] as const)("shows %s the consignor and the agreement, with Add agreement", async (role) => {
-    const { app } = await buildApp(role);
-    const response = await app.inject({ method: "GET", url, headers });
-    expect(response.json().consignorAgreement).toMatchObject({
-      state: "in_force",
-      consignor: { displayName: "Example Gallery Ltd" },
-      agreement: { id: AGREEMENT_ID },
-      canAddAgreement: true,
-    });
-    await app.close();
-  });
+  it.each(["shop_admin", "catalogue_editor"] as const)(
+    "shows %s the consignor and the agreement, with Add agreement",
+    async (role) => {
+      const { app } = await buildApp(role);
+      const response = await app.inject({ method: "GET", url, headers });
+      expect(response.json().consignorAgreement).toMatchObject({
+        state: "in_force",
+        consignor: { displayName: "Example Gallery Ltd" },
+        agreement: { id: AGREEMENT_ID },
+        canAddAgreement: true,
+      });
+      await app.close();
+    },
+  );
 
   it("hides the consignor and the agreement from someone who cannot read agreements", async () => {
     const { app } = await buildApp("read_only");

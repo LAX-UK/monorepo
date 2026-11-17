@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   ArtworkOfferLock,
   type NewArtworkRegisterEntry,
@@ -9,7 +10,7 @@ import {
   DrizzleConsignorAgreementStore,
 } from "@auction/persistence/repositories";
 import { ShopDomainError } from "@auction/shop-domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MoveAgreementService } from "../application/admin/move-agreement.service.js";
@@ -163,6 +164,69 @@ describe.skipIf(!hasShopIntegrationDb)("offer on lax.art (Postgres)", () => {
     expect(audit.map((entryRow) => entryRow.action)).toContain("offer_on_lax_art");
     // A draft holds nothing: the register still shows the artwork as not offered.
     expect((await register.findById(entry.id))?.offer.state).toBe("held");
+  });
+
+  it("reads the consignor's agreement for lax.art, does not block, and keeps it in history", async () => {
+    const { service, db, register } = setup();
+    const entry = await record();
+    const partyId = randomUUID();
+    await createDbFromPool(ownerPool).execute(
+      sql`INSERT INTO shop_party (id, display_name, kind) VALUES (${partyId}, 'Example Gallery Ltd', 'gallery')`,
+    );
+    const store = new DrizzleConsignorAgreementStore(db);
+    const added = await store.addAgreement({
+      partyId,
+      terms: {
+        places: ["lax_bid", "lax_art"],
+        startsOn: "2025-01-01",
+        endsOn: "2025-12-31",
+        lowestPricePence: null,
+        commissionBasisPoints: null,
+        signedFileKey: `consignor-agreements/${partyId}/signed.pdf`,
+        note: null,
+      },
+      actor: `staff:${ACTOR}`,
+      now: NOW,
+    });
+    if (!added.ok) throw new Error(added.reason);
+    await store.setConsignor({
+      registerId: entry.id,
+      consignor: { kind: "client", partyId },
+      reason: null,
+      actor: `staff:${ACTOR}`,
+      now: NOW,
+    });
+
+    const assessment = await service.assess(entry.id);
+    expect(assessment.eligible).toBe(true);
+    expect(assessment.consignorAgreement).toMatchObject({
+      place: "lax_art",
+      state: "expired",
+      outcome: "allowed",
+      consignor: { partyId, displayName: "Example Gallery Ltd" },
+      agreement: { id: added.agreement.id, endsOn: "2025-12-31" },
+    });
+
+    const chosen = await artist("agreement");
+    await service.offer({
+      registerId: entry.id,
+      body: { artistId: chosen.artistId, saleState: "for_sale", slug: slugFor("agreement") },
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    const drafted = (await register.listEvents(entry.id, 20)).find(
+      (event) => event.type === "lax_art_draft_created",
+    );
+    expect(drafted?.payload).toMatchObject({
+      consignorAgreement: {
+        place: "lax_art",
+        state: "expired",
+        consignorPartyId: partyId,
+        agreementId: added.agreement.agreementId,
+        agreementVersionId: added.agreement.id,
+        version: 1,
+      },
+    });
   });
 
   it("gives the same draft for the same request, and for a second request with another key", async () => {
