@@ -15,11 +15,15 @@ describe("topBarShift", () => {
 });
 
 describe("publishHeaderVars", () => {
-  it("keeps the full height and exposes the visible offset", () => {
+  it("keeps the full height and exposes the visible offset, both clearing a connectivity banner", () => {
     const root = document.createElement("html");
     publishHeaderVars(root, { height: 110, shift: 36 });
-    expect(root.style.getPropertyValue("--header-height")).toBe("110px");
+    expect(root.style.getPropertyValue("--header-height")).toBe(
+      "calc(110px + var(--connectivity-banner-height, 0px))",
+    );
     expect(root.style.getPropertyValue("--lax-top-bar-shift")).toBe("36px");
-    expect(root.style.getPropertyValue("--header-offset")).toBe("74px");
+    expect(root.style.getPropertyValue("--header-offset")).toBe(
+      "calc(74px + var(--connectivity-banner-height, 0px))",
+    );
   });
 });

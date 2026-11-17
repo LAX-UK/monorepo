@@ -204,6 +204,9 @@
 /* Focus not obscured: scrolling a focused control into view stops short of the sticky layers. */
 :root:has([data-staff-shell]) {
   scroll-padding-top: calc(var(--spacing-staff-top-bar) + var(--spacing) * 2);
+  /* A connectivity banner (browser offline, saleroom notices) sits under the staff top bar, not
+     under the marketing header; its height is added to `--staff-sticky-top` by the shell. */
+  --connectivity-banner-top: var(--spacing-staff-top-bar);
 }
 
 :root:has([data-staff-shell] [data-staff-sticky-header]) {

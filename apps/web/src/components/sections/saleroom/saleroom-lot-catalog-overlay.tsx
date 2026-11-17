@@ -2,10 +2,17 @@
 
 import { timerText } from "@/components/lot-timer/format";
 import { LotTimerPill } from "@/components/lot-timer/lot-timer-pill";
+import {
+  PILL_SHELL,
+  PILL_SURFACE_LIVE,
+  PILL_SURFACE_MUTED,
+} from "@/components/lot-timer/pill-surface";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
+import { useOverlayTone } from "@/components/ui/overlay-tone-context";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { resolveCatalogLotOverlay } from "@/lib/lot/catalog-lot-overlay";
 import { useClockNow } from "@/lib/time/use-clock";
+import { overlayPillClasses } from "@/lib/ui/overlay-tone-classes";
 import type { Sale } from "@auction/types";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { cn } from "@auction/ui/lib/utils";
@@ -29,12 +36,6 @@ type Props = {
 const SALEROOM_PILL_OVERLAY =
   "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)]";
 const SALEROOM_PILL_INLINE = "relative inline-flex max-w-full shrink-0 pointer-events-auto";
-const SALEROOM_PILL_SHELL =
-  "items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1 font-label text-xs font-medium backdrop-blur-sm";
-const SALEROOM_PILL_MUTED =
-  "bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
-const SALEROOM_PILL_LIVE =
-  "bg-brand-600/90 text-white dark:border-transparent dark:bg-brand-600/90 dark:text-white";
 
 function SaleroomLabelPill({
   label,
@@ -48,18 +49,19 @@ function SaleroomLabelPill({
   useOverlayChrome?: boolean;
 }) {
   const inline = layout === "inline";
+  const overlayTone = useOverlayTone("bottomLeft");
+  // Over the image every label ("Up next", "In saleroom", "Sold", "Paused") is the same pill: the
+  // frame's adaptive surface, read from the `--overlay-*` variables the media frame sets.
+  const chrome = useOverlayChrome && !inline;
   return (
     <output
       aria-live="off"
       aria-label={label}
       className={cn(
         inline ? SALEROOM_PILL_INLINE : SALEROOM_PILL_OVERLAY,
-        SALEROOM_PILL_SHELL,
-        tone === "live" ? SALEROOM_PILL_LIVE : SALEROOM_PILL_MUTED,
-        useOverlayChrome &&
-          !inline &&
-          tone === "muted" &&
-          "border-[color:var(--overlay-border)] bg-[color:var(--overlay-bg)] text-[color:var(--overlay-fg)]",
+        PILL_SHELL,
+        tone === "live" && !chrome ? PILL_SURFACE_LIVE : PILL_SURFACE_MUTED,
+        chrome && overlayPillClasses(overlayTone),
       )}
     >
       {label}
