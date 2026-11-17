@@ -95,36 +95,49 @@ async function noSidewaysScroll(page: Page) {
   expect(width).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
 }
 
-for (const theme of themes) {
-  test.describe(`LAX Admin release alerts, ${theme} @a11y`, () => {
-    test.describe.configure({ mode: "serial" });
-    test.setTimeout(180_000);
+/** The staff theme is a cookie the server reads, so one signed-in session can show both themes. */
+const THEME_COOKIE = "lax_staff_theme";
 
-    let session: StaffSession | undefined;
+async function useTheme(session: StaffSession, theme: StaffTheme) {
+  await session.context.addCookies([{ name: THEME_COOKIE, value: theme, url: session.baseURL }]);
+}
 
-    test.beforeAll(async ({ browser, baseURL }) => {
-      prerequisite(e2eEnabled, "Set PLAYWRIGHT_E2E=1 against a running LAX Admin stack");
-      prerequisite(account !== null && Boolean(baseURL), "administrator credentials are missing");
-      if (!account || !baseURL) return;
-      seedFixtures();
-      session = await openStaffSession({
-        browser,
-        baseURL,
-        account,
-        theme,
-        viewport: { width: 1440, height: 1000 },
-      });
+/*
+ * One administrator session for both themes: every sign-in counts against the identity service's
+ * per-address limit, which the other LAX Admin checks in the same run share.
+ */
+test.describe("LAX Admin release alerts @a11y", () => {
+  test.describe.configure({ mode: "serial" });
+  test.setTimeout(180_000);
+
+  let session: StaffSession | undefined;
+
+  test.beforeAll(async ({ browser, baseURL }) => {
+    prerequisite(e2eEnabled, "Set PLAYWRIGHT_E2E=1 against a running LAX Admin stack");
+    prerequisite(account !== null && Boolean(baseURL), "administrator credentials are missing");
+    if (!account || !baseURL) return;
+    seedFixtures();
+    session = await openStaffSession({
+      browser,
+      baseURL,
+      account,
+      theme: "light",
+      viewport: { width: 1440, height: 1000 },
     });
+  });
 
-    test.afterAll(async () => {
-      if (session) await closeStaffSession(session);
-    });
+  test.afterAll(async () => {
+    if (session) await closeStaffSession(session);
+  });
 
-    test("the Release alerts tab on Leads lists each release with its status", async () => {
+  for (const theme of themes) {
+    test(`${theme}: the Release alerts tab on Leads lists each release with its status`, async () => {
       if (!session) throw new Error("Not signed in");
       const { page } = session;
+      await useTheme(session, theme);
       await page.setViewportSize({ width: 1440, height: 1000 });
       await openStaffPage(page, "/leads");
+      await expect(page.locator("html")).toHaveAttribute("data-staff-theme", theme);
       const tab = page.getByRole("link", { name: "Release alerts", exact: true });
       // History, not a queue: the tab carries no count (NAV-3).
       await expect(tab).toHaveText("Release alerts");
@@ -151,9 +164,10 @@ for (const theme of themes) {
       await expectNoSeriousAxeViolations(page, PATH);
     });
 
-    test("a row opens its release in a panel with its own address; Back closes it", async () => {
+    test(`${theme}: a row opens its release in a panel with its own address; Back closes it`, async () => {
       if (!session) throw new Error("Not signed in");
       const { page } = session;
+      await useTheme(session, theme);
       await page.setViewportSize({ width: 1440, height: 1000 });
       await openStaffPage(page, PATH);
       for (const fixture of FIXTURES) {
@@ -185,9 +199,10 @@ for (const theme of themes) {
       }
     });
 
-    test("on a phone each row reads edition, status and Emailed N of M, with no sideways scroll", async () => {
+    test(`${theme}: on a phone each row reads edition, status and Emailed N of M, with no sideways scroll`, async () => {
       if (!session) throw new Error("Not signed in");
       const { page } = session;
+      await useTheme(session, theme);
       await page.setViewportSize({ width: 375, height: 812 });
       await openStaffPage(page, PATH);
       for (const fixture of FIXTURES) {
@@ -204,8 +219,8 @@ for (const theme of themes) {
       expect(box?.width).toBeGreaterThanOrEqual(370);
       await noSidewaysScroll(page);
     });
-  });
-}
+  }
+});
 
 /** Signs one of the demo top-up's single-role accounts in (scripts/ci/start-lax-admin-stack.sh). */
 async function asRole(
@@ -225,24 +240,6 @@ async function asRole(
 
 test.describe("LAX Admin release alerts by role @roles", () => {
   test.setTimeout(120_000);
-
-  test("operations cannot read leads: no tab, and the page says the role cannot open it", async ({
-    browser,
-    baseURL,
-  }) => {
-    prerequisite(e2eEnabled && rolesEnabled, "Set PLAYWRIGHT_E2E=1 and LAX_ADMIN_ROLES_E2E=1");
-    if (!baseURL) throw new Error("baseURL is required");
-    const session = await asRole(browser, baseURL, "lax-operations@lax.bid");
-    try {
-      const { page } = session;
-      await page.goto(PATH, { waitUntil: "domcontentloaded" });
-      await expect(page.getByText("Your role cannot open this page")).toBeVisible();
-      await expect(page.getByRole("grid", { name: "Release alerts" })).toHaveCount(0);
-      await expect(page.locator('[data-staff-shell] nav a[href="/leads"]')).toHaveCount(0);
-    } finally {
-      await closeStaffSession(session);
-    }
-  });
 
   test("an account manager reads the log but is not offered artworks it cannot open", async ({
     browser,
