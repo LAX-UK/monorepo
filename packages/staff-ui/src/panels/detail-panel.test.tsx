@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BesidePanelInset, DetailPanel } from "./detail-panel.js";
 
@@ -167,11 +167,14 @@ describe("DetailPanel beside its list", () => {
     return onOpenChange;
   }
 
-  it("from 1280px has no scrim, and a click on the list beside it does not close it", () => {
+  it("from 1280px has no scrim, and a click on the list beside it does not close it", async () => {
     screenWide(true);
     const onOpenChange = renderBeside();
     expect(document.querySelector("[data-staff-panel-beside]")).not.toBeNull();
     expect(document.querySelector("[data-lax-motion='scrim']")).toBeNull();
+    // Radix listens for a pointer down outside the layer only from the next tick after it opens;
+    // a click before that would pass whether or not the panel guards against it.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     const row = screen.getByRole("button", { name: "Next row" });
     fireEvent.pointerDown(row);
     fireEvent.mouseDown(row);

@@ -27,7 +27,7 @@ import {
   formatStaffDateTime,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useRef } from "react";
+import { useState } from "react";
 
 const COPY = DELIVERIES_COPY.panel;
 
@@ -43,9 +43,10 @@ type PanelProps = Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
  * From 1280px it sits beside the list (the mockup's 480px side panel), so the Status, Price and
  * Waiting columns stay in view and the next row is one click away.
  *
- * D6 states: a lot in the URL that has no delivery (withdrawn, or a stale link) says so with a
- * way back to the list; a request that moves on while its panel is open (the list refreshed and
- * its status or quote changed) says the buyer changed it.
+ * D6 states: a lot in the URL that has no delivery (nobody asked, or a stale link) says so with
+ * a way back to the list; a read that failed says so with Try again (never "not found"); a
+ * request that moves on while its panel is open (the list refreshed and its status or quote
+ * changed) says the buyer changed it.
  */
 export function DeliveryPanel({
   row,
@@ -53,6 +54,8 @@ export function DeliveryPanel({
   panelProps,
   now,
   missing = false,
+  loadFailed = false,
+  onRetry,
 }: {
   row: DeliveryView | null;
   canWork: boolean;
@@ -60,8 +63,50 @@ export function DeliveryPanel({
   now: Date;
   /** A lot is open in the URL and no delivery was found for it. */
   missing?: boolean;
+  /** With `missing`: the read failed (not a 404), so the delivery may well exist. */
+  loadFailed?: boolean;
+  /** Reads the page again, for the load error's Try again. */
+  onRetry?: () => void;
 }) {
   const changed = useChangedWhileOpen(row);
+  if (!row && loadFailed) {
+    // D6 error: never "not found" for a read that failed; say so and offer Try again.
+    return (
+      <DetailPanel
+        {...panelProps}
+        open={missing}
+        beside
+        title={COPY.fallbackTitle}
+        notice={
+          <Notice
+            tone="danger"
+            alert
+            title={COPY.loadError.title}
+            actions={
+              <span className="flex flex-wrap gap-2">
+                {onRetry ? (
+                  <StaffButton variant="secondary" size="sm" onClick={onRetry}>
+                    {COPY.loadError.retry}
+                  </StaffButton>
+                ) : null}
+                <StaffButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => panelProps.onOpenChange(false)}
+                >
+                  {COPY.loadError.back}
+                </StaffButton>
+              </span>
+            }
+          >
+            {COPY.loadError.description}
+          </Notice>
+        }
+      >
+        {null}
+      </DetailPanel>
+    );
+  }
   if (!row) {
     return (
       <DetailPanel
@@ -202,15 +247,15 @@ export function DeliveryPanel({
  * another lot starts again from what that one shows.
  */
 function useChangedWhileOpen(row: DeliveryView | null): boolean {
-  const first = useRef<{ lotId: string; key: string } | null>(null);
-  if (!row) {
-    first.current = null;
+  const current = row ? { lotId: row.lotId, key: deliveryStateKey(row) } : null;
+  // What the panel first showed for the open lot, kept in state (never a ref written while
+  // rendering) and reset when another lot opens, React's "adjust state when a prop changes".
+  const [seen, setSeen] = useState(current);
+  if (current?.lotId !== seen?.lotId) {
+    setSeen(current);
     return false;
   }
-  if (first.current?.lotId !== row.lotId) {
-    first.current = { lotId: row.lotId, key: deliveryStateKey(row) };
-  }
-  return first.current.key !== deliveryStateKey(row);
+  return current !== null && seen !== null && seen.key !== current.key;
 }
 
 function FulfilmentBadge({ status }: { status: string }) {

@@ -15,7 +15,8 @@ export const metadata: Metadata = metadataForPrivate(
 
 /**
  * Deliveries (docs/design/staff-gaps-delivery-zoho-alerts.md, D1): every won lot a buyer wants
- * delivered. Fulfilment and Administrators work it; read-only staff see it without the actions.
+ * delivered. Under D5 it opens only for roles with Lot fulfilment access (Fulfilment and
+ * Administrators); everyone else is sent to No access by the segment layout and the check below.
  */
 export default async function AdminDeliveriesPage({
   searchParams,
@@ -32,6 +33,8 @@ export default async function AdminDeliveriesPage({
       filters={model.filters}
       chips={model.chips}
       selected={model.selected}
+      selectedError={model.selectedError}
+      denied={model.denied}
       pagination={model.pagination}
       loadError={model.loadError}
       filtered={model.filtered}

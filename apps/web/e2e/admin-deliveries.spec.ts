@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { type Page, type TestInfo, expect, test } from "@playwright/test";
 import pg from "pg";
-import { e2eEnabled, e2eSkipReason, hasStaffCredentials } from "./helpers/auth";
+import { e2eEnabled, hasStaffCredentials } from "./helpers/auth";
+import { roleAuthState } from "./helpers/auth-state";
 import { shoot } from "./helpers/collection-journeys";
 
 /**
@@ -11,6 +12,10 @@ import { shoot } from "./helpers/collection-journeys";
  * The journey makes its own made-up sale, two won lots and their requests, and removes them
  * afterwards, so it never depends on demo data and never skips for want of it. Each state is
  * shot at 1440 and 375 wide, light and dark.
+ *
+ * Tagged `@smoke` as well as `@journey`, so the PR browser gate (`test:e2e:pr`, `@smoke|@roles`)
+ * runs it on every pull request, not only the weekly stabilization run. It never skips: without
+ * the e2e stack, staff credentials or `DATABASE_URL` it fails and says what is missing.
  */
 
 const SIZES = [
@@ -33,6 +38,15 @@ async function shootAll(page: Page, testInfo: TestInfo, name: string) {
 }
 
 type Seeded = { userId: string; entityIds: string[]; saleId: string; lotIds: string[] };
+
+/** Fails, never skips, when the run cannot reach what the journey needs. */
+function requireStack() {
+  if (!e2eEnabled)
+    throw new Error("Set PLAYWRIGHT_E2E=1 and start the e2e stack to run Deliveries");
+  if (!hasStaffCredentials()) {
+    throw new Error("PLAYWRIGHT_STAFF_EMAIL and PLAYWRIGHT_STAFF_PASSWORD are required");
+  }
+}
 
 function database(): pg.Client {
   const connectionString = process.env.DATABASE_URL;
@@ -120,12 +134,12 @@ async function removeRequests(seeded: Seeded | null) {
   }
 }
 
-test.describe("deliveries @journey", () => {
-  test.skip(!e2eEnabled || !hasStaffCredentials(), e2eSkipReason);
+test.describe("deliveries @smoke @journey", () => {
   test.describe.configure({ retries: 0 });
 
   let seeded: Seeded | null = null;
   test.beforeAll(async () => {
+    requireStack();
     seeded = await seedRequests();
   });
   test.afterAll(async () => {
@@ -221,6 +235,50 @@ test.describe("deliveries @journey", () => {
       await expect(page.getByText("No deliveries match")).toBeVisible();
       await expect(page.getByRole("button", { name: "Clear filters" }).first()).toBeVisible();
       await shootAll(page, testInfo, "3-no-results");
+    });
+  });
+});
+
+/**
+ * D5: the page is for roles with Lot fulfilment access. Operations (Fulfilment) works it; a
+ * read-only staff member has no nav link and is sent to No access by the server, before any
+ * buyer's address reaches the page.
+ */
+test.describe("deliveries access @roles", () => {
+  test.describe.configure({ retries: 0 });
+  test.beforeAll(() => requireStack());
+
+  test.describe("operations @roles", () => {
+    test.use({ storageState: roleAuthState.operations });
+
+    test("opens Deliveries with its six views and the waiting count", async ({ page }) => {
+      await page.goto("/admin/deliveries");
+      await expect(page.getByRole("heading", { level: 1, name: "Deliveries" })).toBeVisible();
+      await expect(page.locator('nav a[href="/admin/deliveries"]').first()).toBeVisible();
+      const views = page.getByRole("navigation", { name: "Views" });
+      for (const label of [
+        "Waiting for a price",
+        "Quoted",
+        "To dispatch",
+        "On the way",
+        "Delivered",
+        "Closed",
+      ]) {
+        await expect(views.getByRole("link", { name: new RegExp(label) })).toBeVisible();
+      }
+      await expect(views.getByRole("link", { name: /Waiting for a price/ })).toHaveAccessibleName(
+        /\d+ waiting/,
+      );
+    });
+  });
+
+  test.describe("read-only staff @roles", () => {
+    test.use({ storageState: roleAuthState.readonlyStaff });
+
+    test("is sent to No access and has no Deliveries link", async ({ page }) => {
+      await page.goto("/admin/deliveries");
+      await expect(page).toHaveURL(/\/admin\/no-access/);
+      await expect(page.locator('a[href="/admin/deliveries"]')).toHaveCount(0);
     });
   });
 });

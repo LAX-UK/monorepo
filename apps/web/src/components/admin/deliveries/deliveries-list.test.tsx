@@ -15,8 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeliveriesList, type DeliveriesListProps } from "./deliveries-list";
 
 const push = vi.fn();
+const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, refresh: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push, refresh, replace: vi.fn() }),
   usePathname: () => "/admin/deliveries",
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -31,6 +32,8 @@ function renderList(patch: Partial<DeliveriesListProps> = {}) {
     filters: parseDeliveriesSearch(search),
     chips: [],
     selected: null,
+    selectedError: false,
+    denied: false,
     pagination: null,
     loadError: null,
     filtered: false,
@@ -47,6 +50,7 @@ function renderList(patch: Partial<DeliveriesListProps> = {}) {
 
 beforeEach(() => {
   push.mockReset();
+  refresh.mockReset();
   window.history.replaceState(null, "", "/admin/deliveries");
 });
 afterEach(() => window.history.replaceState(null, "", "/"));
@@ -165,6 +169,38 @@ describe("DeliveriesList", () => {
     expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("shows the kit's access denied, with no Try again, when the Bid API refuses the read", () => {
+    renderList({ page: null, denied: true });
+    expect(
+      screen.getByRole("heading", { level: 1, name: "You don’t have access to Deliveries" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/open to the Fulfilment and Administrator roles/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByText("Deliveries could not be loaded. Try again.")).toBeNull();
+  });
+
+  it("wraps the lot title and its sale line rather than cutting them (finding 5)", () => {
+    renderList();
+    const row = within(screen.getByRole("grid", { name: "Deliveries" })).getAllByRole("row")[1];
+    const title = within(row as HTMLElement).getByRole("link", {
+      name: "Lot 42 · Harbour at dusk",
+    });
+    expect(title).toHaveClass("whitespace-normal");
+    const sale = within(row as HTMLElement).getByText("Modern British · Thu 12 Nov");
+    expect(sale).not.toHaveClass("truncate");
+    expect(sale).toHaveClass("whitespace-normal");
+    // The table does not cut the cell either.
+    expect(title.closest("td")?.querySelector("[data-staff-truncated]")).toBeNull();
+  });
+
+  it("names the placeholder of a lot with no photo yet", () => {
+    renderList();
+    const row = within(screen.getByRole("grid", { name: "Deliveries" })).getAllByRole("row")[1];
+    expect(
+      within(row as HTMLElement).getByRole("img", { name: "No photo yet" }),
+    ).toBeInTheDocument();
+  });
+
   it("searches lot, paddle, buyer or destination", () => {
     renderList();
     const search = screen.getByRole("searchbox", { name: "Search deliveries" });
@@ -231,6 +267,43 @@ describe("DeliveriesList queue panel", () => {
     expect(panel.getByText("This delivery could not be found")).toBeVisible();
     fireEvent.click(panel.getByRole("button", { name: "Back to the list" }));
     expect(window.location.search).toBe("");
+  });
+
+  it("says a lot whose read failed could not be loaded, and Try again reads the page again", () => {
+    const lot = "10700000-0000-4000-8000-000000000998";
+    window.history.replaceState(null, "", `/admin/deliveries?record=${lot}`);
+    renderList({ search: { record: lot }, selected: null, selectedError: true });
+    const panel = within(screen.getByRole("dialog"));
+    expect(panel.getByText("This delivery could not be loaded. Try again.")).toBeVisible();
+    expect(panel.queryByText("This delivery could not be found")).toBeNull();
+    fireEvent.click(panel.getByRole("button", { name: "Try again" }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the list again when the tab comes back with a panel open, and not with it closed", () => {
+    const visibility = vi.spyOn(document, "visibilityState", "get");
+    try {
+      renderList();
+      visibility.mockReturnValue("visible");
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(refresh).not.toHaveBeenCalled();
+      fireEvent.click(screen.getAllByText("Lot 42 · Harbour at dusk")[0] as HTMLElement);
+      // Hidden (another tab), then back: the list is read again for what changed meanwhile.
+      visibility.mockReturnValue("hidden");
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(refresh).not.toHaveBeenCalled();
+      visibility.mockReturnValue("visible");
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+      expect(refresh).toHaveBeenCalledTimes(1);
+    } finally {
+      visibility.mockRestore();
+    }
   });
 
   it("keeps the list clear of the panel beside it while it is open", () => {

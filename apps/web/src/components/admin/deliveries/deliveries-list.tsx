@@ -24,6 +24,7 @@ import {
 import type { DeliveriesPage, DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import {
+  AccessDeniedState,
   BesidePanelInset,
   type DataColumn,
   DataViews,
@@ -49,6 +50,10 @@ export type DeliveriesListProps = {
   chips: DeliveriesFilterChip[];
   /** The lot in the URL when it is not on this page of the view. */
   selected: DeliveryView | null;
+  /** The lot in the URL could not be read (not a 404): the panel offers Try again. */
+  selectedError: boolean;
+  /** The Bid API refused the read: the kit's access-denied state, with no Try again. */
+  denied: boolean;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
   filtered: boolean;
@@ -87,11 +92,16 @@ export function DeliveriesList(props: DeliveriesListProps) {
         id: "lot",
         header: DELIVERIES_COPY.columns.lot,
         mobile: "title",
+        // The row's identifier: it takes the room the others leave and wraps rather than being
+        // cut to "Lot 3 · Anato…", beside the panel and on a phone (TBL-14 lets a title wrap).
+        minWidth: "240px",
+        truncate: false,
         cell: (row) => (
           <PrimaryCell
+            wrap
             href={panelHref(row.lotId)}
             Link={Link}
-            thumbnail={{ src: row.lot.imageUrl }}
+            thumbnail={{ src: row.lot.imageUrl, missingLabel: DELIVERIES_COPY.noPhoto }}
             secondary={deliverySaleLine(row.sale, now)}
           >
             {deliveryLotTitle(row.lot)}
@@ -117,7 +127,9 @@ export function DeliveriesList(props: DeliveriesListProps) {
         id: "status",
         header: DELIVERIES_COPY.columns.status,
         width: "176px",
-        mobile: "badge",
+        // On a phone the status takes its own line under the title rather than the row's right
+        // half, so the title keeps the row's width ("Withdrawn by buyer" left it ten characters).
+        mobile: "detail",
         truncate: false,
         cell: (row) => <DeliveryBadges row={row} />,
       },
@@ -218,6 +230,18 @@ export function DeliveriesList(props: DeliveriesListProps) {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [panelOpen, router]);
+
+  if (props.denied) {
+    return (
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
+        <AccessDeniedState
+          headingLevel="h1"
+          resource={DELIVERIES_COPY.denied.resource}
+          requiredRoles={DELIVERIES_COPY.denied.roles}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -331,6 +355,8 @@ export function DeliveriesList(props: DeliveriesListProps) {
         panelProps={queue.panelProps}
         now={now}
         missing={missing}
+        loadFailed={props.selectedError}
+        onRetry={() => router.refresh()}
       />
     </>
   );

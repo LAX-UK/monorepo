@@ -38,6 +38,7 @@ export const staffViewportListRoutes = [
   "/admin/compliance/source-of-funds",
   "/admin/condition-reports",
   "/admin/lot-fulfilment",
+  "/admin/deliveries",
   "/admin/onboarding-issues",
   "/admin/saleroom",
   "/admin/event-rsvps",

@@ -106,7 +106,11 @@ describe("DeliveryPanel", () => {
 });
 
 describe("DeliveryPanel states (D6)", () => {
-  function Harness({ row, missing = false }: { row: DeliveryView | null; missing?: boolean }) {
+  function Harness({
+    row,
+    missing = false,
+    loadFailed = false,
+  }: { row: DeliveryView | null; missing?: boolean; loadFailed?: boolean }) {
     return (
       <StaffTooltipProvider>
         <DeliveryPanel
@@ -115,11 +119,14 @@ describe("DeliveryPanel states (D6)", () => {
           panelProps={{ open: row !== null, onOpenChange }}
           now={now}
           missing={missing}
+          loadFailed={loadFailed}
+          onRetry={onRetry}
         />
       </StaffTooltipProvider>
     );
   }
   const onOpenChange = vi.fn();
+  const onRetry = vi.fn();
 
   it("says a lot in the URL has no delivery, with a way back to the list", () => {
     onOpenChange.mockReset();
@@ -127,9 +134,23 @@ describe("DeliveryPanel states (D6)", () => {
     const panel = within(screen.getByRole("dialog"));
     expect(panel.getByText("This delivery could not be found")).toBeVisible();
     expect(
-      panel.getByText("It may have been withdrawn, or the link is out of date."),
+      panel.getByText("No buyer has asked for delivery on this lot, or the link is out of date."),
     ).toBeVisible();
     fireEvent.click(panel.getByRole("button", { name: "Back to the list" }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("says a failed read could not be loaded, with Try again, and never calls it not found", () => {
+    onOpenChange.mockReset();
+    onRetry.mockReset();
+    render(<Harness row={null} missing loadFailed />);
+    const panel = within(screen.getByRole("dialog"));
+    const alert = within(panel.getByRole("alert"));
+    expect(alert.getByText("This delivery could not be loaded. Try again.")).toBeVisible();
+    expect(panel.queryByText("This delivery could not be found")).toBeNull();
+    fireEvent.click(alert.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    fireEvent.click(alert.getByRole("button", { name: "Back to the list" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -155,6 +176,19 @@ describe("DeliveryPanel states (D6)", () => {
     expect(
       screen.getByText("The buyer changed this request while you were looking at it."),
     ).toBeVisible();
+  });
+
+  it("starts again when the same lot is opened again after its panel closed", () => {
+    const first = deliveryFixture();
+    const { rerender } = render(<Harness row={first} />);
+    rerender(<Harness row={null} />);
+    // Reopened later, already quoted: that is what this opening first shows, not a change.
+    rerender(
+      <Harness
+        row={deliveryFixture({ status: "quoted", quote: { ...first.quote, status: "quoted" } })}
+      />,
+    );
+    expect(screen.queryByText(/The buyer changed this request/)).toBeNull();
   });
 
   it("does not call another lot a change: stepping to the next row starts again", () => {

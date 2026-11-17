@@ -38,6 +38,21 @@ describe("loadAdminDeliveriesPage", () => {
     expect(model.selected).toEqual(ON_THE_WAY);
   });
 
+  it("says a lot has no delivery only when the API says so (404 is null)", async () => {
+    reader.getAdminDeliveries.mockResolvedValue(deliveriesPageFixture({ items: [] }));
+    reader.getAdminDelivery.mockResolvedValue(null);
+    const model = await loadAdminDeliveriesPage({ record: ON_THE_WAY.lotId });
+    expect(model).toMatchObject({ selected: null, selectedError: false, loadError: null });
+  });
+
+  it("keeps a failed read of the lot apart from not found, and still shows the list", async () => {
+    const page = deliveriesPageFixture({ items: [] });
+    reader.getAdminDeliveries.mockResolvedValue(page);
+    reader.getAdminDelivery.mockRejectedValue(new Error("Delivery unavailable: 500"));
+    const model = await loadAdminDeliveriesPage({ record: ON_THE_WAY.lotId });
+    expect(model).toMatchObject({ page, selected: null, selectedError: true, loadError: null });
+  });
+
   it("does not ask again for a lot already listed", async () => {
     const page = deliveriesPageFixture();
     reader.getAdminDeliveries.mockResolvedValue(page);
@@ -54,10 +69,12 @@ describe("loadAdminDeliveriesPage", () => {
     });
   });
 
-  it("says so when access is refused", async () => {
+  it("turns a refused read into access denied, not a retryable error", async () => {
     reader.getAdminDeliveries.mockRejectedValue(new Error("forbidden"));
-    expect((await loadAdminDeliveriesPage({})).loadError).toBe(
-      "You do not have access to deliveries.",
-    );
+    expect(await loadAdminDeliveriesPage({})).toMatchObject({
+      page: null,
+      denied: true,
+      loadError: null,
+    });
   });
 });

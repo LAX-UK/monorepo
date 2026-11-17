@@ -21,6 +21,23 @@ up. The dev-only overlays (Next.js and TanStack Query devtools buttons) are hidd
 | `13-error` | The API did not answer: error with Try again, no tab counts |
 | `14-loading` | First load skeleton |
 | `15-not-found` | A lot in the URL with no delivery: "This delivery could not be found", Back to the list |
+| `02b-long-title-panel` | A long destination beside the panel: the Lot title and sale line wrap, never cut |
+| `16-load-error` | The lot's read failed (not a 404): "This delivery could not be loaded. Try again." with Try again |
+| `17-denied` | The Bid API refused the read: the kit's access-denied state, no Try again |
+
+### Second round (after the review of #1520)
+
+`01`–`08b`, `12`, `15`, `16` and `17` were re-shot after the review, against the local stack as
+`e2e-stabilization` builds it (Postgres 16, migrations, `db:seed:local`, API, auth issuer and
+`next dev`), signed in as the seeded Operations (Fulfilment) user, with a few made-up delivery
+requests added to the throwaway local database. The lot thumbnails show as broken images only
+because that sandbox cannot reach the seed's image host. `16` and `17` were made by a temporary,
+uncommitted stub in the web reader that threw a 500 for one lot id and "forbidden" for one search,
+because a live API cannot be made to fail on cue there. `11`, `13` and `14` have no rows and are
+unchanged from the first round.
+
+In this round the Lot column takes the room the others leave and wraps the title and its sale
+line instead of cutting them, and on a phone the status takes its own line under the title.
 
 No state scrolls sideways at 375 (checked on each capture).
 

@@ -92,8 +92,9 @@ export function PrimaryCell({
    */
   unread?: boolean;
   /**
-   * Wraps a long title onto more lines instead of shortening it, for a reference that must be
-   * read whole. Give the column `truncate: false` so the table does not cut it either.
+   * Wraps a long title, and its second line, onto more lines instead of shortening them, for a
+   * reference that must be read whole. Give the column `truncate: false` so the table does not
+   * cut it either.
    */
   wrap?: boolean;
 }) {
@@ -182,7 +183,14 @@ export function PrimaryCell({
   return (
     <span className="flex min-w-0 flex-col">
       <span className="flex min-w-0 leading-[18px] [&>a]:leading-[18px]">{label}</span>
-      <span className="truncate text-staff-xs leading-4 text-staff-muted">{secondary}</span>
+      <span
+        className={cn(
+          "text-staff-xs leading-4 text-staff-muted",
+          wrap ? "whitespace-normal break-words" : "truncate",
+        )}
+      >
+        {secondary}
+      </span>
     </span>
   );
 }

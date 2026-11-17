@@ -20,6 +20,8 @@ export const DELIVERIES_COPY = {
   title: "Deliveries",
   description: "Won lots that buyers want delivered, from the price they asked for to their door.",
   listLabel: "Deliveries",
+  /** The thumbnail's name for a lot with no photo yet. */
+  noPhoto: "No photo yet",
   meta: {
     title: "Deliveries",
     description: "Courier quotes buyers asked for on won lots, from the price to their door.",
@@ -139,7 +141,16 @@ export const DELIVERIES_COPY = {
   error: {
     title: "Deliveries could not be loaded. Try again.",
     unavailable: "The Bid API didn't answer. Buyers' requests are kept; try again in a moment.",
-    forbidden: "You do not have access to deliveries.",
+    /** The route error page's way back. */
+    back: "Back to deliveries",
+  },
+  /**
+   * The Bid API refused the read although the page let the person in (the two disagree on a
+   * role): the kit's access-denied state, since trying again cannot help.
+   */
+  denied: {
+    resource: "Deliveries",
+    roles: ["Fulfilment", "Administrator"],
   },
   rowActions: {
     label: (lot: string) => `Actions for ${lot}`,
@@ -179,9 +190,17 @@ export const DELIVERIES_COPY = {
     },
     activityLabel: "Delivery activity",
     noActivity: "Nothing has happened yet.",
+    /** D6: the lot in the URL has no delivery request (a withdrawn one is still found). */
     notFound: {
       title: "This delivery could not be found",
-      description: "It may have been withdrawn, or the link is out of date.",
+      description: "No buyer has asked for delivery on this lot, or the link is out of date.",
+      back: "Back to the list",
+    },
+    /** D6 error: the lot's delivery could not be read; it may well exist. */
+    loadError: {
+      title: "This delivery could not be loaded. Try again.",
+      description: "The Bid API didn't answer. The buyer's request is kept.",
+      retry: "Try again",
       back: "Back to the list",
     },
     /** D6: the request moved on while its panel was open. */
