@@ -56,6 +56,7 @@ import type {
 import type { PrintFulfilmentServices } from "./application/print-fulfilment/print-fulfilment-services.js";
 import type { ProductionTaskService } from "./application/production-task.service.js";
 import type { SavedViewService } from "./application/saved-view.service.js";
+import type { ZohoMirrorStatusService } from "./application/zoho-mirror/zoho-mirror-status.service.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import type { createAdvanceReturnHandler } from "./infrastructure/handlers/admin/advance-return.handler.js";
 import type { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
@@ -105,6 +106,7 @@ export type AdminRoutesDeps = {
   soldAttention: SoldAttentionReviewService;
   /** The From Zoho Sync health tab: sync runs, queue, token and where Zoho and LAX disagree. */
   zohoSyncHealth: ZohoSyncHealthService;
+  zohoMirror: ZohoMirrorStatusService;
   /** Offer on lax.art: check a From Zoho record and make the lax.art draft from it. */
   offerOnLaxArt: Pick<OfferOnLaxArtService, "assess" | "offer">;
   catalogueChange: Pick<CatalogueChangeService, "update">;

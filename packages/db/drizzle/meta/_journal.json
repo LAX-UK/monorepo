@@ -2768,6 +2768,13 @@
       "breakpoints": true
     },
     {
+      "idx": 396,
+      "version": "7",
+      "when": 1813147200000,
+      "tag": "0404_artwork_stock_location",
+      "breakpoints": true
+    },
+    {
       "idx": 397,
       "version": "7",
       "when": 1813233600000,

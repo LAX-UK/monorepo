@@ -31,6 +31,7 @@ import type {
   IRecordPeopleReader,
 } from "../interfaces/workspace-buying.readers.js";
 import { collectByCalendarRange, readCollectByCalendars } from "../lib/collect-by-calendars.js";
+import { invoicePaymentOrder } from "../lib/purchase-invoice-payment.js";
 import { type LotStoragePricing, readLotStoragePricing } from "../lib/purchase-storage-pricing.js";
 import { storageCalendarReach } from "../lib/waiting-lot-storage.js";
 import { mapDeliveryQuoteRow } from "./drizzle-delivery-quote.repository.js";
@@ -88,8 +89,6 @@ export class DrizzleRecordPeopleReader implements IRecordPeopleReader {
     return new Map(rows.map((r) => [r.id, r.name]));
   }
 }
-
-const OPEN_OR_SETTLED = ["pending", "authorized", "captured", "requires_manual_review", "refunded"];
 
 /**
  * Lots won for the account with their invoice, fulfilment and courier quote. The invoice is the
@@ -255,13 +254,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         .where(
           and(inArray(payment.lotId, lotIds), eq(payment.buyerLegalEntityId, scope.legalEntityId)),
         )
-        .orderBy(
-          sql`CASE WHEN ${payment.status} IN (${sql.join(
-            OPEN_OR_SETTLED.map((s) => sql`${s}`),
-            sql`, `,
-          )}) THEN 0 ELSE 1 END`,
-          desc(payment.createdAt),
-        ),
+        .orderBy(...invoicePaymentOrder()),
       this.db.select().from(lotFulfilment).where(inArray(lotFulfilment.lotId, lotIds)),
       this.db
         .select()

@@ -145,6 +145,7 @@ export type {
   AdminAuditRoutesContainer,
   AdminCollectionDeskRoutesContainer,
   AdminCollectionSettingsRoutesContainer,
+  AdminDeliveriesRoutesContainer,
   AdminEmailRoutesContainer,
   AdminCatalogBrowseRoutesContainer,
   AdminCatalogRoutesContainer,

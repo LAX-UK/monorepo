@@ -2,6 +2,7 @@ import type { z } from "zod";
 import { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 import {
   artworkRegisterCatalogueChangedPayloadSchemaV1,
+  artworkRegisterLocationChangedPayloadSchemaV1,
   artworkRegisterOfferChangedPayloadSchemaV1,
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
 } from "./artwork-register-payload-schemas.js";
@@ -112,6 +113,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "artist.propose_matches",
   "artist.reviewed",
   "artwork_register.catalogue_changed",
+  "artwork_register.location_changed",
   "artwork_register.offer_changed",
   "artwork_register.stock_code_assigned",
   "auth.account_suspended",
@@ -1461,6 +1463,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     schema: artworkRegisterOfferChangedPayloadSchemaV1,
     producers: ["packages/db"],
     consumers: ["zoho_artwork_writeback", "zoho_artwork_listing"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  /** No consumer yet: the Zoho LAX_Location mirror subscribes in a later change. */
+  "artwork_register.location_changed": {
+    schema: artworkRegisterLocationChangedPayloadSchemaV1,
+    producers: ["packages/db"],
+    consumers: [],
     idempotencyPolicy: "none",
     piiClassification: "operational",
   },

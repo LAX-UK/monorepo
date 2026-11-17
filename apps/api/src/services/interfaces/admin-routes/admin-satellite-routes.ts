@@ -21,6 +21,7 @@ import type { TwoFactorPolicyService } from "../../security/two-factor-policy.se
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.js";
 import type { StaffRolesAdminService } from "../../staff/staff-roles-admin.service.js";
+import type { IAdminDeliveriesService } from "../admin-deliveries-service.js";
 import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { ICollectionDeskService } from "../collection-desk-service.js";
@@ -124,6 +125,8 @@ export type AdminIntegrationRouteServices = {
   buyerAgentAuthorisations: IBuyerAgentAuthorisationService;
   /** The saleroom team prices the courier quotes buyers ask for on won lots. */
   deliveryQuotes: IStaffDeliveryQuoteService;
+  /** The Deliveries list: every lot a buyer wants delivered, from asking for a price to the door. */
+  deliveries: IAdminDeliveriesService;
   /** Requests for a copy of a person's data, answered through Identity's internal routes. */
   dataRequests: Pick<
     AdminDataRequestsService,
