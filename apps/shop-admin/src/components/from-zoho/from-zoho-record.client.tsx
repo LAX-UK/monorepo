@@ -75,6 +75,7 @@ export function FromZohoRecord({
   zohoUrl,
   bidAdminUrl = null,
   locationPanel = null,
+  consignorPanel = null,
   zohoMirror = null,
 }: {
   detail: AdminRegisterDetail;
@@ -84,6 +85,8 @@ export function FromZohoRecord({
   bidAdminUrl?: string | null;
   /** Where the artwork physically is and has been, streamed in by the page. */
   locationPanel?: ReactNode;
+  /** Who consigned the original and on what agreement, streamed in by the page. */
+  consignorPanel?: ReactNode;
   /** The "Mirrored to Zoho" badge (Z1); null when the artwork has nothing to mirror. */
   zohoMirror?: ZohoMirrorBadgeView | null;
 }) {
@@ -273,6 +276,8 @@ export function FromZohoRecord({
         />
 
         {locationPanel}
+
+        {consignorPanel}
 
         <Section title="Catalogue" description="Edited in Zoho and kept up to date here.">
           <KeyValueList

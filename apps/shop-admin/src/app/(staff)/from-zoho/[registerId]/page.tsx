@@ -1,4 +1,8 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
+import {
+  ConsignorSectionLoader,
+  ConsignorSectionSkeleton,
+} from "@/components/artwork-consignor/consignor-section";
 import { FromZohoRecord } from "@/components/from-zoho/from-zoho-record.client";
 import {
   LocationPanelSection,
@@ -58,6 +62,14 @@ export default async function FromZohoRecordPage({
         <Suspense fallback={<LocationPanelSkeleton />}>
           <LocationPanelSection registerId={result.data.registerId} title={result.data.title} />
         </Suspense>
+      }
+      consignorPanel={
+        // Who consigned a work is recorded for originals; a print is LAX's own edition.
+        result.data.kind === "original" ? (
+          <Suspense fallback={<ConsignorSectionSkeleton />}>
+            <ConsignorSectionLoader registerId={result.data.registerId} title={result.data.title} />
+          </Suspense>
+        ) : null
       }
     />
   );

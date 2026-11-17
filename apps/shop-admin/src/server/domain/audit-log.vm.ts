@@ -42,6 +42,7 @@ const ACTION_LABELS: Record<string, string> = {
   "consignor_agreement.add": "Consignor agreement added",
   "consignor_agreement.replace": "Consignor agreement replaced with a new version",
   "consignor_agreement.retire": "Consignor agreement retired",
+  "artwork_consignor.set": "Artwork consignor set",
   // Catalogue
   create_artist: "Artist created",
   archive_artist: "Artist archived",
@@ -127,6 +128,7 @@ const RECORD_LABELS: Record<string, string> = {
   shop_staff_member: "Staff member",
   shop_stock_hold: "Stock hold",
   consignor_agreement: "Consignor agreement",
+  artwork_register: "Artwork from Zoho",
   shop_third_party_sale: "Third-party sale",
   editorial_exhibition: "Exhibition",
   editorial_story: "Story",

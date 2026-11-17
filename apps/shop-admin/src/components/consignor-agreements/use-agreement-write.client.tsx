@@ -8,13 +8,19 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 /**
- * A write to a consignor's agreements from a dialog. On top of `useAdminAction` (toast, refresh,
- * "Confirm it's you" for a sign-in that is not recent), it reads what the API refused:
- * - a stale version (someone replaced or retired the agreement meanwhile) gets a notice with
- *   Reload, which fetches the agreements as they are now;
+ * A write to a consignor's agreements, or to an artwork's consignor, from a dialog. On top of
+ * `useAdminAction` (toast, refresh, "Confirm it's you" for a sign-in that is not recent), it reads
+ * what the API refused:
+ * - a stale version (someone changed the record meanwhile) gets a notice with Reload, which
+ *   fetches it as it is now;
  * - each field the API names in a 400 (`issues`) is for the dialog to show beside the field.
  */
-export function useAgreementWrite() {
+export function useAgreementWrite({
+  staleTitle = "Someone else changed this agreement",
+}: {
+  /** The notice's title when the API says the record changed since the page read it. */
+  staleTitle?: string;
+} = {}) {
   const action = useAdminAction();
   const router = useRouter();
   const [stale, setStale] = useState(false);
@@ -50,7 +56,7 @@ export function useAgreementWrite() {
     <Notice
       tone="warning"
       alert
-      title="Someone else changed this agreement"
+      title={staleTitle}
       actions={
         <StaffButton
           size="sm"
