@@ -102,3 +102,77 @@ Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_
   - This comes from 0407/#1552 and is not new here (the PR notes it). It is worth fixing in the test cleanup.
 - **Typecheck and guards:** shop-api and shop-admin typecheck. `lint:datetime`, `ui-guardrails`, `admin-capability-drift`, `client-boundary`, `layers` and `route-js-budget` pass.
 - **Not run:** a full `next build`.
+
+## Fixes after review
+
+The fixes are on `zi-5-move-dialog-agreements` at `8b3d484a`, in commits `3f853b88`, `42fafb12`, `4bb11eba` and `8b3d484a`. #1552 had not merged when this was pushed, so main was not merged in.
+
+### Blocking 1: lowest price (`3f853b88`)
+
+- **The rule:** `apps/shop-api/src/routes/admin/v1/move-agreement-viewer.ts:19-42`. `moveAgreementForViewer` now takes the move's capabilities. It keeps `lowestPricePence` only when the viewer can read the consignor's agreements (manage, or read plus `requireClientPartyReadAccess`), or holds every capability the matching POST route requires. Anyone else gets null.
+- **One list for the GET and the POST:** the capabilities are now shared constants, so the check and the move can't drift apart.
+  - `apps/shop-api/src/routes/admin/v1/inventory-moves.routes.ts:33-38` defines `ARTWORK_MOVE` and `REGISTER_MOVE`.
+  - `apps/shop-api/src/routes/admin/v1/admin-offer-on-lax-art.routes.ts:29` defines `LAX_ART_MOVE`.
+  - The GETs and the POSTs use the same constant.
+- **Contract comment:** `packages/shop-contracts/src/admin-move-agreement.ts:10-16` now states the rule.
+- **Tests:**
+  - Read-only on all three assessment GETs:
+    - `apps/shop-api/src/routes/admin/v1/admin-offer-at-auction.routes.test.ts:208` covers both auction-offer GETs.
+    - `apps/shop-api/src/routes/admin/v1/admin-offer-on-lax-art.routes.test.ts:164` covers the lax-art-offer GET.
+  - Positive case: a mover keeps the price (`admin-offer-at-auction.routes.test.ts:224`).
+  - Unit tests in `apps/shop-api/src/routes/admin/v1/move-agreement-viewer.test.ts`:
+    - a mover with no agreement read keeps the price;
+    - a viewer with only part of the move capabilities gets null;
+    - check-only gets null;
+    - a reader keeps everything.
+
+### Non-blocking
+
+- **2. Copy** (`42fafb12`):
+  - "No agreement covers {place} for {consignor}." no longer has the reason suffix (`apps/shop-admin/src/lib/move-agreement-line.ts:85`), and `reasonOf` is removed.
+  - The lowest price shows "£2,000" for whole pounds and keeps pence otherwise (`move-agreement-line.ts:26`).
+  - "Signed {date}" uses `startsOn`, because an agreement records no separate signing day. This is commented at `move-agreement-line.ts:74` and explained in the PR body.
+- **3. "Set consignor"** is shown only with `consignor_agreement.manage` (`canAddAgreement`, `move-agreement-line.ts:42-43`). Dialog tests cover it hidden without manage, in both dialogs.
+  - The `#consignor` anchor is added on #1553's side.
+- **6. Duplicated helpers:**
+  - Dates use `formatStaffDate` (`move-agreement-line.ts:54,72,77`), the same as #1552's view model. So dates now follow the house style, for example "Tue 3 Mar" this year and "Tue 2 Mar 2027" otherwise.
+  - Place names:
+    - shop-api uses `CONSIGNMENT_PLACE_LABELS` (`apps/shop-api/src/application/admin/move-agreement.service.ts:2`).
+    - shop-admin doesn't depend on artwork-register-contracts, so it uses #1552's `PLACE_LABELS` from `consignor-agreement.vm.ts` (`move-agreement-line.ts:1,39`) rather than adding a dependency. The local copies are gone.
+- **7. Tests** (`4bb11eba`):
+  - Service: `apps/shop-api/src/application/admin/original-move.service.test.ts:649-714`:
+    - A move with no consignor after 31 January 2027 is refused, even with the checkbox, and no lot is made.
+    - 2027-01-31T23:30Z still gets the checkbox fallback; 2027-02-01T00:30Z is blocked.
+    - Summer time (BST):
+      - An agreement ending 2026-10-24 is in force at 22:30Z and expired at 23:30Z.
+      - An agreement starting 2026-06-01 is not started at 2026-05-31T22:30Z and in force at 23:30Z.
+  - Route: `apps/shop-api/src/routes/admin/v1/admin-offer-at-auction.routes.test.ts:336`, using the real service and a fixed clock:
+    - At 2027-01-31T23:30Z the GET reports `checkbox_fallback` and the POST returns 200.
+    - At 2027-02-01T00:30Z and T12:00Z the GET reports `blocked` and the POST returns 409, with no lot made.
+- **8. Screenshots** (`8b3d484a`):
+  - New in `docs/design/screenshots/zi-5-move-dialog-agreements/`, each in light and dark at 1440 and 375 px (12 files):
+    - `auction-lax-owns-*`
+    - `auction-no-consignor-blocked-*`
+    - `auction-one-error-*`
+  - Shots whose copy changed (dates, "£2,000", no reason) were re-rendered. The README is updated, and the folder now holds 60 images.
+- **Left for a follow-up, as asked:** item 1 (the race between the agreement read and the move) and the duplicate-reads consolidation with #1553. Both are noted in the PR body.
+  - Items 4 and 5 (history wording, ids in payloads) are unchanged.
+
+### Tests run after the fixes
+
+Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_INTEGRATION_REQUIRED=true`, `--maxWorkers=2`. Everything passed:
+
+- **shop-api, 175 tests:**
+  - `original-move.service` (44)
+  - `offer-on-lax-art.service` (19)
+  - `artwork-register-review.service` (29)
+  - `drizzle-lax-art-offer.integration` (11)
+  - `drizzle-register-overview.integration` (3)
+  - `admin-offer-at-auction.routes` (41)
+  - `admin-offer-on-lax-art.routes` (24)
+  - `move-agreement-viewer` (4)
+- **shop-admin, 151 tests:** the offer-at-auction dialog, lax.art dialog and form, `zoho-register.vm`, `move-agreement`, `agreements-section` and `consignor-agreement` suites.
+- **Contracts:** artwork-register-contracts 339 passed; shop-contracts 128 passed.
+- **Typecheck:** shop-api, shop-admin and shop-contracts pass.
+- **Guards:** `lint:datetime`, `ui-guardrails`, `admin-capability-drift`, `client-boundary`, `layers`, `client-copy` and `test-mocks` pass. `biome check` on the changed files is clean.
+- **Not run:** a full `next build`.
