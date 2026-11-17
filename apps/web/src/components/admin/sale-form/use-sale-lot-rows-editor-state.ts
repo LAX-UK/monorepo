@@ -1,5 +1,6 @@
 "use client";
 
+import { adminUpdateLotResultAction } from "@/lib/actions/admin";
 import {
   findLotsOutsideSaleWindow,
   proposeLotTimesWithinWindow,
@@ -112,7 +113,6 @@ export function useSaleLotRowsEditorState({
       };
       for (const conflict of lotWindowConflicts) {
         const proposed = proposeLotTimesWithinWindow(conflict.lot, window);
-        const { adminUpdateLotResultAction } = await import("@/lib/actions/admin");
         const r = await adminUpdateLotResultAction(conflict.lot.id, proposed);
         if (!r.ok) {
           notifySaleSetupActionFailure(r);

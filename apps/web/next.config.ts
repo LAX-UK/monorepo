@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
+import { addSizeBuildDeterminism } from "@auction/observability/next-size-build";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import { laxAccountOrigin } from "./src/lib/lax-account-url";
@@ -137,6 +138,8 @@ const nextConfig: NextConfig = {
     ],
   },
   webpack(config, { isServer, dev }) {
+    // CI size-measurement builds only: settles webpack ties in a fixed order (see the plugin).
+    addSizeBuildDeterminism(config, { isServer, dev });
     if (!isServer && !dev) {
       addShellRoutesChunk(config);
       addToShellRoutesChunk(config, "shellSession", SHELL_SESSION_MODULES);
@@ -267,6 +270,10 @@ const sentryBuildOptions = {
     // areas keep browser tracing (see `src/lib/observability/sentry-client-options.ts`).
     treeshake: { removeDebugLogging: true },
   },
+  // CI size-measurement builds (ROUTE_JS_SIZE_BUILD=1, see docs/engineering/route-js-budgets.md)
+  // get one fixed release name instead of the commit SHA, so the release string inlined in the
+  // client bundle is the same for a PR and its base. Deploy builds never set the flag.
+  ...(process.env.ROUTE_JS_SIZE_BUILD === "1" ? { release: { name: "route-js-size-build" } } : {}),
   ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
 };
 

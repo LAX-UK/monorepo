@@ -3,9 +3,9 @@
 import { SaleroomPendingSubmit } from "@/components/admin/saleroom-pending-form";
 import { useDisplayOverlayState } from "@/features/saleroom/hooks/use-display-overlay-state";
 import {
-  adminSaleroomDisplayClearOverlayAction,
-  adminSaleroomDisplayOverlayAction,
-} from "@/lib/actions/admin";
+  clerkDisplayClearOverlay,
+  clerkDisplayOverlay,
+} from "@/features/saleroom/lib/clerk-commands.client";
 import { Field, TextInput, cn } from "@auction/staff-ui";
 import type { SaleroomDisplayOverlay } from "@auction/types";
 import { useState } from "react";
@@ -35,7 +35,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
         size="lg"
         aria-pressed={activeOverlay?.kind === "fair_warning"}
         className="w-full sm:w-auto"
-        onRun={() => adminSaleroomDisplayOverlayAction({ saleId, kind: "fair_warning" })}
+        onRun={() => clerkDisplayOverlay({ saleId, kind: "fair_warning" })}
         onSuccess={() => {
           setOptimisticOverlay({ kind: "fair_warning" });
           void refreshOverlay();
@@ -62,7 +62,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
           className="w-full sm:w-auto"
           onRun={() => {
             const message = announcement.trim();
-            return adminSaleroomDisplayOverlayAction({
+            return clerkDisplayOverlay({
               saleId,
               kind: "announcement",
               ...(message ? { message } : {}),
@@ -87,7 +87,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
         size="lg"
         className="w-full sm:w-auto"
         disabled={!hasActiveOverlay}
-        onRun={() => adminSaleroomDisplayClearOverlayAction({ saleId })}
+        onRun={() => clerkDisplayClearOverlay({ saleId })}
         onSuccess={() => {
           clearOptimisticOverlay();
           void refreshOverlay();

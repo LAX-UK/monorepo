@@ -3,6 +3,13 @@ import type { Result } from "neverthrow";
 
 export type SaleroomServiceError = { message: string; status: number; code?: string };
 
+export type SaleroomLotSnapshot = {
+  lotId: string;
+  status: string;
+  currentPrice: string;
+  reservePrice: string | null;
+};
+
 export type SaleroomSessionSnapshot = {
   session: typeof saleroomSession.$inferSelect | null;
   events: (typeof saleroomEvent.$inferSelect)[];
@@ -23,6 +30,8 @@ export interface ISaleroomSessionReadService {
   getPublicSessionStatus(saleId: string): Promise<PublicSaleroomSessionStatus>;
   getSessionStatuses(saleIds: readonly string[]): Promise<SaleroomSessionStatusRow[]>;
   getSessionWithRecentEvents(saleId: string): Promise<SaleroomSessionSnapshot>;
+  /** The lot's price and reserve now, for the clerk console; null if it is not in this sale. */
+  getLotSnapshot(saleId: string, lotId: string): Promise<SaleroomLotSnapshot | null>;
 }
 
 export interface ISaleroomSessionControlService {
@@ -46,10 +55,14 @@ export interface ISaleroomSessionControlService {
   hammerCurrentLot(input: {
     saleId: string;
     actorUserId: string;
+    /** The lot the clerk saw on the block; refused with `lot_not_on_block` if it moved on. */
+    lotId?: string;
   }): Promise<Result<{ lotId: string }, SaleroomServiceError>>;
   noSaleCurrentLot(input: {
     saleId: string;
     actorUserId: string;
+    /** The lot the clerk saw on the block; refused with `lot_not_on_block` if it moved on. */
+    lotId?: string;
   }): Promise<Result<{ lotId: string }, SaleroomServiceError>>;
   closeSession(input: {
     saleId: string;

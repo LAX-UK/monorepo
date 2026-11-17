@@ -6,9 +6,12 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/actions/admin", () => ({
-  adminSaleroomCheckInResultAction: vi.fn(),
   adminAssignPaddleResultAction: vi.fn(),
   adminClearPaddleResultAction: vi.fn(),
+}));
+
+vi.mock("@/lib/admin/saleroom/check-in.client", () => ({
+  checkInBidder: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
