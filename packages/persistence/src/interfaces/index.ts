@@ -28,6 +28,8 @@ export type {
   IItemSubmissionRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
+  PurgedSubmissionDraft,
+  SoftDeleteDraftOutcome,
   SubmissionSenderFilter,
 } from "./item-submission.repository.js";
 
@@ -729,6 +731,7 @@ export type {
   PaymentExternalSyncStatus,
   XeroConnectionInsert,
   XeroConnectionRow,
+  XeroConnectionSummaryRow,
   XeroConnectionStatus,
   XeroWebhookEventInsert,
 } from "./xero.repository.js";

@@ -70,7 +70,11 @@ function agreement(patch: Partial<AdminConsignorAgreement> = {}): AdminConsignor
 }
 
 function show(agreements: AdminConsignorAgreement[] | null, capabilities = KEEPER) {
-  return render(
+  return render(section(agreements, capabilities));
+}
+
+function section(agreements: AdminConsignorAgreement[] | null, capabilities = KEEPER) {
+  return (
     <StaffTooltipProvider>
       <StaffAccessProvider access={laxStaffAccess(capabilities, "Administrator")}>
         <AgreementsSection
@@ -80,7 +84,7 @@ function show(agreements: AdminConsignorAgreement[] | null, capabilities = KEEPE
           today={TODAY}
         />
       </StaffAccessProvider>
-    </StaffTooltipProvider>,
+    </StaffTooltipProvider>
   );
 }
 
@@ -289,6 +293,82 @@ describe("replacing and retiring", () => {
     expect(await dialog.findByText("Someone else changed this agreement")).toBeInTheDocument();
     fireEvent.click(dialog.getByRole("button", { name: "Reload" }));
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("after Reload, tries again at the version just loaded", async () => {
+    replaceConsignorAgreement
+      .mockResolvedValueOnce({
+        ok: false,
+        kind: "conflict",
+        message: "This agreement was changed by someone else since it was opened",
+        currentVersion: "2",
+      })
+      .mockResolvedValueOnce({ ok: true, data: agreement({ version: 3 }) });
+    const view = show([agreement()]);
+    fireEvent.click(screen.getByRole("button", { name: "Replace…" }));
+    let dialog = within(
+      await screen.findByRole("dialog", { name: "Replace agreement, version 1" }),
+    );
+    fireEvent.click(dialog.getByRole("button", { name: "Save new version" }));
+    fireEvent.click(await dialog.findByRole("button", { name: "Reload" }));
+    // The refresh brings the version someone else saved.
+    const theirs = agreement({
+      id: "33333333-3333-4333-8333-333333333333",
+      version: 2,
+      places: ["private_sale"],
+    });
+    view.rerender(section([theirs]));
+    dialog = within(await screen.findByRole("dialog", { name: "Replace agreement, version 2" }));
+    expect(dialog.getByRole("checkbox", { name: "Private sale" })).toBeChecked();
+    expect(dialog.queryByText("Someone else changed this agreement")).not.toBeInTheDocument();
+    fireEvent.click(dialog.getByRole("button", { name: "Save new version" }));
+    await waitFor(() => expect(replaceConsignorAgreement).toHaveBeenCalledTimes(2));
+    expect(replaceConsignorAgreement.mock.calls[1]?.[0]).toMatchObject({
+      agreementId: agreement().agreementId,
+      expectedVersion: 2,
+      terms: { places: ["private_sale"] },
+    });
+  });
+
+  it("after Reload, retires at the version just loaded", async () => {
+    retireConsignorAgreement
+      .mockResolvedValueOnce({
+        ok: false,
+        kind: "conflict",
+        message: "This agreement was changed by someone else since it was opened",
+        currentVersion: "2",
+      })
+      .mockResolvedValueOnce({ ok: true, data: agreement({ status: "retired" }) });
+    const view = show([agreement()]);
+    fireEvent.click(screen.getByRole("button", { name: "Retire…" }));
+    let dialog = within(await screen.findByRole("dialog", { name: "Retire this agreement?" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Retire agreement" }));
+    fireEvent.click(await dialog.findByRole("button", { name: "Reload" }));
+    view.rerender(section([agreement({ id: "33333333-3333-4333-8333-333333333333", version: 2 })]));
+    dialog = within(await screen.findByRole("dialog", { name: "Retire this agreement?" }));
+    fireEvent.click(dialog.getByRole("button", { name: "Retire agreement" }));
+    await waitFor(() => expect(retireConsignorAgreement).toHaveBeenCalledTimes(2));
+    expect(retireConsignorAgreement.mock.calls[1]?.[0]).toMatchObject({ expectedVersion: 2 });
+  });
+
+  it("closes the dialog when the reloaded agreement has been retired", async () => {
+    replaceConsignorAgreement.mockResolvedValue({
+      ok: false,
+      kind: "conflict",
+      message: "This agreement was changed by someone else since it was opened",
+      currentVersion: "1",
+    });
+    const view = show([agreement()]);
+    fireEvent.click(screen.getByRole("button", { name: "Replace…" }));
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Replace agreement, version 1" }),
+    );
+    fireEvent.click(dialog.getByRole("button", { name: "Save new version" }));
+    fireEvent.click(await dialog.findByRole("button", { name: "Reload" }));
+    view.rerender(
+      section([agreement({ status: "retired", retiredAt: "2026-11-17T09:00:00.000Z" })]),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("shows a field the API refused beside it and in the summary", async () => {

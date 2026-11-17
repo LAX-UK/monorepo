@@ -42,6 +42,12 @@ export interface ISubmissionSellerHttpApplicationService {
     submissionId: string;
     legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson>;
+
+  /** `DELETE /submissions/:id`: deletes a draft (GAP-53). */
+  deleteDraft(input: {
+    submissionId: string;
+    legalEntity: SubmissionLegalEntityContext;
+  }): Promise<SubmissionHttpJson>;
 }
 
 export type { CreateItemSubmissionInput, ItemSubmission, UserRole };

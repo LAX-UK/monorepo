@@ -83,6 +83,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_ORIGINALS_ENABLED: false,
       SHOP_MERCHANDISE_ENABLED: false,
       SHOP_FRAMING_ENABLED: false,
+      SHOP_EXPRESS_CHECKOUT: false,
       SHOP_LAX_CERTIFICATES_ENABLED: false,
       SHOP_EDITORIAL_ENABLED: false,
       SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,

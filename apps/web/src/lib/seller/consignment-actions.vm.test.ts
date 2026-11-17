@@ -16,8 +16,20 @@ function actions(
   });
 }
 
-const ALL = { canEdit: true, canSubmit: true, canWithdraw: true, canManageDocuments: true };
-const NONE = { canEdit: false, canSubmit: false, canWithdraw: false, canManageDocuments: false };
+const ALL = {
+  canEdit: true,
+  canSubmit: true,
+  canWithdraw: true,
+  canManageDocuments: true,
+  canDeleteDraft: true,
+};
+const NONE = {
+  canEdit: false,
+  canSubmit: false,
+  canWithdraw: false,
+  canManageDocuments: false,
+  canDeleteDraft: false,
+};
 
 describe("consignmentActionsVm", () => {
   it.each([
@@ -37,12 +49,21 @@ describe("consignmentActionsVm", () => {
       canSubmit: false,
       canWithdraw: true,
       canManageDocuments: true,
+      canDeleteDraft: false,
     });
     expect(actions("owner", "converted").canWithdraw).toBe(false);
     expect(actions("owner", "changes_requested")).toMatchObject({
       canEdit: true,
       canSubmit: false,
     });
+  });
+
+  it("offers Delete draft only on a draft (GAP-53)", () => {
+    for (const status of ["submitted", "under_review", "changes_requested", "withdrawn"] as const) {
+      expect(actions("owner", status).canDeleteDraft).toBe(false);
+    }
+    expect(actions("consignor", "draft", ME).canDeleteDraft).toBe(true);
+    expect(actions("consignor", "draft", "someone-else").canDeleteDraft).toBe(false);
   });
 
   it("lets the holder of a personal account do everything the state allows", () => {

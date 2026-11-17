@@ -28,6 +28,8 @@ export interface ISubmissionService {
     scope?: SubmissionAccountScope,
   ): Promise<ServiceResult<Record<string, unknown>>>;
   withdraw(id: string): Promise<ServiceResult<Record<string, unknown>>>;
+  /** Deletes a draft that was never sent (GAP-53). */
+  deleteDraft(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   /** Accepts the consignment agreement, at the version the person read. */
   acceptAgreement(
     id: string,

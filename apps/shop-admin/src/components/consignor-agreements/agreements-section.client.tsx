@@ -28,11 +28,12 @@ import { useState } from "react";
 import { AgreementDialog } from "./agreement-dialog.client";
 import { RetireAgreementDialog } from "./retire-agreement-dialog.client";
 
-type Open =
-  | { kind: "add" }
-  | { kind: "replace"; agreement: AdminConsignorAgreement }
-  | { kind: "retire"; agreement: AdminConsignorAgreement }
-  | null;
+/**
+ * The dialog that is open. Replace and retire keep only the agreement's id: the version they send
+ * is read from `agreements` as it is now, so after Reload (someone else changed it meanwhile) a
+ * retry goes at the version just loaded, not the one the dialog was opened at.
+ */
+type Open = { kind: "add" } | { kind: "replace" | "retire"; agreementId: string } | null;
 
 /**
  * A consignor's agreements on their client page (ZI-5): the places LAX may offer their works,
@@ -55,6 +56,14 @@ export function AgreementsSection({
 }) {
   const [open, setOpen] = useState<Open>(null);
   const close = () => setOpen(null);
+  // Null once it is retired or no longer listed: the dialog then closes.
+  const current =
+    open && open.kind !== "add"
+      ? (agreements?.find(
+          (agreement) =>
+            agreement.agreementId === open.agreementId && agreement.status === "current",
+        ) ?? null)
+      : null;
 
   const add = (
     <StaffButton
@@ -97,8 +106,8 @@ export function AgreementsSection({
             partyId={partyId}
             agreement={agreement}
             today={today}
-            onReplace={() => setOpen({ kind: "replace", agreement })}
-            onRetire={() => setOpen({ kind: "retire", agreement })}
+            onReplace={() => setOpen({ kind: "replace", agreementId: agreement.agreementId })}
+            onRetire={() => setOpen({ kind: "retire", agreementId: agreement.agreementId })}
           />
         ))}
       </ul>
@@ -116,19 +125,30 @@ export function AgreementsSection({
       >
         <div className={agreements?.length ? "" : "p-4"}>{body}</div>
       </Section>
-      {open?.kind === "add" || open?.kind === "replace" ? (
+      {open?.kind === "add" ? (
         <AgreementDialog
           partyId={partyId}
           consignorName={consignorName}
-          agreement={open.kind === "replace" ? open.agreement : null}
+          agreement={null}
           onClose={close}
         />
       ) : null}
-      {open?.kind === "retire" ? (
-        <RetireAgreementDialog
+      {/* Keyed by version: a reloaded version starts the form again from the terms as they are now. */}
+      {open?.kind === "replace" && current ? (
+        <AgreementDialog
+          key={current.id}
           partyId={partyId}
           consignorName={consignorName}
-          agreement={open.agreement}
+          agreement={current}
+          onClose={close}
+        />
+      ) : null}
+      {open?.kind === "retire" && current ? (
+        <RetireAgreementDialog
+          key={current.id}
+          partyId={partyId}
+          consignorName={consignorName}
+          agreement={current}
           onClose={close}
         />
       ) : null}

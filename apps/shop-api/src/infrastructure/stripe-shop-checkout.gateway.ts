@@ -6,7 +6,20 @@ import type {
 } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 
-const SHOP_CHECKOUT_METADATA_APP = "shop";
+/** `metadata.app` on every Shop Checkout Session and payment; the webhook reads it. */
+export const SHOP_CHECKOUT_METADATA_APP = "shop";
+
+/** One Stripe client setup for every Shop checkout gateway. */
+export function createShopCheckoutStripeClient(secretKey: string | undefined): Stripe | null {
+  return secretKey
+    ? new Stripe(secretKey, {
+        typescript: true,
+        // A slow or failing Stripe must not hold the checkout sweep (or a buyer) for ever.
+        timeout: 15_000,
+        maxNetworkRetries: 2,
+      })
+    : null;
+}
 
 function isStripeCheckoutSessionPaid(session: Stripe.Checkout.Session): boolean {
   return session.payment_status === "paid" || session.payment_status === "no_payment_required";
@@ -91,14 +104,7 @@ export function createStripeShopCheckoutGateway(options: {
   storefrontUrl: string;
   fakeCheckoutEnabled: boolean;
 }): PaymentCheckoutGateway {
-  const stripe = options.secretKey
-    ? new Stripe(options.secretKey, {
-        typescript: true,
-        // A slow or failing Stripe must not hold the checkout sweep (or a buyer) for ever.
-        timeout: 15_000,
-        maxNetworkRetries: 2,
-      })
-    : null;
+  const stripe = createShopCheckoutStripeClient(options.secretKey);
 
   return {
     async createHostedCheckout(input) {

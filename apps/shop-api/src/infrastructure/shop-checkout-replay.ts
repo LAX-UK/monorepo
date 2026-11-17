@@ -97,12 +97,21 @@ export type ReplayedCheckout = {
  * - a new delivery choice changes the amount, so the open payment session is expired first
  *   (refused if it has already been paid), the order is repriced and a new session is opened.
  *   A completion for the old session no longer matches the order and is rejected.
+ *
+ * With `keepOpenSession` (express checkout) the session is the one the shopper is confirming in,
+ * still unpaid, and stays the order's: the caller rebinds it, so the new rate and total are set on
+ * that same session instead of a new one.
  */
 export async function replayCheckoutOrder(
   db: Database,
   paymentGateway: PaymentCheckoutGateway,
   existing: OrderRow,
-  input: { subject: string; details: CheckoutDeliveryDetails; checkoutExpiresAt: Date },
+  input: {
+    subject: string;
+    details: CheckoutDeliveryDetails;
+    checkoutExpiresAt: Date;
+    keepOpenSession?: boolean;
+  },
 ): Promise<ReplayedCheckout> {
   assertReplayableCheckoutOrder(existing, { subject: input.subject });
   const expiresAt = existing.checkoutExpiresAt ?? input.checkoutExpiresAt;
@@ -116,6 +125,7 @@ export async function replayCheckoutOrder(
   }
 
   const repriced = existing.fulfilment !== input.details.fulfilment;
+  const keepSession = input.keepOpenSession === true;
   const surcharge = fulfilmentSurchargePence(input.details.fulfilment);
   const total = computeOrderTotal({
     merchandiseSubtotalPence: pence(existing.merchandiseSubtotalPence),
@@ -123,7 +133,7 @@ export async function replayCheckoutOrder(
     fulfilment: input.details.fulfilment,
   });
 
-  if (repriced && existing.stripeCheckoutSessionId) {
+  if (repriced && existing.stripeCheckoutSessionId && !keepSession) {
     const outcome = await expireHostedCheckoutSession(paymentGateway, {
       orderId: existing.id,
       sessionId: existing.stripeCheckoutSessionId,
@@ -159,8 +169,9 @@ export async function replayCheckoutOrder(
               fulfilment: input.details.fulfilment,
               fulfilmentSurchargePence: surcharge,
               totalPence: total,
-              stripeCheckoutSessionId: null,
-              stripePaymentIntentId: null,
+              ...(keepSession
+                ? {}
+                : { stripeCheckoutSessionId: null, stripePaymentIntentId: null }),
             }
           : {}),
         updatedAt: new Date(),
@@ -172,7 +183,7 @@ export async function replayCheckoutOrder(
     orderId: existing.id,
     totalPence: repriced ? total : existing.totalPence,
     checkoutExpiresAt: expiresAt,
-    needsStripeSession: repriced || !existing.stripeCheckoutSessionId,
-    ...(repriced ? { sessionRevision: randomUUID() } : {}),
+    needsStripeSession: (repriced && !keepSession) || !existing.stripeCheckoutSessionId,
+    ...(repriced && !keepSession ? { sessionRevision: randomUUID() } : {}),
   };
 }

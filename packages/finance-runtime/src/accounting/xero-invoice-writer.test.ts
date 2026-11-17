@@ -1,3 +1,4 @@
+import { XeroTokenSealingError } from "@auction/db/xero-token-sealing";
 import type {
   BidInvoiceRecord,
   IPaymentExternalRefRepository,
@@ -30,7 +31,13 @@ const storedInvoice = {
   dueAt: new Date("2026-11-09T23:59:59.999Z"),
 } as BidInvoiceRecord;
 
-function build(overrides: { env?: Partial<typeof env>; invoice?: BidInvoiceRecord | null } = {}) {
+function build(
+  overrides: {
+    env?: Partial<typeof env>;
+    invoice?: BidInvoiceRecord | null;
+    findLatest?: IXeroConnectionRepository["findLatest"];
+  } = {},
+) {
   const createInvoices = vi.fn().mockResolvedValue({
     body: { invoices: [{ invoiceID: "xero-inv-1", invoiceNumber: "INV-0001" }] },
   });
@@ -43,7 +50,7 @@ function build(overrides: { env?: Partial<typeof env>; invoice?: BidInvoiceRecor
   const writer = new XeroInvoiceWriter(
     { ...env, ...overrides.env },
     {
-      findLatest: vi.fn().mockResolvedValue({ tenantId: "t-1" }),
+      findLatest: overrides.findLatest ?? vi.fn().mockResolvedValue({ tenantId: "t-1" }),
     } as unknown as IXeroConnectionRepository,
     externalRefs as unknown as IPaymentExternalRefRepository,
     {
@@ -157,5 +164,26 @@ describe("XeroInvoiceWriter.ensureInvoiceForPayment", () => {
     externalRefs.findByPaymentId.mockResolvedValue({ xeroInvoiceId: "xero-inv-1" });
     await expect(writer.ensureInvoiceForPayment(ctx)).resolves.toEqual({ ok: true });
     expect(createInvoices).not.toHaveBeenCalled();
+  });
+});
+
+describe("XeroInvoiceWriter with a saved connection whose tokens can no longer be read", () => {
+  const unreadable = () => vi.fn().mockRejectedValue(new XeroTokenSealingError("unreadable"));
+
+  it("refuses to push an invoice instead of skipping it", async () => {
+    const { writer, createInvoices, externalRefs } = build({ findLatest: unreadable() });
+    await expect(writer.ensureInvoiceForPayment(ctx)).rejects.toThrow(
+      "xero_token_sealing_unreadable",
+    );
+    expect(createInvoices).not.toHaveBeenCalled();
+    expect(externalRefs.insertPending).not.toHaveBeenCalled();
+  });
+
+  it("refuses to sync a payment from Xero instead of skipping it", async () => {
+    const { writer, externalRefs } = build({ findLatest: unreadable() });
+    externalRefs.findByPaymentId.mockResolvedValue({ paymentId: "pay-1", xeroInvoiceId: "inv-1" });
+    await expect(writer.syncPaymentFromProvider("pay-1")).rejects.toThrow(
+      "xero_token_sealing_unreadable",
+    );
   });
 });

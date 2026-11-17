@@ -7,6 +7,11 @@ export const SUBMISSION_MUTATIONS = [
   "attach_document",
   "delete_document",
   "withdraw",
+  /**
+   * Delete a draft that was never sent (GAP-53). Removed from the account at once and purged
+   * after 30 days; who may do it is as for withdrawing.
+   */
+  "delete_draft",
   /** Write to the specialist in the consignment's messages. */
   "message",
 ] as const;
@@ -38,6 +43,7 @@ const RULES: Record<SubmissionMutation, { own: EntityCapability; any: EntityCapa
   attach_document: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   delete_document: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   withdraw: { own: "entity.submissions.create", any: "entity.consignments.withdraw" },
+  delete_draft: { own: "entity.submissions.create", any: "entity.consignments.withdraw" },
   message: { own: "entity.submissions.create", any: "entity.submissions.manage" },
 };
 
@@ -53,11 +59,13 @@ const DENIAL_MESSAGE: Record<
   role: {
     default: "Your role can follow this consignment but not change it.",
     withdraw: "Only an owner or admin can withdraw this consignment.",
+    delete_draft: "Only an owner or admin can delete this draft.",
     message:
       "Your role can read these messages. Owners, admins and the person who sent this work can write.",
   },
   not_sender: {
     default: "Only the person who sent this work, or an owner or admin, can change it.",
+    delete_draft: "Only the person who started this draft, or an owner or admin, can delete it.",
     message:
       "Only the person who sent this work, or an owner or admin, can write to the specialist.",
   },
