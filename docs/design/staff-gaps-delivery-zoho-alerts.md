@@ -171,6 +171,11 @@ staff `decline` step from `requested` or `quoted` to `withdrawn`, with a reason 
      baseline added to `apps/web/e2e/admin-pages-visual.spec.ts`.
 3. Decline (D8): migration with rollback, domain step, route, dialog, buyer email.
 4. Polish and the To dispatch / On the way / Delivered tabs linking to Lot fulfilment actions.
+   As built: in To dispatch and On the way the panel footer and the row menu link to the lot's
+   next step on Lot fulfilment ("Release lot", "Ship lot", "Mark collected" or "Mark delivered"
+   "on Lot fulfilment"), which is still taken there; nothing before payment or once delivered.
+   Every link to Lot fulfilment names the lot by id (`?q=<lotId>&lot=<lotId>`), so its record
+   opens however far down that queue it sits.
 
 ### Open questions (default in brackets)
 

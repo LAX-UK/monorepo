@@ -96,9 +96,33 @@ export function deliveryPanelHref(current: DeliveriesSearch, lotId: string | nul
   return buildListHref(DELIVERIES_PATH, current, { [DELIVERY_RECORD_PARAM]: lotId });
 }
 
-/** The lot's record on Lot fulfilment, where dispatch, tracking and delivered are recorded. */
+/**
+ * The lot's record on Lot fulfilment, where release, dispatch, tracking and delivered are
+ * recorded. The search names the lot by its id (Lot fulfilment's search matches a lot id
+ * exactly), so the record is in the list and its panel opens, however far down the queue the lot
+ * would otherwise sit.
+ */
 export function lotFulfilmentHref(lotId: string): string {
-  return `/admin/lot-fulfilment?lot=${encodeURIComponent(lotId)}`;
+  const id = encodeURIComponent(lotId);
+  return `/admin/lot-fulfilment?q=${id}&lot=${id}`;
+}
+
+/** The Lot fulfilment steps a delivery can be waiting for once it is booked (D9 part 4). */
+export type DeliveryFulfilmentStep = keyof typeof DELIVERIES_COPY.fulfilmentStep;
+
+/**
+ * The Lot fulfilment step a booked delivery is waiting for, as a link to that lot on Lot
+ * fulfilment (D4, D5: the actions are linked, not repeated here), or null when there is none:
+ * before the buyer has paid, once delivered, and for anything not in To dispatch or On the way.
+ */
+export function deliveryFulfilmentStep(
+  row: Pick<DeliveryView, "lotId" | "status" | "fulfilment">,
+): { id: DeliveryFulfilmentStep; label: string; href: string } | null {
+  if (row.status !== "to_dispatch" && row.status !== "on_the_way") return null;
+  const status = row.fulfilment?.status;
+  if (!status || !(status in DELIVERIES_COPY.fulfilmentStep)) return null;
+  const id = status as DeliveryFulfilmentStep;
+  return { id, label: DELIVERIES_COPY.fulfilmentStep[id], href: lotFulfilmentHref(row.lotId) };
 }
 
 /** `count` is left out when the counts did not load, so a failed read never shows zeros. */

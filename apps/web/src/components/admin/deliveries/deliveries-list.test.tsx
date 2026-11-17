@@ -6,6 +6,7 @@ import {
   ON_THE_WAY,
   QUOTED,
   REFUNDED,
+  TO_DISPATCH,
   WAITING_DELIVERIES,
   deliveriesPageFixture,
 } from "@/lib/admin/deliveries/deliveries.fixture";
@@ -274,7 +275,60 @@ describe("DeliveriesList", () => {
     fireEvent.keyDown(trigger as HTMLElement, { key: "Enter" });
     expect(
       within(screen.getByRole("menu")).getByRole("menuitem", { name: "Open lot fulfilment" }),
-    ).toHaveAttribute("href", `/admin/lot-fulfilment?lot=${LOT_42}`);
+    ).toHaveAttribute("href", `/admin/lot-fulfilment?q=${LOT_42}&lot=${LOT_42}`);
+  });
+});
+
+describe("DeliveriesList Lot fulfilment steps (D9 part 4)", () => {
+  function menuFor(name: string) {
+    const trigger = screen.getAllByRole("button", { name: `Actions for ${name}` })[0];
+    fireEvent.keyDown(trigger as HTMLElement, { key: "Enter" });
+    return within(screen.getAllByRole("menu").at(-1) as HTMLElement);
+  }
+
+  it("puts the next step first in the row menu of a booked delivery, in place of the plain link", () => {
+    renderList({
+      search: { view: "to_dispatch" },
+      page: deliveriesPageFixture({ items: [TO_DISPATCH] }),
+    });
+    const menu = menuFor("Lot 71 · Tide line");
+    const items = menu.getAllByRole("menuitem");
+    expect(items[0]).toHaveAccessibleName("Ship lot on Lot fulfilment");
+    expect(items[0]).toHaveAttribute(
+      "href",
+      `/admin/lot-fulfilment?q=${TO_DISPATCH.lotId}&lot=${TO_DISPATCH.lotId}`,
+    );
+    expect(menu.queryByRole("menuitem", { name: "Open lot fulfilment" })).toBeNull();
+  });
+
+  it("offers Mark delivered on Lot fulfilment in On the way", () => {
+    renderList({
+      search: { view: "on_the_way" },
+      page: deliveriesPageFixture({ items: [ON_THE_WAY] }),
+    });
+    expect(menuFor("Lot 42 · Harbour at dusk").getAllByRole("menuitem")[0]).toHaveAccessibleName(
+      "Mark delivered on Lot fulfilment",
+    );
+  });
+
+  it("keeps the plain Lot fulfilment link while the buyer has not paid", () => {
+    renderList({
+      search: { view: "to_dispatch" },
+      page: deliveriesPageFixture({ items: [BOOKED_UNPAID] }),
+    });
+    const menu = menuFor("Lot 42 · Harbour at dusk");
+    expect(menu.queryByRole("menuitem", { name: /on Lot fulfilment/ })).toBeNull();
+    expect(menu.getByRole("menuitem", { name: "Open lot fulfilment" })).toBeVisible();
+  });
+
+  it("leaves step links out for read-only staff", () => {
+    renderList({
+      canWork: false,
+      search: { view: "to_dispatch" },
+      page: deliveriesPageFixture({ items: [TO_DISPATCH] }),
+    });
+    const menu = menuFor("Lot 71 · Tide line");
+    expect(menu.queryByRole("menuitem", { name: /Lot fulfilment/ })).toBeNull();
   });
 });
 

@@ -2,10 +2,12 @@ import {
   BOOKED_UNPAID,
   COLLECTED,
   DECLINED,
+  DELIVERED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
   QUOTED,
   REFUNDED,
+  TO_DISPATCH,
   deliveryFixture,
 } from "@/lib/admin/deliveries/deliveries.fixture";
 import type { DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
@@ -116,7 +118,7 @@ describe("DeliveryPanel", () => {
     const panel = renderPanel();
     expect(panel.getByRole("link", { name: /Open full page/ })).toHaveAttribute(
       "href",
-      "/admin/lot-fulfilment?lot=10700000-0000-4000-8000-000000000042",
+      "/admin/lot-fulfilment?q=10700000-0000-4000-8000-000000000042&lot=10700000-0000-4000-8000-000000000042",
     );
     expect(panel.queryByText("View only")).toBeNull();
   });
@@ -398,5 +400,55 @@ describe("DeliveryPanel quote actions (D5)", () => {
     expect(
       screen.getByText("The buyer changed this request while you were looking at it."),
     ).toBeVisible();
+  });
+
+  describe("booked deliveries link to their Lot fulfilment step (D9 part 4)", () => {
+    const footerOf = () =>
+      screen.getByRole("dialog").querySelector("[data-staff-panel-footer]") as HTMLElement | null;
+
+    it("To dispatch: Ship lot on Lot fulfilment, a link to the lot there", () => {
+      const panel = renderPanel(TO_DISPATCH);
+      const footer = footerOf();
+      expect(footer).not.toBeNull();
+      expect(
+        within(footer as HTMLElement).getByRole("link", { name: "Ship lot on Lot fulfilment" }),
+      ).toHaveAttribute(
+        "href",
+        `/admin/lot-fulfilment?q=${TO_DISPATCH.lotId}&lot=${TO_DISPATCH.lotId}`,
+      );
+      expect(
+        panel.getByText("Release, dispatch, tracking and delivery are recorded on Lot fulfilment."),
+      ).toBeVisible();
+      expect(panel.queryByRole("button", { name: /quote/ })).toBeNull();
+    });
+
+    it("On the way: Mark delivered on Lot fulfilment", () => {
+      renderPanel(ON_THE_WAY);
+      expect(
+        within(footerOf() as HTMLElement).getByRole("link", {
+          name: "Mark delivered on Lot fulfilment",
+        }),
+      ).toBeVisible();
+    });
+
+    it("Awaiting payment: no step yet, and says why", () => {
+      const panel = renderPanel(BOOKED_UNPAID);
+      expect(footerOf()).toBeNull();
+      expect(
+        panel.getByText("Lot fulfilment opens the next step once the buyer has paid."),
+      ).toBeVisible();
+    });
+
+    it("Delivered: no footer, the full page link stays", () => {
+      const panel = renderPanel(DELIVERED);
+      expect(footerOf()).toBeNull();
+      expect(panel.getByRole("link", { name: /Open full page/ })).toBeVisible();
+    });
+
+    it("read-only staff get no step link", () => {
+      const panel = renderPanel(TO_DISPATCH, false);
+      expect(footerOf()).toBeNull();
+      expect(panel.queryByRole("link", { name: /on Lot fulfilment/ })).toBeNull();
+    });
   });
 });
