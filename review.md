@@ -1,57 +1,65 @@
 Verdict: SHIP
 
-# Review: PR #1539, Orientation and Framing groups in the filter rail
+# Sanity pass: PR #1539, Orientation and Framing groups in the filter rail
 
-Reviewed head `5df2f4d0` (`shop-filters-orientation-framing-rail`): the new commit on top of
-#1538 (`bc26dcf9`), against `docs/design/decision-pack-2026-11-17.md` section 4, option A.
+Reviewed head `033fc310` (`shop-filters-orientation-framing-rail`). Since the previous review
+(`5df2f4d0`), the only change is a merge of the updated #1538 branch (`e2375142`, the query-plan fix).
+Checked against `docs/design/decision-pack-2026-11-17.md` section 4, option A. That section is the
+same on the branch and on `main`.
 
-This PR's own changes have no blocking defects. **Merge order:** the branch also contains the
-#1538 commit, and the #1538 review is FIX FIRST. That fix is a query-plan problem in
-`apps/shop-api/src/infrastructure/catalogue-shape-framing-sql.ts`, where scalar-subquery framing
-predicates give a quadratic plan; see `review.md` on `review-notes-pr1538-review`. Merge #1538
-with that fix first, then rebase this branch onto it. Don't merge this branch on its own while it
-still carries the unfixed commit. The fix doesn't change the API or the counts, so nothing in this
-PR needs to change.
+No blocking defects.
 
-## Checked and correct
+## What changed since the last review
+
+- **The rail commit is unchanged.** `git diff 5df2f4d0 033fc310 -- apps/shop` is empty.
+- **The branch now carries the fixed #1538.** `e2375142` is an ancestor of the head. Compared with the
+  #1538 head, this branch adds only the rail files:
+  - `apps/shop/src/lib/catalogue/artwork-catalogue-filter-config.ts`
+  - `catalogue-filter-groups.ts`
+  - `catalogue-active-chips.ts`
+  - `catalogue-filters.test.ts`
+  - `apps/shop/e2e/artworks-filters.spec.ts`
+  - the six `docs/design/screenshots/gap-51/` PNGs
+- **The merge-order concern from the previous review is resolved.** The branch no longer carries the
+  unfixed #1538 commit on its own. The #1538 final recheck is SHIP (`review.md` on
+  `review-notes-pr1538-review`). The SQL fix doesn't change the API, the counts or the URL state:
+  old and new SQL give byte-identical facet counts and results on a 96-combination seed. Nothing in
+  the rail depends on the change.
+
+## Still matches section 4, option A
 
 - **Rail order** is Artist, Price, Size, Orientation, Framing, Technique
-  (`apps/shop/src/lib/catalogue/artwork-catalogue-filter-config.ts:11-17`). Both new groups are
-  open by default like the others (`:26-27`). A unit test and the e2e spec check the order.
-- **Labels** follow option A: "Portrait", "Landscape", "Square"; "Available framed", "Available
-  unframed" (`artwork-catalogue-filter-config.ts:53-62`).
-- **Hiding under `MIN_FILTER_GROUP_OPTIONS` (2)**: both groups go through the shared
-  `keepUseful` (`catalogue-filter-groups.ts:85`, `:216`). A group with fewer than two options that
-  have works is hidden unless one of its options is applied. Tested with one option, without
-  counts, and with applied options.
-- **Counts only**: like Size, the groups are left out when the counts don't load
-  (`catalogue-filter-groups.ts:139`, `:153`). An applied filter can still be removed with its chip.
-- **Chips**: added in rail order, and each removes only its own filter
-  (`catalogue-active-chips.ts:55-58`). Tested.
-- **Selected chips use the Shop accent only**: no component or style changes. The screenshots show
-  the accent tint on the applied chips only; checkboxes and counts stay neutral.
-- **Mobile sheet**: uses the same group builder. The e2e spec covers it on `chromium-mobile`, and
-  the 375 px sheet screenshots show both groups and the "Show N editions" footer.
-- **Route-JS budget**: `budgets.json`, `lighthouserc.json` and `scripts/` are unchanged on the
-  branch. No budget, baseline or allowance was raised.
-- **E2E**: `apps/shop/e2e/artworks-filters.spec.ts:25-79` covers rail state, group order, chip
-  removal and URL (desktop), and the phone sheet. It drives the groups through the URL, so it
-  doesn't depend on seed data. The spec runs in `shop-staging-acceptance.yml`.
-- **Screenshots**: desktop rail, 375 px catalogue and 375 px sheet, light and dark, are in
-  `docs/design/screenshots/gap-51/`. No horizontal overflow at 375 px, and the chips wrap.
+  (`apps/shop/src/lib/catalogue/artwork-catalogue-filter-config.ts:9-17`).
+- **Labels:**
+  - "Portrait", "Landscape", "Square" (`:54`).
+  - "Available framed", "Available unframed" (`:60-61`).
+- **A work can be in both Framing groups.** shop-api counts each key on its own, and the rail shows
+  both counts.
+- **Square tolerance is 5 % (Q6).** It is the single constant in shop-domain.
+- **Chips:**
+  - Chips come in rail order, and each one removes only its own filter
+    (`catalogue-active-chips.ts`).
+  - Selected chips take the Shop accent and nothing else does. There are no component or style
+    changes.
+- **Groups with too few options are hidden** when fewer than `MIN_FILTER_GROUP_OPTIONS` options have
+  works, unless one is applied. Both groups are built from counts only, like Size
+  (`catalogue-filter-groups.ts`).
+- **PR plan item 2 is covered:** the mobile sheet, the e2e spec (desktop and phone), and the
+  light/dark/375 screenshots.
 
-## Not blocking
+## Not blocking (carried over)
 
-- The e2e order check (`artworks-filters.spec.ts:41-56`) only asserts relative order for the
-  groups that are present. That's fine for seed-independence, but it can't catch a missing
-  Artist/Price/Size group. The unit test covers the full order.
+- The e2e order check asserts only the relative order of the groups that are present. The unit test
+  covers the full order.
 
-## Test evidence (this review)
+## Test evidence (this pass)
 
-- `apps/shop`: `vitest run`, 120 files, 742 tests passed.
-- `packages/shop-domain`: 49 files, 1,336 tests passed.
-- `apps/shop-api`: full suite against a migrated Postgres 16: 336 files, 3,468 tests. 3,458 passed on the first full run. The 10 failures were in 6 unrelated files (checkout safety, delivery quotes, returns, reservation attribution, demo seed, admin order list), caused by data an earlier interrupted run left behind. On a freshly migrated database those 6 files pass (78 of 78). The catalogue suites (19 files, 256 tests) all pass, including the SQL-versus-domain orientation check at the 5 % bound.
-- `turbo run typecheck` for shop, shop-api, shop-domain and art: 33 of 33 tasks passed.
-- I didn't run the Playwright e2e or the route-JS build locally. The spec and the budget files
-  were reviewed as described, and the PR reports the e2e at 2 passed and the budget check passing
-  (`/artworks/(hub)` at 511.1 of 571 KB).
+- `apps/shop` at `033fc310`: `vitest run`, 120 files, 742 tests passed.
+- `pnpm --filter @auction/shop typecheck`: passed.
+- shop-api at the same SQL (`e2375142`), as described in the #1538 recheck:
+  - catalogue and artwork suites: 41 files, 530 tests passed;
+  - plan guard: 4 of 4 passed at 3,000 and at 20,000 works;
+  - `packages/shop-domain`: 1,343 tests passed.
+- CI on `033fc310`: green (`ci-result` success, `browser-gates` success, all shop-api and web shards).
+- I didn't re-run Playwright or the route-JS budget locally. The merge touches only shop-api SQL and
+  a shop-api test, and `budgets.json`, `lighthouserc.json` and `scripts/` are unchanged.
