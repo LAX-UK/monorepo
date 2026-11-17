@@ -14,3 +14,16 @@ viewport.
   (`docs/design/mockups/staff-gaps/index.html`), for comparison.
 
 No horizontal scroll at 375 px in any of them.
+
+## PR 3: the artwork record and the Orders list's Zoho column
+
+Taken the same way, on the fixture artworks and orders `seed:zoho-mirror-badge` now writes.
+
+- `artwork-{state}-{width}-{theme}.png`: the From Zoho record's header, the badge beside Where it
+  is, pressed with Enter and its details open (a popover at 1440, a bottom sheet at 375).
+  `artwork-not_applicable-*`: an artwork with nothing to mirror has no badge.
+- `orders-column-{width}-{theme}.png`: the Orders list on the fixtures' day with the Zoho column
+  shown: one order in each state, and the "None" dash for the order with nothing to mirror. On a
+  phone the badge has its own line under the order number.
+- `orders-column-default-hidden-1440-{theme}.png`: the column is hidden by default; Display shows
+  it, unticked (TBL-12).

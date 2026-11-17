@@ -123,6 +123,23 @@ export function zohoFailedJobsHref({
   return href ? `${href}?source=integrations` : null;
 }
 
+/** What a list cell shows for a record's Zoho mirror: the badge alone, no details. */
+export type ZohoMirrorCellView = Pick<ZohoMirrorBadgeView, "state" | "label" | "tone" | "shape">;
+
+/**
+ * The badge for a record in a list's "Zoho" column (Z1), or null when it has none: the same label,
+ * tone and cue as the record's own badge, and Z2's "Not applicable" stays blank there too. The
+ * details live on the record; the row opens it.
+ */
+export function presentZohoMirrorCell(
+  status: AdminZohoMirrorStatus | null,
+): ZohoMirrorCellView | null {
+  if (!status || status.state === "not_applicable") return null;
+  const state = status.state;
+  const { tone, shape = "ring" } = PRESENTATION[state];
+  return { state, label: ZOHO_MIRROR_BADGE_LABEL[state], tone, shape };
+}
+
 /**
  * The badge for one record, or null when it has none: Z2's "Not applicable" shows no badge so it
  * does not become wallpaper. Z3's words come whole from `@auction/shop-contracts`; the details
@@ -139,17 +156,13 @@ export function presentZohoMirror(
     failedJobsHref?: string | null;
   } = {},
 ): ZohoMirrorBadgeView | null {
-  if (!status || status.state === "not_applicable") return null;
-  const state = status.state;
-  const label = ZOHO_MIRROR_BADGE_LABEL[state];
+  const cell = presentZohoMirrorCell(status);
+  if (!status || !cell) return null;
+  const { state, label } = cell;
   const { line, times } = details(status, state, now);
   const prefix = `${label}${ZOHO_MIRROR_SEPARATOR}`;
-  const { tone, shape = "ring" } = PRESENTATION[state];
   return {
-    state,
-    label,
-    tone,
-    shape,
+    ...cell,
     name: zohoMirrorBadgeName(label),
     sentence: line.startsWith(prefix) ? line.slice(prefix.length) : line,
     times,
