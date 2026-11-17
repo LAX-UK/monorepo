@@ -10,6 +10,7 @@ import {
   type DeliveriesSearch,
   deliveriesHref,
   deliveryBadges,
+  deliveryFulfilmentStep,
   deliveryLotTitle,
   deliveryPanelHref,
   deliveryPhoneMeta,
@@ -78,7 +79,8 @@ const BESIDE_PANEL_HIDDEN = new Set(["buyer", "destination"]);
  * status with its count, search and a sale filter, and a queue panel (PRD-7) that steps through
  * the rows with J and K. Fulfilment and Administrators send or change a quote from the panel's
  * footer or the row menu (D3, D5), and decline a request ("Can't deliver", D8) from the panel
- * footer; dispatch, tracking and delivered stay on Lot fulfilment.
+ * footer; dispatch, tracking and delivered stay on Lot fulfilment, linked from the panel footer
+ * and the row menu of a booked delivery (D9 part 4).
  */
 export function DeliveriesList(props: DeliveriesListProps) {
   const { page, search, filters, canWork } = props;
@@ -196,8 +198,10 @@ export function DeliveriesList(props: DeliveriesListProps) {
         queue.open(row.lotId);
         setQuoteFor(row.lotId);
       }),
+      ...fulfilmentStepRowAction(row, canWork),
       { id: "open", label: DELIVERIES_COPY.rowActions.open, onSelect: () => queue.open(row.lotId) },
-      ...(canWork
+      // A booked delivery's step link above already opens the lot there.
+      ...(canWork && !deliveryFulfilmentStep(row)
         ? [
             {
               id: "fulfilment",
@@ -418,6 +422,15 @@ function quoteRowAction(row: DeliveryView, canWork: boolean, onSelect: () => voi
       onSelect,
     },
   ];
+}
+
+/**
+ * D9 part 4: in To dispatch and On the way, the lot's next Lot fulfilment step first in the row
+ * menu, as a link to the lot there, for those who work Lot fulfilment.
+ */
+function fulfilmentStepRowAction(row: DeliveryView, canWork: boolean): OverflowAction[] {
+  const step = canWork ? deliveryFulfilmentStep(row) : null;
+  return step ? [{ id: "fulfilment-step", label: step.label, href: step.href }] : [];
 }
 
 /** The status, and "Awaiting payment" beside an unpaid booking: at most two. */

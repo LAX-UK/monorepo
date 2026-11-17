@@ -156,6 +156,17 @@ export const DELIVERIES_COPY = {
     resource: "Deliveries",
     roles: ["Fulfilment", "Administrator"],
   },
+  /**
+   * The next Lot fulfilment step for a booked delivery (D9 part 4): the panel's footer link and
+   * the row menu's first item in To dispatch and On the way. Each opens the lot on Lot
+   * fulfilment, where the step is taken; nothing is recorded from here.
+   */
+  fulfilmentStep: {
+    awaiting_release: "Release lot on Lot fulfilment",
+    released: "Ship lot on Lot fulfilment",
+    ready_for_collection: "Mark collected on Lot fulfilment",
+    in_transit: "Mark delivered on Lot fulfilment",
+  },
   rowActions: {
     label: (lot: string) => `Actions for ${lot}`,
     open: "Open details",
@@ -196,6 +207,10 @@ export const DELIVERIES_COPY = {
       shipping: "Courier",
       collection: "Collection",
       notStarted: "Not started",
+      /** Under the Delivery section: where its steps are taken. */
+      recordedOn: "Release, dispatch, tracking and delivery are recorded on Lot fulfilment.",
+      /** A booking the buyer has not paid for: Lot fulfilment has no step for it yet. */
+      awaitingPayment: "Lot fulfilment opens the next step once the buyer has paid.",
     },
     activityLabel: "Delivery activity",
     noActivity: "Nothing has happened yet.",

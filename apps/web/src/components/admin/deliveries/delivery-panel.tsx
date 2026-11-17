@@ -5,6 +5,7 @@ import { DELIVERIES_COPY } from "@/lib/admin/deliveries/deliveries-copy";
 import {
   deliveryBadges,
   deliveryBuyerLine,
+  deliveryFulfilmentStep,
   deliveryLotTitle,
   deliveryPaidLine,
   deliveryPrice,
@@ -23,13 +24,14 @@ import {
   Notice,
   PanelSection,
   StaffButton,
+  StaffButtonLink,
   StaffMoney,
   StatusBadge,
   Timeline,
   ViewOnlyBadge,
   formatStaffDateTime,
 } from "@auction/staff-ui";
-import { PencilLine, Send } from "@auction/staff-ui/icons";
+import { ArrowRight, PencilLine, Send } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { DeliveryQuoteDialog, type QuoteDialogOutcome } from "./delivery-quote-dialog";
@@ -86,7 +88,9 @@ export type DeliveryPanelProps = {
  *
  * Fulfilment and Administrators work it from the footer (D5, PRD-2): Send quote while the buyer
  * waits, Change quote once one is sent, with the caller's "Can't deliver" (D8) beside it for the
- * same two states. Read-only staff get no footer (PRM-3).
+ * same two states. Once booked (To dispatch, On the way), the footer links to the lot's next step
+ * on Lot fulfilment ("Ship lot on Lot fulfilment"), where it is taken (D9 part 4). Read-only
+ * staff get no footer (PRM-3).
  */
 export function DeliveryPanel(props: DeliveryPanelProps) {
   const {
@@ -178,6 +182,7 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
   const price = deliveryPrice(row);
   const booked = row.quote.status === "accepted" || row.fulfilment !== null;
   const quoteAction = canWork ? quoteActionFor(row) : null;
+  const step = canWork ? deliveryFulfilmentStep(row) : null;
   const opened = dialog?.lotId === row.lotId ? dialog.action : null;
   if (quoteOpen && quoteAction && !opened) {
     setDialog({ lotId: row.lotId, action: quoteAction });
@@ -197,13 +202,14 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
     <DetailPanel
       {...panelProps}
       beside
-      {...(quoteAction || footerActions
+      {...(quoteAction || footerActions || step
         ? {
             footer: (
               <DeliveryPanelFooter
                 action={quoteAction}
                 onQuote={() => setQuoteOpen(true)}
                 secondary={footerActions}
+                step={step}
               />
             ),
           }
@@ -306,6 +312,15 @@ export function DeliveryPanel(props: DeliveryPanelProps) {
               },
             ]}
           />
+          {row.status === "to_dispatch" || row.status === "on_the_way" ? (
+            <p className="mt-2 text-staff-sm text-staff-muted">
+              {row.awaitingPayment ||
+              !row.fulfilment ||
+              row.fulfilment.status === "awaiting_payment"
+                ? COPY.delivery.awaitingPayment
+                : COPY.delivery.recordedOn}
+            </p>
+          ) : null}
         </PanelSection>
       ) : null}
       {canWork && dialogAction ? (
@@ -354,20 +369,34 @@ function useChangedWhileOpen(
 
 /**
  * The panel's footer (PRD-2: the state's primary action last): the caller's secondary actions
- * ("Can't deliver", D8) first, then Send quote or Change quote.
+ * ("Can't deliver", D8) first, then Send quote or Change quote; for a booked delivery, the link
+ * to its next step on Lot fulfilment.
  */
 function DeliveryPanelFooter({
   action,
   onQuote,
   secondary,
+  step,
 }: {
   action: "send" | "change" | null;
   onQuote: () => void;
   secondary?: ReactNode;
+  step: { label: string; href: string } | null;
 }) {
   return (
     <>
       {secondary}
+      {step ? (
+        <StaffButtonLink
+          variant="primary"
+          className="max-sm:flex-1"
+          href={step.href}
+          Link={Link}
+          icon={<ArrowRight aria-hidden />}
+        >
+          {step.label}
+        </StaffButtonLink>
+      ) : null}
       {action ? (
         <StaffButton
           variant="primary"
