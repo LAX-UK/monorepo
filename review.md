@@ -105,3 +105,27 @@ The card path is unaffected and no money is at risk, but this is a payment flow 
 **Tests and structure.**
 - The tests cover the reducer, the API adapter, wallet parsing, the flow, the Stripe loader, the row, the shop-identity proxy, and a browser gate with Stripe mocked.
 - The code is split cleanly into pure lib modules with ports, and reuses `cancelCheckoutOrder`, `commerceErrorMessage`, uk-postcode and the shop-commerce request helpers. There is no duplication of the existing checkout code.
+
+## Fixes after review
+
+Commit `c349e0c9` on `gap-49-express-checkout-ui`.
+
+- **B1 (option a).** A client-side `checkout.confirm` decline no longer cancels the order. The order stays bound to its session, so paying again in the sheet replays shop-api's confirm (`express:<sessionId>`); the session's expiry (and the existing reaper) releases the hold. The `cancelOrder` port and the `cancelCheckoutOrder` import are gone.
+  - `apps/shop/src/lib/checkout/express-checkout/express-checkout-flow.ts:76-79` (doc), `:124-129` (catch keeps the order; "Try again" copy only here, where retry works)
+  - `apps/shop/src/components/checkout/express-checkout-wallet.client.tsx` (no cancel port)
+  - Answers that end the session map to a new terminal result `ended`: `express-checkout-api.ts:96-101`, `:156-166` (CONFLICT, BASKET_CONFLICT, PRICE_CHANGED, 404 NOT_FOUND).
+  - Flow dispatches `ended`: `express-checkout-flow.ts:105-109`.
+  - New row state `ended` (one line, no wallet buttons, no reserved space; nothing brings the buttons back): `express-checkout-state.ts:20`, `:57-60`; rendered as one alert line in `express-checkout-wallet.client.tsx:62`.
+  - Gate: `e2e-express-checkout/express-checkout.gate.spec.ts:217` "declined, then pay again succeeds on the same session and order" (two confirms on the same session, no cancel request, lands on the confirmation); `:192` "shows no wallet buttons once the session has ended"; `:178` the bind-mismatch refusal now withdraws the buttons. Stand-ins: `fake-stripe.js:78-81` (`declined_once`), `fake-shop-identity.mjs:115-124` (`ended`, `not_checkoutable`).
+  - Unit: `express-checkout-flow.test.ts` (decline then retry pays, ended without paying), `express-checkout-state.test.ts` (ended state).
+- **N1.** Address-change network failure shows `EXPRESS_UNAVAILABLE_MESSAGE`: `express-checkout-flow.ts:59-62`; test in `express-checkout-flow.test.ts`.
+- **N2.** `shop.price_changed` maps to the not-charged terminal result with shop-api's "Your basket changed while you were paying…" message: `express-checkout-api.ts:162`.
+- **N3.** Allow-list of shop-api's three express messages (`EXPRESS_UPSTREAM_MESSAGES`, `express-checkout-api.ts:78-82`); anything else reads as `EXPRESS_NOT_CHARGED_MESSAGE` (`:116-121`). Unit test "never shows other conflict text as it is"; gate `express-checkout.gate.spec.ts:205`.
+- **N4.** Phone pattern `{7,19}` (8 to 20 characters, as Shop Identity): `express-checkout-wallet.ts:63`.
+- **N5.** Load timeout cleared on `ready`: `express-checkout-wallet.client.tsx:127`.
+
+Run after the fixes:
+
+- `apps/shop` `vitest run`: 129 files, 804 tests passed. `tsc --noEmit` and `biome check` clean.
+- Express browser gate (Stripe.js and Shop Identity stand-ins, no keys): 16 passed, 4 skipped (screenshot-only). No full `next build`.
+- Screenshots: only `details-not-charged-*` changed (the buttons are now withdrawn); regenerated and the PR body text updated to match.
