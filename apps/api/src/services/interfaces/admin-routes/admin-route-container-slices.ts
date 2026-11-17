@@ -95,7 +95,7 @@ export type AdminFinancePayoutRoutesContainer = Pick<
 export type AdminEnquiryRoutesContainer = { admin: AdminEnquiryRouteServices };
 
 export type AdminDeliveriesRoutesContainer = {
-  admin: Pick<AdminIntegrationRouteServices, "deliveries">;
+  admin: Pick<AdminIntegrationRouteServices, "deliveries" | "deliveryQuotes">;
 };
 
 export type AdminSatelliteJobQueuesRoutesContainer = AdminRoutePick<"jobQueues">;

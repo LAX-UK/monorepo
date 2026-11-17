@@ -195,6 +195,7 @@ function selectDeliveries(db: Database) {
       requestedAt: q.requestedAt,
       quotedAt: q.quotedAt,
       decidedAt: q.decidedAt,
+      declineReason: q.declineReason,
       statusSince: statusSinceSql(q, invoice).mapWith((value: string | Date) => asDate(value)),
       lotTitle: lot.title,
       lotNumber: lot.lotNumber,
@@ -269,6 +270,7 @@ function toRecord(row: Row, now: Date): AdminDeliveryRecord {
       requestedAt: row.requestedAt,
       quotedAt: row.quotedAt,
       decidedAt: row.decidedAt,
+      declineReason: row.declineReason,
     },
     lot: {
       title: row.lotTitle,

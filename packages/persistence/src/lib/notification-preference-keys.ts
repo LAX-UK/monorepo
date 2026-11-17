@@ -233,6 +233,14 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: "lot-fulfilment-update",
   },
+  /** The team cannot deliver: the buyer's answer to their request, so it follows the same switches. */
+  delivery_quote_declined: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: null,
+    template: "lot-fulfilment-update",
+  },
   /** A payout that failed or was reversed: the seller's money, so it follows the payment switches. */
   payout_problem: {
     inApp: "paymentInApp",

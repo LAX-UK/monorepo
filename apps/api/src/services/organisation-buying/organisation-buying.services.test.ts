@@ -160,7 +160,7 @@ describe("delivery quotes", () => {
   const build = () => {
     const quotes = new InMemoryDeliveryQuotes();
     const purchases = new InMemoryPurchaseFacts(undefined, quotes);
-    const notifier = { quoteReady: vi.fn(async () => {}) };
+    const notifier = { quoteReady: vi.fn(async () => {}), quoteDeclined: vi.fn(async () => {}) };
     return {
       quotes,
       notifier,
@@ -241,6 +241,102 @@ describe("delivery quotes", () => {
     });
     expect(result._unsafeUnwrapErr().code).toBe("quote_step_not_allowed");
     expect(notifier.quoteReady).not.toHaveBeenCalled();
+  });
+
+  const decline = (staff: ReturnType<typeof build>["staff"], reason = "We don't ship to Lyon") =>
+    staff.decline({ staffUserId: "staff-2", lotId: LOTS.paid, reason });
+
+  it("lets staff decline a requested or a quoted request, telling the buyer why", async () => {
+    for (const priced of [false, true]) {
+      const { buyer, staff, notifier, quotes } = build();
+      await buyer.request(actor("finance"), LOTS.paid, "12 Rue Exemple, Lyon");
+      if (priced) {
+        await staff.quote({
+          staffUserId: "staff-1",
+          lotId: LOTS.paid,
+          amount: "240.00",
+          note: null,
+        });
+      }
+      const declined = (await decline(staff))._unsafeUnwrap();
+      expect(declined).toMatchObject({
+        status: "withdrawn",
+        declineReason: "We don't ship to Lyon",
+        decidedByUserId: "staff-2",
+      });
+      expect(quotes.rows).toHaveLength(1);
+      expect(notifier.quoteDeclined).toHaveBeenCalledTimes(1);
+      expect(notifier.quoteDeclined).toHaveBeenCalledWith(declined);
+    }
+  });
+
+  it("refuses to decline an accepted, withdrawn or missing quote, and tells nobody", async () => {
+    const missing = build();
+    expect((await decline(missing.staff))._unsafeUnwrapErr()).toMatchObject({
+      code: "quote_step_not_allowed",
+      status: 409,
+    });
+
+    const accepted = build();
+    await accepted.buyer.request(actor("finance"), LOTS.paid, "12 Gallery Row, London");
+    await accepted.staff.quote({
+      staffUserId: "staff-1",
+      lotId: LOTS.paid,
+      amount: "240.00",
+      note: null,
+    });
+    await accepted.buyer.accept(actor("finance"), LOTS.paid);
+    expect((await decline(accepted.staff))._unsafeUnwrapErr().code).toBe("quote_step_not_allowed");
+    expect(accepted.quotes.rows[0]?.status).toBe("accepted");
+
+    const declinedTwice = build();
+    await declinedTwice.buyer.request(actor("finance"), LOTS.paid, "12 Gallery Row, London");
+    await decline(declinedTwice.staff);
+    expect((await decline(declinedTwice.staff, "Another reason"))._unsafeUnwrapErr().code).toBe(
+      "quote_step_not_allowed",
+    );
+    expect(declinedTwice.quotes.rows[0]?.declineReason).toBe("We don't ship to Lyon");
+    expect(declinedTwice.notifier.quoteDeclined).toHaveBeenCalledTimes(1);
+
+    for (const { notifier } of [missing, accepted]) {
+      expect(notifier.quoteDeclined).not.toHaveBeenCalled();
+    }
+  });
+
+  it("says the quote changed when the buyer moved it while staff were declining", async () => {
+    const { buyer, staff, notifier, quotes } = build();
+    await buyer.request(actor("finance"), LOTS.paid, "12 Gallery Row, London");
+    const decline = quotes.decline.bind(quotes);
+    quotes.decline = async (id, from, write) => {
+      await buyer.withdraw(actor("finance"), LOTS.paid);
+      return decline(id, from, write);
+    };
+    const result = await staff.decline({ staffUserId: "staff-2", lotId: LOTS.paid, reason: "No" });
+    expect(result._unsafeUnwrapErr().code).toBe("quote_changed");
+    expect(quotes.rows[0]?.declineReason).toBeNull();
+    expect(notifier.quoteDeclined).not.toHaveBeenCalled();
+  });
+
+  it("lets the buyer ask again after the team declined", async () => {
+    const { buyer, staff } = build();
+    await buyer.request(actor("finance"), LOTS.paid, "12 Rue Exemple, Lyon");
+    await decline(staff);
+    expect(
+      (await buyer.request(actor("finance"), LOTS.paid, "34 Gallery Row, London"))._unsafeUnwrap()
+        .status,
+    ).toBe("requested");
+  });
+
+  it("refuses a lot nobody won", async () => {
+    const notifier = { quoteReady: vi.fn(async () => {}), quoteDeclined: vi.fn(async () => {}) };
+    const staff = new StaffDeliveryQuoteService({
+      quotes: new InMemoryDeliveryQuotes(),
+      lots: { buyerAccountOf: async () => null },
+      notifier,
+    });
+    const result = await staff.decline({ staffUserId: "staff-2", lotId: LOTS.paid, reason: "No" });
+    expect(result._unsafeUnwrapErr()).toMatchObject({ code: "purchase_not_found", status: 404 });
+    expect(notifier.quoteDeclined).not.toHaveBeenCalled();
   });
 });
 

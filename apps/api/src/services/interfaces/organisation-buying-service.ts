@@ -260,6 +260,12 @@ export interface IStaffDeliveryQuoteService {
     amount: string;
     note: string | null;
   }): BuyingResult<DeliveryQuoteRow>;
+  /** Declines a requested or quoted quote ("Can't deliver"); the buyer is told the reason. */
+  decline(input: {
+    staffUserId: string;
+    lotId: string;
+    reason: string;
+  }): BuyingResult<DeliveryQuoteRow>;
 }
 
 /** How to book a collection for a purchase: email for now, self-serve once switched on. */

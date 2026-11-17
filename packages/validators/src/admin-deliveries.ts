@@ -1,4 +1,4 @@
-import { DELIVERY_STATUSES } from "@auction/domain";
+import { DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH, DELIVERY_STATUSES } from "@auction/domain";
 import { z } from "zod";
 
 /** The order of a Deliveries view: the newest request first, or the one waiting longest. */
@@ -23,3 +23,21 @@ export const adminDeliveriesListQuerySchema = z
 export type AdminDeliveriesListQuery = z.infer<typeof adminDeliveriesListQuerySchema>;
 
 export const adminDeliveryLotIdParamSchema = z.object({ lotId: z.string().uuid() });
+
+/**
+ * Staff decline a delivery quote ("Can't deliver", D8). The reason is sent to the buyer as written,
+ * trimmed; the same limits hold in the database.
+ */
+export const adminDeliveryDeclineBodySchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, "Tell the buyer why you can't deliver")
+      .max(
+        DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH,
+        `Use ${DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH} characters or fewer`,
+      ),
+  })
+  .strict();
+export type AdminDeliveryDeclineBody = z.infer<typeof adminDeliveryDeclineBodySchema>;

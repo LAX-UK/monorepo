@@ -1117,6 +1117,21 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("reads a declined quote's reason but cannot write it (0406)", async () => {
+    await withWorkerClient(async (client) => {
+      const can = async (privilege: string) =>
+        (
+          await client.query<{ allowed: boolean }>(
+            "select has_column_privilege(current_user, 'public.delivery_quote', 'decline_reason', $1) as allowed",
+            [privilege],
+          )
+        ).rows[0]?.allowed;
+      expect(await can("SELECT")).toBe(true);
+      expect(await can("UPDATE")).toBe(false);
+      expect(await can("INSERT")).toBe(false);
+    });
+  });
+
   it("reads storage terms, extensions and waivers, and never the storage audit", async () => {
     const readable = [
       "collection_storage_terms",

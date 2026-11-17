@@ -146,7 +146,7 @@ export function createAdminRoutes(
 
   attachAdminSaleroomSessionRoutes(platform, container);
   attachAdminLotFulfilmentRoutes(platform, container, guards);
-  attachAdminDeliveriesRoutes(platform, container);
+  attachAdminDeliveriesRoutes(platform, container, guards);
   attachAdminLotsCatalogRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container, guards);
