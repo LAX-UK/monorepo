@@ -252,12 +252,21 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       return err({ message: options.failureMessage, status: 400 });
     }
 
+    // What is on the block once the outcome has committed. When this lot was cleared the run order
+    // still anchors on it (the next lot is the one after it). When an advance won the race, the
+    // lot it put up is current, and the next lot must be computed from that one.
+    const lotOnBlockAfterOutcome = clearedFromBlock
+      ? null
+      : ((await this.ctx.sessionRepo.findBySaleId(input.saleId))?.currentLotId ?? null);
+    const runOrderAnchorLotId = lotOnBlockAfterOutcome ?? lotId;
+
     const eventPayload =
       options.eventKind === "hammer"
         ? (() => {
             const hammer = outcome as { winnerId: string | null; voided: boolean };
             return {
               lotId,
+              clearedFromBlock,
               lotStatus: hammer.voided ? ("voided" as const) : ("ended" as const),
               winnerId: hammer.winnerId,
               ...(hammer.voided
@@ -269,6 +278,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
           })()
         : {
             lotId,
+            clearedFromBlock,
             lotStatus: "ended" as const,
             winnerId: null,
             lotOutcome: "no_sale" as const,
@@ -284,7 +294,7 @@ export class SaleroomSessionControlService implements ISaleroomSessionControlSer
       options.eventKind,
       eventPayload,
       input.actorUserId,
-      lotId,
+      runOrderAnchorLotId,
     );
     return ok({ lotId });
   }

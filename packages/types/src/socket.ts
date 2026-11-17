@@ -72,6 +72,11 @@ export type SaleroomRealtimePayload = {
   lotStatus?: "ended" | "voided";
   winnerId?: string | null;
   lotOutcome?: "sold" | "no_sale";
+  /**
+   * Present on hammer/no_sale. True when resolving `lotId` took it off the block; false when the
+   * room had already advanced to another lot, which stays current. Older servers omit it.
+   */
+  clearedFromBlock?: boolean;
 };
 
 /** Fan-out on `display:{saleId}` via Socket.IO event `displayControl` (Redis `sale:{id}:display`). */

@@ -444,7 +444,12 @@ describe("SaleroomService lot outcome takes only its own lot off the block", () 
     };
     const lotRepo = {
       findById: vi.fn(async (id: string) => ({ id, saleId: "sale-1", status: "active" })),
-      findRunOrderRefsBySaleId: vi.fn().mockResolvedValue([]),
+      // Run order after the outcome: lot-1 has ended, lot-2 and lot-3 are still to sell.
+      findRunOrderRefsBySaleId: vi.fn().mockResolvedValue([
+        { id: "lot-1", lotNumber: 1, title: "Lot 1", status: "ended" },
+        { id: "lot-2", lotNumber: 2, title: "Lot 2", status: "active" },
+        { id: "lot-3", lotNumber: 3, title: "Lot 3", status: "active" },
+      ]),
     };
     const lotJobs = { cancelLotJobs: vi.fn().mockResolvedValue(undefined) };
     const { service, redisPublish } = createService({
@@ -497,6 +502,50 @@ describe("SaleroomService lot outcome takes only its own lot off the block", () 
         .map(([, body]) => JSON.parse(body as string) as { kind: string; lotId?: string })
         .filter((event) => event.kind === "hammer" || event.kind === "no_sale");
       expect(outcomeEvents).toEqual([expect.objectContaining({ lotId: "lot-1" })]);
+    }
+  });
+
+  it("an outcome that cleared its lot says so and names the lot after it as next", async () => {
+    for (const resolve of ["hammerCurrentLot", "noSaleCurrentLot"] as const) {
+      const { service, redisPublish } = room();
+
+      await service[resolve]({ saleId: "sale-1", actorUserId: "staff-1", lotId: "lot-1" });
+
+      const outcome = redisPublish.mock.calls
+        .map(([, body]) => JSON.parse(body as string) as Record<string, unknown>)
+        .find((event) => event.kind === "hammer" || event.kind === "no_sale");
+      expect(outcome).toMatchObject({ lotId: "lot-1", clearedFromBlock: true, nextLotId: "lot-2" });
+    }
+  });
+
+  it("a late outcome says it did not clear the block and computes next from the live lot", async () => {
+    for (const resolve of ["hammerCurrentLot", "noSaleCurrentLot"] as const) {
+      let advance: () => Promise<unknown> = async () => undefined;
+      const { service, sessionRepo, redisPublish } = room({ beforeOutcome: () => advance() });
+      advance = () =>
+        service.advanceToLot({ saleId: "sale-1", lotId: "lot-2", actorUserId: "staff-2" });
+
+      await service[resolve]({ saleId: "sale-1", actorUserId: "staff-1" });
+
+      const published = redisPublish.mock.calls.map(
+        ([, body]) => JSON.parse(body as string) as Record<string, unknown>,
+      );
+      const outcome = published.find(
+        (event) => event.kind === "hammer" || event.kind === "no_sale",
+      );
+      // lot-2 is on the block, so the next lot is lot-3, not lot-2 again.
+      expect(outcome).toMatchObject({
+        lotId: "lot-1",
+        clearedFromBlock: false,
+        nextLotId: "lot-3",
+      });
+      // The persisted event matches what was published.
+      expect(sessionRepo.appendEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: resolve === "hammerCurrentLot" ? "hammer" : "no_sale",
+          payload: expect.objectContaining({ clearedFromBlock: false, nextLotId: "lot-3" }),
+        }),
+      );
     }
   });
 
