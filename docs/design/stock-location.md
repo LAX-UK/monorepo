@@ -31,9 +31,10 @@ option so the owner can approve or change it before anything is built. Nothing h
    selected** for moving a hang or a shipment in one go. Built with the staff-ui kit, light/dark,
    375 px, with empty, loading, error and retired-location states.
 4. **Permissions.** New capabilities: `artwork_location.read` (included in `artwork_register.read`),
-   `artwork_location.move` (Fulfilment, Gallery staff, Admin) and `artwork_location.manage` for the
-   list (Admin only, recent sign-in). Every move and list change writes a LAX Admin audit row and
-   publishes `artwork_register.location_changed`.
+   `artwork_location.move` and `artwork_location.manage` for the list (Admin only, recent sign-in).
+   Every move and list change writes a LAX Admin audit row and publishes
+   `artwork_register.location_changed`. Who holds them is set in the one role table,
+   `packages/shop-domain/src/staff-capabilities.ts`; see **Roles** below.
 5. **Zoho mirror.** A new read-only Products field **`LAX_Location`** (picklist kept in step with the
    list, or text if the owner prefers not to maintain a picklist in Zoho), written by the existing
    outbound pattern: the writeback projector reads the register's current state on
@@ -48,10 +49,30 @@ option so the owner can approve or change it before anything is built. Nothing h
 7. **Out of scope for now:** locations for prints/edition stock (they keep their free-text field),
    barcode scanning, and automatic moves from shipping or collections. These can follow later.
 
+## Roles (decided 17 Nov 2026)
+
+The owner decided that the people responsible for the catalogue move artworks. The first build
+gave `artwork_location.move` to account managers ("Gallery staff") and operations ("Fulfilment");
+it now sits with the Catalogue editor instead.
+
+| LAX Admin role | Sees locations | Moves artworks (`artwork_location.move`) | Keeps the list (`artwork_location.manage`) |
+| --- | --- | --- | --- |
+| Administrator (`shop_admin`) | Yes | Yes | Yes |
+| Catalogue editor (`catalogue_editor`) | Yes, with the From Zoho register | Yes | No |
+| Read-only (`read_only`) | Yes, with the From Zoho register | No | No |
+| Account manager, Operations, Broker, Finance, Editor | No | No | No |
+
+- The Catalogue editor holds `artwork_register.read` (the From Zoho record and All artworks list,
+  where Move and Move selected sit) beside the move, so the move is always reachable.
+- shop-api refuses `POST /admin/v1/artwork-location-moves` with a 403 for every role without the
+  capability; LAX Admin hides Move and the row selection for them. Both read the same table.
+- Roles are a code table, not database rows, so the change needed no migration.
+
 ## Questions for the owner
 
 - Q35 / ZI-6: approve the controlled list + move history above, or say what "STO actions" should
   cover (for example, a fixed set of stores rather than a staff-managed list).
 - Zoho: a new `LAX_Location` field (recommended) or a different existing Products field? Picklist or
   text?
-- Who may move artworks: Fulfilment, Gallery staff and Admin as proposed?
+- ~~Who may move artworks: Fulfilment, Gallery staff and Admin as proposed?~~ Decided 17 Nov 2026:
+  Catalogue editors and Administrators (see **Roles**).

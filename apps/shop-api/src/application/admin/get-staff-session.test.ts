@@ -46,6 +46,7 @@ describe("getStaffSessionView", () => {
         "artwork_register.read",
         "artwork_register.review",
         "artwork_location.read",
+        "artwork_location.move",
       ].sort(),
     );
   });
