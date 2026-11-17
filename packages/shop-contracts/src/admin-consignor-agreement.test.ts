@@ -5,9 +5,11 @@ import {
   AdminArtworkConsignorSchema,
   AdminArtworkConsignorSetBodySchema,
   AdminConsignorAgreementCreateBodySchema,
+  AdminConsignorAgreementFileUploadBodySchema,
   AdminConsignorAgreementListSchema,
   AdminConsignorAgreementReplaceBodySchema,
   AdminConsignorAgreementRetireBodySchema,
+  CONSIGNOR_AGREEMENT_FILE_MAX_BYTES,
 } from "./admin-consignor-agreement.js";
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -40,12 +42,20 @@ const terms = {
 
 describe("consignor agreement contract", () => {
   it("accepts a list of agreements", () => {
-    expect(Value.Check(AdminConsignorAgreementListSchema, { items: [agreement] })).toBe(true);
+    expect(
+      Value.Check(AdminConsignorAgreementListSchema, {
+        party: { partyId: PARTY, displayName: "Ivo Marren" },
+        items: [agreement],
+      }),
+    ).toBe(true);
   });
 
   it("knows only the three places and the three statuses", () => {
     const check = (patch: object) =>
-      Value.Check(AdminConsignorAgreementListSchema, { items: [{ ...agreement, ...patch }] });
+      Value.Check(AdminConsignorAgreementListSchema, {
+        party: { partyId: PARTY, displayName: "Ivo Marren" },
+        items: [{ ...agreement, ...patch }],
+      });
     expect(check({ places: ["private_sale"] })).toBe(true);
     expect(check({ places: ["zoho"] })).toBe(false);
     expect(check({ places: [] })).toBe(false);
@@ -130,5 +140,22 @@ describe("artwork consignor contract", () => {
     expect(Value.Check(AdminArtworkConsignorSetBodySchema, { consignor: { kind: "client" } })).toBe(
       false,
     );
+  });
+});
+
+describe("signed file uploads", () => {
+  it("takes a PDF, JPEG or PNG of up to 20 MB", () => {
+    const body = (patch: object) =>
+      Value.Check(AdminConsignorAgreementFileUploadBodySchema, {
+        contentType: "application/pdf",
+        byteSize: 1024,
+        ...patch,
+      });
+    expect(body({})).toBe(true);
+    expect(body({ contentType: "image/png" })).toBe(true);
+    expect(body({ contentType: "image/gif" })).toBe(false);
+    expect(body({ byteSize: CONSIGNOR_AGREEMENT_FILE_MAX_BYTES })).toBe(true);
+    expect(body({ byteSize: CONSIGNOR_AGREEMENT_FILE_MAX_BYTES + 1 })).toBe(false);
+    expect(body({ byteSize: 0 })).toBe(false);
   });
 });

@@ -404,6 +404,14 @@ export function createMinimalShopApiTestDeps(
         restoreLocation: unstubbed("stockLocations.restoreLocation"),
         moveArtworks: unstubbed("stockLocations.moveArtworks"),
       },
+      consignorAgreements: {
+        list: unstubbed("consignorAgreements.list"),
+        createFileUpload: unstubbed("consignorAgreements.createFileUpload"),
+        fileLink: unstubbed("consignorAgreements.fileLink"),
+        add: unstubbed("consignorAgreements.add"),
+        replace: unstubbed("consignorAgreements.replace"),
+        retire: unstubbed("consignorAgreements.retire"),
+      },
       guestErasure: new GuestErasureService({
         read: async () => null,
         withLockedGuest: async () => null,

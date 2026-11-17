@@ -6,7 +6,7 @@ import { ShopApiError } from "../../../errors/shop-api-error.js";
 
 export async function requireClientPartyReadAccess(
   request: FastifyRequest,
-  deps: AdminRoutesDeps,
+  deps: Pick<AdminRoutesDeps, "staffReader">,
   partyId: string,
 ): Promise<void> {
   const auth = request.shopAdminAuth;

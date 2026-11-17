@@ -8,7 +8,7 @@ import { type Static, Type } from "@sinclair/typebox";
  * rather than deleted. Each original in the register names its consignor: a client, or "LAX owns
  * this work".
  *
- * No route serves these yet. The terms are checked again by `parseAgreementTerms` in
+ * Served under `/admin/v1/clients/:partyId/consignor-agreements`. The terms are checked again by `parseAgreementTerms` in
  * `artwork-register-contracts`; the limits here only stop an oversized or malformed body.
  * Amounts are whole minor units: pence, and basis points for the commission (2500 is 25 %).
  */
@@ -57,7 +57,12 @@ export type AdminConsignorAgreement = Static<typeof AdminConsignorAgreementSchem
 
 export const AdminConsignorAgreementListSchema = Type.Object(
   {
-    /** Current versions first, then retired and replaced ones, newest first. */
+    /** The consignor, so a page can name them without reading the rest of the client record. */
+    party: Type.Object(
+      { partyId: Type.String({ format: "uuid" }), displayName: Type.String() },
+      { additionalProperties: false },
+    ),
+    /** Current versions first, then retired ones, newest first. Replaced versions are left out. */
     items: Type.Array(AdminConsignorAgreementSchema),
   },
   { additionalProperties: false },
@@ -174,3 +179,66 @@ export const AdminConsignorAgreementValidationSchema = Type.Object({
 export type AdminConsignorAgreementValidation = Static<
   typeof AdminConsignorAgreementValidationSchema
 >;
+
+/** The file types a signed agreement may be, and its largest size. */
+export const CONSIGNOR_AGREEMENT_FILE_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+] as const;
+export const CONSIGNOR_AGREEMENT_FILE_MAX_BYTES = 20 * 1024 * 1024;
+
+/** Asking where to upload a signed agreement for the client; the key goes in the add body. */
+export const AdminConsignorAgreementFileUploadBodySchema = Type.Object(
+  {
+    contentType: Type.Union(CONSIGNOR_AGREEMENT_FILE_TYPES.map((type) => Type.Literal(type))),
+    byteSize: Type.Integer({ minimum: 1, maximum: CONSIGNOR_AGREEMENT_FILE_MAX_BYTES }),
+  },
+  { additionalProperties: false },
+);
+export type AdminConsignorAgreementFileUploadBody = Static<
+  typeof AdminConsignorAgreementFileUploadBodySchema
+>;
+
+export const AdminConsignorAgreementFileUploadSchema = Type.Object(
+  {
+    key: Type.String({ minLength: 1, maxLength: 512 }),
+    /** A short-lived signed PUT; send the file with exactly `requiredHeaders`. */
+    uploadUrl: Type.String(),
+    requiredHeaders: Type.Record(Type.String(), Type.String()),
+  },
+  { additionalProperties: false },
+);
+export type AdminConsignorAgreementFileUpload = Static<
+  typeof AdminConsignorAgreementFileUploadSchema
+>;
+
+/** A short-lived link to download one version's signed file. Never stored. */
+export const AdminConsignorAgreementFileLinkSchema = Type.Object(
+  {
+    url: Type.String(),
+    expiresAt: Type.String({ format: "date-time" }),
+  },
+  { additionalProperties: false },
+);
+export type AdminConsignorAgreementFileLink = Static<typeof AdminConsignorAgreementFileLinkSchema>;
+
+export const AdminConsignorAgreementVersionParamsSchema = Type.Object({
+  partyId: Type.String({ format: "uuid" }),
+  versionId: Type.String({ format: "uuid" }),
+});
+export type AdminConsignorAgreementVersionParams = Static<
+  typeof AdminConsignorAgreementVersionParamsSchema
+>;
+
+export const AdminConsignorAgreementPartyParamsSchema = Type.Object({
+  partyId: Type.String({ format: "uuid" }),
+});
+
+/** 409 of a replace or retire: a stale version also says the version the agreement is at. */
+export const AdminConsignorAgreementConflictSchema = Type.Object({
+  code: Type.String(),
+  message: Type.String(),
+  requestId: Type.Optional(Type.String()),
+  currentVersion: Type.Optional(Type.String()),
+});

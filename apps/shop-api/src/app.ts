@@ -17,6 +17,7 @@ import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artis
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
 import { registerAdminArtworkRegisterRoutes } from "./routes/admin/v1/admin-artwork-register.routes.js";
 import { registerAdminCatalogueChangeRoutes } from "./routes/admin/v1/admin-catalogue-change.routes.js";
+import { registerAdminConsignorAgreementRoutes } from "./routes/admin/v1/admin-consignor-agreement.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.js";
@@ -231,6 +232,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminCatalogueChangeRoutes(adminScope, options.deps.admin);
         void registerAdminZohoLinkRoutes(adminScope, options.deps.admin);
         void registerAdminStockLocationRoutes(adminScope, options.deps.admin);
+        void registerAdminConsignorAgreementRoutes(adminScope, options.deps.admin);
         void registerAdminReleaseAlertRoutes(adminScope, {
           summary: options.deps.admin.releaseAlertSummary,
           sends: options.deps.admin.releaseAlertSends,
