@@ -1,5 +1,6 @@
 import { moveArtworksRequestSchema } from "@auction/artwork-register-contracts";
 import {
+  AdminArtworkLocationMoveBodySchema,
   AdminArtworkLocationMoveResultSchema,
   AdminArtworkLocationParamsSchema,
   AdminArtworkLocationSchema,
@@ -173,8 +174,9 @@ export async function registerAdminStockLocationRoutes(
 
   /**
    * "Move" on a record and "Move selected" alike. Kept outside `/artwork-locations` so moving
-   * needs no recent sign-in. The body is parsed with the shared `moveArtworksRequestSchema`, so
-   * the batch limit is one rule for the route and the store.
+   * needs no recent sign-in. The schema describes the body; it is then parsed with the shared
+   * `moveArtworksRequestSchema`, so the batch limit (distinct ids) is one rule for the route and
+   * the store.
    */
   app.post(
     "/artwork-location-moves",
@@ -182,6 +184,7 @@ export async function registerAdminStockLocationRoutes(
       bodyLimit: MOVE_BODY_LIMIT,
       schema: {
         tags,
+        body: AdminArtworkLocationMoveBodySchema,
         response: { 200: AdminArtworkLocationMoveResultSchema, ...WRITE_ERRORS },
       },
     },

@@ -148,19 +148,23 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
 
   async addLocation(input: AddLocationInput): Promise<LocationWriteResult> {
     try {
-      const [row] = await this.db
-        .insert(location)
-        .values({
-          name: input.name,
-          note: input.note,
-          createdBy: input.actor,
-          createdAt: input.now,
-          updatedAt: input.now,
-        })
-        .returning();
-      if (!row) throw new Error("artwork_location insert returned no row");
-      // A new location has no artworks yet, so there is nothing to publish.
-      return { ok: true, changed: true, location: toLocation(row) };
+      // Its own transaction, a savepoint inside a caller's: a taken name rolls back to it, so the
+      // caller's transaction stays usable after the refusal.
+      return await this.db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(location)
+          .values({
+            name: input.name,
+            note: input.note,
+            createdBy: input.actor,
+            createdAt: input.now,
+            updatedAt: input.now,
+          })
+          .returning();
+        if (!row) throw new Error("artwork_location insert returned no row");
+        // A new location has no artworks yet, so there is nothing to publish.
+        return { ok: true, changed: true, location: toLocation(row) } as const;
+      });
     } catch (error) {
       if (isPgUniqueViolation(error)) return NAME_TAKEN;
       throw error;
@@ -170,6 +174,12 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
   async updateLocation(input: UpdateLocationInput): Promise<LocationWriteResult> {
     try {
       return await this.db.transaction(async (tx) => {
+        const current = await this.lockLocation(tx, input.id);
+        if (!current) return { ok: false, reason: "not_found" } as const;
+        // Saved as it was: nothing changes, so no version bump, no event for its artworks.
+        if (current.name === input.name && current.note === input.note) {
+          return { ok: true, changed: false, location: toLocation(current) } as const;
+        }
         const result = await this.writeVersioned(tx, input.id, input.expectedVersion, {
           name: input.name,
           note: input.note,
@@ -189,11 +199,7 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
     return this.db.transaction(async (tx) => {
       // Locked first: a move share-locks the location, so retiring waits for moves into it to
       // commit, and a move started after this waits and then sees the retired status.
-      const [current] = await tx
-        .select()
-        .from(location)
-        .where(eq(location.id, input.id))
-        .for("update");
+      const current = await this.lockLocation(tx, input.id);
       if (!current) return { ok: false, reason: "not_found" } as const;
       // Already so: nothing changes, so the version and the time it was retired stay true.
       if (current.status === input.status) {
@@ -386,6 +392,12 @@ export class DrizzleStockLocationStore implements IStockLocationStore {
       .where(inArray(move.registerId, [...registerIds]))
       .orderBy(move.registerId, desc(move.movedAt));
     return new Map(rows.map((row) => [row.registerId, row]));
+  }
+
+  /** The location's row, locked until the transaction ends, so list writes take turns. */
+  private async lockLocation(tx: Tx, id: string) {
+    const [row] = await tx.select().from(location).where(eq(location.id, id)).for("update");
+    return row ?? null;
   }
 
   /** Writes when the version still matches; otherwise says whether the location is gone or moved on. */

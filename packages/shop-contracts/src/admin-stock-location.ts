@@ -59,12 +59,28 @@ export const AdminStockLocationWriteResultSchema = Type.Object({
   location: AdminStockLocationSchema,
 });
 
-const LocationRefSchema = Type.Object({
+/** A location as an artwork points at it: the name, and whether it has been retired. */
+export const AdminLocationRefSchema = Type.Object({
   id: Type.String({ format: "uuid" }),
   name: Type.String(),
   status: StatusSchema,
   /** The name, marked "(retired)" when the location has been retired. */
   label: Type.String(),
+});
+
+/**
+ * "Move" on a record or "Move selected". Describes the body for the route's schema; the route
+ * still parses it with `moveArtworksRequestSchema`, so the batch limit (distinct ids, repeats
+ * counted once) and the note rules stay one shared rule. The lengths only stop an oversized body.
+ */
+export const AdminArtworkLocationMoveBodySchema = Type.Object({
+  registerIds: Type.Array(Type.String({ format: "uuid" }), {
+    minItems: 1,
+    // The route's body limit holds about 400 ids; repeats are allowed and counted once.
+    maxItems: 400,
+  }),
+  locationId: Type.String({ format: "uuid" }),
+  note: Type.Optional(Type.Union([RawText(2000), Type.Null()])),
 });
 
 export const AdminArtworkLocationMoveResultSchema = Type.Object({
@@ -92,10 +108,12 @@ export const AdminArtworkLocationSchema = Type.Object({
   label: Type.String(),
   current: Type.Union([
     Type.Object({
-      location: LocationRefSchema,
+      location: AdminLocationRefSchema,
       movedAt: Type.String({ format: "date-time" }),
       /** `staff:<user id>`. */
       movedBy: Type.String(),
+      /** The staff member's name, or null when it is not known. */
+      movedByName: Type.Union([Type.String(), Type.Null()]),
     }),
     Type.Null(),
   ]),
@@ -103,10 +121,11 @@ export const AdminArtworkLocationSchema = Type.Object({
   moves: Type.Array(
     Type.Object({
       id: Type.String({ format: "uuid" }),
-      from: Type.Union([LocationRefSchema, Type.Null()]),
-      to: LocationRefSchema,
+      from: Type.Union([AdminLocationRefSchema, Type.Null()]),
+      to: AdminLocationRefSchema,
       movedAt: Type.String({ format: "date-time" }),
       movedBy: Type.String(),
+      movedByName: Type.Union([Type.String(), Type.Null()]),
       note: Type.Union([Type.String(), Type.Null()]),
     }),
   ),
@@ -121,5 +140,7 @@ export type AdminStockLocationCreateBody = Static<typeof AdminStockLocationCreat
 export type AdminStockLocationUpdateBody = Static<typeof AdminStockLocationUpdateBodySchema>;
 export type AdminStockLocationStatusBody = Static<typeof AdminStockLocationStatusBodySchema>;
 export type AdminStockLocationWriteResult = Static<typeof AdminStockLocationWriteResultSchema>;
+export type AdminArtworkLocationMoveBody = Static<typeof AdminArtworkLocationMoveBodySchema>;
 export type AdminArtworkLocationMoveResult = Static<typeof AdminArtworkLocationMoveResultSchema>;
+export type AdminLocationRef = Static<typeof AdminLocationRefSchema>;
 export type AdminArtworkLocation = Static<typeof AdminArtworkLocationSchema>;

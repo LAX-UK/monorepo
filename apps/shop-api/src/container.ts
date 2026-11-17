@@ -838,6 +838,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           uow: shopUow,
           reads: createDrizzleStockLocationReads(db, stockLocationStoreOn),
           writesFor: createDrizzleStockLocationWritesFor(stockLocationStoreOn),
+          staffNames: createDrizzleStaffNameReader(db),
         }),
         releaseAlertSummary: shopAlerts.summary,
         printParties: createDrizzlePrintPartyStore(db),

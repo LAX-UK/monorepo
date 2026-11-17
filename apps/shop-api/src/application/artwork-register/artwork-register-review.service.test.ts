@@ -93,8 +93,16 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
   const overview: ArtworkRegisterOverview = {
     listAll: vi.fn(async () => ({
       rows: [
-        { entry: entry(), hasLaxArtDraft: true },
-        { entry: entry({ id: "b", offer: { state: "sold", ref: null } }), hasLaxArtDraft: false },
+        {
+          entry: entry(),
+          hasLaxArtDraft: true,
+          location: { id: "loc-1", name: "Framer", status: "retired" as const },
+        },
+        {
+          entry: entry({ id: "b", offer: { state: "sold", ref: null } }),
+          hasLaxArtDraft: false,
+          location: null,
+        },
       ],
       total: 2,
     })),
@@ -193,12 +201,23 @@ describe("ArtworkRegisterReviewService", () => {
       ["sold", "Sold", 1],
     ]);
     expect(list).toMatchObject({ total: 2, counts: { new: 31, decisions: 1 } });
+    // Where each one physically is, with a retired location marked.
+    expect(list.items.map((item) => item.location)).toEqual([
+      { id: "loc-1", name: "Framer", status: "retired", label: "Framer (retired)" },
+      null,
+    ]);
   });
 
   it("keeps a withdrawn record reading Withdrawn in the list, whatever its age", async () => {
     const { service: s, deps } = service();
     vi.mocked(deps.overview.listAll).mockResolvedValue({
-      rows: [{ entry: entry({ offer: { state: "withdrawn", ref: null } }), hasLaxArtDraft: false }],
+      rows: [
+        {
+          entry: entry({ offer: { state: "withdrawn", ref: null } }),
+          hasLaxArtDraft: false,
+          location: null,
+        },
+      ],
       total: 1,
     });
     const list = await s.listAll({});
@@ -207,9 +226,9 @@ describe("ArtworkRegisterReviewService", () => {
 
   it("passes the artist, place and page offset to the overview", async () => {
     const { service: s, deps } = service();
-    await s.listAll({ artist: "PH", place: "sold", page: 2 });
+    await s.listAll({ artist: "PH", place: "sold", location: "none", page: 2 });
     expect(deps.overview.listAll).toHaveBeenCalledWith(
-      { artistCode: "PH", place: "sold" },
+      { artistCode: "PH", place: "sold", location: "none" },
       { limit: 25, offset: 25 },
     );
     expect(deps.overview.countPlaces).toHaveBeenCalledWith("PH");

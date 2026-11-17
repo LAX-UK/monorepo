@@ -1,9 +1,7 @@
 import {
-  type CurrentLocation,
   LOCATION_NAME_MAX,
   LOCATION_NOTE_MAX,
   type LocationMove,
-  type LocationRef,
   type LocationStatus,
   MOVE_BATCH_MAX,
   MOVE_NOTE_MAX,
@@ -11,7 +9,6 @@ import {
   type StockLocation,
   type TextRefusal,
   currentLocationLabel,
-  locationLabel,
   parseLocationName,
   parseLocationNote,
   parseMoveNote,
@@ -27,11 +24,13 @@ import type { ShopStaffCapability } from "@auction/shop-domain";
 import { ShopApiError } from "../../errors/shop-api-error.js";
 import { withAdminIdempotency } from "../admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../ports/shop-unit-of-work.js";
+import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import type {
   StockLocationReads,
   StockLocationWriteResult,
   StockLocationWritesFor,
 } from "../ports/stock-location.ports.js";
+import { presentLocationRef } from "./location-ref.presenter.js";
 
 /** How many moves the Location panel shows; older ones are flagged with `moreMoves`. */
 export const LOCATION_HISTORY_LIMIT = 100;
@@ -45,8 +44,12 @@ export type StockLocationServiceDeps = {
   uow: ShopUnitOfWorkFactory;
   reads: StockLocationReads;
   writesFor: StockLocationWritesFor;
+  /** Who moved each artwork, by name; a person without one reads as LAX staff on the page. */
+  staffNames: StaffNameReader;
   clock?: () => Date;
 };
+
+const STAFF_PREFIX = "staff:";
 
 const iso = (date: Date) => date.toISOString();
 
@@ -63,35 +66,41 @@ function presentLocation(location: StockLocation): AdminStockLocation {
   };
 }
 
-const presentRef = (ref: LocationRef) => ({
-  id: ref.id,
-  name: ref.name,
-  status: ref.status,
-  label: locationLabel(ref),
-});
-
+/**
+ * Where the artwork is and has been, from one read of its moves: the current location is the
+ * newest move, so the panel's "now" and the top of its history can never disagree.
+ */
 function presentArtworkLocation(
   registerId: string,
-  current: CurrentLocation | null,
   moves: LocationMove[],
+  names: ReadonlyMap<string, string>,
 ): AdminArtworkLocation {
   const shown = moves.slice(0, LOCATION_HISTORY_LIMIT);
+  const nameOf = (movedBy: string) =>
+    movedBy.startsWith(STAFF_PREFIX)
+      ? (names.get(movedBy.slice(STAFF_PREFIX.length)) ?? null)
+      : null;
+  const latest = shown[0];
   return {
     registerId,
-    label: currentLocationLabel(current),
-    current: current
+    label: currentLocationLabel(
+      latest ? { location: latest.to, movedAt: latest.movedAt, movedBy: latest.movedBy } : null,
+    ),
+    current: latest
       ? {
-          location: presentRef(current.location),
-          movedAt: iso(current.movedAt),
-          movedBy: current.movedBy,
+          location: presentLocationRef(latest.to),
+          movedAt: iso(latest.movedAt),
+          movedBy: latest.movedBy,
+          movedByName: nameOf(latest.movedBy),
         }
       : null,
     moves: shown.map((move) => ({
       id: move.id,
-      from: move.from ? presentRef(move.from) : null,
-      to: presentRef(move.to),
+      from: move.from ? presentLocationRef(move.from) : null,
+      to: presentLocationRef(move.to),
       movedAt: iso(move.movedAt),
       movedBy: move.movedBy,
+      movedByName: nameOf(move.movedBy),
       note: move.note,
     })),
     moreMoves: moves.length > LOCATION_HISTORY_LIMIT,
@@ -205,11 +214,15 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
     /** Where the artwork is now and where it has been; null when it is not on the register. */
     async artworkLocation(registerId: string): Promise<AdminArtworkLocation | null> {
       if (!(await deps.reads.registerExists(registerId))) return null;
-      const [current, moves] = await Promise.all([
-        deps.reads.currentLocation(registerId),
-        deps.reads.listMoves(registerId, LOCATION_HISTORY_LIMIT + 1),
-      ]);
-      return presentArtworkLocation(registerId, current, moves);
+      // One more than is shown, to know whether older moves exist.
+      const moves = await deps.reads.listMoves(registerId, LOCATION_HISTORY_LIMIT + 1);
+      const staffIds = moves
+        .slice(0, LOCATION_HISTORY_LIMIT)
+        .map((move) => move.movedBy)
+        .filter((movedBy) => movedBy.startsWith(STAFF_PREFIX))
+        .map((movedBy) => movedBy.slice(STAFF_PREFIX.length));
+      const names = await deps.staffNames.namesFor([...new Set(staffIds)]);
+      return presentArtworkLocation(registerId, moves, names);
     },
 
     async addLocation(
@@ -279,16 +292,19 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
               now: now(),
             });
             if (!result.ok) refuseListWrite(result);
-            await tx.audit.append({
-              actorSubjectId: command.actorSubjectId,
-              capability: MANAGE,
-              action: "artwork_location.update",
-              targetType: "artwork_location",
-              targetId: result.location.id,
-              ...(before ? { beforeJson: auditView(before) } : {}),
-              afterJson: auditView(result.location),
-            });
-            return { changed: true, location: presentLocation(result.location) };
+            // Saved as it was: nothing was written, so there is nothing to audit.
+            if (result.changed) {
+              await tx.audit.append({
+                actorSubjectId: command.actorSubjectId,
+                capability: MANAGE,
+                action: "artwork_location.update",
+                targetType: "artwork_location",
+                targetId: result.location.id,
+                ...(before ? { beforeJson: auditView(before) } : {}),
+                afterJson: auditView(result.location),
+              });
+            }
+            return { changed: result.changed, location: presentLocation(result.location) };
           },
         }),
       );

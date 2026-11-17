@@ -23,7 +23,10 @@ export interface IStockLocationReader {
 }
 
 export type LocationWriteResult =
-  /** `changed` is false when the location was already so (retiring a retired one): nothing written. */
+  /**
+   * `changed` is false when the location was already so (retiring a retired one, or saving the
+   * name and note it has): nothing written.
+   */
   | { ok: true; changed: boolean; location: StockLocation }
   | { ok: false; reason: "not_found" | "stale" | "name_taken" };
 
@@ -79,11 +82,15 @@ export type MoveArtworksResult =
  * exists without the others; a list change and its events are one transaction too.
  */
 export interface IStockLocationWriter {
-  /** False with `name_taken` when another location already has the name, ignoring case. */
+  /**
+   * False with `name_taken` when another location already has the name, ignoring case. Runs in
+   * a savepoint of its own, so a caller's transaction stays usable after that refusal.
+   */
   addLocation(input: AddLocationInput): Promise<LocationWriteResult>;
   /**
    * Renames a location or changes its note. Moves keep pointing at it, so history reads the new
-   * name. Publishes `location_changed` (`location_updated`) for every artwork at it.
+   * name. Publishes `location_changed` (`location_updated`) for every artwork at it. Saving the
+   * name and note it already has changes nothing: no version bump, no event, `changed: false`.
    */
   updateLocation(input: UpdateLocationInput): Promise<LocationWriteResult>;
   /**

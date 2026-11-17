@@ -52,6 +52,7 @@ const artworkLocation = {
     location: { id: LOCATION_ID, name: "Store room", status: "active", label: "Store room" },
     movedAt: "2026-11-17T09:00:00.000Z",
     movedBy: "staff:someone",
+    movedByName: "Ana Ruiz",
   },
   moves: [],
   moreMoves: false,
@@ -311,6 +312,17 @@ describe("move requests", () => {
   ])("refuses %s", async (_label, payload) => {
     const { response, stockLocations } = await move(payload);
     expect(response.statusCode).toBe(400);
+    expect(stockLocations.moveArtworks).not.toHaveBeenCalled();
+  });
+
+  it("refuses more ids than the route's body schema allows, even one artwork repeated", async () => {
+    // The batch rule counts a repeat once, so only the body schema refuses this.
+    const { response, stockLocations } = await move({
+      registerIds: Array(401).fill(REGISTER_ID),
+      locationId: LOCATION_ID,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.VALIDATION });
     expect(stockLocations.moveArtworks).not.toHaveBeenCalled();
   });
 

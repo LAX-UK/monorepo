@@ -1,7 +1,12 @@
 import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
-import { artworkRegister as register, shopArtwork } from "@auction/db/schema";
-import { REGISTER_PLACE_VALUES } from "@auction/shop-contracts";
+import {
+  artworkLocation,
+  artworkLocationMove,
+  artworkRegister as register,
+  shopArtwork,
+} from "@auction/db/schema";
+import { REGISTER_LOCATION_NONE, REGISTER_PLACE_VALUES } from "@auction/shop-contracts";
 import { type SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
 import type {
   ArtworkRegisterOverview,
@@ -28,16 +33,35 @@ const PLACE_CONDITION: Record<NonNullable<RegisterOverviewFilter["place"]>, SQL>
   sold: sql`${register.offerState} = 'sold'`,
 };
 
+/**
+ * Where the artwork physically is: the location of its latest move (one index probe on
+ * `artwork_location_move (register_id, moved_at)`), null when none is recorded.
+ */
+const CURRENT_LOCATION_ID = sql<string | null>`(
+  SELECT ${artworkLocationMove.locationId} FROM ${artworkLocationMove}
+   WHERE ${artworkLocationMove.registerId} = ${register.id}
+   ORDER BY ${artworkLocationMove.movedAt} DESC
+   LIMIT 1
+)`;
+
+function locationCondition(location: string): SQL {
+  return location === REGISTER_LOCATION_NONE
+    ? sql`${CURRENT_LOCATION_ID} IS NULL`
+    : sql`${CURRENT_LOCATION_ID} = ${location}`;
+}
+
 function conditionOf(filter: RegisterOverviewFilter): SQL | undefined {
   return and(
     filter.artistCode ? eq(register.artistCode, filter.artistCode) : undefined,
     filter.place ? PLACE_CONDITION[filter.place] : undefined,
+    filter.location ? locationCondition(filter.location) : undefined,
   );
 }
 
 /**
  * The register joined to the lax.art listing made from each record, so the All list can say
- * "Draft on lax.art" and filter by it in one query.
+ * "Draft on lax.art" and filter by it in one query, and to the location of each record's latest
+ * move, for its Location column and filter.
  */
 export function createDrizzleRegisterOverviewReader(
   db: Database,
@@ -48,9 +72,16 @@ export function createDrizzleRegisterOverviewReader(
       const where = conditionOf(filter);
       const [rows, [counted]] = await Promise.all([
         db
-          .select({ entry: register, hasDraft: sql<boolean>`${HAS_DRAFT}` })
+          .select({
+            entry: register,
+            hasDraft: sql<boolean>`${HAS_DRAFT}`,
+            locationId: artworkLocation.id,
+            locationName: artworkLocation.name,
+            locationStatus: artworkLocation.status,
+          })
           .from(register)
           .leftJoin(shopArtwork, LISTING_JOIN)
+          .leftJoin(artworkLocation, eq(artworkLocation.id, CURRENT_LOCATION_ID))
           .where(where)
           .orderBy(sql`${register.zohoModifiedAt} DESC NULLS LAST`, asc(register.id))
           .limit(page.limit)
@@ -62,7 +93,14 @@ export function createDrizzleRegisterOverviewReader(
           .where(where),
       ]);
       return {
-        rows: rows.map((row) => ({ entry: toEntry(row.entry), hasLaxArtDraft: row.hasDraft })),
+        rows: rows.map((row) => ({
+          entry: toEntry(row.entry),
+          hasLaxArtDraft: row.hasDraft,
+          location:
+            row.locationId && row.locationName && row.locationStatus
+              ? { id: row.locationId, name: row.locationName, status: row.locationStatus }
+              : null,
+        })),
         total: counted?.total ?? 0,
       };
     },

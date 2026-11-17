@@ -1,5 +1,5 @@
 import { MOVE_BATCH_MAX, type NewArtworkRegisterEntry } from "@auction/artwork-register-contracts";
-import { createDb } from "@auction/db";
+import { type Database, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DrizzleArtworkRegisterRepository, DrizzleStockLocationStore } from "./index.js";
@@ -499,6 +499,68 @@ describe.skipIf(!url)("stock location (Postgres)", { timeout: 30_000 }, () => {
         "moved",
         "location_retired",
       ]);
+    });
+    it("changes nothing when a location is saved with the name and note it has", async () => {
+      const work = await artwork(1);
+      const room = await add("Store room");
+      await store.moveArtworks({
+        registerIds: [work.id],
+        locationId: room.id,
+        note: null,
+        actor: STAFF,
+        now: T0,
+      });
+      const same = await store.updateLocation({
+        id: room.id,
+        expectedVersion: room.version,
+        name: "Store room",
+        note: null,
+        now: T1,
+      });
+      expect(same).toEqual({ ok: true, changed: false, location: room });
+      expect((await store.findLocation(room.id))?.version).toBe(room.version);
+      expect((await locationEvents(work.id)).map((e) => e.reason)).toEqual(["moved"]);
+      // A change of case is a change.
+      const recased = await store.updateLocation({
+        id: room.id,
+        expectedVersion: room.version,
+        name: "Store Room",
+        note: null,
+        now: T1,
+      });
+      expect(recased).toMatchObject({ ok: true, changed: true, location: { version: 2 } });
+      expect(
+        await store.updateLocation({
+          id: "00000000-0000-4000-8000-000000000000",
+          expectedVersion: 1,
+          name: "Store room",
+          note: null,
+          now: T1,
+        }),
+      ).toEqual({ ok: false, reason: "not_found" });
+    });
+
+    it("keeps a caller's transaction usable after refusing a taken name", async () => {
+      await add("Store room");
+      const after = await db.transaction(async (tx) => {
+        const refused = await new DrizzleStockLocationStore(tx as unknown as Database).addLocation({
+          name: "store room",
+          note: null,
+          actor: STAFF,
+          now: T1,
+        });
+        expect(refused).toEqual({ ok: false, reason: "name_taken" });
+        // Without the store's savepoint Postgres refuses this: the transaction is aborted.
+        const added = await new DrizzleStockLocationStore(tx as unknown as Database).addLocation({
+          name: "Framer",
+          note: null,
+          actor: STAFF,
+          now: T1,
+        });
+        return added.ok;
+      });
+      expect(after).toBe(true);
+      expect((await store.listLocations()).map((l) => l.name)).toEqual(["Framer", "Store room"]);
     });
   });
 
