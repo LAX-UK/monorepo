@@ -235,8 +235,9 @@ export async function seedZohoMirrorBadgeFixtures(
       `[${ZOHO_MIRROR_BADGE_SEED}] refusing to seed: the database is marked "${target.environment}", not a hermetic local one`,
     );
   }
-  // A month back, so the fixtures sit below the records the other checks open from the lists.
-  const at = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  // 29 days back: below the records the other checks open from the lists, yet inside the Orders
+  // summary's 30-day window (today and the 29 days before it), so its numbers count them.
+  const at = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
   const created = await seedKind(db, ORDERS, at, now);
   const createdArtworks = await seedKind(db, ARTWORKS, at, now);
   return {

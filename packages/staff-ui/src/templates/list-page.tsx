@@ -53,6 +53,13 @@ export type ListPageTable<T> = Omit<
   };
   /** Columns that start hidden; the person can show them from "Display". */
   defaultHiddenColumns?: readonly string[];
+  /**
+   * The column ids this list had while browsers saved column choices as a plain array (before a
+   * choice recorded which columns it knew). Give it when a column has been added since, above
+   * all a default-hidden one: that column then takes its default for people with an older saved
+   * choice instead of showing unasked. Leave it out and an old array is read as it always was.
+   */
+  legacyColumnIds?: readonly string[];
   /** Columns that can never be hidden; defaults to the first. */
   lockedColumns?: readonly string[];
   /** Compact for text-only lists, comfortable for lists with thumbnails. */
@@ -204,6 +211,7 @@ export function ListPage<T>({
     label,
     rowActions,
     defaultHiddenColumns,
+    legacyColumnIds,
     lockedColumns,
     defaultDensity = "compact",
     columns: allColumns,
@@ -234,7 +242,10 @@ export function ListPage<T>({
         {secondaryActions}
       </>
     ) : null;
-  const visibility = useColumnVisibility(listKey, defaultHiddenColumns);
+  const visibility = useColumnVisibility(listKey, defaultHiddenColumns, {
+    columnIds: allColumns.map((column) => column.id),
+    ...(legacyColumnIds ? { legacyColumnIds } : {}),
+  });
   const locked = lockedColumns ?? (allColumns[0] ? [allColumns[0].id] : []);
   const shown = visibleColumns(allColumns, visibility.hidden, locked);
   const columns = rowActions

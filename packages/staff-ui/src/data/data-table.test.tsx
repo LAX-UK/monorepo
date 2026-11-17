@@ -497,6 +497,8 @@ describe("DataTable phone cards", () => {
     const [first, second] = within(list).getAllByRole("listitem");
     const note = within(first as HTMLElement).getByText("A long note that should wrap, not be cut");
     expect(note).toHaveClass("break-words");
+    // Tests outside the kit find the line by its slot.
+    expect(note).toHaveAttribute("data-mobile-slot", "detail");
     expect(note).not.toHaveClass("truncate");
     // An empty detail takes no line.
     expect(second?.querySelector(".break-words")).toBeNull();

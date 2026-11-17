@@ -55,6 +55,11 @@ const DRY_RUN = "6c1c2d3e-0000-4000-8000-000000000004";
 const UNPAID = "6c1c2d3e-0000-4000-8000-000000000005";
 const IDS = [MIRRORED, SENDING, FAILED, DRY_RUN, UNPAID];
 const COLUMNS_KEY = "staff.columns.orders";
+/** A saved choice that shows every column, in the form Display writes. */
+const ALL_SHOWN = JSON.stringify({
+  hidden: [],
+  known: ["order", "status", "buyer", "total", "created", "zoho"],
+});
 
 function row(orderId: string, n: number) {
   return {
@@ -133,6 +138,19 @@ describe("the Orders list's Zoho column (Z1, TBL-12)", () => {
     expect(load).not.toHaveBeenCalled();
   });
 
+  it("stays hidden, with no read, for someone who saved a column choice before it existed", async () => {
+    // Saved before the Zoho column, in the old plain-array form: they had hidden Buyer.
+    window.localStorage.setItem(COLUMNS_KEY, '["buyer"]');
+    const load = vi.fn<Load>(async () => CELLS);
+    renderList(load);
+    await act(async () => {});
+    expect(within(grid()).queryByRole("columnheader", { name: "Zoho" })).toBeNull();
+    // Their own choice still stands.
+    expect(within(grid()).queryByRole("columnheader", { name: "Buyer" })).toBeNull();
+    expect(within(grid()).getByRole("columnheader", { name: /Total/ })).toBeVisible();
+    expect(load).not.toHaveBeenCalled();
+  });
+
   it("can be shown from Display, and then reads the page's badges once", async () => {
     const load = vi.fn<Load>(async () => CELLS);
     renderList(load);
@@ -146,11 +164,13 @@ describe("the Orders list's Zoho column (Z1, TBL-12)", () => {
     expect(load).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledWith("order", IDS);
     // Remembered in this browser (TBL-12).
-    expect(JSON.parse(window.localStorage.getItem(COLUMNS_KEY) ?? "null")).toEqual([]);
+    expect(JSON.parse(window.localStorage.getItem(COLUMNS_KEY) ?? "null")).toEqual(
+      JSON.parse(ALL_SHOWN),
+    );
   });
 
   it("shows each order's badge with the record's label, tone and cue, and nothing for one with nothing to mirror", async () => {
-    window.localStorage.setItem(COLUMNS_KEY, "[]");
+    window.localStorage.setItem(COLUMNS_KEY, ALL_SHOWN);
     renderList(async () => CELLS);
     const expected = [
       ["LAX-S-1001", "Mirrored to Zoho", "success", "check"],
@@ -171,11 +191,54 @@ describe("the Orders list's Zoho column (Z1, TBL-12)", () => {
   });
 
   it("stays blank, claiming nothing, when the read fails", async () => {
-    window.localStorage.setItem(COLUMNS_KEY, "[]");
+    window.localStorage.setItem(COLUMNS_KEY, ALL_SHOWN);
     const load = vi.fn<Load>(async () => null);
     renderList(load);
     await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
     await act(async () => {});
     expect(within(grid()).queryByText(/to Zoho|Not in Zoho|Zoho dry run/)).toBeNull();
+  });
+
+  it("shows a quiet placeholder, not the 'None' dash, while the badges are on their way", async () => {
+    window.localStorage.setItem(COLUMNS_KEY, ALL_SHOWN);
+    const load = vi.fn<Load>(() => new Promise(() => {}));
+    renderList(load);
+    await waitFor(() => expect(load).toHaveBeenCalledTimes(1));
+    const zohoIndex = within(grid())
+      .getAllByRole("columnheader")
+      .findIndex((header) => header.textContent?.trim() === "Zoho");
+    expect(zohoIndex).toBeGreaterThan(-1);
+    const zohoCell = tableRow("LAX-S-1001").children[zohoIndex] as HTMLElement;
+    expect(zohoCell.querySelector(".lax-skeleton")).not.toBeNull();
+    expect(within(zohoCell).queryByText("—")).toBeNull();
+  });
+
+  describe("at a phone's width", () => {
+    beforeEach(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 375 });
+      window.dispatchEvent(new Event("resize"));
+    });
+    afterEach(() => {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: 1024 });
+    });
+
+    it("gives the badge a line of its own under the order number, not the buyer and total line", async () => {
+      window.localStorage.setItem(COLUMNS_KEY, ALL_SHOWN);
+      renderList(async () => CELLS);
+      const list = screen.getByRole("list", { name: /orders/i });
+      const card = within(list).getByText("LAX-S-1001").closest("li") as HTMLElement;
+      const badge = await within(card).findByText("Mirrored to Zoho");
+      const line = badge.closest("[data-mobile-slot]") as HTMLElement;
+      expect(line).toHaveAttribute("data-mobile-slot", "detail");
+      // Nothing else shares the line.
+      expect(line.textContent).toBe("Mirrored to Zoho");
+      const meta = card.querySelector('[data-mobile-slot="meta"]') as HTMLElement;
+      expect(meta).not.toBeNull();
+      expect(within(meta).queryByText(/Zoho/)).toBeNull();
+      // Order number, then the badge, then the buyer and total.
+      const order = within(card).getByText("LAX-S-1001");
+      expect(order.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(line.compareDocumentPosition(meta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
   });
 });

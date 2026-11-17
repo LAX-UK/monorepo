@@ -75,6 +75,12 @@ const ORDERS_LIST_KEY = "lax-admin.orders";
 /** Z1: the Zoho column is there for whoever wants it, hidden until shown from Display (TBL-12). */
 const DEFAULT_HIDDEN_COLUMNS = ["zoho"] as const;
 
+/**
+ * The columns Orders had before the Zoho column. A browser that saved a column choice back then
+ * kept a plain array of hidden ids; read against these, the Zoho column stays hidden for it.
+ */
+const LEGACY_COLUMN_IDS = ["order", "status", "buyer", "total", "created"] as const;
+
 const STATUS_VIEWS = ["paid", "pending_payment", "partially_refunded", "refunded"] as const;
 
 /** The created-date presets, counted in whole UK days ending today. */
@@ -394,6 +400,7 @@ export function OrderList({
           // The first cell carries a second line, which needs 44px rows.
           defaultDensity: "comfortable",
           defaultHiddenColumns: DEFAULT_HIDDEN_COLUMNS,
+          legacyColumnIds: LEGACY_COLUMN_IDS,
           defaultSort: ORDER_DEFAULT_SORT,
           // The sort orders the page already loaded; it is in the URL so Back keeps it.
           sort,

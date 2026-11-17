@@ -3,6 +3,7 @@ import { ZOHO_MIRROR_CONSUMER } from "@auction/types";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
+import { ORDER_SUMMARY_DAYS, ukDayKeys } from "../../application/admin-order-summary.js";
 import {
   ZOHO_MIRROR_FIXTURE_ARTWORKS,
   ZOHO_MIRROR_FIXTURE_ORDERS,
@@ -98,5 +99,24 @@ describe("seed:zoho-mirror-badge, the artwork record's fixtures", () => {
     expect(into(writes, "domain_events")).toHaveLength(0);
     expect(into(writes, "domain_event_delivery")).toHaveLength(0);
     expect(result).toMatchObject({ created: [], createdArtworks: [] });
+  });
+});
+
+describe("seed:zoho-mirror-badge, when the fixture orders were placed", () => {
+  it("dates them inside the Orders summary's window, so its numbers count them", async () => {
+    const now = new Date("2026-11-17T08:00:00.000Z");
+    const { db, writes } = fakeDb();
+    await seedZohoMirrorBadgeFixtures(db, { databaseUrl: LOCAL_URL }, now);
+    const window = new Set(ukDayKeys(now, ORDER_SUMMARY_DAYS));
+    const orders = into(writes, "shop_order");
+    expect(orders).toHaveLength(Object.keys(ZOHO_MIRROR_FIXTURE_ORDERS).length);
+    for (const write of orders) {
+      const dates = write.params.filter((param): param is Date => param instanceof Date);
+      expect(dates.length).toBeGreaterThan(0);
+      for (const date of dates) {
+        const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(date);
+        expect(window.has(day)).toBe(true);
+      }
+    }
   });
 });
