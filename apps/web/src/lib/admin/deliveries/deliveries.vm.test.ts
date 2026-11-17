@@ -141,6 +141,10 @@ describe("addresses", () => {
     expect(tabs[3]?.href).toBe("/admin/deliveries?q=Cork&view=on_the_way");
   });
 
+  it("leaves the counts out when they did not load, rather than showing zeros", () => {
+    expect(deliveryTabs({}, null).every((tab) => tab.count === undefined)).toBe(true);
+  });
+
   it("pages forward and back only when there is more than one page", () => {
     expect(deliveriesPagination({}, { offset: 0, limit: 50, total: 3, itemCount: 3 })).toBeNull();
     expect(deliveriesPagination({}, { offset: 0, limit: 50, total: 120, itemCount: 50 })).toEqual({

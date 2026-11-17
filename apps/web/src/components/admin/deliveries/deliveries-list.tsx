@@ -200,7 +200,7 @@ export function DeliveriesList(props: DeliveriesListProps) {
               id: tab.id,
               label: tab.label,
               href: tab.href,
-              count: tab.count,
+              ...(tab.count !== undefined ? { count: tab.count } : {}),
             }))}
             activeId={filters.view}
             Link={ListLink}

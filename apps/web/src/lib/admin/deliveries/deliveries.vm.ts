@@ -101,7 +101,8 @@ export function lotFulfilmentHref(lotId: string): string {
   return `/admin/lot-fulfilment?lot=${encodeURIComponent(lotId)}`;
 }
 
-export type DeliveryTab = { id: DeliveryStatus; label: string; href: string; count: number };
+/** `count` is left out when the counts did not load, so a failed read never shows zeros. */
+export type DeliveryTab = { id: DeliveryStatus; label: string; href: string; count?: number };
 
 /** The six view tabs (TBL-6), each with how many deliveries it holds for the search and sale. */
 export function deliveryTabs(
@@ -112,7 +113,7 @@ export function deliveryTabs(
     id,
     label: DELIVERIES_COPY.views[id],
     href: deliveriesHref(current, { view: id }),
-    count: counts?.[id] ?? 0,
+    ...(counts ? { count: counts[id] } : {}),
   }));
 }
 
