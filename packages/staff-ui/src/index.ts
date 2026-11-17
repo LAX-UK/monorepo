@@ -124,7 +124,7 @@ export type { StepItem, StepState } from "./display/step-list.js";
 export type { ChecklistItem } from "./display/checklist.js";
 export type { IssueItem } from "./display/issue-list.js";
 export type { AttentionItem } from "./display/attention-list.js";
-export type { TimelineEvent } from "./display/timeline.js";
+export type { TimelineEvent, UndatedTimelineEvent } from "./display/timeline.js";
 export {
   AccessDeniedState,
   EmptyState,
@@ -328,7 +328,13 @@ export type {
 } from "./data/types.js";
 
 // Panels
-export { DetailPanel, OPEN_FULL_PAGE_LABEL, PanelSection } from "./panels/detail-panel.js";
+export {
+  BesidePanelInset,
+  useBesidePanelWidth,
+  DetailPanel,
+  OPEN_FULL_PAGE_LABEL,
+  PanelSection,
+} from "./panels/detail-panel.js";
 export type { DetailPanelProps, PanelMetaFact } from "./panels/detail-panel.js";
 export { useQueuePanel } from "./panels/queue-panel.js";
 export type { PanelQueue, QueuePanelOptions, QueuePanelState } from "./panels/queue-panel.js";
@@ -367,6 +373,7 @@ export {
 } from "./shell/theme.js";
 export type { OverflowAction } from "./shell/overflow-menu.js";
 export { resolveActiveItem } from "./shell/sidebar-nav.js";
+export { navCountText } from "./shell/nav-count.js";
 export { PlainLink } from "@auction/ui/lax";
 export type {
   LinkComponent as StaffLinkComponent,

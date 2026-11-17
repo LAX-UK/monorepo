@@ -21,6 +21,8 @@ type Props = {
   currentUserId: string | null;
   watching: boolean;
   isAuthenticated: boolean;
+  /** The viewer's watched lots, for each work's save heart. */
+  watchedLotIds: readonly string[];
 };
 
 /** The artist's works: "On sale" and "Past results" as tabs, each a real address. */
@@ -33,6 +35,7 @@ export function ArtistWorksSection({
   currentUserId,
   watching,
   isAuthenticated,
+  watchedLotIds,
 }: Props) {
   const lots = activeTab === "results" ? works.results : works.onSale;
   const label = activeTab === "results" ? "Past results" : "On sale";
@@ -60,7 +63,12 @@ export function ArtistWorksSection({
             listName={`Artist works: ${label}`}
             itemIds={lots.map((l) => l.id)}
           />
-          <ArtistWorksGrid lots={lots} currentUserId={currentUserId} label={label} />
+          <ArtistWorksGrid
+            lots={lots}
+            currentUserId={currentUserId}
+            label={label}
+            watch={{ isAuthenticated, watchedLotIds, loginNextPath: profilePath }}
+          />
         </>
       ) : activeTab === "results" ? (
         <ArtistResultsEmptyState artistName={artistName} />

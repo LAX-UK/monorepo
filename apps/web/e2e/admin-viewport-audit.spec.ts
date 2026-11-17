@@ -40,6 +40,7 @@ const QUEUE_PANELS = [
     param: "payment",
   },
   { name: "lot fulfilment", path: "/admin/lot-fulfilment", param: "lot" },
+  { name: "deliveries", path: "/admin/deliveries", param: "record" },
   { name: "condition reports", path: "/admin/condition-reports", param: "request" },
   { name: "invitations", path: "/admin/invitations", param: "invitation" },
   { name: "audit", path: "/admin/audit", param: "event" },

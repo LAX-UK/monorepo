@@ -17,6 +17,16 @@ export type TimelineEvent = {
   tone?: StaffStatusTone | "live";
 };
 
+/**
+ * A step whose time nothing recorded: it keeps its place in the story and says so ("Time not
+ * recorded") instead of showing a time made up from something else.
+ */
+export type UndatedTimelineEvent = Omit<TimelineEvent, "at"> & {
+  at: null;
+  /** Said where the time would be: "Time not recorded". */
+  noTime: string;
+};
+
 const dotTone: Record<StaffStatusTone | "live", string> = {
   neutral: "bg-staff-neutral-dot",
   info: "bg-staff-info-dot",
@@ -37,7 +47,7 @@ export function Timeline({
   empty = "Nothing has happened yet.",
   className,
 }: {
-  events: readonly TimelineEvent[];
+  events: readonly (TimelineEvent | UndatedTimelineEvent)[];
   label: string;
   empty?: string;
   className?: string;
@@ -69,7 +79,11 @@ export function Timeline({
             ) : null}
             <p className="mt-0.5 text-staff-xs text-staff-subtle">
               {event.actor ? <span>{event.actor} · </span> : null}
-              <time dateTime={event.at}>{formatStaffDateTime(event.at)}</time>
+              {event.at !== null ? (
+                <time dateTime={event.at}>{formatStaffDateTime(event.at)}</time>
+              ) : (
+                <span>{event.noTime}</span>
+              )}
             </p>
           </div>
         </li>
