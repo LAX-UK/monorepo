@@ -1,6 +1,7 @@
 import {
   BOOKED_UNPAID,
   COLLECTED,
+  DECLINED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
   REFUNDED,
@@ -29,6 +30,47 @@ function renderPanel(row = deliveryFixture(), canWork = true) {
 }
 
 describe("DeliveryPanel", () => {
+  it("shows a declined request as Declined by LAX, with the reason the buyer was told", () => {
+    const panel = renderPanel(DECLINED);
+    expect(panel.getAllByText("Declined by LAX").length).toBeGreaterThanOrEqual(2);
+    expect(panel.getByText("Reason given to the buyer")).toBeVisible();
+    expect(panel.getByText("We can't insure a framed work of this size to Lyon.")).toBeVisible();
+    expect(panel.queryByText("Withdrawn by buyer")).toBeNull();
+  });
+
+  it("puts the caller's footer actions in the panel footer, and has no footer without them", () => {
+    render(
+      <StaffTooltipProvider>
+        <DeliveryPanel
+          row={deliveryFixture()}
+          canWork
+          panelProps={{ open: true, onOpenChange: vi.fn() }}
+          now={now}
+          footerActions={<button type="button">Can't deliver</button>}
+        />
+      </StaffTooltipProvider>,
+    );
+    const footer = screen.getByRole("dialog").querySelector("[data-staff-panel-footer]");
+    expect(footer).toContainElement(screen.getByRole("button", { name: "Can't deliver" }));
+  });
+
+  it("does not announce the person's own change as the buyer's", () => {
+    const declined = { ...DECLINED, lotId: deliveryFixture().lotId };
+    const own = { lotId: declined.lotId, key: "closed:withdrawn" };
+    const props = { canWork: true, panelProps: { open: true, onOpenChange: vi.fn() }, now };
+    const { rerender } = render(
+      <StaffTooltipProvider>
+        <DeliveryPanel row={deliveryFixture()} {...props} ownChange={null} />
+      </StaffTooltipProvider>,
+    );
+    rerender(
+      <StaffTooltipProvider>
+        <DeliveryPanel row={declined} {...props} ownChange={own} />
+      </StaffTooltipProvider>,
+    );
+    expect(screen.queryByText(/changed this request while you were looking/)).toBeNull();
+  });
+
   it("gives what staff need to price a request: where to, the size, the hammer price, paid or not", () => {
     const panel = renderPanel();
     expect(

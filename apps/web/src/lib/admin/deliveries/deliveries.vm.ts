@@ -138,19 +138,29 @@ export const deliveryBadge = defineStatusMap<DeliveryBadgeKey>({
   on_the_way: { label: BADGE.on_the_way, tone: "info", shape: "dot" },
   delivered: { label: BADGE.delivered, tone: "success", shape: "check" },
   withdrawn: { label: BADGE.withdrawn, tone: "neutral", shape: "ring" },
+  declined: { label: BADGE.declined, tone: "neutral", shape: "ring" },
   cancelled: { label: BADGE.cancelled, tone: "neutral", shape: "ring" },
   collected: { label: BADGE.collected, tone: "neutral", shape: "ring" },
   awaiting_payment: { label: BADGE.awaiting_payment, tone: "neutral", shape: "ring" },
 });
 
-/** The status a row is keyed by: its view, or for a closed one, why it closed. */
-function sinceKey(row: Pick<DeliveryView, "status" | "closedReason">): DeliverySinceKey {
-  return row.status === "closed" ? (row.closedReason ?? "withdrawn") : row.status;
+type SinceRow = Pick<DeliveryView, "status" | "closedReason"> & {
+  quote: Pick<DeliveryView["quote"], "declineReason">;
+};
+
+/**
+ * The status a row is keyed by: its view, or for a closed one, why it closed. A withdrawn quote
+ * with a reason was declined by the team (D8), not withdrawn by the buyer.
+ */
+function sinceKey(row: SinceRow): DeliverySinceKey {
+  if (row.status !== "closed") return row.status;
+  const reason = row.closedReason ?? "withdrawn";
+  return reason === "withdrawn" && row.quote.declineReason !== null ? "declined" : reason;
 }
 
 /** At most two badges a row: the status, and "Awaiting payment" on an unpaid booking. */
 export function deliveryBadges(
-  row: Pick<DeliveryView, "status" | "closedReason" | "awaitingPayment">,
+  row: SinceRow & Pick<DeliveryView, "awaitingPayment">,
 ): StatusPresentation[] {
   return [
     deliveryBadge(sinceKey(row)),
@@ -191,7 +201,7 @@ export function deliveryPrice(row: Pick<DeliveryView, "quote">): string | null {
  * alone ("Delivered"), never a time made up from the record's last edit.
  */
 export function deliverySince(
-  row: Pick<DeliveryView, "status" | "closedReason" | "statusSince" | "fulfilment">,
+  row: SinceRow & Pick<DeliveryView, "statusSince" | "fulfilment">,
   now: Date,
 ): string {
   if (row.status === "on_the_way" && row.fulfilment) {
@@ -303,7 +313,9 @@ export function deliveryTimeline(
           ? DELIVERIES_COPY.history.quotedOf(
               formatStaffMoney(row.quote.amountMinor, row.quote.currency),
             )
-          : DELIVERIES_COPY.history[event.kind],
+          : event.kind === "withdrawn" && event.by === "staff"
+            ? DELIVERIES_COPY.history.declined
+            : DELIVERIES_COPY.history[event.kind],
       at: event.at,
       noTime: DELIVERIES_COPY.timeNotRecorded,
       actor: DELIVERIES_COPY.actors[event.by],

@@ -3,6 +3,7 @@ import type {
   AccountPurchaseFactsRow,
   AccountRecordsScope,
   AccountRegistrationRow,
+  DeliveryQuoteDeclineWrite,
   DeliveryQuoteRow,
   DeliveryQuoteWrite,
   IAccountPurchaseFactsReader,
@@ -142,6 +143,7 @@ export class InMemoryDeliveryQuotes implements IDeliveryQuoteRepository {
       quotedAt: null,
       decidedByUserId: null,
       decidedAt: null,
+      declineReason: null,
     };
     this.rows.push(row);
     return row;
@@ -159,6 +161,16 @@ export class InMemoryDeliveryQuotes implements IDeliveryQuoteRepository {
       row.decidedByUserId = write.actorUserId;
       row.decidedAt = NOW;
     }
+    return { ...row };
+  }
+
+  async decline(id: string, from: DeliveryQuoteStatus, write: DeliveryQuoteDeclineWrite) {
+    const row = this.rows.find((q) => q.id === id);
+    if (!row || row.status !== from) return null;
+    row.status = write.status;
+    row.declineReason = write.reason;
+    row.decidedByUserId = write.actorUserId;
+    row.decidedAt = NOW;
     return { ...row };
   }
 }

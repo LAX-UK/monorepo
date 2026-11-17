@@ -17,6 +17,7 @@ describe("notifications a mute never silences", () => {
       "lot_won",
       "payout_problem",
       "delivery_quote_ready",
+      "delivery_quote_declined",
       "consignment_agreement_reminder",
       "submission_changes_requested",
       "kyc_resubmission_required",

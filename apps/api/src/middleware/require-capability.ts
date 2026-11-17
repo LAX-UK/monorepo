@@ -24,6 +24,7 @@ import {
   CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
   DATA_REQUESTS_MANAGE_ACCESS,
+  DELIVERIES_ACCESS,
   DELIVERIES_READ_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
@@ -159,6 +160,8 @@ export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAG
 export const requireCollectionsRead = createRequireAccess(COLLECTIONS_READ_ACCESS);
 /** The Deliveries list and panel: whoever can read Lot fulfilment (D5), not read-only staff. */
 export const requireDeliveriesRead = createRequireAccess(DELIVERIES_READ_ACCESS);
+/** Act on a delivery (decline it): Fulfilment and Administrators (D5). */
+export const requireDeliveries = createRequireAccess(DELIVERIES_ACCESS);
 /** The Collections page's list of places: everyone with a tab on it, Finance included. */
 export const requireCollectionsPage = createRequireAccess(COLLECTIONS_PAGE_ACCESS);
 export const requireCollectionStorageRead = createRequireAccess(COLLECTION_STORAGE_READ_ACCESS);
