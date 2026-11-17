@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision pack, 17 November 2026</title>
+<!-- Static review page for docs/design/decision-pack-2026-11-17.md. Illustrative only: the staff-ui
+     kit and the Shop components are the source of truth. All names and amounts are made up. -->
+<style>
+:root{--bg:#f7f7f6;--surface:#fff;--ink:#141414;--muted:#5c5c5c;--line:#e4e4e2;--ctl:#8a8a86;
+--succ:#1f7a43;--succ-bg:#e6f4ec;--info:#1d5fa8;--info-bg:#e7f0fb;--warn:#8a5a00;--warn-bg:#fdf1d8;
+--dang:#b3261e;--dang-bg:#fbe9e7;--neu:#55554f;--neu-bg:#efefec;--btn:#141414;--btn-ink:#fff;
+--shop:#5a2a5c;--bid:#091f5b;--rec:#1f7a43}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111;--surface:#1a1a1a;--ink:#f1f1ef;--muted:#a8a8a3;--line:#2c2c2a;--ctl:#77776f;
+--succ:#7fd6a0;--succ-bg:#173323;--info:#8fbdf2;--info-bg:#16283d;--warn:#f0c46a;--warn-bg:#352a12;--dang:#f29b93;--dang-bg:#3a1916;--neu:#c4c4be;--neu-bg:#262624;--btn:#f1f1ef;--btn-ink:#111;
+--shop:#d6a8d4;--bid:#a5b7e9;--rec:#7fd6a0}}
+:root[data-theme="dark"]{--bg:#111;--surface:#1a1a1a;--ink:#f1f1ef;--muted:#a8a8a3;--line:#2c2c2a;--ctl:#77776f;
+--succ:#7fd6a0;--succ-bg:#173323;--info:#8fbdf2;--info-bg:#16283d;--warn:#f0c46a;--warn-bg:#352a12;--dang:#f29b93;--dang-bg:#3a1916;--neu:#c4c4be;--neu-bg:#262624;--btn:#f1f1ef;--btn-ink:#111;
+--shop:#d6a8d4;--bid:#a5b7e9;--rec:#7fd6a0}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/22px system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:920px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;line-height:32px;margin:0 0 8px}
+h2{font-size:20px;line-height:28px;margin:40px 0 8px;padding-top:16px;border-top:1px solid var(--line)}
+h3{font-size:16px;line-height:24px;margin:24px 0 8px}
+p,li{color:var(--ink)}
+.lede{color:var(--muted);margin:0 0 16px}
+code{font:13px/20px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--neu-bg);padding:1px 4px;border-radius:4px;overflow-wrap:anywhere}
+a{color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+.table{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500;font-size:13px}
+.opts{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:12px 0}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.opt.rec{border:2px solid var(--rec)}
+.opt h4{margin:0 0 6px;font-size:15px;line-height:22px}
+.opt p{margin:0 0 8px;font-size:14px;line-height:20px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;line-height:18px;padding:0 8px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.tag.rec{background:var(--succ-bg);color:var(--succ)}
+.tag.no{background:var(--neu-bg);color:var(--neu)}
+.mock{border:1px dashed var(--ctl);border-radius:8px;padding:10px;font-size:13px;line-height:18px;background:var(--bg)}
+.mock .row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
+.mock .row:last-child{border-bottom:0}
+.mock .k{color:var(--muted)}
+.mock .muted{color:var(--muted)}
+.notice{border-radius:6px;padding:8px 10px;margin:6px 0;font-size:13px;line-height:18px}
+.notice.info{background:var(--info-bg);color:var(--info)}
+.notice.warn{background:var(--warn-bg);color:var(--warn)}
+.notice.dang{background:var(--dang-bg);color:var(--dang)}
+.btn{display:block;text-align:center;border-radius:6px;padding:8px 10px;margin:6px 0;font-weight:500}
+.btn.primary{background:var(--btn);color:var(--btn-ink)}
+.btn.outline{border:1px solid var(--ctl)}
+.btn.off{opacity:.45}
+.wallets{display:flex;gap:6px;flex-wrap:wrap}
+.wallet{flex:1 1 80px;text-align:center;border-radius:6px;padding:8px 4px;background:#000;color:#fff;font-weight:600;font-size:13px}
+.wallet.g{background:#fff;color:#202124;border:1px solid #747775}
+.wallet.l{background:#00d66f;color:#011e0f}
+.divider{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:8px 0}
+.divider:before,.divider:after{content:"";flex:1;border-top:1px solid var(--line)}
+.chip{display:inline-block;border:1px solid var(--ctl);border-radius:16px;padding:2px 10px;margin:2px 2px 2px 0;font-size:13px}
+.chip.on{border-color:var(--shop);color:var(--shop);font-weight:600}
+.group{font-weight:600;margin:8px 0 4px}
+.check{display:flex;gap:8px;align-items:flex-start;margin:4px 0}
+.box{width:16px;height:16px;border:1px solid var(--ctl);border-radius:4px;flex:none;margin-top:1px}
+.box.on{background:var(--btn);border-color:var(--btn)}
+.count{color:var(--muted);margin-left:auto}
+.menu{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:4px 0}
+.menu div{padding:6px 10px}
+.menu .new{font-weight:600}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.menu .del{color:var(--dang)}
+.accent-bid{color:var(--bid);font-weight:600}
+.accent-shop{color:var(--shop);font-weight:600}
+.plan{margin:8px 0;padding-left:20px}
+.q{color:var(--muted)}
+.footer{color:var(--muted);font-size:13px;margin-top:40px}
+</style>
+</head>
+<body>
+<main>
+<h1>Decision pack, 17 November 2026</h1>
+<p class="lede">Stock agreements, Zoho price, wallets, Shop filters and workspace extras. Proposed, awaiting owner approval. Nothing is built. Mirrors <code>docs/design/decision-pack-2026-11-17.md</code>, which holds the file references.</p>
+<p>Reply "approve as recommended", or name the item and option (for example "GAP-49: B"). Open questions go ahead on their default unless answered.</p>
+
+<div class="card table">
+<table>
+<thead><tr><th>Item</th><th>Recommendation</th><th>PRs</th></tr></thead>
+<tbody>
+<tr><td>ZI-5 Consignor agreements</td><td>B: agreements per consignor in LAX Admin; the move reads them instead of a checkbox</td><td>4 (S, M, M, S)</td></tr>
+<tr><td>LA-4 Zoho price</td><td>A: show Zoho's price as information only</td><td>1 (S)</td></tr>
+<tr><td>GAP-49 Wallets</td><td>B: Express Checkout Element on basket and Details; hosted page kept</td><td>4 (S, M, M, S)</td></tr>
+<tr><td>GAP-51 Shop filters</td><td>A: add Orientation and Framing; Size already ships</td><td>2 (M, S)</td></tr>
+<tr><td>GAP-53 Workspace extras</td><td>A: "Sell another like this"; "Delete draft"</td><td>3 (S, M, S)</td></tr>
+</tbody>
+</table>
+</div>
+
+<!-- ZI-5 -->
+<h2>1. ZI-5: Per-consignor agreement data for stock moves</h2>
+<h3>Today</h3>
+<p>"Offer at auction" in LAX Admin needs a required checkbox, "The consignor agreed to sell at auction". History records only "Consignor agreement confirmed" and who clicked. "Offer on lax.art" asks nothing. LAX holds no record of who consigned a Zoho original, or on what terms.</p>
+<h3>Problem</h3>
+<p>Nobody can answer "what did this consignor agree to, until when, at what minimum?", and the question is asked again on every move.</p>
+<h3>Options</h3>
+<div class="opts">
+<div class="opt"><h4>A. Checkbox plus evidence note<span class="tag no">Not recommended</span></h4><p>Like "Grant sale authority". One small PR. Still free text, per move.</p>
+<div class="mock"><div class="check"><span class="box on"></span><span>The consignor agreed to sell at auction</span></div><div class="k">What the agreement is based on</div><div class="mock muted">Signed letter of 3 March</div></div></div>
+<div class="opt rec"><h4>B. Agreements per consignor<span class="tag rec">Recommended</span></h4><p>Agreements on the client's page; each original has a Consignor. The move dialog reads them.</p>
+<div class="mock">
+<div class="row"><span class="k">Sale</span><span>Spring works on paper</span></div>
+<div class="row"><span class="k">Starting price</span><span>£1,800</span></div>
+<div class="notice info">Covered by agreement with Example Gallery Ltd, signed 3 Mar 2026, LAX Bid and lax.art, until 2 Mar 2027.</div>
+<div class="notice warn">Below the lowest price agreed (£2,000).</div>
+<span class="btn primary">Make draft lot</span>
+</div>
+<div class="mock" style="margin-top:8px"><div class="notice dang">No agreement covers LAX Bid for Example Gallery Ltd.</div><span class="btn outline">Add agreement</span><span class="btn primary off">Make draft lot</span></div>
+</div>
+<div class="opt"><h4>C. Reuse Bid's consignment agreement<span class="tag no">Not recommended</span></h4><p>Keyed to a Bid submission and seller conditions; Zoho originals have neither.</p></div>
+</div>
+<h3>PR plan (B)</h3>
+<ol class="plan"><li>S: migration (agreement, artwork consignor link with history), rollback, contracts.</li><li>M: Agreements section on the client page (add, retire, file), capabilities, audit.</li><li>M: Consignor field on the From Zoho record; optional column and filter.</li><li>S: move dialogs read the agreement; checkbox removed after the transition.</li></ol>
+<p class="q">Q1 lax.art covered too? [Yes, shown, not blocking at first.] Q2 checkbox fallback until? [31 January 2027.] Q3 consignor read from Zoho? [No, set in LAX Admin.]</p>
+
+<!-- LA-4 -->
+<h2>2. LA-4: From Zoho "missing price" not surfaced</h2>
+<h3>Today</h3>
+<p>Zoho's price is stored as information and shown only inside the move dialogs ("Not set in Zoho"). The record's "What Zoho says" has no price row. "Still missing" counts image, size and medium only, by design: the LAX price is set when a work is offered.</p>
+<h3>Problem</h3>
+<p>Staff learn Zoho has no price only when they open a move dialog, and cannot list unpriced works.</p>
+<h3>Options</h3>
+<div class="opts">
+<div class="opt rec"><h4>A. Zoho's price as information<span class="tag rec">Recommended</span></h4><p>A row on the record and an optional, sortable list column. No tone, not a gap.</p>
+<div class="mock"><div class="row"><span class="k">Size</span><span>50 × 70 cm</span></div><div class="row"><span class="k">Price in Zoho</span><span>£4,800.00</span></div><div class="row"><span class="k">Price in Zoho</span><span class="muted">Not set in Zoho</span></div></div></div>
+<div class="opt"><h4>B. "Price on request" state<span class="tag no">Not recommended</span></h4><p>Lets a Zoho omission decide what buyers see. "Enquire" is already a deliberate staff choice.</p>
+<div class="mock"><span class="chip">Price on request</span></div></div>
+<div class="opt"><h4>C. Warning<span class="tag no">Not recommended</span></h4><p>"Still missing: price" implies Zoho must be fixed first, which is not required.</p>
+<div class="mock"><div class="notice warn">Still missing: image, price</div></div></div>
+</div>
+<h3>PR plan (A)</h3>
+<ol class="plan"><li>S: record row, optional column with sort, list item field, tests, screenshots.</li></ol>
+
+<!-- GAP-49 -->
+<h2>3. GAP-49: Apple Pay, Google Pay and Link at basket and checkout</h2>
+<h3>Today</h3>
+<p>Basket → Details (your details, delivery) → Stripe's hosted page, where wallets already appear if on in Stripe. The Shop loads no Stripe.js.</p>
+<h3>Problem</h3>
+<p>Wallet users type everything on our form before they see the wallet. Baymard counts long or complicated checkouts among the top reasons for abandonment and recommends express options early, beside guest checkout.</p>
+<h3>Options</h3>
+<div class="opts">
+<div class="opt"><h4>A. Hosted page only<span class="tag no">Not recommended</span></h4><p>No code. Wallets stay one step late.</p></div>
+<div class="opt rec"><h4>B. Express Checkout Element<span class="tag rec">Recommended</span></h4><p>On basket and Details, on Checkout Sessions with Elements; same webhook. UK delivery and collection in the sheet; hosted page kept.</p>
+<div class="mock"><div class="row"><span class="k">Total</span><span>£245.00</span></div><span class="btn primary">Checkout</span><div class="divider">Or pay with</div><div class="wallets"><span class="wallet">Apple Pay</span><span class="wallet g">Google Pay</span><span class="wallet l">Link</span></div></div>
+<div class="mock" style="margin-top:8px"><div class="group">Express checkout</div><div class="wallets"><span class="wallet">Apple Pay</span><span class="wallet l">Link</span></div><div class="divider">Or continue below</div><div class="group">Your details</div><div class="mock muted">Full name</div></div>
+</div>
+<div class="opt"><h4>C. Embedded Payment Element<span class="tag no">Not recommended</span></h4><p>All payment on our page. Larger change; not needed to bring wallets forward.</p></div>
+</div>
+<h3>Changes to the checkout design (CO1–CO18)</h3>
+<ul><li>Basket summary: wallet row under the ink primary button; wallet buttons keep their own brand styles, no Shop accent.</li><li>Details: express row first, form unchanged below, for guests and signed-in shoppers.</li><li>Steps: a wallet payment goes straight to Confirmation; Payment shows as done.</li><li>International quote path: no wallet row.</li><li>Needs: Shop domains registered as payment method domains in Stripe; Stripe.js allowed in the Shop's security headers.</li></ul>
+<h3>PR plan (B)</h3>
+<ol class="plan"><li>S: domain registration, security headers, flag off by default.</li><li>M: shop-api Elements session, UK rates, hold on confirm, contract tests.</li><li>M: Shop UI on basket and Details, states, light/dark/375, e2e in Stripe test mode.</li><li>S: production switch-on after device checks.</li></ol>
+<p class="q">Q4 wallets on basket too? [Yes.] Q5 collection in the sheet? [Yes, zero-price rate.]</p>
+
+<!-- GAP-51 -->
+<h2>4. GAP-51: Shop catalogue filters</h2>
+<h3>Today</h3>
+<p>Available only, Artist, Price, Size and Technique. Size S/M/L already ships, by the image's longest side.</p>
+<div class="card table">
+<table>
+<thead><tr><th>Facet</th><th>Data today</th><th>Needed</th></tr></thead>
+<tbody>
+<tr><td>Size (S/M/L)</td><td>Height and width in cm; shipped</td><td>Nothing</td></tr>
+<tr><td>Orientation</td><td>Height and width in cm</td><td>A rule: portrait, landscape, square within 5 %</td></tr>
+<tr><td>Framed / unframed</td><td>Edition framing mode; no row means unframed only</td><td>A rule; counts only active framing</td></tr>
+</tbody>
+</table>
+</div>
+<h3>Options</h3>
+<div class="opts">
+<div class="opt rec"><h4>A. Orientation and Framing groups<span class="tag rec">Recommended</span></h4><p>A work that can be both framed and unframed shows under both.</p>
+<div class="mock"><div class="group">Orientation</div><span class="chip on">Portrait 18</span><span class="chip">Landscape 11</span><span class="chip">Square 4</span><div class="group">Framing</div><span class="chip">Available framed 21</span><span class="chip">Available unframed 27</span></div></div>
+<div class="opt"><h4>B. Framed / Unframed by mode<span class="tag no">Not recommended</span></h4><p>Hides works shoppers can have framed when they pick "Framed".</p></div>
+<div class="opt"><h4>C. Size by framed size<span class="tag no">Not recommended</span></h4><p>Needs frame sizes we do not hold.</p></div>
+</div>
+<h3>PR plan (A)</h3>
+<ol class="plan"><li>M: facets and filter params with counts, read model tests.</li><li>S: rail groups, chips, mobile sheet, e2e, screenshots.</li></ol>
+<p class="q">Q6 square tolerance 5 %? [Yes.]</p>
+
+<!-- GAP-53 -->
+<h2>5. GAP-53: Client workspace extras</h2>
+<h3>Today</h3>
+<p>After sending a work: "Sell another work" opens a blank wizard. Each work is its own submission. Drafts have no delete. The register's second action is not in the repository; this pack takes it to be "Delete draft" (Q8).</p>
+<h3>Options: another work ("Duplicate last")</h3>
+<div class="opts">
+<div class="opt rec"><h4>A. "Sell another like this"<span class="tag rec">Recommended</span></h4><p>Pre-fills artist, category, medium, edition, signed and provenance. Not title, photos, size, prices or condition.</p>
+<div class="mock"><span class="btn primary">Sell another like this</span><span class="btn outline">Sell another work</span><div class="notice info">Started from Harbour at dusk. Check every step before you send it.</div></div></div>
+<div class="opt"><h4>B. Multi-work groups<span class="tag no">Not recommended</span></h4><p>Changes submission, agreement, lot and payout models.</p></div>
+<div class="opt"><h4>C. "Add another" on review<span class="tag no">Not recommended</span></h4><p>Mid-wizard branching is easy to lose.</p></div>
+</div>
+<h3>Options: delete draft</h3>
+<div class="opts">
+<div class="opt rec"><h4>A. "Delete draft" action<span class="tag rec">Recommended</span></h4><p>Row menu and the draft's page; confirm; soft delete, purged after 30 days.</p>
+<div class="menu"><div>View consignment</div><div class="new">Sell another like this</div><hr><div class="del">Delete draft</div></div>
+<div class="mock" style="margin-top:8px"><strong>Delete this draft?</strong><p class="muted" style="margin:4px 0">Its photos and answers are removed. This cannot be undone.</p><span class="btn outline">Cancel</span><span class="btn" style="background:var(--dang);color:var(--btn-ink)">Delete draft</span></div></div>
+<div class="opt"><h4>B. Drafts expire after 90 days<span class="tag no">Not recommended</span></h4><p>Work disappears without warning.</p></div>
+</div>
+<h3>PR plan</h3>
+<ol class="plan"><li>S: "Sell another like this" source, button and menu item.</li><li>M: delete draft API (drafts only), soft delete migration, purge job.</li><li>S: delete draft UI, confirm, toast "Draft deleted".</li></ol>
+<p class="q">Q7 copy photos for a series? [No.] Q8 is "Delete draft" the register's second action? [Yes.]</p>
+
+<p class="footer">Accents: <span class="accent-shop">Shop</span> on Shop chips only, <span class="accent-bid">Bid</span> in the client workspace; status colours never take an accent. References: Baymard checkout and product list research; Stripe Express Checkout Element, payment method domain registration and Checkout Sessions with Elements (links in the markdown).</p>
+</main>
+</body>
+</html>
