@@ -1,6 +1,7 @@
-import { isOperatorPlacement } from "@auction/domain";
+import { OPERATOR_CAP_ERROR_CODES, isOperatorPlacement } from "@auction/domain";
 import type { IOperatorPlacementReader } from "@auction/persistence/interfaces";
 import { BidError } from "../bid-error.js";
+import { numberToMoneyString } from "../bid-money.js";
 import { parseMoneyCap } from "./bid-cap.util.js";
 
 export type OperatorBypassChecks = {
@@ -66,14 +67,21 @@ export class OperatorPlacementPolicy {
     placedVia?: string | null,
   ): void {
     if (cap != null && effectiveAmount > cap + 1e-9) {
+      // The cap travels with the refusal so the clerk is told which limit stopped the bid and
+      // how much it allows (see `staffBidLimitRefusalFrom`).
+      const limit = numberToMoneyString(cap);
       if (placedVia === "telephone") {
         throw new BidError(
           "Bid exceeds authorized telephone limit",
           403,
-          "authorized_max_exceeded",
+          OPERATOR_CAP_ERROR_CODES.telephone,
+          { limitKind: "telephone", limit },
         );
       }
-      throw new BidError("Bid exceeds authorized limit", 403, "bid_limit_exceeded");
+      throw new BidError("Bid exceeds authorized limit", 403, OPERATOR_CAP_ERROR_CODES.paddle, {
+        limitKind: "paddle",
+        limit,
+      });
     }
   }
 }

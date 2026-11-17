@@ -35,9 +35,15 @@ export function inCatalogueOrientationSql(key: CatalogueOrientationKey): SQL {
   }
 }
 
-/** The edition's framing mode; null when it has no framing row. */
-const framingModeSql = sql<string | null>`(
-  select ${shopEditionFraming.mode} from ${shopEditionFraming}
+/**
+ * The framing tests are semi-joins (`exists` / `not exists`) on `shop_edition_framing`, never a
+ * scalar subquery that reads the mode: Postgres cannot estimate a scalar subquery's selectivity,
+ * guesses one row for `shop_artwork`, and then joins the artist and party tables by nested loop,
+ * which grows with works × artists. A semi-join is estimated from the table's statistics and
+ * keeps the outer joins hashed. `catalogue-shape-framing-plan.integration.test.ts` guards this.
+ */
+const hasNoFramingRowSql = sql`not exists (
+  select 1 from ${shopEditionFraming}
   where ${shopEditionFraming.artworkId} = ${shopArtwork.id}
 )`;
 
@@ -57,11 +63,16 @@ const offersVisibleFramingSql = sql`exists (
     )
 )`;
 
-function modeIn(modes: readonly string[]): SQL {
-  return sql`${framingModeSql} in (${sql.join(
-    modes.map((mode) => sql`${mode}`),
-    sql`, `,
-  )})`;
+/** The edition has a framing row in one of these modes. */
+function hasFramingModeSql(modes: readonly string[]): SQL {
+  return sql`exists (
+    select 1 from ${shopEditionFraming}
+    where ${shopEditionFraming.artworkId} = ${shopArtwork.id}
+      and ${shopEditionFraming.mode} in (${sql.join(
+        modes.map((mode) => sql`${mode}`),
+        sql`, `,
+      )})
+  )`;
 }
 
 /**
@@ -71,10 +82,12 @@ function modeIn(modes: readonly string[]): SQL {
 export function inCatalogueFramingSql(key: CatalogueFramingKey): SQL {
   const rule = CATALOGUE_FRAMING_RULES[key];
   const parts: SQL[] = [];
-  if (rule.withoutFramingRow) parts.push(sql`${framingModeSql} is null`);
-  if (rule.modes.length > 0) parts.push(modeIn(rule.modes));
+  if (rule.withoutFramingRow) parts.push(hasNoFramingRowSql);
+  if (rule.modes.length > 0) parts.push(hasFramingModeSql(rule.modes));
   if (rule.modesWithOfferedOption.length > 0) {
-    parts.push(sql`(${modeIn(rule.modesWithOfferedOption)} and ${offersVisibleFramingSql})`);
+    parts.push(
+      sql`(${hasFramingModeSql(rule.modesWithOfferedOption)} and ${offersVisibleFramingSql})`,
+    );
   }
   return parts.length > 0 ? sql`(${or(...parts) as SQL})` : sql`false`;
 }

@@ -6,6 +6,7 @@ const props = {
   reference: "C-1042",
   consignmentHref: "/selling/consignments/s1",
   sellAnotherHref: "/selling/new",
+  sellAnotherLikeThisHref: "/selling/new?copyFrom=s1",
   responsePromise: "Our specialists usually reply within one working day.",
 };
 
@@ -32,6 +33,16 @@ describe("SubmissionSentPanel", () => {
       .getAllByRole("listitem")
       .map((item) => item.querySelector("p")?.textContent);
     expect(stages).toEqual(["In review", "Accepted", "In a sale"]);
+  });
+
+  it("offers another work like this one, beside another work", () => {
+    render(<SubmissionSentPanel {...props} />);
+    const links = screen.getAllByRole("link").map((link) => link.textContent);
+    expect(links).toEqual(["View your consignment", "Sell another work", "Sell another like this"]);
+    expect(screen.getByRole("link", { name: "Sell another like this" })).toHaveAttribute(
+      "href",
+      "/selling/new?copyFrom=s1",
+    );
   });
 
   it("offers the consignment and another work", () => {

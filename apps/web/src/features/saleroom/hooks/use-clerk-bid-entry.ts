@@ -2,6 +2,11 @@
 
 import { bidIncrementOptions, validateBidAmount } from "@/features/saleroom/lib/bid-entry";
 import {
+  type ClerkBidLimitRefusal,
+  readClerkBidLimitRefusal,
+} from "@/features/saleroom/lib/clerk-bid-refusal";
+import { CLERK_BID_REFUSAL_COPY } from "@/features/saleroom/lib/clerk-command-copy";
+import {
   clerkPlacePaddleBid,
   clerkPlaceTelephoneBid,
 } from "@/features/saleroom/lib/clerk-commands.client";
@@ -20,7 +25,20 @@ import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
 import { notify } from "@/lib/ui/notify";
 import { useCallback, useContext, useEffect, useMemo, useState, useTransition } from "react";
 
-export type ClerkBidActionResult = { ok: true } | { ok: false; error: string };
+export type ClerkBidActionResult =
+  | { ok: true }
+  | { ok: false; error: string; refusal?: ClerkBidLimitRefusal | null };
+
+export type ClerkBidChannel = "paddle" | "telephone";
+
+/** A bid a limit refused, shown by its form until the clerk changes that bid. */
+export type ClerkBidLimitRefusalState = {
+  channel: ClerkBidChannel;
+  refusal: ClerkBidLimitRefusal;
+  /** "Paddle 142", or the telephone bidder's name. */
+  bidder: string;
+  amount: number;
+};
 
 export type PlacePaddleBidFn = (input: {
   saleId: string;
@@ -51,13 +69,25 @@ type Options<T extends SaleroomRegisteredPaddle = SaleroomRegisteredPaddle> = {
 
 const defaultPlacePaddleBid: PlacePaddleBidFn = async (input) => {
   const result = await clerkPlacePaddleBid(input);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.error,
+      refusal: readClerkBidLimitRefusal(result.meta?.refusal),
+    };
+  }
   return { ok: true };
 };
 
 const defaultPlaceTelephoneBid: PlaceTelephoneBidFn = async (input) => {
   const result = await clerkPlaceTelephoneBid(input);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.error,
+      refusal: readClerkBidLimitRefusal(result.meta?.refusal),
+    };
+  }
   return { ok: true };
 };
 
@@ -86,6 +116,14 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
     bookingId: "",
   });
   const [pending, startTransition] = useTransition();
+  const [limitRefusal, setLimitRefusal] = useState<ClerkBidLimitRefusalState | null>(null);
+  // A limit refusal is a definite answer: nothing was placed. It stays by its form, with the
+  // limit and what to do, until the clerk changes that bid, places another or the lot moves on.
+  // Clearing it when a bid is placed means a repeat refusal mounts a fresh alert, so screen
+  // readers announce it again.
+  const clearRefusal = useCallback((channel: ClerkBidChannel) => {
+    setLimitRefusal((prev) => (prev?.channel === channel ? null : prev));
+  }, []);
   // A bid that fails or goes unanswered may have been placed anyway. It is never resent (the API's
   // idempotency key would replay it in any case) and never reported as placed: the console
   // re-reads the room so the price shown is the server's, then the error is shown.
@@ -110,6 +148,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
       telephoneAmount: "",
       bookingId: "",
     }));
+    setLimitRefusal(null);
   }, [currentLotId]);
 
   const paddleLookup = useMemo(() => createPaddleRosterLookup(paddleRoster), [paddleRoster]);
@@ -161,6 +200,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
   const setPaddleNumber = useCallback(
     (value: string) => {
       setState((prev) => ({ ...prev, paddleNumber: value }));
+      clearRefusal("paddle");
       try {
         if (value.trim()) {
           sessionStorage.setItem(clerkPaddleStorageKey(saleId), value);
@@ -171,29 +211,45 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         /* ignore */
       }
     },
-    [saleId],
+    [saleId, clearRefusal],
   );
 
-  const setPaddleAmount = useCallback((value: string) => {
-    setState((prev) => ({ ...prev, paddleAmount: value }));
-  }, []);
+  const setPaddleAmount = useCallback(
+    (value: string) => {
+      setState((prev) => ({ ...prev, paddleAmount: value }));
+      clearRefusal("paddle");
+    },
+    [clearRefusal],
+  );
 
-  const setTelephoneAmount = useCallback((value: string) => {
-    setState((prev) => ({ ...prev, telephoneAmount: value }));
-  }, []);
+  const setTelephoneAmount = useCallback(
+    (value: string) => {
+      setState((prev) => ({ ...prev, telephoneAmount: value }));
+      clearRefusal("telephone");
+    },
+    [clearRefusal],
+  );
 
-  const setBookingId = useCallback((value: string) => {
-    setState((prev) => ({ ...prev, bookingId: value }));
-  }, []);
+  const setBookingId = useCallback(
+    (value: string) => {
+      setState((prev) => ({ ...prev, bookingId: value }));
+      clearRefusal("telephone");
+    },
+    [clearRefusal],
+  );
 
-  const applyIncrement = useCallback((amount: number, channel: "paddle" | "telephone") => {
-    const formatted = amount.toFixed(2);
-    setState((prev) =>
-      channel === "paddle"
-        ? { ...prev, paddleAmount: formatted }
-        : { ...prev, telephoneAmount: formatted },
-    );
-  }, []);
+  const applyIncrement = useCallback(
+    (amount: number, channel: ClerkBidChannel) => {
+      const formatted = amount.toFixed(2);
+      setState((prev) =>
+        channel === "paddle"
+          ? { ...prev, paddleAmount: formatted }
+          : { ...prev, telephoneAmount: formatted },
+      );
+      clearRefusal(channel);
+    },
+    [clearRefusal],
+  );
 
   const placePaddleBidHandler = useCallback(() => {
     const registrationError = validateRegistration(state.paddleNumber);
@@ -208,6 +264,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
       return;
     }
     const parsedPaddle = Number.parseInt(state.paddleNumber, 10);
+    setLimitRefusal(null);
     startTransition(async () => {
       const result = await placePaddleBid({
         saleId,
@@ -216,6 +273,15 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         amount: parsedAmount,
       });
       if (!result.ok) {
+        if (result.refusal) {
+          setLimitRefusal({
+            channel: "paddle",
+            refusal: result.refusal,
+            bidder: `Paddle ${parsedPaddle}`,
+            amount: parsedAmount,
+          });
+          return;
+        }
         await settleUnknownOutcome(recheckRoom, result.error, PADDLE_BID_TOAST);
         return;
       }
@@ -245,6 +311,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
       notify.error(amountError);
       return;
     }
+    setLimitRefusal(null);
     startTransition(async () => {
       const result = await placeTelephoneBid({
         lotId: currentLotId,
@@ -254,6 +321,15 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
         telephoneBookingId: selectedBooking.id,
       });
       if (!result.ok) {
+        if (result.refusal) {
+          setLimitRefusal({
+            channel: "telephone",
+            refusal: result.refusal,
+            bidder: selectedBooking.userName ?? CLERK_BID_REFUSAL_COPY.unnamedTelephoneBidder,
+            amount: parsedAmount,
+          });
+          return;
+        }
         await settleUnknownOutcome(recheckRoom, result.error, TELEPHONE_BID_TOAST);
         return;
       }
@@ -278,6 +354,7 @@ export function useClerkBidEntry<T extends SaleroomRegisteredPaddle = SaleroomRe
     selectedBooking,
     registeredPaddle,
     paddleRegistrationError,
+    limitRefusal,
     canPlacePaddleBid,
     canPlaceTelephoneBid,
     setPaddleNumber,

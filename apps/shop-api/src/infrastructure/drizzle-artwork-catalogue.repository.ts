@@ -67,12 +67,6 @@ import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js"
 
 const priceTierSql = sql<number>`CASE WHEN ${shopArtwork.printPricePence} IS NULL THEN 1 ELSE 0 END`;
 
-/** The longest side of the image in cm; null unless both height and width are positive. */
-const longestSideCmSql = sql<number | null>`CASE
-  WHEN ${shopArtwork.heightCm} > 0 AND ${shopArtwork.widthCm} > 0
-  THEN greatest(${shopArtwork.heightCm}, ${shopArtwork.widthCm})
-END`;
-
 /** The catalogued medium, trimmed; the technique filter and its counts both read it. */
 const techniqueSql = sql<string | null>`nullif(btrim(${shopArtwork.medium}), '')`;
 
@@ -81,6 +75,27 @@ function inBandSql(value: SQL, range: CatalogueBandRange): SQL {
   const parts: SQL[] = [sql`${value} IS NOT NULL`];
   if (range.from !== undefined) parts.push(sql`${value} >= ${range.from}`);
   if (range.below !== undefined) parts.push(sql`${value} < ${range.below}`);
+  return and(...parts) as SQL;
+}
+
+/**
+ * `catalogueSizeBandFor` as SQL: a positive height and width with the longest side in the band.
+ * Written on the two columns (`greatest(h, w) >= x` as `h >= x or w >= x`, `< y` as
+ * `h < y and w < y`) rather than on `greatest(...)`, so Postgres estimates it from the columns'
+ * statistics. An expression has none, and its default guess for a range (0.5 %), with the
+ * orientation and framing filters on top, made the planner expect a handful of works and join
+ * the artists by nested loop (`catalogue-shape-framing-plan.integration.test.ts`).
+ */
+function inSizeBandSql(range: CatalogueBandRange): SQL {
+  const height = sql`${shopArtwork.heightCm}`;
+  const width = sql`${shopArtwork.widthCm}`;
+  const parts: SQL[] = [sql`${height} > 0`, sql`${width} > 0`];
+  if (range.from !== undefined) {
+    parts.push(sql`(${height} >= ${range.from} OR ${width} >= ${range.from})`);
+  }
+  if (range.below !== undefined) {
+    parts.push(sql`${height} < ${range.below}`, sql`${width} < ${range.below}`);
+  }
   return and(...parts) as SQL;
 }
 
@@ -189,7 +204,7 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
     );
   }
   if (filter.sizeBand) {
-    conditions.push(inBandSql(longestSideCmSql, catalogueSizeBandRange(filter.sizeBand)));
+    conditions.push(inSizeBandSql(catalogueSizeBandRange(filter.sizeBand)));
   }
   if (filter.orientation) {
     conditions.push(inCatalogueOrientationSql(filter.orientation));
@@ -558,7 +573,10 @@ export function createDrizzleArtworkCatalogueRepository(
           .groupBy(shopArtist.slug, shopParty.displayName)
           .orderBy(asc(shopParty.displayName)),
         bandCounts(sql`${shopArtwork.printPricePence}`, priceBands, priceScope),
-        bandCounts(longestSideCmSql, sizeBands, sizeScope),
+        optionCounts(
+          sizeBands.map((band) => ({ key: band.key, where: inSizeBandSql(band.range) })),
+          sizeScope,
+        ),
         optionCounts(orientationOptions, orientationScope),
         optionCounts(framingOptions, framingScope),
         db

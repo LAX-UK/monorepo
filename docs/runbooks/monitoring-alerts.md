@@ -31,6 +31,7 @@ Emitted from `apps/api/src/middleware/metrics.ts` via `recordMoneyPathEvent`. La
 | `refund_db_persist_failed` | Stripe refund succeeded but local DB txn failed; row enqueued in `payment_refund_reconcile` |
 | `xero_payment_record_failed` | Stripe capture OK but Xero bank payment sync failed |
 | `xero_refund_credit_note_failed` | Admin refund OK locally but Xero credit note failed |
+| `staff_bid_refusal_audit_failed` | A staff-placed bid was refused at a limit and the `bid.staff_bid_refused_at_limit` audit row could not be written (the clerk was still told the limit) |
 
 ### Example PromQL (Grafana / Mimir)
 
@@ -65,6 +66,12 @@ sum(increase(auction_api_money_path_events_total{event="stripe_checkout_revoke_f
 ```promql
 sum(increase(auction_api_money_path_events_total{event="invoice_pdf_total_mismatch"}[1h])) > 0
 ```
+
+```promql
+sum(increase(auction_api_money_path_events_total{event="staff_bid_refusal_audit_failed"}[1h])) > 0
+```
+
+`staff_bid_refusal_audit_failed`: the audit of staff-placed bids refused at a limit is best-effort. The clerk's answer never depends on the write, and there is no job queue for domain events to retry it, so a lost row is not retried. Find the refusal in the API logs (`[StaffBidLimitRefusalRecorder] refusal audit failed`, with the lot and channel) and check the database connection pool. The rows that were written carry `request_key` (the bid request's idempotency key): count distinct keys, not rows, since a retried request writes the same key again.
 
 `invoice_pdf_total_mismatch`: a stored Bid invoice's lines do not add up to its total, so its PDF was refused (the member sees "we can't show this invoice just now"). Open the invoice in admin, find which line or total is wrong and correct it through finance; the PDF works again once the record is consistent.
 

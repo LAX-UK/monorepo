@@ -1,4 +1,5 @@
 import { CONSIGNMENT_STAGE_LABEL } from "@/lib/seller/consignment-status";
+import { SELL_ANOTHER_LIKE_THIS_LABEL } from "@/lib/seller/sell-another-like-this";
 import { ButtonLink } from "@auction/ui/lax/button-link";
 import { CircleCheck } from "lucide-react";
 import Link from "next/link";
@@ -10,6 +11,8 @@ type Props = {
   consignmentHref: string;
   /** Where "Sell another work" goes. */
   sellAnotherHref: string;
+  /** Where "Sell another like this" goes: the wizard started from this work. */
+  sellAnotherLikeThisHref: string;
   /** The one reply promise, from the sell-flow copy. */
   responsePromise: string;
 };
@@ -38,6 +41,7 @@ export function SubmissionSentPanel({
   reference,
   consignmentHref,
   sellAnotherHref,
+  sellAnotherLikeThisHref,
   responsePromise,
 }: Props) {
   return (
@@ -80,12 +84,15 @@ export function SubmissionSentPanel({
         </ol>
       </section>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <ButtonLink href={consignmentHref} Link={Link} variant="primary">
           View your consignment
         </ButtonLink>
         <ButtonLink href={sellAnotherHref} Link={Link} variant="secondary">
           Sell another work
+        </ButtonLink>
+        <ButtonLink href={sellAnotherLikeThisHref} Link={Link} variant="secondary">
+          {SELL_ANOTHER_LIKE_THIS_LABEL}
         </ButtonLink>
       </div>
     </div>

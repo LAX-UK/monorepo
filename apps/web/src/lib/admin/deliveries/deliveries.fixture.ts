@@ -85,6 +85,23 @@ export const WAITING_DELIVERIES: DeliveryView[] = [
   }),
 ];
 
+/** A quote sent and waiting for the buyer: staff can change it. */
+export const QUOTED = deliveryFixture({
+  status: "quoted",
+  statusSince: "2026-11-15T09:00:00.000Z",
+  quote: {
+    ...deliveryFixture().quote,
+    status: "quoted",
+    amountMinor: 18_000,
+    note: "Insured, two-person delivery",
+    quotedAt: "2026-11-15T09:00:00.000Z",
+  },
+  history: [
+    { kind: "requested", at: "2026-11-14T10:12:00.000Z", by: "buyer" },
+    { kind: "quoted", at: "2026-11-15T09:00:00.000Z", by: "staff" },
+  ],
+});
+
 /** A booked delivery not paid for yet, and one with the courier. */
 export const BOOKED_UNPAID = deliveryFixture({
   status: "to_dispatch",
