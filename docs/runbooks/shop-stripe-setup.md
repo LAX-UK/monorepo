@@ -76,6 +76,10 @@ Use Stripe CLI or Dashboard “Send test webhook” for `checkout.session.comple
 
 - In production shop-api refuses to start without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` unless `SHOP_REQUIRE_STRIPE=false`. Terraform sets it from `storefronts_public`, so while Shop and lax.art are private shop-api starts without the keys, logs that checkout, refunds and Connect payouts are disabled, and answers checkout with 503. Payouts, Connect transfers and originals call Stripe directly, so with any of `SHOP_PAYOUTS_ENABLED`, `SHOP_CONNECT_TRANSFERS_ENABLED` or `SHOP_ORIGINALS_ENABLED` on, shop-api still refuses to start without the keys, and the prod apply workflow refuses to run.
 
+## Express checkout flag
+
+- `SHOP_EXPRESS_CHECKOUT` (`true` or `false`, default `false`) turns on the wallet row on the basket and Details and allows Stripe.js and Link in those two pages' Content-Security-Policy (sources per <https://docs.stripe.com/security/guide#content-security-policy>). An invalid value (anything but `true` or `false`) fails closed for every Shop page: `loadShopEnv` throws in the middleware, so all pages error until the value is fixed.
+
 ## Local development
 
 - `SHOP_FAKE_CHECKOUT_ENABLED=true` with no Stripe keys enables the fake checkout path (local only).

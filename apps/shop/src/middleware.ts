@@ -60,6 +60,13 @@ export async function middleware(request: NextRequest) {
     enabled: env.SHOP_EXPRESS_CHECKOUT,
     development: process.env.NODE_ENV === "development",
     identityOrigins: originsOf([env.IDENTITY_PUBLIC_BASE_URL, shopIdentityBaseUrl()]),
+    imageOrigins: originsOf(
+      (env.SHOP_IMAGE_REMOTE_HOSTS ?? "")
+        .split(",")
+        .map((host) => host.trim())
+        .filter(Boolean)
+        .map((host) => `https://${host}`),
+    ),
   })) {
     response.headers.set(header.key, header.value);
   }

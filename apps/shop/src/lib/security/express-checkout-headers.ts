@@ -6,6 +6,11 @@ export type SecurityHeader = { key: string; value: string };
  */
 export const EXPRESS_CHECKOUT_PATHS: readonly string[] = ["/basket", "/checkout"];
 
+/** Link (an approved wallet) needs its own hosts, listed in the same guide. */
+export const STRIPE_LINK_FRAME_SOURCES = ["https://link.com", "https://*.link.com"];
+export const STRIPE_LINK_CONNECT_SOURCES = ["https://link.com", "https://*.link.com"];
+export const STRIPE_LINK_IMG_SOURCES = ["https://*.link.com"];
+
 /**
  * Stripe's documented Content-Security-Policy sources for Stripe.js and Elements
  * (https://docs.stripe.com/security/guide#content-security-policy): the script and its frames
@@ -17,8 +22,13 @@ export const STRIPE_JS_FRAME_SOURCES = [
   "https://js.stripe.com",
   "https://*.js.stripe.com",
   "https://hooks.stripe.com",
+  ...STRIPE_LINK_FRAME_SOURCES,
 ];
 export const STRIPE_JS_CONNECT_SOURCES = ["https://api.stripe.com"];
+export const STRIPE_JS_IMG_SOURCES = ["https://*.stripe.com"];
+
+/** The CDN shop-api serves uploaded media from (also in next.config.ts). */
+export const MEDIA_CDN_ORIGIN = "https://lax-media.lon1.cdn.digitaloceanspaces.com";
 
 export function isExpressCheckoutPath(pathname: string): boolean {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
@@ -43,13 +53,14 @@ export function originsOf(urls: readonly (string | undefined)[]): string[] {
 /**
  * The policy for the two express checkout pages. Script and style keep `'unsafe-inline'` because
  * Next.js inlines its bootstrap script and RSC payload. `connect-src` also names the identity
- * origins, because silent sign-in (FedCM) runs on every page for signed-out shoppers. Images,
- * fonts and media are not restricted here: the Shop has no site-wide policy yet, and these two
- * pages load product images from the same hosts as the rest of the Shop.
+ * origins, because silent sign-in (FedCM) runs on every page for signed-out shoppers. `img-src`
+ * is required for Stripe's and Link's images, so it also names the Shop's own image hosts. Fonts
+ * and media are not restricted here: the Shop has no site-wide policy yet.
  */
 export function expressCheckoutContentSecurityPolicy(options: {
   development: boolean;
   identityOrigins: readonly string[];
+  imageOrigins?: readonly string[];
 }): string {
   return [
     [
@@ -61,6 +72,14 @@ export function expressCheckoutContentSecurityPolicy(options: {
       `connect-src 'self'${options.development ? " ws: wss:" : ""}`,
       ...options.identityOrigins,
       ...STRIPE_JS_CONNECT_SOURCES,
+      ...STRIPE_LINK_CONNECT_SOURCES,
+    ].join(" "),
+    [
+      "img-src 'self' data: blob:",
+      MEDIA_CDN_ORIGIN,
+      ...(options.imageOrigins ?? []),
+      ...STRIPE_JS_IMG_SOURCES,
+      ...STRIPE_LINK_IMG_SOURCES,
     ].join(" "),
     "object-src 'none'",
     "base-uri 'self'",
@@ -77,6 +96,7 @@ export function expressCheckoutSecurityHeaders(options: {
   enabled: boolean;
   development: boolean;
   identityOrigins: readonly string[];
+  imageOrigins?: readonly string[];
 }): SecurityHeader[] {
   if (!options.enabled || !isExpressCheckoutPath(options.pathname)) return [];
   return [
