@@ -4,6 +4,7 @@ import type {
   DeliveryQuoteRequestOutcome,
 } from "./application/delivery-quote-request/delivery-quote-request.service.js";
 import type { EnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
+import type { ExpressCheckoutService } from "./application/express-checkout/express-checkout.service.js";
 import type { GuestCheckoutService } from "./application/guest-checkout/guest-checkout.service.js";
 import type { createCancelCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
@@ -75,6 +76,8 @@ export type CommerceRoutesDeps = {
   orderProblems?: { writer: OrderProblemReportWriter; rateLimiter: EnquiryRateLimiter };
   /** Checkout without an account; absent where Identity's machine client is not configured. */
   guestCheckout?: GuestCheckoutRoutesDeps;
+  /** GAP-49 express checkout (wallets); absent while SHOP_EXPRESS_CHECKOUT is off. */
+  expressCheckout?: ExpressCheckoutService;
   /** The LAX Account address book; absent where Identity's machine client is not configured. */
   savedAddresses?: {
     list: ReturnType<typeof createListSavedDeliveryAddressesHandler>;

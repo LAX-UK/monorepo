@@ -73,6 +73,22 @@ export type CheckoutOrderInput = {
    * country it was assessed for and the rate to charge. Absent for every other order.
    */
   outsideUk?: { country: string; regionId: string; pricePence: number };
+  /**
+   * Express checkout (GAP-49): the order is paid through this Elements-mode Checkout Session, the
+   * one the shopper confirmed in the wallet sheet, instead of a new hosted page. The session must
+   * have been opened for this basket; the order is bound to it and its total checked against it.
+   */
+  express?: { sessionId: string; shipping: ExpressShippingDetails };
+};
+
+/** The full address a wallet gives on confirm, checked as a UK address; Stripe needs it on the session. */
+export type ExpressShippingDetails = {
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  postcode: string;
+  country: "GB";
 };
 
 export type CheckoutOrderResult = {

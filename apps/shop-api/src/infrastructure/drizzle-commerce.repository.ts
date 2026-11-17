@@ -4,6 +4,7 @@ import type {
   CommerceRepository,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
+import type { ExpressCheckoutGateway } from "../application/ports/express-checkout.ports.js";
 import { createDrizzleBasketRepository } from "./drizzle-basket.repository.js";
 import { createDrizzleCheckoutRepository } from "./drizzle-checkout.repository.js";
 import { createDrizzleOrderRepository } from "./drizzle-order.repository.js";
@@ -28,6 +29,8 @@ export function createDrizzleCommerceRepository(
     editionOrderLimit?: number | null;
     /** Refuses a basket holding an artwork Zoho says is sold while it is still for sale. */
     moneyPause?: CheckoutMoneyPause;
+    /** Express checkout's sessions; absent while SHOP_EXPRESS_CHECKOUT is off. */
+    expressGateway?: ExpressCheckoutGateway;
   },
 ): CommerceRepository {
   const basket = createDrizzleBasketRepository(db, {

@@ -76,6 +76,16 @@ Use Stripe CLI or Dashboard “Send test webhook” for `checkout.session.comple
 
 - In production shop-api refuses to start without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` unless `SHOP_REQUIRE_STRIPE=false`. Terraform sets it from `storefronts_public`, so while Shop and lax.art are private shop-api starts without the keys, logs that checkout, refunds and Connect payouts are disabled, and answers checkout with 503. Payouts, Connect transfers and originals call Stripe directly, so with any of `SHOP_PAYOUTS_ENABLED`, `SHOP_CONNECT_TRANSFERS_ENABLED` or `SHOP_ORIGINALS_ENABLED` on, shop-api still refuses to start without the keys, and the prod apply workflow refuses to run.
 
+## Express checkout (Apple Pay, Google Pay, Link)
+
+GAP-49 (decision pack 2026-11-17, option B). Off by default: `SHOP_EXPRESS_CHECKOUT=true` on shop-api and on the Shop turns it on. It needs Stripe, so shop-api refuses to start with it on and no keys. The Shop's wallet row (basket and Details) is a later change; until then the flag only enables the API and the Stripe.js policy on those two pages.
+
+- **Same Checkout Sessions API, Elements mode.** `POST /v1/orders/express-checkout` (or `/v1/guest-checkout/express-checkout` from the storefront) opens a session with `ui_mode: "custom"` for the basket: two rates, "Insured UK delivery" and "Collect from our London gallery" (0), shipping to GB only, shipping details set only by the server. Nothing is ordered or held yet.
+- **Address change.** `.../express-checkout/shipping-address` answers the sheet's address change: a UK address gets both rates, anything else is refused (international delivery stays on the Details form).
+- **Confirm.** `.../express-checkout/confirm` makes the order and holds its prints, through the same order writer as Details (idempotency key `express:<session id>`), then writes the order id and reference into the session's metadata, sets the chosen rate as the only rate and the wallet's address as the session's shipping details, and checks the session total equals the order total. A print sold meanwhile fails the confirm with "This print has just sold out". Because only the server can set shipping details, the session cannot be paid before this step.
+- **Webhook unchanged.** `checkout.session.completed` and `checkout.session.expired` settle and expire express orders exactly as hosted ones (`metadata.orderId`). A session the shopper never confirmed carries no order id and is ignored.
+- **Domains.** Each Shop host must be registered as a payment method domain (Dashboard, Settings, Payment method domains) before wallets show; `test-shop.lax.bid` is registered on the Bid sandbox account.
+
 ## Local development
 
 - `SHOP_FAKE_CHECKOUT_ENABLED=true` with no Stripe keys enables the fake checkout path (local only).

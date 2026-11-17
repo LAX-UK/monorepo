@@ -22,18 +22,27 @@ import {
   type CheckoutMoneyPause,
   assertCheckoutNotPaused,
 } from "../application/artwork-register/checkout-money-pause.js";
+import { expressShippingRate } from "../application/express-checkout/express-shipping-rates.js";
 import type {
   BasketOwner,
   CheckoutOrderInput,
   CheckoutWriter,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
+import type {
+  ExpressCheckoutGateway,
+  ExpressShippingRateId,
+} from "../application/ports/express-checkout.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
 import { cancelShopCheckoutSession } from "./drizzle-payment-event.processor.js";
 import { resolveShopUserEmail } from "./resolve-shop-user-email.js";
 import { assertStorefrontRedirectUrl } from "./shop-basket.persistence.js";
 import { expandBasketLines, loadCheckoutBasket } from "./shop-checkout-basket.js";
+import {
+  EXPRESS_SESSION_ENDED_MESSAGE,
+  bindExpressCheckoutSession,
+} from "./shop-checkout-express-session.js";
 import { holdForNewSession } from "./shop-checkout-hold.js";
 import {
   type ReplayedCheckout,
@@ -67,6 +76,25 @@ function ownsBasket(owner: BasketOwner, input: CheckoutOrderInput): boolean {
   return owner.kind === "subject" && owner.identitySubjectId === input.subject;
 }
 
+/**
+ * An express confirm names a session the Shop opened for this basket. A session for another
+ * basket is refused before anything is read or held; one that has ended is refused too, unless it
+ * is already bound to this confirm's order (a retry after paying, settled by the webhook).
+ */
+async function assertExpressSessionForBasket(
+  gateway: ExpressCheckoutGateway,
+  input: CheckoutOrderInput,
+): Promise<void> {
+  if (!input.express) return;
+  const snapshot = await gateway.readExpressCheckout({ sessionId: input.express.sessionId });
+  if (!snapshot?.isShopExpress || snapshot.basketId !== input.basketId) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.NOT_FOUND, "Express checkout not found", 404);
+  }
+  if (snapshot.status !== "open" && !snapshot.orderId) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, EXPRESS_SESSION_ENDED_MESSAGE, 409);
+  }
+}
+
 export function createDrizzleCheckoutRepository(
   db: Database,
   paymentGateway: PaymentCheckoutGateway,
@@ -86,6 +114,11 @@ export function createDrizzleCheckoutRepository(
     exportPaymentEnabled?: boolean;
     /** Refuses a basket holding an artwork Zoho says is sold while it is still for sale. */
     moneyPause?: CheckoutMoneyPause;
+    /**
+     * Express checkout's Elements-mode sessions (GAP-49); absent while SHOP_EXPRESS_CHECKOUT is
+     * off, and then no order is made for an express confirm.
+     */
+    expressGateway?: ExpressCheckoutGateway;
   },
 ): CheckoutWriter {
   const merchandiseEnabled = options.merchandiseEnabled ?? false;
@@ -117,9 +150,18 @@ export function createDrizzleCheckoutRepository(
     assertStorefrontRedirectUrl(input.cancelUrl, options.storefrontUrl);
   }
 
-  /** The payment session for a pending order: the open one, or a new one when it needs one. */
+  /**
+   * The payment session for a pending order: the open one, or a new one when it needs one; for an
+   * express confirm, the Elements-mode session the shopper confirmed in, bound to the order.
+   */
   async function openPaymentSession(
-    input: { subject: string; successUrl: string; cancelUrl: string },
+    input: {
+      subject: string;
+      successUrl: string;
+      cancelUrl: string;
+      basketId?: string;
+      express?: CheckoutOrderInput["express"];
+    },
     pending: ReplayedCheckout,
   ) {
     const [orderRow] = await db
@@ -127,6 +169,34 @@ export function createDrizzleCheckoutRepository(
       .from(shopOrder)
       .where(eq(shopOrder.id, pending.orderId))
       .limit(1);
+    if (input.express && options.expressGateway) {
+      if (!orderRow || !input.basketId) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Express order not found", 500);
+      }
+      return bindExpressCheckoutSession(db, options.expressGateway, {
+        orderId: orderRow.id,
+        orderReference: orderRow.reference ?? null,
+        basketId: input.basketId,
+        sessionId: input.express.sessionId,
+        fulfilment: orderRow.fulfilment,
+        totalPence: orderRow.totalPence,
+        fulfilmentSurchargePence: orderRow.fulfilmentSurchargePence,
+        shipping: input.express.shipping,
+        successUrl: input.successUrl,
+        checkoutExpiresAt: orderRow.checkoutExpiresAt ?? pending.checkoutExpiresAt,
+        release: async () => {
+          await cancelShopCheckoutSession(
+            db,
+            {
+              eventId: `express-release:${orderRow.id}:${input.express?.sessionId}`,
+              orderId: orderRow.id,
+              source: "express_checkout",
+            },
+            { paymentGateway },
+          );
+        },
+      });
+    }
     const [stripeLines, customerEmail] = await Promise.all([
       loadCheckoutStripePresentation(db, pending.orderId),
       resolveShopUserEmail(db, input.subject),
@@ -162,6 +232,20 @@ export function createDrizzleCheckoutRepository(
   return {
     async createCheckoutOrder(input) {
       assertCheckoutReturnUrls(input);
+      if (input.express) {
+        // Checked before anything is read or held: an express order needs its session's gateway,
+        // and only the two UK rates the wallet sheet offers.
+        if (!options.expressGateway) {
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.FEATURE_DISABLED,
+            "Express checkout is not available",
+            503,
+          );
+        }
+        if (input.outsideUk) throw exportPaymentClosed();
+        expressShippingRate(input.fulfilment as ExpressShippingRateId);
+        await assertExpressSessionForBasket(options.expressGateway, input);
+      }
       let deliveryAddress = input.deliveryAddress;
       // Outside the UK is payable here only at a region's fixed rate, which the caller has
       // already assessed; a quoted destination goes through the delivery quote request instead.
@@ -223,12 +307,28 @@ export function createDrizzleCheckoutRepository(
         deliveryAddress,
         deliveryPhone: input.deliveryPhone,
       });
-      const replay = (existing: typeof shopOrder.$inferSelect) =>
-        replayCheckoutOrder(db, paymentGateway, existing, {
+      const replay = async (existing: typeof shopOrder.$inferSelect) => {
+        if (input.express && existing.fulfilment !== input.fulfilment && options.expressGateway) {
+          // A second confirm in the same sheet with another rate reprices the order on the same
+          // session; never once that session has been paid or has ended.
+          const snapshot = await options.expressGateway.readExpressCheckout({
+            sessionId: input.express.sessionId,
+          });
+          if (snapshot?.status !== "open") {
+            throw new ShopApiError(
+              SHOP_API_ERROR_CODES.CONFLICT,
+              EXPRESS_SESSION_ENDED_MESSAGE,
+              409,
+            );
+          }
+        }
+        return replayCheckoutOrder(db, paymentGateway, existing, {
           subject: input.subject,
           details,
           checkoutExpiresAt: newCheckoutHoldEnd(new Date()),
+          keepOpenSession: Boolean(input.express),
         });
+      };
 
       // A retry finds its order before the basket, which the first attempt has already retired.
       const [earlier] = await db

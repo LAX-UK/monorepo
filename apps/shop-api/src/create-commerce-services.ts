@@ -3,6 +3,7 @@ import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
 import { createDeliveryQuoteAcceptanceService } from "./application/delivery-quote-acceptance/delivery-quote-acceptance.service.js";
 import { createDeliveryQuoteRequestService } from "./application/delivery-quote-request/delivery-quote-request.service.js";
+import { createExpressCheckoutService } from "./application/express-checkout/express-checkout.service.js";
 import { guardAgainstPendingDeletion } from "./application/guard-against-pending-deletion.js";
 import {
   createCancelCheckoutOrderHandler,
@@ -39,11 +40,14 @@ import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
 import { createIdentityMachineClient } from "./infrastructure/identity-machine-client.js";
+import { resolveShopUserEmail } from "./infrastructure/resolve-shop-user-email.js";
 import { storefrontReturnUrlCheck } from "./infrastructure/shop-basket.persistence.js";
+import { createDrizzleExpressCheckoutBasketReader } from "./infrastructure/shop-express-checkout-basket.js";
 import type { UnappliedMoneyLookup } from "./infrastructure/shop-unapplied-payment.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
+import { createStripeShopExpressCheckoutGateway } from "./infrastructure/stripe-shop-express-checkout.gateway.js";
 import {
   parseVerifiedCheckoutSessionAsyncPaymentFailed,
   parseVerifiedCheckoutSessionCompleted,
@@ -75,6 +79,9 @@ export function createCommerceServices(
     fakeCheckoutEnabled: env.SHOP_FAKE_CHECKOUT_ENABLED,
   });
   const domainEventMode = env.DOMAIN_EVENT_PUBLISH_VALIDATE;
+  const expressGateway = env.SHOP_EXPRESS_CHECKOUT
+    ? createStripeShopExpressCheckoutGateway({ secretKey: env.STRIPE_SECRET_KEY })
+    : undefined;
   const repository = createDrizzleCommerceRepository(db, paymentGateway, {
     storefrontUrl: env.SHOP_STOREFRONT_URL,
     domainEventMode,
@@ -84,7 +91,20 @@ export function createCommerceServices(
     framingEnabled: env.SHOP_FRAMING_ENABLED,
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
     moneyPause: createDrizzleCheckoutMoneyPause(db, options.moneyPause),
+    ...(expressGateway ? { expressGateway } : {}),
   });
+  const expressCheckout = expressGateway
+    ? createExpressCheckoutService({
+        baskets: createDrizzleExpressCheckoutBasketReader(db, {
+          merchandiseEnabled: env.SHOP_MERCHANDISE_ENABLED,
+          framingEnabled: env.SHOP_FRAMING_ENABLED,
+          editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
+        }),
+        gateway: expressGateway,
+        storefrontUrl: env.SHOP_STOREFRONT_URL,
+        customerEmail: (subject) => resolveShopUserEmail(db, subject),
+      })
+    : undefined;
 
   // Identity shares one machine client across products. Without it checkout asks for entry
   // only, and guest checkout is off: no one continues as a guest without the account check.
@@ -198,6 +218,7 @@ export function createCommerceServices(
         now: () => new Date(),
       }),
       ...(guestCheckout ? { guestCheckout } : {}),
+      ...(expressCheckout ? { expressCheckout } : {}),
       savedAddresses: {
         list: createListSavedDeliveryAddressesHandler(addressBook),
         save: createSaveDeliveryAddressHandler(addressBook),
