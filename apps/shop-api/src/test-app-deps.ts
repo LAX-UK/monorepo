@@ -392,6 +392,15 @@ export function createMinimalShopApiTestDeps(
         settings: async () => ({ blockUnlinkedPublish: false }),
         updateSettings: unstubbed("zohoLink.updateSettings"),
       },
+      stockLocations: {
+        listLocations: async () => ({ items: [] }),
+        artworkLocation: unstubbed("stockLocations.artworkLocation"),
+        addLocation: unstubbed("stockLocations.addLocation"),
+        updateLocation: unstubbed("stockLocations.updateLocation"),
+        retireLocation: unstubbed("stockLocations.retireLocation"),
+        restoreLocation: unstubbed("stockLocations.restoreLocation"),
+        moveArtworks: unstubbed("stockLocations.moveArtworks"),
+      },
       guestErasure: new GuestErasureService({
         read: async () => null,
         withLockedGuest: async () => null,

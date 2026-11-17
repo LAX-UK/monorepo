@@ -9,6 +9,7 @@ import type { ArtworkRegisterReviewService } from "./application/artwork-registe
 import type { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
+import type { StockLocationService } from "./application/artwork-register/stock-location.service.js";
 import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import type { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import type { DeliveryQuoteStaffService } from "./application/delivery-quote-staff/delivery-quote-staff.service.js";
@@ -123,6 +124,8 @@ export type AdminRoutesDeps = {
     | "settings"
     | "updateSettings"
   >;
+  /** Stock location: the list of places an original can be, and moving artworks between them. */
+  stockLocations: StockLocationService;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
   /** The release-alert send log: counts per published release, never subscribers. */
