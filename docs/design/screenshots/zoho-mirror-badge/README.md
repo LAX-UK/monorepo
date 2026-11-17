@@ -14,3 +14,76 @@ viewport.
   (`docs/design/mockups/staff-gaps/index.html`), for comparison.
 
 No horizontal scroll at 375 px in any of them.
+
+## PR 3: the artwork record and the Orders list's Zoho column
+
+Taken the same way, on the fixture artworks and orders `seed:zoho-mirror-badge` now writes.
+
+- `artwork-{state}-{width}-{theme}.png`: the From Zoho record's header, the badge beside Where it
+  is, pressed with Enter and its details open (a popover at 1440, a bottom sheet at 375).
+  `artwork-not_applicable-*`: an artwork with nothing to mirror has no badge.
+- `orders-column-{width}-{theme}.png`: the Orders list on the fixtures' day with the Zoho column
+  shown: one order in each state, and the "None" dash for the order with nothing to mirror. On a
+  phone the badge has its own line under the order number.
+- `orders-column-default-hidden-1440-{theme}.png`: the column is hidden by default; Display shows
+  it, unticked (TBL-12).
+
+The six `orders-column-*` shots were retaken after review: the seed now dates the fixtures 29 days
+back, inside the summary's "last 30 days", so the strip counts the five paid orders (it read
+£0.00 and 0 before).
+
+### PR 3 gallery
+
+**Artwork record: Mirrored to Zoho**
+
+<img src="artwork-mirrored-1440-light.png" width="720" alt="Mirrored to Zoho, light, 1440">
+
+<img src="artwork-mirrored-1440-dark.png" width="720" alt="Mirrored to Zoho, dark, 1440">
+
+<img src="artwork-mirrored-375-light.png" width="280" alt="Mirrored to Zoho, light, 375"> <img src="artwork-mirrored-375-dark.png" width="280" alt="Mirrored to Zoho, dark, 375">
+
+**Artwork record: Sending to Zoho**
+
+<img src="artwork-pending-1440-light.png" width="720" alt="Sending to Zoho, light, 1440">
+
+<img src="artwork-pending-1440-dark.png" width="720" alt="Sending to Zoho, dark, 1440">
+
+<img src="artwork-pending-375-light.png" width="280" alt="Sending to Zoho, light, 375"> <img src="artwork-pending-375-dark.png" width="280" alt="Sending to Zoho, dark, 375">
+
+**Artwork record: Not in Zoho**
+
+<img src="artwork-failed-1440-light.png" width="720" alt="Not in Zoho, light, 1440">
+
+<img src="artwork-failed-1440-dark.png" width="720" alt="Not in Zoho, dark, 1440">
+
+<img src="artwork-failed-375-light.png" width="280" alt="Not in Zoho, light, 375"> <img src="artwork-failed-375-dark.png" width="280" alt="Not in Zoho, dark, 375">
+
+**Artwork record: Zoho dry run**
+
+<img src="artwork-dry_run-1440-light.png" width="720" alt="Zoho dry run, light, 1440">
+
+<img src="artwork-dry_run-1440-dark.png" width="720" alt="Zoho dry run, dark, 1440">
+
+<img src="artwork-dry_run-375-light.png" width="280" alt="Zoho dry run, light, 375"> <img src="artwork-dry_run-375-dark.png" width="280" alt="Zoho dry run, dark, 375">
+
+**Artwork record: Nothing to mirror (no badge)**
+
+<img src="artwork-not_applicable-1440-light.png" width="720" alt="Nothing to mirror (no badge), light, 1440">
+
+<img src="artwork-not_applicable-1440-dark.png" width="720" alt="Nothing to mirror (no badge), dark, 1440">
+
+<img src="artwork-not_applicable-375-light.png" width="280" alt="Nothing to mirror (no badge), light, 375"> <img src="artwork-not_applicable-375-dark.png" width="280" alt="Nothing to mirror (no badge), dark, 375">
+
+**Orders list: Zoho column hidden by default (Display menu)**
+
+<img src="orders-column-default-hidden-1440-light.png" width="720" alt="Display menu, Zoho unticked, light">
+
+<img src="orders-column-default-hidden-1440-dark.png" width="720" alt="Display menu, Zoho unticked, dark">
+
+**Orders list: Zoho column shown, every state**
+
+<img src="orders-column-1440-light.png" width="720" alt="Orders with Zoho column, light, 1440">
+
+<img src="orders-column-1440-dark.png" width="720" alt="Orders with Zoho column, dark, 1440">
+
+<img src="orders-column-375-light.png" width="280" alt="Orders with Zoho column, light, 375"> <img src="orders-column-375-dark.png" width="280" alt="Orders with Zoho column, dark, 375">
