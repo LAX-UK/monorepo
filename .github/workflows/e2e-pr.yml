@@ -41,6 +41,10 @@ jobs:
               - "apps/shop-api/src/scripts/seed-zoho-mirror-badge.ts"
               - "apps/shop-api/src/application/zoho-mirror/**"
               - "apps/shop-api/src/routes/admin/v1/admin-zoho-mirror.routes.ts"
+              - "apps/shop-api/src/infrastructure/seed/release-alert-sends-seed.ts"
+              - "apps/shop-api/src/scripts/seed-release-alert-sends.ts"
+              - "apps/shop-api/src/infrastructure/alerts/release-alert-send-log.store.ts"
+              - "apps/shop-api/src/routes/admin/v1/admin-release-alerts.routes.ts"
             # On a pull request the browser gates run only for changes a page can show: the apps,
             # their UI packages, the e2e suites, seeds and this workflow. Every other change still
             # runs the full gates in the merge queue (merge_group always runs), so nothing reaches
@@ -346,6 +350,9 @@ jobs:
       - name: Seed the Zoho badge fixture orders
         if: needs.changes.outputs.lax_admin == 'true'
         run: pnpm --filter @auction/shop-api seed:zoho-mirror-badge
+      # The release-alert send log spec (in the checks below) seeds its own fixture releases, one per
+      # status, through seed:release-alert-sends on this job's DATABASE_URL, and fails rather than
+      # skipping when it cannot.
       - name: Run LAX Admin accessibility and role checks
         if: needs.changes.outputs.lax_admin == 'true'
         env:
