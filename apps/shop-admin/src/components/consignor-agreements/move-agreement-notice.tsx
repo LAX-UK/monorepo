@@ -1,5 +1,5 @@
 import type { MoveAgreementLine } from "@/lib/move-agreement-line";
-import { Notice, StaffButton } from "@auction/staff-ui";
+import { Notice, StaffButtonLink } from "@auction/staff-ui";
 import Link from "next/link";
 
 /** The consignor agreement line in a move dialog, with its one action when there is one. */
@@ -10,9 +10,9 @@ export function MoveAgreementNotice({ line }: { line: MoveAgreementLine }) {
       title={line.text}
       actions={
         line.link ? (
-          <StaffButton asChild size="sm" variant="secondary">
-            <Link href={line.link.href}>{line.link.label}</Link>
-          </StaffButton>
+          <StaffButtonLink href={line.link.href} Link={Link} size="sm" variant="secondary">
+            {line.link.label}
+          </StaffButtonLink>
         ) : undefined
       }
     />
