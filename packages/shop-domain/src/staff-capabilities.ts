@@ -129,8 +129,11 @@ export const READ_IMPLIED_BY_WRITE = {
   "editorial.write": "editorial.read",
   "artwork_register.review": "artwork_register.read",
   "order.write": "order.read",
-  /** Moving an artwork starts from its record, so it opens the record (and so its location). */
-  "artwork_location.move": "artwork_register.read",
+  /**
+   * Moving an artwork shows where it is. It does not open the From Zoho register: Fulfilment and
+   * Gallery staff stay out of its queues and Sync health.
+   */
+  "artwork_location.move": "artwork_location.read",
   "artwork_location.manage": "artwork_location.read",
 } as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
 
@@ -144,7 +147,7 @@ const IMPLIED: readonly (readonly [string, ShopStaffCapability])[] = [
   ...Object.entries(READ_INCLUDED_IN_READ),
 ];
 
-/** Adds every implied read, following chains (a move implies the record, which implies location). */
+/** Adds every implied read, following chains of them. */
 function withImpliedReads(granted: readonly ShopStaffCapability[]): readonly ShopStaffCapability[] {
   const all = new Set(granted);
   let added = true;
