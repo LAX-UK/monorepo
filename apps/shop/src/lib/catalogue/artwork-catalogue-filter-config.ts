@@ -1,4 +1,9 @@
-import type { CataloguePriceBandKey, CatalogueSizeBandKey } from "@auction/shop-domain";
+import type {
+  CatalogueFramingKey,
+  CatalogueOrientationKey,
+  CataloguePriceBandKey,
+  CatalogueSizeBandKey,
+} from "@auction/shop-domain";
 import type { ArtworkCatalogueSort } from "./artwork-catalogue-params";
 
 /** The rail's option groups, in order. Availability is the switch above them. */
@@ -6,6 +11,8 @@ export const ARTWORK_FILTER_GROUPS = [
   { value: "artist", title: "Artist" },
   { value: "price", title: "Price" },
   { value: "size", title: "Size" },
+  { value: "orientation", title: "Orientation" },
+  { value: "framing", title: "Framing" },
   { value: "technique", title: "Technique" },
 ] as const;
 
@@ -16,6 +23,8 @@ export const ARTWORK_FILTER_DEFAULT_OPEN: ArtworkFilterGroupValue[] = [
   "artist",
   "price",
   "size",
+  "orientation",
+  "framing",
   "technique",
 ];
 
@@ -39,6 +48,17 @@ export const SIZE_BAND_LABELS: Record<CatalogueSizeBandKey, string> = {
   small: "Small, under 50 cm",
   medium: "Medium, 50 to 100 cm",
   large: "Large, 100 cm and over",
+};
+
+export const ORIENTATION_LABELS: Record<CatalogueOrientationKey, string> = {
+  portrait: "Portrait",
+  landscape: "Landscape",
+  square: "Square",
+};
+
+export const FRAMING_LABELS: Record<CatalogueFramingKey, string> = {
+  framed: "Available framed",
+  unframed: "Available unframed",
 };
 
 export const AVAILABILITY_LABELS = {

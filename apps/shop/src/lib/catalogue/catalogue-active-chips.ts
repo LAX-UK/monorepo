@@ -1,5 +1,7 @@
 import {
   AVAILABILITY_LABELS,
+  FRAMING_LABELS,
+  ORIENTATION_LABELS,
   PRICE_BAND_LABELS,
   SIZE_BAND_LABELS,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
@@ -50,6 +52,10 @@ export function buildArtworkCatalogueActiveChips(
     });
   }
   if (state.size) add("size", SIZE_BAND_LABELS[state.size], { size: null });
+  if (state.orientation) {
+    add("orientation", ORIENTATION_LABELS[state.orientation], { orientation: null });
+  }
+  if (state.framing) add("framing", FRAMING_LABELS[state.framing], { framing: null });
   if (state.technique) add("technique", state.technique, { technique: null });
   if (state.categorySlug) {
     const label = lookups.categories.find((c) => c.slug === state.categorySlug)?.label;

@@ -1,7 +1,9 @@
 import {
   ARTWORK_FILTER_GROUPS,
   type ArtworkFilterGroupValue,
+  FRAMING_LABELS,
   MIN_FILTER_GROUP_OPTIONS,
+  ORIENTATION_LABELS,
   PRICE_BAND_LABELS,
   SIZE_BAND_LABELS,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
@@ -12,8 +14,12 @@ import {
 } from "@/lib/catalogue/artwork-catalogue-params";
 import type { PublicArtworkFacetCounts } from "@auction/shop-contracts";
 import {
+  CATALOGUE_FRAMING_KEYS,
+  CATALOGUE_ORIENTATION_KEYS,
   CATALOGUE_PRICE_BAND_KEYS,
   CATALOGUE_SIZE_BAND_KEYS,
+  type CatalogueFramingKey,
+  type CatalogueOrientationKey,
   type CataloguePriceBandKey,
   type CatalogueSizeBandKey,
 } from "@auction/shop-domain";
@@ -130,6 +136,34 @@ function sizeOptions({ state, facets }: CatalogueFilterInputs) {
   );
 }
 
+function orientationOptions({ state, facets }: CatalogueFilterInputs) {
+  // Like sizes, orientations come from the counts only.
+  if (!facets?.orientations) return [];
+  return CATALOGUE_ORIENTATION_KEYS.map((key: CatalogueOrientationKey) =>
+    option(
+      state,
+      { value: key, label: ORIENTATION_LABELS[key], count: countOf(facets.orientations, key) },
+      state.orientation === key,
+      { orientation: key },
+      { orientation: null },
+    ),
+  );
+}
+
+function framingOptions({ state, facets }: CatalogueFilterInputs) {
+  // A work that can be had framed or unframed counts in both options.
+  if (!facets?.framing) return [];
+  return CATALOGUE_FRAMING_KEYS.map((key: CatalogueFramingKey) =>
+    option(
+      state,
+      { value: key, label: FRAMING_LABELS[key], count: countOf(facets.framing, key) },
+      state.framing === key,
+      { framing: key },
+      { framing: null },
+    ),
+  );
+}
+
 function techniqueOptions({ state, facets }: CatalogueFilterInputs) {
   const rows = facets?.techniques ?? [];
   const chosen = state.technique?.toLowerCase();
@@ -153,6 +187,8 @@ const GROUP_OPTIONS: Record<
   artist: artistOptions,
   price: priceOptions,
   size: sizeOptions,
+  orientation: orientationOptions,
+  framing: framingOptions,
   technique: techniqueOptions,
 };
 
