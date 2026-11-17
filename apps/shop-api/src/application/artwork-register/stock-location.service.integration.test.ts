@@ -1,11 +1,14 @@
-import { createDbFromPool } from "@auction/db";
+import { type Database, createDbFromPool } from "@auction/db";
 import {
   artworkLocation,
   artworkLocationMove,
   domainEvent,
   shopAdminAudit,
 } from "@auction/db/schema";
-import { DrizzleArtworkRegisterRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleArtworkRegisterRepository,
+  DrizzleStockLocationStore,
+} from "@auction/persistence/repositories";
 import { and, eq, inArray } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -13,7 +16,7 @@ import { ShopApiError } from "../../errors/shop-api-error.js";
 import { createDrizzleShopUnitOfWork } from "../../infrastructure/drizzle-shop-transaction-effects.js";
 import {
   createDrizzleStockLocationReads,
-  drizzleStockLocationWritesFor,
+  createDrizzleStockLocationWritesFor,
 } from "../../infrastructure/drizzle-stock-location.js";
 import { integrationSuffix, uniqueStockCode } from "../../test-support/shop-fixtures.js";
 import {
@@ -25,6 +28,7 @@ import type { ShopUnitOfWorkFactory } from "../ports/shop-unit-of-work.js";
 import { createStockLocationService } from "./stock-location.service.js";
 
 const NOW = new Date("2026-11-17T09:00:00.000Z");
+const storeOn = (session: Database) => new DrizzleStockLocationStore(session);
 const key = () => `idem-${integrationSuffix("k")}`;
 
 /**
@@ -50,8 +54,8 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
     const db = createShopDb(shopPool);
     return createStockLocationService({
       uow: uow ?? createDrizzleShopUnitOfWork(db, "off"),
-      reads: createDrizzleStockLocationReads(db),
-      writesFor: drizzleStockLocationWritesFor,
+      reads: createDrizzleStockLocationReads(db, storeOn),
+      writesFor: createDrizzleStockLocationWritesFor(storeOn),
       clock: () => NOW,
     });
   }
@@ -316,8 +320,8 @@ describe.skipIf(!hasShopIntegrationDb)("stock location service (Postgres)", () =
       });
       await createStockLocationService({
         uow: createDrizzleShopUnitOfWork(createShopDb(shopPool), "off"),
-        reads: createDrizzleStockLocationReads(createShopDb(shopPool)),
-        writesFor: drizzleStockLocationWritesFor,
+        reads: createDrizzleStockLocationReads(createShopDb(shopPool), storeOn),
+        writesFor: createDrizzleStockLocationWritesFor(storeOn),
         clock: () => later,
       }).moveArtworks({
         actorSubjectId: "ops-1",

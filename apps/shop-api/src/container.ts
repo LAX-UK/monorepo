@@ -10,6 +10,7 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleLotNumberReader,
   DrizzleSoldAttentionStore,
+  DrizzleStockLocationStore,
   DrizzleUnappliedMoneyReader,
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoDriftReader,
@@ -169,7 +170,7 @@ import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-trans
 import { createDrizzleStaffNameReader } from "./infrastructure/drizzle-staff-name.reader.js";
 import {
   createDrizzleStockLocationReads,
-  drizzleStockLocationWritesFor,
+  createDrizzleStockLocationWritesFor,
 } from "./infrastructure/drizzle-stock-location.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import {
@@ -431,6 +432,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const laxArtListings = createDrizzleLaxArtListingReader(db);
   const auctionOffers = createHttpAuctionOfferGateway(env);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
+  const stockLocationStoreOn = (session: Database) => new DrizzleStockLocationStore(session);
   const catalogueChange = new CatalogueChangeService({
     register: artworkRegisterRepository,
     laxArt: createDrizzleLaxArtCatalogueCopyStore(db, shopUow, {
@@ -834,8 +836,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         }),
         stockLocations: createStockLocationService({
           uow: shopUow,
-          reads: createDrizzleStockLocationReads(db),
-          writesFor: drizzleStockLocationWritesFor,
+          reads: createDrizzleStockLocationReads(db, stockLocationStoreOn),
+          writesFor: createDrizzleStockLocationWritesFor(stockLocationStoreOn),
         }),
         releaseAlertSummary: shopAlerts.summary,
         printParties: createDrizzlePrintPartyStore(db),

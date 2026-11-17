@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { artworkRegister } from "@auction/db/schema";
-import { DrizzleStockLocationStore } from "@auction/persistence/repositories";
+import type { IStockLocationStore } from "@auction/persistence/interfaces";
 import { eq } from "drizzle-orm";
 import type {
   StockLocationReads,
@@ -17,9 +17,15 @@ class AddRefused extends Error {
   }
 }
 
+/** The persistence store on a connection or transaction; the container supplies it. */
+export type StockLocationStoreOn = (session: Database) => IStockLocationStore;
+
 /** Reads outside any unit of work. */
-export function createDrizzleStockLocationReads(db: Database): StockLocationReads {
-  const store = new DrizzleStockLocationStore(db);
+export function createDrizzleStockLocationReads(
+  db: Database,
+  storeOn: StockLocationStoreOn,
+): StockLocationReads {
+  const store = storeOn(db);
   return {
     listLocations: (options) => store.listLocations(options),
     currentLocation: (registerId) => store.currentLocation(registerId),
@@ -39,28 +45,30 @@ export function createDrizzleStockLocationReads(db: Database): StockLocationRead
  * The store on the unit of work's transaction. Its own `transaction` calls become savepoints, so
  * the change, its history and its events commit with the audit row and the idempotency record.
  */
-export const drizzleStockLocationWritesFor: StockLocationWritesFor = (tx) => {
-  const session = shopPhaseDbSession(tx);
-  const store = new DrizzleStockLocationStore(session);
-  const writes: StockLocationWrites = {
-    findLocation: (id) => store.findLocation(id),
-    async addLocation(input) {
-      // The store answers a taken name by catching the unique violation, which would leave the
-      // unit of work's transaction aborted. A savepoint keeps it usable.
-      try {
-        return await session.transaction(async (savepoint) => {
-          const result = await new DrizzleStockLocationStore(savepoint).addLocation(input);
-          if (!result.ok) throw new AddRefused(result);
-          return result;
-        });
-      } catch (error) {
-        if (error instanceof AddRefused) return error.result;
-        throw error;
-      }
-    },
-    updateLocation: (input) => store.updateLocation(input),
-    setLocationStatus: (input) => store.setLocationStatus(input),
-    moveArtworks: (input) => store.moveArtworks(input),
+export const createDrizzleStockLocationWritesFor =
+  (storeOn: StockLocationStoreOn): StockLocationWritesFor =>
+  (tx) => {
+    const session = shopPhaseDbSession(tx);
+    const store = storeOn(session);
+    const writes: StockLocationWrites = {
+      findLocation: (id) => store.findLocation(id),
+      async addLocation(input) {
+        // The store answers a taken name by catching the unique violation, which would leave the
+        // unit of work's transaction aborted. A savepoint keeps it usable.
+        try {
+          return await session.transaction(async (savepoint) => {
+            const result = await storeOn(savepoint).addLocation(input);
+            if (!result.ok) throw new AddRefused(result);
+            return result;
+          });
+        } catch (error) {
+          if (error instanceof AddRefused) return error.result;
+          throw error;
+        }
+      },
+      updateLocation: (input) => store.updateLocation(input),
+      setLocationStatus: (input) => store.setLocationStatus(input),
+      moveArtworks: (input) => store.moveArtworks(input),
+    };
+    return writes;
   };
-  return writes;
-};
