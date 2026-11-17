@@ -84,53 +84,72 @@ export class ReleaseAlertSendLogStore implements ReleaseAlertSendLogReader {
       Math.max(query.limit ?? DEFAULT_LIMIT, 1),
       ADMIN_RELEASE_ALERT_SENDS_MAX_LIMIT,
     );
-    const rows = await this.page(query.cursor, limit);
+    const rows = await this.page({ cursor: query.cursor }, limit);
     const shown = rows.slice(0, limit);
+    const toSend = await this.sendsOf(shown);
+    return pageOf(
+      rows,
+      limit,
+      (row) => ({ createdAt: row.announcedAt, id: row.artworkId, createdAtMicros: row.atMicros }),
+      toSend,
+    );
+  }
+
+  /**
+   * One release by its work, read the same way as a row of the list, so a panel opened from a link
+   * to a release on another page shows exactly what its row would. Null when the work has no shop
+   * release in the log.
+   */
+  async find(artworkId: string): Promise<AdminReleaseAlertSend | null> {
+    const rows = await this.page({ artworkId }, 1);
+    const row = rows[0];
+    if (!row) return null;
+    const toSend = await this.sendsOf([row]);
+    return toSend(row);
+  }
+
+  /** Reads the open matches (and old drop reasons) for the rows, then maps each to its send. */
+  private async sendsOf(shown: readonly PageRow[]) {
     const legacyKeys = shown.filter((row) => !countsKept(row)).map((row) => row.itemKey);
     const [live, legacyReasons] = await Promise.all([
       this.liveCounts(shown.map((row) => row.itemKey)),
       this.dropReasons(legacyKeys),
     ]);
-    return pageOf(
-      rows,
-      limit,
-      (row) => ({ createdAt: row.announcedAt, id: row.artworkId, createdAtMicros: row.atMicros }),
-      (row): AdminReleaseAlertSend => {
-        const open = live.get(row.itemKey) ?? NO_MATCHES;
-        const kept = countsKept(row);
-        const counts = kept
-          ? this.keptCounts(row, open.waiting)
-          : {
-              matched: open.matched,
-              emailed: open.emailed,
-              notSent: open.notSent,
-              waiting: open.waiting,
-              reasons: legacyReasons.get(row.itemKey) ?? [],
-            };
-        const image = this.resolveMediaUrl(row.image);
-        return {
-          artworkId: row.artworkId,
-          title: row.title,
-          imageUrl: image && /^https?:\/\//.test(image) ? image : null,
-          publishedAt: row.announcedAt.toISOString(),
-          publishedByName: row.publisherName?.trim() || null,
-          toldSubscribers: row.announce,
-          status: releaseAlertSendStatus({
-            announce: row.announce,
-            expanded: row.expandedAt !== null,
-            waiting: counts.waiting,
-            stuck: open.stuck,
-            countsKept: kept,
-          }),
-          countsKept: kept,
-          matched: counts.matched,
-          emailed: counts.emailed,
+    return (row: PageRow): AdminReleaseAlertSend => {
+      const open = live.get(row.itemKey) ?? NO_MATCHES;
+      const kept = countsKept(row);
+      const counts = kept
+        ? this.keptCounts(row, open.waiting)
+        : {
+            matched: open.matched,
+            emailed: open.emailed,
+            notSent: open.notSent,
+            waiting: open.waiting,
+            reasons: legacyReasons.get(row.itemKey) ?? [],
+          };
+      const image = this.resolveMediaUrl(row.image);
+      return {
+        artworkId: row.artworkId,
+        title: row.title,
+        imageUrl: image && /^https?:\/\//.test(image) ? image : null,
+        publishedAt: row.announcedAt.toISOString(),
+        publishedByName: row.publisherName?.trim() || null,
+        toldSubscribers: row.announce,
+        status: releaseAlertSendStatus({
+          announce: row.announce,
+          expanded: row.expandedAt !== null,
           waiting: counts.waiting,
-          notSent: counts.notSent,
-          notSentReasons: counts.reasons,
-        };
-      },
-    );
+          stuck: open.stuck,
+          countsKept: kept,
+        }),
+        countsKept: kept,
+        matched: counts.matched,
+        emailed: counts.emailed,
+        waiting: counts.waiting,
+        notSent: counts.notSent,
+        notSentReasons: counts.reasons,
+      };
+    };
   }
 
   /**
@@ -164,15 +183,21 @@ export class ReleaseAlertSendLogStore implements ReleaseAlertSendLogReader {
    * A release with no `kind` was announced by a build from before 0405 after the migration's one-off
    * backfill ran (the deploy overlap). It is read through the current-flags rule the backfill used,
    * so it still appears; its publisher was never kept, so it reads as unknown.
+   *
+   * With `artworkId`, the one release of that work (on the item key's index), under the same rule.
    */
-  private async page(cursorValue: string | undefined, limit: number) {
-    const cursor = decodeCatalogueCursor(cursorValue);
+  private async page(
+    at: { cursor?: string | undefined; artworkId?: string | undefined },
+    limit: number,
+  ) {
+    const cursor = decodeCatalogueCursor(at.cursor);
     const n = shopAlertAnnouncement;
     const after = cursor
       ? sql`(${n.announcedAt}, ${n.itemKey}) < (${
           cursor.createdAtMicros ?? cursor.createdAt.toISOString()
         }::timestamptz, ${artworkItemKey(cursor.id)})`
       : undefined;
+    const only = at.artworkId ? eq(n.itemKey, artworkItemKey(at.artworkId)) : undefined;
     return this.db
       .select({
         itemKey: n.itemKey,
@@ -203,6 +228,7 @@ export class ReleaseAlertSendLogStore implements ReleaseAlertSendLogReader {
             ),
           ),
           after,
+          only,
         ),
       )
       .orderBy(desc(n.announcedAt), desc(n.itemKey))

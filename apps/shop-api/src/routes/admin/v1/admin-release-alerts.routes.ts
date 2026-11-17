@@ -1,5 +1,8 @@
 import {
   AdminReleaseAlertSendListSchema,
+  type AdminReleaseAlertSendParams,
+  AdminReleaseAlertSendParamsSchema,
+  AdminReleaseAlertSendSchema,
   type AdminReleaseAlertSendsQuery,
   AdminReleaseAlertSendsQuerySchema,
   AdminReleaseAlertSummarySchema,
@@ -51,6 +54,31 @@ export async function registerAdminReleaseAlertRoutes(
       requireShopStaffCapability(request, "lead.read");
       const { cursor, limit } = request.query;
       return readers.sends.list({ cursor, limit });
+    },
+  );
+
+  /** One release by its work: a panel link whose release is not on the page shown (PRD-7). */
+  app.get<{ Params: AdminReleaseAlertSendParams }>(
+    "/release-alerts/sends/:artworkId",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: AdminReleaseAlertSendParamsSchema,
+        response: {
+          200: AdminReleaseAlertSendSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      requireShopStaffCapability(request, "lead.read");
+      const send = await readers.sends.find(request.params.artworkId);
+      if (!send) {
+        return reply.status(404).send({ code: "not_found", message: "Release alert not found" });
+      }
+      return send;
     },
   );
 }

@@ -23,6 +23,7 @@ import {
   paddleLine,
 } from "@/lib/admin/deliveries/deliveries.vm";
 import { canDeclineDelivery } from "@/lib/admin/deliveries/delivery-decline";
+import { quoteActionFor } from "@/lib/admin/deliveries/delivery-quote-form";
 import type { DeliveriesPage, DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import {
@@ -75,9 +76,9 @@ const BESIDE_PANEL_HIDDEN = new Set(["buyer", "destination"]);
 /**
  * Every won lot a buyer wants delivered, on the staff list template (D1–D6): one tab per delivery
  * status with its count, search and a sale filter, and a queue panel (PRD-7) that steps through
- * the rows with J and K. Fulfilment and Administrators can decline a request ("Can't deliver",
- * D8) from the panel footer; pricing a quote arrives in its own change. Dispatch, tracking and
- * delivered stay on Lot fulfilment.
+ * the rows with J and K. Fulfilment and Administrators send or change a quote from the panel's
+ * footer or the row menu (D3, D5), and decline a request ("Can't deliver", D8) from the panel
+ * footer; dispatch, tracking and delivered stay on Lot fulfilment.
  */
 export function DeliveriesList(props: DeliveriesListProps) {
   const { page, search, filters, canWork } = props;
@@ -186,8 +187,15 @@ export function DeliveriesList(props: DeliveriesListProps) {
     keepMissing: true,
   });
 
+  // The lot whose Send or Change quote dialog is open; the row menu opens it with the panel.
+  const [quoteFor, setQuoteFor] = useState<string | null>(null);
+
   const actionsFor = useCallback(
     (row: DeliveryView): OverflowAction[] => [
+      ...quoteRowAction(row, canWork, () => {
+        queue.open(row.lotId);
+        setQuoteFor(row.lotId);
+      }),
       { id: "open", label: DELIVERIES_COPY.rowActions.open, onSelect: () => queue.open(row.lotId) },
       ...(canWork
         ? [
@@ -389,11 +397,27 @@ export function DeliveriesList(props: DeliveriesListProps) {
         missing={missing}
         loadFailed={props.selectedError}
         onRetry={() => router.refresh()}
+        quoteOpen={quoteFor !== null && quoteFor === queue.record?.lotId}
+        onQuoteOpenChange={(open) => setQuoteFor(open ? (queue.record?.lotId ?? null) : null)}
         ownChange={ownChange}
         footerActions={panelFooterActions}
       />
     </>
   );
+}
+
+/** D3: Send quote or Change quote first in the row menu, for those who price deliveries. */
+function quoteRowAction(row: DeliveryView, canWork: boolean, onSelect: () => void) {
+  const action = canWork ? quoteActionFor(row) : null;
+  if (!action) return [];
+  return [
+    {
+      id: "quote",
+      label:
+        action === "send" ? DELIVERIES_COPY.rowActions.send : DELIVERIES_COPY.rowActions.change,
+      onSelect,
+    },
+  ];
 }
 
 /** The status, and "Awaiting payment" beside an unpaid booking: at most two. */

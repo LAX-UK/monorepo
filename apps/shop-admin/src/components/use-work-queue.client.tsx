@@ -10,7 +10,10 @@ import { useCallback, useEffect, useRef } from "react";
  * panel on a plain click and leaves Cmd-click, Ctrl-click and the middle button to the browser,
  * so the link never needs the router (nor prefetches the list again for every row).
  */
-const QueueRowLink: StaffLinkComponent = function QueueRowLink({ prefetch: _prefetch, ...rest }) {
+export const QueueRowLink: StaffLinkComponent = function QueueRowLink({
+  prefetch: _prefetch,
+  ...rest
+}) {
   return <a {...rest} />;
 };
 

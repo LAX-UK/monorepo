@@ -14,7 +14,9 @@ import {
  * Stock location in LAX Admin (docs/design/stock-location.md) against the running stack: an
  * Administrator keeps the list (add, rename, retire, restore), moves an artwork from its record and
  * a selection from All artworks, and the pages pass axe in both themes; the Locations tab fits a
- * 375px phone; a read-only role sees the list and the record with nothing to change or move.
+ * 375px phone; a read-only role sees the list and the record with nothing to change or move; a
+ * Catalogue editor is offered Move and an account manager is not (owner decision, 17 Nov 2026:
+ * only Catalogue editors and Administrators move artworks).
  *
  * The moves use the fixture artworks and location the CI stack seeds
  * (`pnpm --filter @auction/shop-api seed:stock-location`). In CI a missing fixture fails the run
@@ -268,6 +270,49 @@ test.describe("LAX Admin stock locations @a11y", () => {
       expect(overflow).toBeLessThanOrEqual(0);
     } finally {
       await closeStaffSession(opened);
+    }
+  });
+
+  test("a Catalogue editor is offered Move on a record and the list; an account manager is not", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.skip(!rolesEnabled, "Set LAX_ADMIN_ROLES_E2E=1 for the demo role sign-ins.");
+    if (!baseURL) throw new Error("baseURL is required");
+    const roleSession = (email: string) =>
+      openStaffSession({
+        browser,
+        baseURL,
+        account: { email, password },
+        theme: "light",
+        viewport: { width: 1440, height: 1000 },
+      });
+
+    let recordPath: string;
+    const editor = await roleSession("lax-catalogue@lax.bid");
+    try {
+      recordPath = await openFixtureRecord(editor.page, FIXTURE.alreadyThere);
+      await expect(locationPanel(editor.page).getByRole("button", { name: "Move…" })).toBeVisible();
+      await openFixtureList(editor.page);
+      await rowOf(editor.page, FIXTURE.alreadyThere).getByRole("checkbox").check();
+      await expect(editor.page.getByRole("button", { name: "Move selected…" })).toBeVisible();
+    } finally {
+      await closeStaffSession(editor);
+    }
+
+    const manager = await roleSession("lax-accounts@lax.bid");
+    try {
+      const { page } = manager;
+      await openStaffPage(page, "/overview");
+      // No From Zoho in the nav, and its record neither loads nor offers Move.
+      await expect(
+        page.locator("[data-staff-shell] nav").getByRole("link", { name: "From Zoho" }),
+      ).toHaveCount(0);
+      await page.goto(recordPath, { waitUntil: "domcontentloaded" });
+      await expect(page.locator("#main-content")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole("button", { name: /^Move/ })).toHaveCount(0);
+    } finally {
+      await closeStaffSession(manager);
     }
   });
 

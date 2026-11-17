@@ -687,6 +687,90 @@ describe("useSaleroomDisplayLive", () => {
   });
 });
 
+describe("useSaleroomDisplayLive late outcome for an earlier lot", () => {
+  const lotTwoSnapshot = snapshot({
+    currentLotId: "lot-2",
+    currentLot: currentLot({
+      id: "lot-2",
+      lotNumber: 2,
+      title: "Lot two",
+      currentPrice: "900.00",
+      leaderPaddleNumber: 777,
+    }),
+  });
+
+  for (const extra of [{}, { clearedFromBlock: false }]) {
+    it(`keeps lot-2 on the block with no sold flash when hammer for lot-1 arrives ${
+      "clearedFromBlock" in extra ? "(clearedFromBlock: false)" : "(legacy payload)"
+    }`, async () => {
+      const dataClient = createMockDataClient(
+        vi.fn().mockResolvedValue({ ok: true, snapshot: lotTwoSnapshot }),
+      );
+      const adapter = createMockSaleroomSocketAdapter();
+
+      const { result } = renderHook(() =>
+        useSaleroomDisplayLive({
+          saleId: "sale-1",
+          displayToken: "token-1",
+          dataClient,
+          socketAdapter: adapter,
+        }),
+      );
+
+      await waitFor(() => expect(result.current.snapshot?.currentLotId).toBe("lot-2"));
+
+      act(() => {
+        adapter.emit({
+          kind: "hammer",
+          saleId: "sale-1",
+          emittedAt: "2026-06-17T10:00:00.000Z",
+          lotId: "lot-1",
+          lotOutcome: "sold",
+          ...extra,
+        });
+      });
+
+      expect(result.current.flash).toBeNull();
+      expect(result.current.lastHammer).toBeNull();
+      expect(result.current.snapshot?.currentLotId).toBe("lot-2");
+      expect(result.current.snapshot?.currentLot?.id).toBe("lot-2");
+      expect(result.current.snapshot?.currentLot?.currentPrice).toBe("900.00");
+    });
+  }
+
+  it("does not flash passed over lot-2 when no_sale for lot-1 arrives", async () => {
+    const dataClient = createMockDataClient(
+      vi.fn().mockResolvedValue({ ok: true, snapshot: lotTwoSnapshot }),
+    );
+    const adapter = createMockSaleroomSocketAdapter();
+
+    const { result } = renderHook(() =>
+      useSaleroomDisplayLive({
+        saleId: "sale-1",
+        displayToken: "token-1",
+        dataClient,
+        socketAdapter: adapter,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.snapshot?.currentLotId).toBe("lot-2"));
+
+    act(() => {
+      adapter.emit({
+        kind: "no_sale",
+        saleId: "sale-1",
+        emittedAt: "2026-06-17T10:00:00.000Z",
+        lotId: "lot-1",
+        clearedFromBlock: false,
+      });
+    });
+
+    expect(result.current.flash).toBeNull();
+    expect(result.current.snapshot?.currentLotId).toBe("lot-2");
+    expect(result.current.snapshot?.currentLot?.id).toBe("lot-2");
+  });
+});
+
 describe("useSaleroomDisplayLive periodic resync", () => {
   beforeEach(() => {
     vi.useFakeTimers();

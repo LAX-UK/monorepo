@@ -534,6 +534,31 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
     });
   });
 
+  describe("one release by its work (a panel link from another page)", () => {
+    it("reads exactly what the release's row in the list says", async () => {
+      const listed = (await store().list({ limit: 50 })).items;
+      for (const label of ["quiet", "queued", "sending", "stuck", "sent"]) {
+        const id = ids[label] as string;
+        expect(await store().find(id), label).toEqual(listed.find((i) => i.artworkId === id));
+      }
+    });
+
+    it("finds a release whatever page it is on", async () => {
+      // The oldest release, on the last page at one a page.
+      expect(await store().find(ids.quiet as string)).toMatchObject({
+        status: "not_announced",
+        toldSubscribers: false,
+      });
+    });
+
+    it("finds nothing for a work with no release, or one announced as a lax.art original", async () => {
+      expect(await store().find(await artwork("never-published"))).toBeNull();
+      const original = await artwork("original-one");
+      await release(db, original, ago(HOUR), [], { kind: "art_original" });
+      expect(await store().find(original)).toBeNull();
+    });
+  });
+
   it("names the publisher kept on the release, and no one when none is kept", async () => {
     expect((await row("sending"))?.publishedByName).toBe("Sam");
     expect((await row("sent"))?.publishedByName).toBeNull();

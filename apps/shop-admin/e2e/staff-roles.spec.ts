@@ -14,6 +14,7 @@ import {
   openStaffPage,
   openStaffSession,
 } from "./support/page-session.js";
+import { expectReleaseAlertsWithoutArtworks } from "./support/release-alert-fixtures.js";
 
 /**
  * The six LAX Admin sign-ins the demo top-up creates (packages/db/src/seed/demo/demo-topup-ids.ts),
@@ -79,6 +80,10 @@ test.describe("LAX Admin staff roles @roles", () => {
         const shown = [...new Set(hrefs.filter((href) => everyNavPath.has(href)))].sort();
 
         expect(shown).toEqual(expected);
+
+        // In the same session, so it costs no sign-in: reads the release-alert send log, but its
+        // release panel has no artwork link (design LA-3).
+        if (role === "account_manager") await expectReleaseAlertsWithoutArtworks(page);
       } finally {
         if (session) await closeStaffSession(session);
       }

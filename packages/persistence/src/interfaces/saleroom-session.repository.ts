@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { saleroomEvent, saleroomSession } from "@auction/db/schema";
 
 export type SaleroomSessionRow = typeof saleroomSession.$inferSelect;
@@ -30,7 +31,15 @@ export interface ISaleroomSessionRepository {
   markPaused(sessionId: string): Promise<void>;
   markResumed(sessionId: string): Promise<void>;
   setCurrentLot(sessionId: string, lotId: string): Promise<void>;
-  clearCurrentLot(sessionId: string): Promise<void>;
+  /**
+   * Takes `lotId` off the block only if it is still the session's current lot (compare-and-clear).
+   * Pass the lot outcome transaction as `tx` so the clear commits with the outcome write. An advance
+   * that already put another lot on the block is left alone: returns `{ cleared: false }`.
+   */
+  clearCurrentLotIfCurrent(
+    input: { sessionId: string; lotId: string },
+    tx?: Database,
+  ): Promise<{ cleared: boolean }>;
   markEnded(sessionId: string, endedAt: Date): Promise<void>;
   clearDisplayOverlay(saleId: string): Promise<{ cleared: boolean }>;
   appendEvent(input: {

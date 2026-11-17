@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { laxStaffAccess } from "@/server/domain/lax-staff-access";
 import type { AdminArtworkLocation, AdminStockLocation } from "@auction/shop-contracts";
+import { SHOP_STAFF_ROLES, type ShopStaffRole, capabilitiesForRole } from "@auction/shop-domain";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -156,6 +157,25 @@ describe("the Location panel", () => {
   it("gives Move only to people who can move artworks", () => {
     show(AT_ROOM, READER);
     expect(screen.queryByRole("button", { name: "Move…" })).toBeNull();
+  });
+
+  /** Owner decision, 17 Nov 2026: Catalogue editors and Administrators move artworks. */
+  const SEES_MOVE: Record<ShopStaffRole, boolean> = {
+    shop_admin: true,
+    account_manager: false,
+    broker: false,
+    operations: false,
+    finance: false,
+    catalogue_editor: true,
+    editor: false,
+    read_only: false,
+  };
+
+  it.each(SHOP_STAFF_ROLES)("shows Move to %s only if that role moves artworks", (role) => {
+    show(AT_ROOM, [...capabilitiesForRole(role)]);
+    const move = screen.queryByRole("button", { name: "Move…" });
+    if (SEES_MOVE[role]) expect(move).not.toBeNull();
+    else expect(move).toBeNull();
   });
 
   it("moves the artwork to an active place, saying where it is now", async () => {
