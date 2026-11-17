@@ -92,6 +92,7 @@ async function buildApp(
         withdrawn: 0,
         sold: 0,
       }),
+      countConsignors: async () => ({ none: 2, lax: 1, clients: [] }),
     },
     register: {
       findById: async (id) => (id === REGISTER_ID ? null : null),
@@ -210,6 +211,49 @@ describe("From Zoho queue routes", () => {
       headers: auth,
     });
     expect(unknown.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("filters by consignor and says who consigned each work for people who keep agreements", async () => {
+    const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+    const app = await buildApp("catalogue_editor", undefined, listAll);
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?consignor=lax",
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(listAll).toHaveBeenCalledWith({ consignor: "lax" }, { limit: 25, offset: 0 }, undefined);
+    expect(response.json().consignors).toEqual([
+      { value: "none", label: "Not set", count: 2 },
+      { value: "lax", label: "LAX owns this work", count: 1 },
+    ]);
+    const unknown = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?consignor=someone",
+      headers: auth,
+    });
+    expect(unknown.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("leaves consignors out for Read-only and refuses them the consignor filter", async () => {
+    const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+    const app = await buildApp("read_only", undefined, listAll);
+    const plain = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all",
+      headers: auth,
+    });
+    expect(plain.statusCode).toBe(200);
+    expect(plain.json()).not.toHaveProperty("consignors");
+    const filtered = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?consignor=none",
+      headers: auth,
+    });
+    expect(filtered.statusCode).toBe(403);
+    expect(listAll).toHaveBeenCalledTimes(1);
     await app.close();
   });
 

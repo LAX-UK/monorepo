@@ -29,6 +29,7 @@ import { OriginalMoveService } from "./application/admin/original-move.service.j
 import { ReopenArtListingService } from "./application/admin/reopen-art-listing.service.js";
 import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
+import { createArtworkConsignorService } from "./application/artwork-register/artwork-consignor.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import {
   ArtworkZohoLinkService,
@@ -123,6 +124,10 @@ import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle
 import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
 import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkCatalogueWriter } from "./infrastructure/drizzle-artwork-catalogue.writer.js";
+import {
+  createDrizzleArtworkConsignorReads,
+  createDrizzleArtworkConsignorWritesFor,
+} from "./infrastructure/drizzle-artwork-consignor.js";
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleLaxArtCatalogueCopyStore } from "./infrastructure/drizzle-catalogue-copy.js";
@@ -854,6 +859,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           reads: createDrizzleConsignorAgreementReads(db, consignorAgreementStoreOn),
           writesFor: createDrizzleConsignorAgreementWritesFor(consignorAgreementStoreOn),
           files: shopMediaStorage ? createConsignorAgreementFiles(shopMediaStorage.storage) : null,
+        }),
+        artworkConsignors: createArtworkConsignorService({
+          uow: shopUow,
+          reads: createDrizzleArtworkConsignorReads(db, consignorAgreementStoreOn),
+          writesFor: createDrizzleArtworkConsignorWritesFor(consignorAgreementStoreOn),
+          staffNames: createDrizzleStaffNameReader(db),
         }),
         releaseAlertSummary: shopAlerts.summary,
         releaseAlertSends: shopAlerts.sendLog,

@@ -144,7 +144,15 @@ export const AdminArtworkConsignorSchema = Type.Object(
     registerId: Type.String({ format: "uuid" }),
     /** Null: no one has said who consigned the work yet. */
     current: Type.Union([AdminConsignorChangeSchema, Type.Null()]),
+    /** Newest first, `current` included; the oldest changes are left out past a limit. */
     history: Type.Array(AdminConsignorChangeSchema),
+    /** True when older changes were left out of `history`. */
+    moreHistory: Type.Boolean(),
+    /**
+     * The client consignor's agreements that are not replaced or retired, so the record can say
+     * whether one is in force today. Empty for LAX, or when no consignor is set.
+     */
+    agreements: Type.Array(AdminConsignorAgreementSchema),
   },
   { additionalProperties: false },
 );
@@ -161,6 +169,11 @@ export const AdminArtworkConsignorSetBodySchema = Type.Object(
       Type.Object({ kind: Type.Literal("lax") }, { additionalProperties: false }),
     ]),
     reason: Type.Optional(Type.Union([Type.String({ maxLength: 2000 }), Type.Null()])),
+    /**
+     * The change staff were looking at (`current.id`), or null when no consignor was set. When
+     * the consignor has changed since, the write is refused with 409 rather than overwriting it.
+     */
+    expectedCurrentId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
   },
   { additionalProperties: false },
 );
@@ -235,7 +248,10 @@ export const AdminConsignorAgreementPartyParamsSchema = Type.Object({
   partyId: Type.String({ format: "uuid" }),
 });
 
-/** 409 of a replace or retire: a stale version also says the version the agreement is at. */
+/**
+ * 409 of a replace or retire: a stale version also says the version the agreement is at. A
+ * consignor change made meanwhile is a 409 with the id of the change now current.
+ */
 export const AdminConsignorAgreementConflictSchema = Type.Object({
   code: Type.String(),
   message: Type.String(),

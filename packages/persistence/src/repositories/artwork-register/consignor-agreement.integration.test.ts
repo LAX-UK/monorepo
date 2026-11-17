@@ -286,6 +286,7 @@ describe.skipIf(!url)("consignor agreements (Postgres)", { timeout: 30_000 }, ()
         ok: true,
         changed: true,
         link: { consignor: { kind: "client", partyId }, changeReason: null, setAt: T0 },
+        previous: null,
       });
       expect(
         await store.setConsignor({
@@ -303,7 +304,11 @@ describe.skipIf(!url)("consignor agreements (Postgres)", { timeout: 30_000 }, ()
         actor: STAFF,
         now: T1,
       });
-      expect(changed).toMatchObject({ ok: true, changed: true });
+      expect(changed).toMatchObject({
+        ok: true,
+        changed: true,
+        previous: { consignor: { kind: "client", partyId } },
+      });
       expect((await store.currentConsignors([registerId])).get(registerId)?.consignor).toEqual({
         kind: "lax",
       });
@@ -357,6 +362,40 @@ describe.skipIf(!url)("consignor agreements (Postgres)", { timeout: 30_000 }, ()
         kind: "client",
         partyId,
       });
+    });
+
+    it("refuses a change made against a consignor someone has changed since", async () => {
+      const registerId = await artwork();
+      const partyId = await client();
+      const first = await store.setConsignor({
+        registerId,
+        consignor: { kind: "lax" },
+        reason: null,
+        expectedCurrentId: null,
+        actor: STAFF,
+        now: T0,
+      });
+      if (!first.ok) throw new Error(first.reason);
+      // A second person read "not set" before the first change committed.
+      const late = await store.setConsignor({
+        registerId,
+        consignor: { kind: "client", partyId },
+        reason: null,
+        expectedCurrentId: null,
+        actor: STAFF,
+        now: T1,
+      });
+      expect(late).toMatchObject({ ok: false, reason: "stale", current: { id: first.link.id } });
+      const onTime = await store.setConsignor({
+        registerId,
+        consignor: { kind: "client", partyId },
+        reason: "Consigned by the collector",
+        expectedCurrentId: first.link.id,
+        actor: STAFF,
+        now: T1,
+      });
+      expect(onTime).toMatchObject({ ok: true, changed: true });
+      expect(await store.listConsignorChanges(registerId, 10)).toHaveLength(2);
     });
 
     it("refuses an unknown artwork or client", async () => {

@@ -82,18 +82,28 @@ export type SetConsignorInput = {
   consignor: Consignor;
   /** Required for any change after the first; ignored when nothing changes. */
   reason: string | null;
+  /**
+   * The link the writer last read (null: none set). When given and the current link is another
+   * one, nothing is written and the result is `stale`. Left out, any current link is replaced.
+   */
+  expectedCurrentId?: string | null;
   /** `staff:<user id>`. */
   actor: string;
   now: Date;
 };
 
 export type SetConsignorResult =
-  /** `changed` is false when the artwork already had this consignor: nothing written. */
-  | { ok: true; changed: boolean; link: ConsignorLink }
+  /**
+   * `changed` is false when the artwork already had this consignor: nothing written. `previous`
+   * is the consignor before this change (null the first time).
+   */
+  | { ok: true; changed: boolean; link: ConsignorLink; previous: ConsignorLink | null }
   | {
       ok: false;
       reason: "artwork_not_found" | "party_not_found" | ConsignorChangeRefusal;
-    };
+    }
+  /** Someone changed the consignor after the writer read it; `current` is the change now. */
+  | { ok: false; reason: "stale"; current: ConsignorLink | null };
 
 /**
  * Agreement and consignor writes. An agreement is replaced by its next version in one transaction

@@ -64,8 +64,10 @@ describe("staff picker lookups", () => {
     ["broker", 200],
     ["operations", 200],
     ["shop_admin", 200],
+    ["catalogue_editor", 200],
     ["finance", 403],
-    ["catalogue_editor", 403],
+    ["editor", 403],
+    ["read_only", 403],
   ] as const)("people search for %s answers %i", async (role, status) => {
     const { response } = await get(role, "/admin/v1/lookups/parties?q=ada");
     expect(response.statusCode).toBe(status);

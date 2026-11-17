@@ -1,7 +1,9 @@
-import type { NewArtworkRegisterEntry } from "@auction/artwork-register-contracts";
+import { randomUUID } from "node:crypto";
+import type { Consignor, NewArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import { createDbFromPool } from "@auction/db";
 import {
   DrizzleArtworkRegisterRepository,
+  DrizzleConsignorAgreementStore,
   DrizzleStockLocationStore,
   registerRowToEntry,
 } from "@auction/persistence/repositories";
@@ -219,6 +221,89 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
     expect(await at(room.id)).toEqual({ ids: [stayed.id], total: 1 });
     expect(await at(framer.id)).toEqual({ ids: [movedOn.id], total: 1 });
     expect(await at("none")).toEqual({ ids: [never.id], total: 1 });
+  });
+
+  it("reads who consigned each record, filters by a client, LAX or none, and counts them", async () => {
+    const db = createShopDb(shopPool);
+    const store = new DrizzleConsignorAgreementStore(db);
+    const consignorCode = `X${integrationSuffix("c").slice(-5).toUpperCase()}`;
+    const partyId = randomUUID();
+    const clientName = `Consignor ${integrationSuffix("p")}`;
+    await createDbFromPool(ownerPool).execute(
+      sql`INSERT INTO shop_party (id, display_name, kind) VALUES (${partyId}, ${clientName}, 'person')`,
+    );
+    const register = new DrizzleArtworkRegisterRepository(createDbFromPool(ownerPool));
+    const work = async (title: string) => {
+      const created = await register.create(
+        {
+          zohoProductId: `zoho-${integrationSuffix("w")}`,
+          stockCode: uniqueStockCode("original"),
+          kind: "original",
+          sourceOriginalId: null,
+          title,
+          artist: { zohoArtistId: "79", name: "Cy Moss", code: consignorCode },
+          medium: null,
+          dimensions: null,
+          year: null,
+          imageRefs: [],
+          catalogueStatus: "Available",
+        },
+        "zoho",
+        NOW,
+      );
+      if (!created.ok) throw new Error(created.reason);
+      return created.entry;
+    };
+    const [consigned, owned, unset] = [
+      await work("Consigned"),
+      await work("Owned"),
+      await work("Unset"),
+    ];
+    const set = async (
+      registerId: string,
+      consignor: Consignor,
+      reason: string | null,
+      now: Date,
+    ) => {
+      const result = await store.setConsignor({
+        registerId,
+        consignor,
+        reason,
+        actor: "staff:it",
+        now,
+      });
+      if (!result.ok) throw new Error(result.reason);
+    };
+    // "Consigned" was LAX's first; the latest change, to the client, is what the list reads.
+    await set(consigned.id, { kind: "lax" }, null, NOW);
+    await set(
+      consigned.id,
+      { kind: "client", partyId },
+      "Consigned by the collector",
+      new Date(NOW.getTime() + 60_000),
+    );
+    await set(owned.id, { kind: "lax" }, null, NOW);
+
+    const reader = createDrizzleRegisterOverviewReader(db, registerRowToEntry);
+    const all = await reader.listAll({ artistCode: consignorCode }, PAGE);
+    expect(Object.fromEntries(all.rows.map((row) => [row.entry.title, row.consignor]))).toEqual({
+      Consigned: { kind: "client", partyId, displayName: clientName },
+      Owned: { kind: "lax" },
+      Unset: null,
+    });
+
+    const by = async (consignor: string) => {
+      const page = await reader.listAll({ artistCode: consignorCode, consignor }, PAGE);
+      return { ids: page.rows.map((row) => row.entry.id), total: page.total };
+    };
+    expect(await by(partyId)).toEqual({ ids: [consigned.id], total: 1 });
+    expect(await by("lax")).toEqual({ ids: [owned.id], total: 1 });
+    expect(await by("none")).toEqual({ ids: [unset.id], total: 1 });
+
+    const counts = await reader.countConsignors();
+    expect(counts.clients).toContainEqual({ partyId, displayName: clientName, count: 1 });
+    expect(counts.lax).toBeGreaterThanOrEqual(1);
+    expect(counts.none).toBeGreaterThanOrEqual(1);
   });
 
   it("orders by Zoho's price across pages, with every unpriced work last either way", async () => {

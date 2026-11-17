@@ -21,6 +21,7 @@ import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
+  staffCan,
 } from "../../../plugins/shop-admin-auth.js";
 
 const READ_ERRORS = { 403: ShopApiErrorBodySchema, 404: ShopApiErrorBodySchema };
@@ -59,8 +60,13 @@ export async function registerAdminArtworkRegisterRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "artwork_register.read");
-      return review.listAll(request.query as AdminRegisterQueueQuery);
+      const auth = requireShopStaffCapability(request, "artwork_register.read");
+      const query = request.query as AdminRegisterQueueQuery;
+      // Who consigned a work is for people who can read consignor agreements; so is its filter.
+      if (query.consignor) requireShopStaffCapability(request, "consignor_agreement.read");
+      return review.listAll(query, {
+        withConsignor: staffCan(auth, "consignor_agreement.read"),
+      });
     },
   );
 

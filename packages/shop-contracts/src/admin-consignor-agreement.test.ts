@@ -109,14 +109,28 @@ describe("artwork consignor contract", () => {
         registerId: ID,
         current: change,
         history: [change],
+        moreHistory: false,
+        agreements: [],
       }),
     ).toBe(true);
     const lax = { ...change, consignor: { kind: "lax" }, changeReason: "Bought outright" };
     expect(
-      Value.Check(AdminArtworkConsignorSchema, { registerId: ID, current: lax, history: [lax] }),
+      Value.Check(AdminArtworkConsignorSchema, {
+        registerId: ID,
+        current: lax,
+        history: [lax],
+        moreHistory: true,
+        agreements: [],
+      }),
     ).toBe(true);
     expect(
-      Value.Check(AdminArtworkConsignorSchema, { registerId: ID, current: null, history: [] }),
+      Value.Check(AdminArtworkConsignorSchema, {
+        registerId: ID,
+        current: null,
+        history: [],
+        moreHistory: false,
+        agreements: [],
+      }),
     ).toBe(true);
   });
 
@@ -130,6 +144,19 @@ describe("artwork consignor contract", () => {
       Value.Check(AdminArtworkConsignorSetBodySchema, {
         consignor: { kind: "lax" },
         reason: "Bought outright",
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(AdminArtworkConsignorSetBodySchema, {
+        consignor: { kind: "lax" },
+        reason: "Bought outright",
+        expectedCurrentId: ID,
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(AdminArtworkConsignorSetBodySchema, {
+        consignor: { kind: "lax" },
+        expectedCurrentId: null,
       }),
     ).toBe(true);
     expect(

@@ -25,6 +25,8 @@ import {
   type AdminRegisterQueueQuery,
   type AdminRegisterResolveBody,
   type AdminRegisterResolveResult,
+  REGISTER_CONSIGNOR_LAX,
+  REGISTER_CONSIGNOR_NONE,
   REGISTER_PLACE_VALUES,
 } from "@auction/shop-contracts";
 import type {
@@ -34,6 +36,7 @@ import type {
   ConflictResolver,
   ListingRunReader,
   RegisterConflictRecord,
+  RegisterConsignorCounts,
   RegisterOverviewFilter,
   RegisterOverviewRow,
   RegisterQueueFilter,
@@ -110,7 +113,23 @@ function overviewFilterOf(query: AdminRegisterQueueQuery): RegisterOverviewFilte
     ...(query.artist ? { artistCode: query.artist } : {}),
     ...(query.place ? { place: query.place } : {}),
     ...(query.location ? { location: query.location } : {}),
+    ...(query.consignor ? { consignor: query.consignor } : {}),
   };
+}
+
+/** The Consignor filter's choices: no consignor set, LAX, then every client by name. */
+function consignorChoices(
+  counts: RegisterConsignorCounts,
+): NonNullable<AdminRegisterAllList["consignors"]> {
+  return [
+    { value: REGISTER_CONSIGNOR_NONE, label: "Not set", count: counts.none },
+    { value: REGISTER_CONSIGNOR_LAX, label: "LAX owns this work", count: counts.lax },
+    ...counts.clients.map((client) => ({
+      value: client.partyId,
+      label: client.displayName,
+      count: client.count,
+    })),
+  ];
 }
 
 /**
@@ -186,13 +205,23 @@ export class ArtworkRegisterReviewService {
     };
   }
 
-  async listAll(query: AdminRegisterQueueQuery): Promise<AdminRegisterAllList> {
+  /**
+   * The All tab. With `withConsignor` (the reader can read consignor agreements) each row says
+   * who consigned the work and the Consignor filter's choices come with the page; without it
+   * neither is sent, and the route refuses a consignor filter.
+   */
+  async listAll(
+    query: AdminRegisterQueueQuery,
+    options: { withConsignor?: boolean } = {},
+  ): Promise<AdminRegisterAllList> {
     const { page, limit, offset } = pageOf(query);
-    const [all, artists, placeCounts, counts] = await Promise.all([
+    const withConsignor = options.withConsignor === true;
+    const [all, artists, placeCounts, counts, consignorCounts] = await Promise.all([
       this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort),
       this.deps.overview.listArtists(),
       this.deps.overview.countPlaces(query.artist),
       this.counts(),
+      withConsignor ? this.deps.overview.countConsignors() : Promise.resolve(null),
     ]);
     return {
       items: all.rows.map((row) => ({
@@ -200,7 +229,9 @@ export class ArtworkRegisterReviewService {
         whereItIs: placeOf(row),
         location: row.location ? presentLocationRef(row.location) : null,
         zohoPrice: row.entry.zohoPrice ?? null,
+        ...(withConsignor ? { consignor: row.consignor } : {}),
       })),
+      ...(consignorCounts ? { consignors: consignorChoices(consignorCounts) } : {}),
       artists,
       places: REGISTER_PLACE_VALUES.map((value) => ({
         value,

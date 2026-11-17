@@ -1,5 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { AdminCatalogueChangeSchema } from "./admin-catalogue-change.js";
+import { AdminConsignorSchema } from "./admin-consignor-agreement.js";
 import {
   AdminLaxArtListingSchema,
   AdminLaxArtOfferBlockerSchema,
@@ -38,6 +39,10 @@ export type AdminRegisterAllSort = (typeof REGISTER_ALL_SORT_VALUES)[number];
 /** The All tab's location filter value for artworks with no location recorded. */
 export const REGISTER_LOCATION_NONE = "none";
 
+/** The All tab's consignor filter values besides a client's party id. */
+export const REGISTER_CONSIGNOR_NONE = "none";
+export const REGISTER_CONSIGNOR_LAX = "lax";
+
 /** One artwork in the register, as the queues list it. */
 export const AdminRegisterArtworkSummarySchema = Type.Object({
   registerId: Type.String({ format: "uuid" }),
@@ -67,6 +72,17 @@ export const AdminRegisterQueueQuerySchema = Type.Object({
    */
   location: Type.Optional(
     Type.Union([Type.String({ format: "uuid" }), Type.Literal(REGISTER_LOCATION_NONE)]),
+  ),
+  /**
+   * The All tab only, for people who can read consignor agreements: who consigned the work, by
+   * client party id, `lax` for works LAX owns, or `none` for works with no consignor set.
+   */
+  consignor: Type.Optional(
+    Type.Union([
+      Type.String({ format: "uuid" }),
+      Type.Literal(REGISTER_CONSIGNOR_LAX),
+      Type.Literal(REGISTER_CONSIGNOR_NONE),
+    ]),
   ),
   /** The All tab only: the order of the rows across every page (newest Zoho edit when absent). */
   sort: Type.Optional(Type.Union(REGISTER_ALL_SORT_VALUES.map((sort) => Type.Literal(sort)))),
@@ -105,6 +121,11 @@ export const AdminRegisterAllItemSchema = Type.Composite([
     location: Type.Union([AdminLocationRefSchema, Type.Null()]),
     /** Zoho's price in pounds ("250.00"); null when Zoho has none. Information only. */
     zohoPrice: Type.Union([Type.String(), Type.Null()]),
+    /**
+     * Who consigned the work (null: not set). Only for people who can read consignor agreements;
+     * left out for everyone else.
+     */
+    consignor: Type.Optional(Type.Union([AdminConsignorSchema, Type.Null()])),
   }),
 ]);
 
@@ -117,6 +138,14 @@ export const AdminRegisterAllListSchema = Type.Object({
   /** Each place with its words and how many records are there, for the Where it is filter. */
   places: Type.Array(
     Type.Object({ value: PlaceSchema, label: Type.String(), count: Type.Integer() }),
+  ),
+  /**
+   * The Consignor filter's choices with how many records each has: no consignor set (`none`),
+   * LAX (`lax`), then every client consignor by name. Only for people who can read consignor
+   * agreements.
+   */
+  consignors: Type.Optional(
+    Type.Array(Type.Object({ value: Type.String(), label: Type.String(), count: Type.Integer() })),
   ),
   ...PagingSchema,
 });

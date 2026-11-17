@@ -68,6 +68,21 @@ export type RegisterOverviewFilter = {
   artistCode?: string;
   place?: AdminRegisterPlace;
   location?: string;
+  /** Who consigned the work: a client's party id, `lax`, or `none` for no consignor set. */
+  consignor?: string;
+};
+
+/** Who consigned a record, with the client's name; null when no consignor is set. */
+export type RegisterOverviewConsignor =
+  | { kind: "client"; partyId: string; displayName: string }
+  | { kind: "lax" };
+
+/** How many records each consignor has, for the Consignor filter. */
+export type RegisterConsignorCounts = {
+  none: number;
+  lax: number;
+  /** Every client consignor, by name. */
+  clients: { partyId: string; displayName: string; count: number }[];
 };
 
 /**
@@ -82,6 +97,8 @@ export type RegisterOverviewRow = {
   hasLaxArtDraft: boolean;
   /** Where the artwork physically is: its latest move; null when none is recorded. */
   location: LocationRef | null;
+  /** Who consigned the work: its latest consignor link; null when none is set. */
+  consignor: RegisterOverviewConsignor | null;
 };
 
 /**
@@ -102,6 +119,8 @@ export interface ArtworkRegisterOverview {
   listArtists(): Promise<{ code: string; name: string; count: number }[]>;
   /** How many records are in each place, for one artist's records when `artistCode` is given. */
   countPlaces(artistCode?: string): Promise<Record<AdminRegisterPlace, number>>;
+  /** How many records have no consignor, LAX, and each client, for the Consignor filter. */
+  countConsignors(): Promise<RegisterConsignorCounts>;
 }
 
 export interface ArtworkRegisterRecords {

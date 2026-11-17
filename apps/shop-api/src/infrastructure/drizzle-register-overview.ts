@@ -1,15 +1,25 @@
 import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import {
+  artworkConsignorLink,
   artworkLocation,
   artworkLocationMove,
   artworkRegister as register,
   shopArtwork,
+  shopParty,
 } from "@auction/db/schema";
-import { REGISTER_LOCATION_NONE, REGISTER_PLACE_VALUES } from "@auction/shop-contracts";
+import {
+  REGISTER_CONSIGNOR_LAX,
+  REGISTER_CONSIGNOR_NONE,
+  REGISTER_LOCATION_NONE,
+  REGISTER_PLACE_VALUES,
+} from "@auction/shop-contracts";
 import { type SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type {
   ArtworkRegisterOverview,
+  RegisterConsignorCounts,
+  RegisterOverviewConsignor,
   RegisterOverviewFilter,
   RegisterOverviewSort,
 } from "../application/ports/artwork-register-review.ports.js";
@@ -51,11 +61,52 @@ function locationCondition(location: string): SQL {
     : sql`${CURRENT_LOCATION_ID} = ${location}`;
 }
 
+/**
+ * A column of the record's consignor now: its latest consignor link (one index probe on
+ * `artwork_consignor_link (register_id, set_at)`), null when none is set.
+ */
+function currentConsignorColumn(column: "id" | "consignor" | "party_id"): SQL {
+  return sql`(
+  SELECT ${sql.identifier(column)} FROM ${artworkConsignorLink}
+   WHERE ${artworkConsignorLink.registerId} = ${register.id}
+   ORDER BY ${artworkConsignorLink.setAt} DESC
+   LIMIT 1
+)`;
+}
+
+/** The record's consignor now, joined under its own name beside the subquery that finds it. */
+const currentLink = alias(artworkConsignorLink, "current_consignor_link");
+const consignorParty = alias(shopParty, "consignor_party");
+
+function consignorCondition(consignor: string): SQL {
+  if (consignor === REGISTER_CONSIGNOR_NONE) return sql`${currentConsignorColumn("id")} IS NULL`;
+  if (consignor === REGISTER_CONSIGNOR_LAX)
+    return sql`${currentConsignorColumn("consignor")} = 'lax'`;
+  return sql`${currentConsignorColumn("party_id")} = ${consignor}`;
+}
+
+function consignorOf(row: {
+  consignorKind: string | null;
+  consignorPartyId: string | null;
+  consignorName: string | null;
+}): RegisterOverviewConsignor | null {
+  if (row.consignorKind === "lax") return { kind: "lax" };
+  if (row.consignorKind === "client" && row.consignorPartyId) {
+    return {
+      kind: "client",
+      partyId: row.consignorPartyId,
+      displayName: row.consignorName ?? "Unknown client",
+    };
+  }
+  return null;
+}
+
 function conditionOf(filter: RegisterOverviewFilter): SQL | undefined {
   return and(
     filter.artistCode ? eq(register.artistCode, filter.artistCode) : undefined,
     filter.place ? PLACE_CONDITION[filter.place] : undefined,
     filter.location ? locationCondition(filter.location) : undefined,
+    filter.consignor ? consignorCondition(filter.consignor) : undefined,
   );
 }
 
@@ -96,10 +147,15 @@ export function createDrizzleRegisterOverviewReader(
             locationId: artworkLocation.id,
             locationName: artworkLocation.name,
             locationStatus: artworkLocation.status,
+            consignorKind: currentLink.consignor,
+            consignorPartyId: currentLink.partyId,
+            consignorName: consignorParty.displayName,
           })
           .from(register)
           .leftJoin(shopArtwork, LISTING_JOIN)
           .leftJoin(artworkLocation, eq(artworkLocation.id, CURRENT_LOCATION_ID))
+          .leftJoin(currentLink, eq(currentLink.id, currentConsignorColumn("id")))
+          .leftJoin(consignorParty, eq(consignorParty.id, currentLink.partyId))
           .where(where)
           .orderBy(...orderOf(sort))
           .limit(page.limit)
@@ -118,9 +174,40 @@ export function createDrizzleRegisterOverviewReader(
             row.locationId && row.locationName && row.locationStatus
               ? { id: row.locationId, name: row.locationName, status: row.locationStatus }
               : null,
+          consignor: consignorOf(row),
         })),
         total: counted?.total ?? 0,
       };
+    },
+    async countConsignors() {
+      const rows = await db
+        .select({
+          consignorKind: currentLink.consignor,
+          consignorPartyId: currentLink.partyId,
+          consignorName: consignorParty.displayName,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(register)
+        .leftJoin(currentLink, eq(currentLink.id, currentConsignorColumn("id")))
+        .leftJoin(consignorParty, eq(consignorParty.id, currentLink.partyId))
+        .groupBy(currentLink.consignor, currentLink.partyId, consignorParty.displayName);
+      const counts: RegisterConsignorCounts = { none: 0, lax: 0, clients: [] };
+      for (const row of rows) {
+        const consignor = consignorOf(row);
+        if (consignor === null) counts.none += row.count;
+        else if (consignor.kind === "lax") counts.lax += row.count;
+        else
+          counts.clients.push({
+            partyId: consignor.partyId,
+            displayName: consignor.displayName,
+            count: row.count,
+          });
+      }
+      counts.clients.sort(
+        (a, b) =>
+          a.displayName.localeCompare(b.displayName, "en-GB") || (a.partyId < b.partyId ? -1 : 1),
+      );
+      return counts;
     },
     async countPlaces(artistCode) {
       const [row] = await db

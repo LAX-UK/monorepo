@@ -31,6 +31,8 @@ export const SHOP_ADMIN_STEP_UP_PATHS = [
   "/admin/v1/artwork-locations",
   // Adding, replacing and retiring a consignor's agreements. Uploading the signed file is not under it.
   "/admin/v1/clients/:partyId/consignor-agreements",
+  // Setting or changing who consigned an original in the register.
+  "/admin/v1/artwork-register/:registerId/consignor",
 ] as const;
 
 function segmentsOf(path: string): string[] {
