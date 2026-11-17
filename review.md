@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1555: Shop express checkout wallet row on the basket and Details
 
@@ -129,3 +129,51 @@ Run after the fixes:
 - `apps/shop` `vitest run`: 129 files, 804 tests passed. `tsc --noEmit` and `biome check` clean.
 - Express browser gate (Stripe.js and Shop Identity stand-ins, no keys): 16 passed, 4 skipped (screenshot-only). No full `next build`.
 - Screenshots: only `details-not-charged-*` changed (the buttons are now withdrawn); regenerated and the PR body text updated to match.
+
+## Final recheck
+
+PR head `c349e0c9`. Only the items listed in the brief were checked.
+
+**B1 is fixed per option (a).**
+- Client: `handleExpressConfirm` (`express-checkout-flow.ts:124-129`) no longer cancels on a Stripe decline. The `cancelOrder` port and the `cancelCheckoutOrder` import are gone. The row goes back to `ready` on the same session, and the "Try again" copy appears only on this path.
+- Server, replayed confirm: the second confirm reuses the idempotency key `express:<sessionId>` (`express-checkout.service.ts:197`).
+  - `replayCheckoutOrder` → `assertReplayableCheckoutOrder` accepts the order, because it is still `pending_payment` and inside `checkoutExpiresAt`.
+  - `bindExpressCheckoutSession` accepts the same session: `snapshot.orderId === orderId`, the status is still `open` after a decline, and the attach `WHERE` allows `stripeCheckoutSessionId = sessionId`.
+  - It rebinds under the next `bindRevision`.
+- Server, no stuck holds: `reapStaleShopCheckouts` (`shop-checkout-reaper.ts:29-31`) picks up `pending_payment` orders past `checkoutExpiresAt` and expires the bound Stripe session through `expireShopCheckoutSession`. The `checkout.session.expired` webhook releases the order as well. Stripe expires the express session itself at `windowEnd + CHECKOUT_HOLD_MS`.
+- Session-ending answers end the row: CONFLICT, BASKET_CONFLICT, PRICE_CHANGED and 404 NOT_FOUND all map to `ended` (`express-checkout-api.ts:157-166`).
+  - The reducer makes `ended` terminal, and nothing brings the buttons back.
+  - The row shows one `role="alert"` line with no wallet group and no buttons, and "Continue as guest" stays enabled. The gate asserts all of this.
+
+**N1–N5 are correct.**
+- N1: an address-change network failure shows `EXPRESS_UNAVAILABLE_MESSAGE`.
+- N2: `shop.price_changed` maps to `ended` with shop-api's wording.
+- N3: the allow-list (`EXPRESS_UPSTREAM_MESSAGES`) holds exactly shop-api's three express messages (`shop-checkout-express-session.ts:16-21`); anything else shows `EXPRESS_NOT_CHARGED_MESSAGE`.
+- N4: the client allows 8–20 characters, the same as Shop Identity's `express-checkout-bodies.ts:35` (`min(8).max(20)`).
+- N5: the load timeout is cleared on `ready`.
+
+**No raw server text reaches the shopper on the express path.** Confirm answers either come from the allow-list or go through `commerceErrorMessage`. Every code that the express confirm path in shop-api can throw has a fixed line there. Start always shows a fixed line. Address shows shop-api's VALIDATION copy, which on that route is the UK-only message.
+
+**The gate tests fail on the old code and pass now.** I put the `c349e0c9` gate spec and stand-ins on top of `a6472605` app code and ran four tests. All four failed:
+- "declined, then pay again": the request steps were `start, start, confirm, cancel`.
+- "shows no wallet buttons once the session has ended": the wallet group count was 1, expected 0.
+- "never shows shop-api's internal refusal text": the row showed "Order is no longer checkoutable".
+- "withdraws the buttons": the wallet group count was 1, expected 0.
+
+On `c349e0c9` all four pass.
+
+**What I ran on `c349e0c9`:**
+- `apps/shop` `vitest run`: **129 files, 804 tests passed**. `tsc --noEmit` is clean.
+- Express gate (`PLAYWRIGHT_CHROMIUM_PATH` set to the preinstalled Chromium): **15 passed, 1 failed, 4 skipped** (the skipped tests only rewrite screenshots). I did not run a full `next build`.
+  - The failure was the basket test "sits under Checkout as 'Or pay with'…", with `scrollIntoViewIfNeeded: Element is not attached to the DOM`.
+  - Run alone it failed 2 times out of 3 on `c349e0c9`, and 3 times out of 3 on `a6472605`. So it is an existing flake, not a regression from the fixes. See Later.
+
+### Later (non-blocking)
+
+- **L1.** The gate test `express-checkout.gate.spec.ts:266` is flaky. It calls `scrollIntoViewIfNeeded()` on the wallet group while the signed-in basket re-renders. Wait for the button first (`await expect(group.getByRole("button").first()).toBeVisible()`) or retry the scroll.
+- **L2.** If a shopper is declined and then reloads instead of retrying, `start` opens a new session because the old one is now bound to an order. The old order keeps its hold until `checkoutExpiresAt` or the reaper releases it. For a one-of-a-kind print, the next express or card attempt may get "sold out" until then. This is the accepted cost of option (a); consider releasing the hold when `start` replaces a bound, unpaid session.
+- **L3.** Two places could still show shop-api text as it comes. Both are fine today and become risks only if shop-api adds new errors:
+  - `expressConfirmResult` falls back to `commerceErrorMessage`, whose `default` branch shows `message` for an unknown code.
+  - `expressAddressResult` shows any VALIDATION message.
+
+  Pinning both to allow-lists, as N3 does, would make this hold for good.
