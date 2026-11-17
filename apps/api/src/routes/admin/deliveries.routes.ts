@@ -6,9 +6,9 @@ import type { AdminHono } from "./_shared.js";
 
 /**
  * The staff Deliveries screen (docs/design/staff-gaps-delivery-zoho-alerts.md, D7): reads only.
- * Fulfilment, Administrators and read-only staff may read it; pricing a quote stays on
- * `PUT /admin/lot-fulfilment/:lotId/delivery-quote`, which keeps its own guard. Every answer
- * carries the buyer's destination, so none is cached.
+ * Whoever can read Lot fulfilment may read it (D5: Fulfilment and Administrators). Pricing a
+ * quote stays on `PUT /admin/lot-fulfilment/:lotId/delivery-quote`, which keeps its own guard.
+ * Every answer carries the buyer's destination, so none is cached.
  */
 export function attachAdminDeliveriesRoutes(
   platform: AdminHono,

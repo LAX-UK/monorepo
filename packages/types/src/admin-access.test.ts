@@ -12,12 +12,15 @@ import {
   COLLECTIONS_ACCESS,
   COLLECTIONS_READ_ACCESS,
   DATA_REQUESTS_MANAGE_ACCESS,
+  DELIVERIES_ACCESS,
+  DELIVERIES_READ_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
+  LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   PAYOUT_REVERSE_ACCESS,
   QR_CODES_ACCESS,
@@ -62,6 +65,23 @@ describe("collections access", () => {
       "read_only",
     ]);
     expect(has("finance", COLLECTIONS_READ_ACCESS)).toBe(false);
+  });
+});
+
+describe("deliveries access (D5)", () => {
+  it("is hidden from every role without Lot fulfilment access, Read-only included", () => {
+    const canRead = userStaffRoles.filter((role) => has(role, DELIVERIES_READ_ACCESS));
+    expect(canRead).toEqual(userStaffRoles.filter((role) => has(role, LOT_FULFILMENT_ACCESS)));
+    expect(canRead).toEqual(["administrator", "fulfilment"]);
+    expect(has("read_only", DELIVERIES_READ_ACCESS)).toBe(false);
+    expect(has("finance", DELIVERIES_READ_ACCESS)).toBe(false);
+  });
+
+  it("is priced by Fulfilment and Administrator", () => {
+    expect(userStaffRoles.filter((role) => has(role, DELIVERIES_ACCESS))).toEqual([
+      "administrator",
+      "fulfilment",
+    ]);
   });
 });
 
