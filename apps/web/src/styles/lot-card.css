@@ -1,0 +1,101 @@
+/*
+ * The lot card (components/lot-card/lot-card.tsx), the one card every lot grid draws. The picture
+ * stays clean: nothing sits on it at rest but the sale status pill. Styled here rather than in the
+ * components so the route scripts carry only a class name.
+ */
+
+/* The card is a one-column grid: picture, then the "Lot N" line and title, then the meta and the
+   button pinned to the bottom (so prices and buttons line up across a row). The quick look label
+   comes after the title in reading and tab order but is drawn over the picture: it shares the
+   picture's grid cell (below). */
+.lot-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  row-gap: 0.75rem;
+}
+
+.lot-card-picture {
+  grid-area: 1 / 1;
+}
+
+.lot-card-head {
+  grid-area: 2 / 1;
+  padding-top: 0.25rem;
+}
+
+.lot-card-foot {
+  grid-area: 3 / 1;
+  align-self: end;
+}
+
+/* The save heart at the right end of the "Lot N" line: the toolbar heart without its round chrome
+   (a quiet outline), filled in the Bid accent when saved. It keeps its 44px tap area by reaching
+   past the line's own height. */
+.lot-card-save {
+  display: flex;
+  flex-shrink: 0;
+  margin-block: -0.625rem;
+  margin-inline-end: -0.75rem;
+}
+
+.lot-card-save button {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--color-on-surface-variant);
+}
+
+.lot-card-save button:hover {
+  background-color: transparent;
+  color: var(--color-on-surface);
+}
+
+.lot-card-save .fill-live-red {
+  fill: var(--color-product-accent);
+  stroke: var(--color-product-accent);
+}
+
+/* Quick look's trigger: a quiet label low on the picture, centred, raised clear of the status pill's
+   row (the pill sits 0.75rem from the bottom and is about 1.625rem tall), so the two never touch
+   however narrow the card or long the pill ("On the block"). Only a hovering fine pointer gets it;
+   on phones and tablets it is not displayed (so not focusable either) and a tap opens the lot
+   page. It shows while the card (`.group`) is hovered or holds keyboard focus. */
+.lot-card-quick-look {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .lot-card-quick-look {
+    position: relative;
+    grid-area: 1 / 1;
+    align-self: end;
+    justify-self: center;
+    z-index: 10;
+    display: inline-flex;
+    height: auto;
+    margin-bottom: 3rem;
+    border: 1px solid color-mix(in srgb, var(--color-outline-variant) 30%, transparent);
+    border-radius: 9999px;
+    background-color: color-mix(in srgb, var(--color-surface-container-lowest) 95%, transparent);
+    padding: 0.375rem 0.75rem;
+    font-family: var(--font-label);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--color-on-surface);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    opacity: 0;
+    transition: opacity var(--lax-motion-hover) var(--lax-ease-out);
+  }
+
+  .group:hover .lot-card-quick-look,
+  .group:focus-within .lot-card-quick-look {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lot-card-quick-look {
+    transition: none;
+  }
+}

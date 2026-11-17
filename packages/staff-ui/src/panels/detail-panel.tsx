@@ -87,6 +87,13 @@ export type DetailPanelProps<L extends string = string> = {
   /** Wider for forms with side-by-side fields. */
   size?: "md" | "lg";
   /**
+   * A work queue's panel that sits beside its list instead of over it (PRD-7): from 1280px there
+   * is no scrim, the list stays usable (a row click opens that record, the panel stays open), and
+   * the list keeps the panel's 480px clear inside `BesidePanelInset`. Narrower, it is the usual
+   * panel over the list.
+   */
+  beside?: boolean;
+  /**
    * The panel holds a form with unsaved changes: closing it (close button, Escape, the scrim)
    * asks "Discard changes?" first.
    */
@@ -118,11 +125,15 @@ export function DetailPanel<L extends string = string>({
   activity,
   footer,
   size = "md",
+  beside = false,
   dirty = false,
   dirtyLabel,
   children,
 }: DetailPanelProps<L>) {
   const [confirmingClose, setConfirmingClose] = React.useState(false);
+  const wide = useBesidePanelWidth();
+  // Beside the list only where there is room for both; a narrower screen gets the usual panel.
+  const docked = beside && wide && size === "md";
   const titleRef = React.useRef<HTMLHeadingElement>(null);
   // The list's row for the record shown, kept while the panel is open: the list unmarks it as
   // the panel closes, before focus comes back.
@@ -161,9 +172,17 @@ export function DetailPanel<L extends string = string>({
   const actions = fullPage || headerActions || overflow || queue;
   return (
     <>
-      <Sheet open={open} onOpenChange={requestOpenChange}>
+      <Sheet open={open} onOpenChange={requestOpenChange} modal={!docked}>
         <SheetContent
           {...STAFF_LAYER}
+          {...(docked
+            ? {
+                "data-staff-panel-beside": "",
+                // The list beside it stays in use: a click there (another row, a tab) must not
+                // close the panel. Escape and the close button still do.
+                onInteractOutside: (event: Event) => event.preventDefault(),
+              }
+            : {})}
           side="right"
           overlayClassName="bg-staff-scrim"
           className={cn(
@@ -214,7 +233,15 @@ export function DetailPanel<L extends string = string>({
                 ) : null}
               </div>
               {actions ? (
-                <div className="order-3 -ml-2 flex basis-full items-center gap-1 sm:order-2 sm:-mt-1 sm:ml-0 sm:basis-auto">
+                <div
+                  data-staff-panel-actions=""
+                  className={cn(
+                    "order-3 -ml-2 flex basis-full items-center gap-1",
+                    // Beside a list the panel is narrow: as in the mockup, the actions take their
+                    // own row above the title, so the title and its facts keep the width.
+                    docked ? "order-first -mt-1" : "sm:order-2 sm:-mt-1 sm:ml-0 sm:basis-auto",
+                  )}
+                >
                   {queue ? <QueueStepButtons queue={queue} /> : null}
                   {fullPage ? (
                     <StaffButton
@@ -373,6 +400,53 @@ function useQueueStepping(queue: PanelQueue | undefined, dirty: boolean) {
     step?.();
   };
   return { onKeyDown };
+}
+
+/** The width from which a `beside` panel sits beside its list: Tailwind's `xl`. */
+export const BESIDE_PANEL_MEDIA = "(min-width: 80rem)";
+
+function subscribeBesideWidth(onChange: () => void): () => void {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  // A stubbed `matchMedia` may answer nothing: then the width never changes.
+  const query = window.matchMedia(BESIDE_PANEL_MEDIA) as MediaQueryList | undefined;
+  if (!query || typeof query.addEventListener !== "function") return () => {};
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function besideWidthNow(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    (window.matchMedia(BESIDE_PANEL_MEDIA) as MediaQueryList | undefined)?.matches === true
+  );
+}
+
+/** Whether the screen is wide enough for a panel beside its list. False on the server. */
+export function useBesidePanelWidth(): boolean {
+  return React.useSyncExternalStore(subscribeBesideWidth, besideWidthNow, () => false);
+}
+
+/**
+ * The list a `beside` panel sits next to: while the panel is open, from 1280px, the list keeps
+ * the panel's 480px clear on the right, so its columns stay in view and in use beside it.
+ */
+export function BesidePanelInset({
+  open,
+  children,
+}: {
+  /** Whether the panel beside the list is open. */
+  open: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      data-staff-panel-inset={open ? "open" : "closed"}
+      className={cn("min-w-0", open && "xl:pr-[480px]")}
+    >
+      {children}
+    </div>
+  );
 }
 
 /** A labelled block inside a panel: small heading, content below, 24px apart from the next. */
