@@ -20,6 +20,28 @@ export type ExpressCheckoutSnapshot = {
   currency: string | null;
   /** The line items before delivery, in pence. */
   amountSubtotalPence: number | null;
+  /** What the session will charge now, delivery included, in pence. */
+  amountTotalPence: number | null;
+  /** The amount of each delivery rate the session offers, in pence (one once bound). */
+  shippingOptionAmountsPence: number[];
+  /** The shipping details the session holds; null until the Shop sets them on confirm. */
+  shippingDetails: ExpressSessionShippingDetails | null;
+  /**
+   * How many times the Shop has bound the session (0 before the first). Each bind writes the next
+   * value and keys its update by the value it read, so every bind that changes the session is a
+   * new request to Stripe, while a retry of a bind that never landed reuses its key.
+   */
+  bindRevision: number;
+};
+
+/** A session's shipping details as Stripe holds them. */
+export type ExpressSessionShippingDetails = {
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  postcode: string;
+  country: string;
 };
 
 /**
@@ -46,7 +68,9 @@ export interface ExpressCheckoutGateway {
   /**
    * Binds the session to the order made on confirm: the order id and reference go into the
    * session's metadata (which the webhook reads), the chosen rate becomes the only rate and the
-   * wallet's address becomes the session's shipping details. Returns the session's new total.
+   * wallet's address becomes the session's shipping details. Returns the total in Stripe's
+   * response, which may be a replay of an earlier request: callers read the session back before
+   * trusting it.
    */
   bindExpressCheckout(input: {
     sessionId: string;
@@ -55,6 +79,8 @@ export interface ExpressCheckoutGateway {
     basketId: string;
     shippingRate: ExpressShippingRate;
     shipping: ExpressShippingDetails;
+    /** Written to the session's metadata; the snapshot's `bindRevision` plus one. */
+    bindRevision: number;
     idempotencyKey: string;
   }): Promise<{ amountTotalPence: number | null }>;
 }

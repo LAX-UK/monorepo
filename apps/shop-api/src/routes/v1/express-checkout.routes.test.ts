@@ -53,6 +53,10 @@ function expressService() {
       orderId: null,
       currency: "gbp",
       amountSubtotalPence: 8_000,
+      amountTotalPence: 8_000,
+      shippingOptionAmountsPence: [1_500, 0],
+      shippingDetails: null,
+      bindRevision: 0,
     })),
     bindExpressCheckout: vi.fn(async () => ({ amountTotalPence: 9_500 })),
   };

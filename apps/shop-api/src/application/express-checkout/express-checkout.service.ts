@@ -126,18 +126,28 @@ export function createExpressCheckoutService(deps: ExpressCheckoutServiceDeps) {
         input.owner.kind === "subject" && deps.customerEmail
           ? await deps.customerEmail(input.owner.identitySubjectId)
           : null;
-      const session = await deps.gateway.createExpressCheckout({
-        basketId: input.basketId,
-        idempotencyKey: `checkout:shop-express:${input.basketId}:${basket.contentKey}:${window}`,
-        lines: basket.lines,
-        subtotalPence: basket.subtotalPence,
-        shippingRates: EXPRESS_SHIPPING_RATES,
-        returnUrl: `${storefront}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}`,
-        // At least Stripe's shortest session from now (31 to 41 minutes); no print is held
-        // while it is open.
-        expiresAt: new Date(windowEnd + CHECKOUT_HOLD_MS),
-        customerEmail,
-      });
+      const key = `checkout:shop-express:${input.basketId}:${basket.contentKey}:${window}`;
+      const open = (idempotencyKey: string) =>
+        deps.gateway.createExpressCheckout({
+          basketId: input.basketId,
+          idempotencyKey,
+          lines: basket.lines,
+          subtotalPence: basket.subtotalPence,
+          shippingRates: EXPRESS_SHIPPING_RATES,
+          returnUrl: `${storefront}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}`,
+          // At least Stripe's shortest session from now (31 to 41 minutes); no print is held
+          // while it is open.
+          expiresAt: new Date(windowEnd + CHECKOUT_HOLD_MS),
+          customerEmail,
+        });
+      let session = await open(key);
+      // Stripe answers a repeated key with the session it first made, which may have ended since
+      // (a confirm that was refused releases its order and ends the session). Then a new one,
+      // keyed by the one that ended, so a repeat of this request reuses that instead.
+      const current = await deps.gateway.readExpressCheckout({ sessionId: session.sessionId });
+      if (current?.status !== "open" || current.orderId) {
+        session = await open(`${key}:after:${session.sessionId}`);
+      }
       return {
         ...session,
         subtotalPence: basket.subtotalPence,

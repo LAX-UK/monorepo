@@ -27,6 +27,7 @@ import type {
   BasketOwner,
   CheckoutOrderInput,
   CheckoutWriter,
+  ExpressShippingDetails,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
 import type {
@@ -93,6 +94,33 @@ async function assertExpressSessionForBasket(
   if (snapshot.status !== "open" && !snapshot.orderId) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, EXPRESS_SESSION_ENDED_MESSAGE, 409);
   }
+}
+
+/**
+ * The shipping details an express session is bound with: for delivery, the address the order
+ * keeps (normalised as the order stores it), so Stripe holds exactly the order's address; for
+ * collection, which keeps no address, the wallet's.
+ */
+function expressSessionShipping(
+  order: typeof shopOrder.$inferSelect,
+  wallet: ExpressShippingDetails,
+): ExpressShippingDetails {
+  if (
+    !order.deliveryLine1 ||
+    !order.deliveryCity ||
+    !order.deliveryPostcode ||
+    order.deliveryCountry !== "GB"
+  ) {
+    return wallet;
+  }
+  return {
+    name: order.deliveryRecipientName ?? wallet.name,
+    line1: order.deliveryLine1,
+    ...(order.deliveryLine2 ? { line2: order.deliveryLine2 } : {}),
+    city: order.deliveryCity,
+    postcode: order.deliveryPostcode,
+    country: "GB",
+  };
 }
 
 export function createDrizzleCheckoutRepository(
@@ -181,7 +209,7 @@ export function createDrizzleCheckoutRepository(
         fulfilment: orderRow.fulfilment,
         totalPence: orderRow.totalPence,
         fulfilmentSurchargePence: orderRow.fulfilmentSurchargePence,
-        shipping: input.express.shipping,
+        shipping: expressSessionShipping(orderRow, input.express.shipping),
         successUrl: input.successUrl,
         checkoutExpiresAt: orderRow.checkoutExpiresAt ?? pending.checkoutExpiresAt,
         release: async () => {

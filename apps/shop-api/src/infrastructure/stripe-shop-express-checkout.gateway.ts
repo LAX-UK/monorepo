@@ -4,6 +4,7 @@ import type Stripe from "stripe";
 import type {
   ExpressCheckoutGateway,
   ExpressCheckoutSnapshot,
+  ExpressSessionShippingDetails,
   ExpressShippingRate,
 } from "../application/ports/express-checkout.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
@@ -46,6 +47,30 @@ export function stripeShippingOptions(
   }));
 }
 
+/** `metadata.bindRevision`: how many times the Shop has bound the session. */
+export const EXPRESS_BIND_REVISION_METADATA_KEY = "bindRevision";
+
+function bindRevisionOf(value: string | undefined): number {
+  const revision = Number(value);
+  return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
+}
+
+function sessionShippingDetails(
+  session: Stripe.Checkout.Session,
+): ExpressSessionShippingDetails | null {
+  const details = session.collected_information?.shipping_details;
+  if (!details) return null;
+  const address = details.address;
+  return {
+    name: details.name,
+    line1: address.line1 ?? "",
+    line2: address.line2 || null,
+    city: address.city ?? "",
+    postcode: address.postal_code ?? "",
+    country: address.country ?? "",
+  };
+}
+
 export function expressCheckoutSnapshot(session: Stripe.Checkout.Session): ExpressCheckoutSnapshot {
   const metadata = session.metadata ?? {};
   return {
@@ -60,6 +85,12 @@ export function expressCheckoutSnapshot(session: Stripe.Checkout.Session): Expre
     orderId: metadata.orderId?.trim() || null,
     currency: session.currency ?? null,
     amountSubtotalPence: session.amount_subtotal ?? null,
+    amountTotalPence: session.amount_total ?? null,
+    shippingOptionAmountsPence: (session.shipping_options ?? []).map(
+      (option) => option.shipping_amount,
+    ),
+    shippingDetails: sessionShippingDetails(session),
+    bindRevision: bindRevisionOf(metadata[EXPRESS_BIND_REVISION_METADATA_KEY]),
   };
 }
 
@@ -159,6 +190,7 @@ export function createStripeShopExpressCheckoutGateway(options: {
           basketId: input.basketId,
           orderId: input.orderId,
           ...(input.orderReference ? { orderReference: input.orderReference } : {}),
+          [EXPRESS_BIND_REVISION_METADATA_KEY]: String(input.bindRevision),
         },
         // The chosen rate becomes the only one, so the session's total is the order's.
         shipping_options: stripeShippingOptions([input.shippingRate]),
@@ -175,6 +207,8 @@ export function createStripeShopExpressCheckoutGateway(options: {
           },
         },
       };
+      // The caller's key names this bind attempt (the order and the revision it read), so going
+      // back to an earlier rate or address is a new request rather than a replay of an old one.
       const session = await stripe.checkout.sessions.update(input.sessionId, params, {
         idempotencyKey: `${input.idempotencyKey}:${digest(params)}`,
       });

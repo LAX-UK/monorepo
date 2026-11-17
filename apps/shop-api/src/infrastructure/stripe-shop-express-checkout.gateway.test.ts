@@ -130,6 +130,10 @@ describe("Stripe express checkout gateway", () => {
       orderId: null,
       currency: "gbp",
       amountSubtotalPence: 9_000,
+      amountTotalPence: 10_500,
+      shippingOptionAmountsPence: [],
+      shippingDetails: null,
+      bindRevision: 0,
     });
 
     const hosted = fakeClient({ ui_mode: "hosted", metadata: { app: "shop", orderId: ORDER } });
@@ -140,6 +144,40 @@ describe("Stripe express checkout gateway", () => {
     expect(
       (await hostedGateway.readExpressCheckout({ sessionId: "cs_test_hosted" }))?.isShopExpress,
     ).toBe(false);
+  });
+
+  it("reads back the bound rate, shipping details and bind revision", async () => {
+    const { stripe } = fakeClient({
+      metadata: { app: "shop", checkout: "express", basketId: BASKET, bindRevision: "3" },
+      shipping_options: [{ shipping_amount: 1_500, shipping_rate: "shr_1" }],
+      collected_information: {
+        shipping_details: {
+          name: "Ada Lovelace",
+          address: {
+            line1: "1 High Street",
+            line2: null,
+            city: "London",
+            postal_code: "SW1A 1AA",
+            country: "GB",
+            state: null,
+          },
+        },
+      },
+    } as Partial<Stripe.Checkout.Session>);
+    const gateway = createStripeShopExpressCheckoutGateway({ secretKey: undefined, stripe });
+    expect(await gateway.readExpressCheckout({ sessionId: "cs_test_express" })).toMatchObject({
+      amountTotalPence: 10_500,
+      shippingOptionAmountsPence: [1_500],
+      shippingDetails: {
+        name: "Ada Lovelace",
+        line1: "1 High Street",
+        line2: null,
+        city: "London",
+        postcode: "SW1A 1AA",
+        country: "GB",
+      },
+      bindRevision: 3,
+    });
   });
 
   it("answers null for a session Stripe does not know", async () => {
@@ -169,7 +207,8 @@ describe("Stripe express checkout gateway", () => {
         postcode: "SW1A 1AA",
         country: "GB",
       },
-      idempotencyKey: `checkout:shop-express-bind:${ORDER}`,
+      bindRevision: 1,
+      idempotencyKey: `checkout:shop-express-bind:${ORDER}:r0`,
     });
     expect(bound).toEqual({ amountTotalPence: 10_500 });
     const [sessionId, params, requestOptions] = update.mock.calls[0] as unknown as [
@@ -184,6 +223,7 @@ describe("Stripe express checkout gateway", () => {
       basketId: BASKET,
       orderId: ORDER,
       orderReference: "LAX-S-10482",
+      bindRevision: "1",
     });
     expect(params.shipping_options).toHaveLength(1);
     expect(params.collected_information).toEqual({
@@ -193,7 +233,7 @@ describe("Stripe express checkout gateway", () => {
       },
     });
     expect(requestOptions.idempotencyKey).toMatch(
-      new RegExp(`^checkout:shop-express-bind:${ORDER}:[0-9a-f]{32}$`),
+      new RegExp(`^checkout:shop-express-bind:${ORDER}:r0:[0-9a-f]{32}$`),
     );
   });
 

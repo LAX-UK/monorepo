@@ -26,7 +26,9 @@ import {
 } from "../test-support/shop-integration-setup.js";
 import { createDrizzleCommerceRepository } from "./drizzle-commerce.repository.js";
 import { completeShopCheckoutSession } from "./drizzle-payment-event.processor.js";
+import { EXPRESS_PAYMENT_NOT_READY_MESSAGE } from "./shop-checkout-express-session.js";
 import { createDrizzleExpressCheckoutBasketReader } from "./shop-express-checkout-basket.js";
+import { createStripeShopExpressCheckoutGateway } from "./stripe-shop-express-checkout.gateway.js";
 import { parseCheckoutSessionCompleted } from "./stripe-webhook.dto.js";
 
 const STOREFRONT = "http://localhost:3020";
@@ -38,6 +40,15 @@ const ADDRESS = {
   country: "GB",
 };
 
+type FakeShipping = {
+  name: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  postcode: string;
+  country: string;
+};
+
 type FakeSession = {
   id: string;
   basketId: string;
@@ -46,54 +57,181 @@ type FakeSession = {
   status: "open" | "complete" | "expired";
   orderId: string | null;
   orderReference: string | null;
-  shippingName: string | null;
+  shipping: FakeShipping | null;
+  metadata: Record<string, string>;
 };
 
-/** Stripe's Elements-mode sessions, in memory: what the Shop asks for and what it would get back. */
+function stripeSession(session: FakeSession): Stripe.Checkout.Session {
+  return structuredClone({
+    id: session.id,
+    object: "checkout.session",
+    client_secret: `${session.id}_secret_x`,
+    expires_at: Math.floor(Date.now() / 1000) + 1_800,
+    ui_mode: "custom",
+    mode: "payment",
+    status: session.status,
+    currency: "gbp",
+    amount_subtotal: session.subtotalPence,
+    // Stripe charges the first (with one rate, the only) shipping option.
+    amount_total: session.subtotalPence + (session.rates[0]?.amountPence ?? 0),
+    shipping_options: session.rates.map((rate) => ({
+      shipping_amount: rate.amountPence,
+      shipping_rate: `shr_${rate.id}`,
+    })),
+    collected_information: session.shipping
+      ? {
+          shipping_details: {
+            name: session.shipping.name,
+            address: {
+              line1: session.shipping.line1,
+              line2: session.shipping.line2,
+              city: session.shipping.city,
+              postal_code: session.shipping.postcode,
+              country: session.shipping.country,
+              state: null,
+            },
+          },
+        }
+      : null,
+    metadata: { ...session.metadata },
+  }) as unknown as Stripe.Checkout.Session;
+}
+
+function ratesFrom(
+  options: Stripe.Checkout.SessionCreateParams.ShippingOption[] | undefined,
+): ExpressShippingRate[] {
+  return (options ?? []).map((option) => {
+    const data = requireDefined(option.shipping_rate_data, "shipping_rate_data");
+    return {
+      id: requireDefined(data.metadata?.fulfilment, "fulfilment") as ExpressShippingRate["id"],
+      displayName: data.display_name,
+      amountPence: requireDefined(data.fixed_amount, "fixed_amount").amount,
+    };
+  });
+}
+
+/**
+ * Stripe's Checkout Sessions API in memory, driven through the real express gateway. Like Stripe,
+ * a write whose idempotency key it has seen answers with the first response (for 24 hours) and
+ * changes nothing; the same key with other parameters is an error.
+ */
 function fakeStripe() {
   const sessions = new Map<string, FakeSession>();
   const expired: string[] = [];
   const keys: string[] = [];
+  const updateKeys: string[] = [];
+  const replayed: string[] = [];
+  const cache = new Map<string, { params: string; response: Stripe.Checkout.Session }>();
   let created = 0;
-  const express: ExpressCheckoutGateway = {
-    async createExpressCheckout(input) {
-      created += 1;
-      keys.push(input.idempotencyKey);
-      const id = `cs_test_express${created}x${input.basketId.slice(0, 8)}`;
-      sessions.set(id, {
-        id,
-        basketId: input.basketId,
-        subtotalPence: input.subtotalPence,
-        rates: [...input.shippingRates],
-        status: "open",
-        orderId: null,
-        orderReference: null,
-        shippingName: null,
-      });
-      return { sessionId: id, clientSecret: `${id}_secret_x`, expiresAt: input.expiresAt };
+  /** Set to make Stripe drop updates while answering as if it had applied them. */
+  const faults = { dropUpdates: false, failNextUpdate: false };
+
+  function idempotent(
+    key: string | undefined,
+    params: unknown,
+    apply: () => Stripe.Checkout.Session,
+  ): Stripe.Checkout.Session {
+    const idempotencyKey = requireDefined(key, "idempotency key");
+    const sent = JSON.stringify(params);
+    const earlier = cache.get(idempotencyKey);
+    if (earlier) {
+      if (earlier.params !== sent) {
+        throw Object.assign(new Error("Keys for idempotent requests can only be used once"), {
+          type: "StripeIdempotencyError",
+        });
+      }
+      replayed.push(idempotencyKey);
+      return structuredClone(earlier.response);
+    }
+    const response = apply();
+    cache.set(idempotencyKey, { params: sent, response: structuredClone(response) });
+    return response;
+  }
+
+  const sdk = {
+    checkout: {
+      sessions: {
+        async create(
+          params: Stripe.Checkout.SessionCreateParams,
+          options: Stripe.RequestOptions = {},
+        ) {
+          keys.push(requireDefined(options.idempotencyKey, "key"));
+          return idempotent(options.idempotencyKey, params, () => {
+            created += 1;
+            const basketId = requireDefined(params.metadata?.basketId, "basketId") as string;
+            const id = `cs_test_express${created}x${basketId.slice(0, 8)}`;
+            const session: FakeSession = {
+              id,
+              basketId,
+              subtotalPence: (params.line_items ?? []).reduce(
+                (sum, item) => sum + (item.price_data?.unit_amount ?? 0) * (item.quantity ?? 1),
+                0,
+              ),
+              rates: ratesFrom(params.shipping_options),
+              status: "open",
+              orderId: null,
+              orderReference: null,
+              shipping: null,
+              metadata: { ...(params.metadata as Record<string, string>) },
+            };
+            sessions.set(id, session);
+            return stripeSession(session);
+          });
+        },
+        async retrieve(id: string) {
+          const session = sessions.get(id);
+          if (!session) {
+            throw Object.assign(new Error("No such checkout.session"), {
+              code: "resource_missing",
+            });
+          }
+          // The fake's tests change these fields directly; Stripe's metadata follows them.
+          session.metadata.basketId = session.basketId;
+          return stripeSession(session);
+        },
+        async update(
+          id: string,
+          params: Stripe.Checkout.SessionUpdateParams,
+          options: Stripe.RequestOptions = {},
+        ) {
+          updateKeys.push(requireDefined(options.idempotencyKey, "key"));
+          if (faults.failNextUpdate) {
+            faults.failNextUpdate = false;
+            throw Object.assign(new Error("connection reset"), { type: "StripeConnectionError" });
+          }
+          return idempotent(options.idempotencyKey, params, () => {
+            const current = requireDefined(sessions.get(id), "session");
+            const next: FakeSession = structuredClone(current);
+            next.metadata = { ...next.metadata, ...(params.metadata as Record<string, string>) };
+            next.orderId = next.metadata.orderId ?? null;
+            next.orderReference = next.metadata.orderReference ?? null;
+            if (params.shipping_options) {
+              next.rates = ratesFrom(
+                params.shipping_options as Stripe.Checkout.SessionCreateParams.ShippingOption[],
+              );
+            }
+            const details = params.collected_information?.shipping_details;
+            if (details) {
+              next.shipping = {
+                name: details.name,
+                line1: details.address.line1 ?? "",
+                line2: details.address.line2 ?? null,
+                city: details.address.city ?? "",
+                postcode: details.address.postal_code ?? "",
+                country: details.address.country,
+              };
+            }
+            if (!faults.dropUpdates) sessions.set(id, next);
+            return stripeSession(next);
+          });
+        },
+      },
     },
-    async readExpressCheckout({ sessionId }) {
-      const session = sessions.get(sessionId);
-      if (!session) return null;
-      return {
-        sessionId,
-        status: session.status,
-        isShopExpress: true,
-        basketId: session.basketId,
-        orderId: session.orderId,
-        currency: "gbp",
-        amountSubtotalPence: session.subtotalPence,
-      };
-    },
-    async bindExpressCheckout(input) {
-      const session = requireDefined(sessions.get(input.sessionId), "session");
-      session.orderId = input.orderId;
-      session.orderReference = input.orderReference;
-      session.rates = [input.shippingRate];
-      session.shippingName = input.shipping.name;
-      return { amountTotalPence: session.subtotalPence + input.shippingRate.amountPence };
-    },
-  };
+  } as unknown as Stripe;
+  const express: ExpressCheckoutGateway = createStripeShopExpressCheckoutGateway({
+    secretKey: undefined,
+    stripe: sdk,
+  });
   const hosted: PaymentCheckoutGateway = {
     async createHostedCheckout(input) {
       const sessionId = `cs_test_hosted_${input.orderId}`;
@@ -110,7 +248,17 @@ function fakeStripe() {
       return { kind: "expired" };
     },
   };
-  return { express, hosted, sessions, expired, keys, createdCount: () => created };
+  return {
+    express,
+    hosted,
+    sessions,
+    expired,
+    keys,
+    updateKeys,
+    replayed,
+    faults,
+    createdCount: () => created,
+  };
 }
 
 /** What Stripe would send when the shopper pays in the sheet. */
@@ -379,6 +527,104 @@ describe.skipIf(!hasShopIntegrationDb)("express checkout (wallets) on Checkout S
       "collect_new_cavendish",
     ]);
     expect(await heldBy(first.orderId)).toHaveLength(1);
+  });
+
+  it("binds the session again when the shopper goes back to an earlier rate (A, B, A)", async () => {
+    const { service, stripe, owner, basket, confirm, order } = await setup("express-rate-aba");
+    const { sessionId } = await service.start({ owner, basketId: basket.basketId });
+    const session = () => requireDefined(stripe.sessions.get(sessionId), "session");
+
+    const first = await confirm(sessionId);
+    await confirm(sessionId, { shippingRateId: "collect_new_cavendish", phone: undefined });
+    expect(session().rates.map((rate) => rate.id)).toEqual(["collect_new_cavendish"]);
+
+    // Back to delivery: the same parameters as the first bind, but a new request to Stripe.
+    await confirm(sessionId);
+    const row = await order(first.orderId);
+    expect(row).toMatchObject({ fulfilment: "uk_insured_delivery", totalPence: 9_500 });
+    expect(session().rates.map((rate) => rate.id)).toEqual(["uk_insured_delivery"]);
+    expect(session().subtotalPence + (session().rates[0]?.amountPence ?? 0)).toBe(row.totalPence);
+    expect(stripe.replayed).toEqual([]);
+    expect(new Set(stripe.updateKeys).size).toBe(3);
+  });
+
+  it("binds the session again when the shopper goes back to an earlier address", async () => {
+    const { service, stripe, owner, basket, confirm, order } = await setup("express-addr-aba");
+    const { sessionId } = await service.start({ owner, basketId: basket.basketId });
+    const shipping = () => requireDefined(stripe.sessions.get(sessionId), "session").shipping;
+    const elsewhere = { ...ADDRESS, line1: "2 Low Road", postcode: "EC1A 1BB" };
+
+    const first = await confirm(sessionId);
+    await confirm(sessionId, { shippingAddress: elsewhere });
+    expect(shipping()?.line1).toBe("2 Low Road");
+
+    await confirm(sessionId);
+    const row = await order(first.orderId);
+    expect(row).toMatchObject({ deliveryLine1: "1 High Street", deliveryPostcode: "SW1A 1AA" });
+    expect(shipping()).toEqual({
+      name: "Ada Lovelace",
+      line1: "1 High Street",
+      line2: null,
+      city: "London",
+      postcode: "SW1A 1AA",
+      country: "GB",
+    });
+    expect(stripe.replayed).toEqual([]);
+  });
+
+  it("reuses the bind's key when a retry follows a bind that never reached Stripe", async () => {
+    const { service, stripe, owner, basket, confirm } = await setup("express-bind-retry");
+    const { sessionId } = await service.start({ owner, basketId: basket.basketId });
+    stripe.faults.failNextUpdate = true;
+    await expect(confirm(sessionId)).rejects.toThrow("connection reset");
+    await confirm(sessionId);
+    expect(stripe.updateKeys).toHaveLength(2);
+    expect(stripe.updateKeys[1]).toBe(stripe.updateKeys[0]);
+    expect(stripe.sessions.get(sessionId)?.rates.map((rate) => rate.id)).toEqual([
+      "uk_insured_delivery",
+    ]);
+  });
+
+  it("refuses the confirm and ends the session when Stripe's session does not match the order", async () => {
+    const { db, repo, service, stripe, owner, basket, confirm, ordersFor, subject, imported } =
+      await setup("express-bind-mismatch");
+    const { sessionId } = await service.start({ owner, basketId: basket.basketId });
+    // Stripe answers the update as if it applied it, but the session is unchanged.
+    stripe.faults.dropUpdates = true;
+    const errors: unknown[] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => errors.push(args.join(" "));
+    try {
+      await expect(confirm(sessionId)).rejects.toMatchObject({
+        code: SHOP_API_ERROR_CODES.CONFLICT,
+        statusCode: 409,
+        message: EXPRESS_PAYMENT_NOT_READY_MESSAGE,
+      });
+    } finally {
+      console.error = original;
+    }
+    expect(errors.join("\n")).toMatch(/shop_express_bind_mismatch.*"reason":"order_id"/);
+    const [cancelled] = await ordersFor(subject);
+    expect(cancelled?.status).toBe("cancelled");
+    expect(stripe.expired).toEqual([sessionId]);
+    expect(stripe.sessions.get(sessionId)?.status).toBe("expired");
+    const stillHeld = await db
+      .select()
+      .from(shopEdition)
+      .where(
+        and(
+          eq(shopEdition.artworkId, imported.artworkId),
+          eq(shopEdition.listingStatus, "reserved"),
+        ),
+      );
+    expect(stillHeld).toEqual([]);
+
+    // The shopper can start again from the basket the release restored, on an open session.
+    stripe.faults.dropUpdates = false;
+    const restored = requireDefined(await repo.getBasket(owner), "restored basket");
+    const again = await service.start({ owner, basketId: restored.basketId });
+    expect(again.sessionId).not.toBe(sessionId);
+    expect(stripe.sessions.get(again.sessionId)?.status).toBe("open");
   });
 
   it("refuses a session whose basket changed, and puts the print and the basket back", async () => {

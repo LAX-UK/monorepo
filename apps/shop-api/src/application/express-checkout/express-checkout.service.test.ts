@@ -25,6 +25,10 @@ function snapshot(overrides: Partial<ExpressCheckoutSnapshot> = {}): ExpressChec
     orderId: null,
     currency: "gbp",
     amountSubtotalPence: 8_000,
+    amountTotalPence: 8_000,
+    shippingOptionAmountsPence: [1_500, 0],
+    shippingDetails: null,
+    bindRevision: 0,
     ...overrides,
   };
 }
@@ -106,6 +110,16 @@ describe("express checkout service", () => {
     const lifetime = (first?.expiresAt.getTime() ?? 0) - now.getTime();
     expect(lifetime).toBeGreaterThanOrEqual(30 * 60_000);
     expect(lifetime).toBeLessThanOrEqual(41 * 60_000);
+  });
+
+  it("opens a new session when the one Stripe hands back for the key has ended", async () => {
+    const { service, gateway } = harness(snapshot({ status: "expired" }));
+    await service.start({ owner: SUBJECT, basketId: BASKET });
+    const keys = vi
+      .mocked(gateway.createExpressCheckout)
+      .mock.calls.map(([call]) => call.idempotencyKey);
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(`${keys[0]}:after:${SESSION}`);
   });
 
   it("checks the basket is the shopper's before opening anything", async () => {
