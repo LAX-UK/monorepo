@@ -43,6 +43,21 @@ describe("PrimaryCell", () => {
     expect(wrapped).toHaveClass("whitespace-normal", "break-words");
   });
 
+  it("wraps the second line too when the cell wraps, and cuts it otherwise", () => {
+    render(
+      <>
+        <PrimaryCell secondary="Spring Contemporary Evening Sale · Sun 15 Nov">Lot 3</PrimaryCell>
+        <PrimaryCell wrap secondary="Modern Masters Online Sale · Mon 16 Nov">
+          Lot 4
+        </PrimaryCell>
+      </>,
+    );
+    expect(screen.getByText(/Evening Sale/)).toHaveClass("truncate");
+    const wrapped = screen.getByText(/Masters Online Sale/);
+    expect(wrapped).not.toHaveClass("truncate");
+    expect(wrapped).toHaveClass("whitespace-normal", "break-words");
+  });
+
   it("shows a named placeholder when the record has no picture yet", () => {
     render(
       <PrimaryCell thumbnail={{ src: null, missingLabel: "No photos yet" }}>

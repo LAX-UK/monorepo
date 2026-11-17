@@ -338,6 +338,8 @@ export type DataView = {
   label: string;
   href: string;
   count?: number;
+  /** What the count means, read after it by assistive technology ("3 waiting"). */
+  countLabel?: string;
 };
 
 /**

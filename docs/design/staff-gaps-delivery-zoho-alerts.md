@@ -163,8 +163,11 @@ staff `decline` step from `requested` or `quoted` to `withdrawn`, with a reason 
 **D9. Build plan (each PR small, kit only, light/dark/375 screenshots per PR).**
 1. Read model and API: `GET /admin/deliveries`, `/summary`, `/:lotId`; idempotency key on the
    quote route; contract tests. No UI.
-2. Page: list, tabs, nav item and count, states, queue panel with Send quote and Change quote.
-   Visual baseline added to `apps/web/e2e/admin-pages-visual.spec.ts`.
+2. Page, split in two (decided at the review of #1520):
+   - 2a. Read-only page: list, tabs, nav item and count, states, and the queue panel without
+     actions (#1520).
+   - 2b. Send quote and Change quote in the queue panel, and the `/admin/deliveries` visual
+     baseline added to `apps/web/e2e/admin-pages-visual.spec.ts`.
 3. Decline (D8): migration with rollback, domain step, route, dialog, buyer email.
 4. Polish and the To dispatch / On the way / Delivered tabs linking to Lot fulfilment actions.
 
@@ -396,7 +399,7 @@ the toast. Captured with Playwright against the shop-admin visual fixtures
 | D6 | Kit empty, loading, error, no results and stale states | — |
 | D7 | New list, summary and detail reads; idempotency on the quote route | — |
 | D8 | Staff "Can't deliver" with a reason (migration) | No decline |
-| D9 | Four PRs: API, page, decline, polish | — |
+| D9 | Four PRs: API, page (2a read-only, 2b quote actions and baseline), decline, polish | — |
 | Z1 | Badge on the order page and the artwork record; optional Orders column | Order page only; side section |
 | Z2 | State derived from `domain_event_delivery`, nothing stored | Status column per record |
 | Z3 | Clickable badge with details, wording above | Hover tooltip (not on phones) |
