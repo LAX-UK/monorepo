@@ -41,8 +41,10 @@ describe("migration 0407 item submission soft delete", () => {
   });
 
   it("rolls back by removing deleted drafts, then the check and the column, in one transaction", () => {
+    // Re-runnable: the delete only runs while the column exists.
+    expect(rollback).toContain("column_name = 'deleted_at'");
     const removeRows = rollback.indexOf(
-      'DELETE FROM "item_submission" WHERE "deleted_at" IS NOT NULL;',
+      `EXECUTE 'DELETE FROM "item_submission" WHERE "deleted_at" IS NOT NULL'`,
     );
     const dropColumn = rollback.indexOf('DROP COLUMN IF EXISTS "deleted_at"');
     expect(removeRows).toBeGreaterThan(-1);

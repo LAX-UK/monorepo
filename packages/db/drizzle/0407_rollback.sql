@@ -8,7 +8,17 @@ BEGIN;
 
 SET LOCAL lock_timeout = '30s';
 
-DELETE FROM "item_submission" WHERE "deleted_at" IS NOT NULL;
+-- Re-runnable, like the other rollbacks: once the column is gone there is nothing to remove, and
+-- the statement is run dynamically so it is not planned against a column that no longer exists.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'item_submission' AND column_name = 'deleted_at'
+  ) THEN
+    EXECUTE 'DELETE FROM "item_submission" WHERE "deleted_at" IS NOT NULL';
+  END IF;
+END $$;
 
 ALTER TABLE "item_submission" DROP CONSTRAINT IF EXISTS "item_submission_deleted_draft_check";
 
