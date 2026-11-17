@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { LotQuickLookProvider, useLotQuickLook } from "./lot-quick-look-context";
 import { LazyLotQuickLookDialog } from "./lot-quick-look-dialog.lazy";
 
@@ -11,9 +11,9 @@ import { LazyLotQuickLookDialog } from "./lot-quick-look-dialog.lazy";
 function QuickLookDialogMount() {
   const { session } = useLotQuickLook();
   const [requested, setRequested] = useState(false);
-  useEffect(() => {
-    if (session) setRequested(true);
-  }, [session]);
+  // Latched while rendering (React's "storing information from previous renders"), not in an
+  // effect: React re-renders before committing, so the dialog mounts with the first open.
+  if (session && !requested) setRequested(true);
   return requested ? <LazyLotQuickLookDialog /> : null;
 }
 

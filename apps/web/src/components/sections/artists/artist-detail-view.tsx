@@ -170,6 +170,7 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
         currentUserId={vm.currentUserId}
         watching={vm.watching}
         isAuthenticated={vm.isAuthed}
+        watchedLotIds={vm.watchedLotIds}
       />
 
       {relatedLinks.length > 0 ? (

@@ -1,6 +1,7 @@
 import type { LotRailCardVM } from "@/components/sections/artwork/artwork-view-models";
 import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
+import type { HomeLotCard } from "@/lib/home-sections/types";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -88,6 +89,21 @@ export function lotQuickLookFromLot(
     ...(lot.status === "active"
       ? { currentBidLabel: price.label, currentBidValue: price.value }
       : {}),
+  };
+}
+
+/** A home rail card's quick look: what the card itself knows (the lot page has the rest). */
+export function lotQuickLookFromHomeLot(card: HomeLotCard): LotQuickLookVM {
+  return {
+    id: card.id,
+    href: card.href,
+    title: card.title,
+    subtitle: card.artistName ?? "",
+    imageUrl: card.imageUrl,
+    imageAlt: card.title,
+    status: card.status,
+    lotLabel: card.lotLabel,
+    ...(card.estimate ? { estimateLabel: "Estimate", estimateValue: card.estimate } : {}),
   };
 }
 

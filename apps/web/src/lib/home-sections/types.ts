@@ -1,5 +1,6 @@
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import type { DepartmentDisplayStyle, HomeSectionId } from "@auction/domain";
+import type { LotStatus } from "@auction/types";
 
 export type HomeLink = { href: string; label: string };
 
@@ -14,8 +15,12 @@ export type HomeLotCard = {
   displayStyle: DepartmentDisplayStyle;
   /** Whether a person can still follow the lot: it is live or coming up, not sold or ended. */
   watchable: boolean;
-  /** "Lot 4". */
-  details: string[];
+  /** The lot's state, for the card's button and its quick look. */
+  status: LotStatus;
+  /** Set while the lot sells on ATG: it is bid on there, so the card offers no button. */
+  atgSaleState?: "live" | "ended";
+  /** "Lot 4": the card's "Lot N" line, which carries the save heart. */
+  lotLabel: string;
   /** "Estimate £4,000 – £6,000"; null when staff set none. */
   estimate: string | null;
   /** The price and clock the card prints: the same line as every other lot card. */
