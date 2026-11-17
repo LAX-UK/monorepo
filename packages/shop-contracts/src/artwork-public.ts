@@ -421,6 +421,16 @@ export const PublicArtworkFacetCountsSchema = Type.Object(
     priceBands: Type.Optional(Type.Array(BandFacetCount)),
     /** Works per size band (`CATALOGUE_SIZE_BANDS`) by the longest side; empty bands included. */
     sizes: Type.Optional(Type.Array(BandFacetCount)),
+    /**
+     * Works per orientation (`CATALOGUE_ORIENTATION_KEYS`): portrait, landscape, square; empty
+     * ones included. Works without both sides are in none.
+     */
+    orientations: Type.Optional(Type.Array(BandFacetCount)),
+    /**
+     * Works available framed and available unframed (`CATALOGUE_FRAMING_KEYS`); empty ones
+     * included. A work that can be had either way counts in both.
+     */
+    framing: Type.Optional(Type.Array(BandFacetCount)),
     /** Works per technique (the catalogued medium), most works first. */
     techniques: Type.Optional(
       Type.Array(

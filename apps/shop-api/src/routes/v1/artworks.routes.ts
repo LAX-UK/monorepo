@@ -10,7 +10,11 @@ import {
   PublicArtworkTypeFilterSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
-import { CATALOGUE_SIZE_BAND_KEYS } from "@auction/shop-domain";
+import {
+  CATALOGUE_FRAMING_KEYS,
+  CATALOGUE_ORIENTATION_KEYS,
+  CATALOGUE_SIZE_BAND_KEYS,
+} from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { Static } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
@@ -61,6 +65,12 @@ const ListQuerySchema = Type.Object({
   maxPrice: Type.Optional(Type.Integer({ minimum: 0 })),
   /** Size by the longest side: `small`, `medium` or `large`. */
   size: Type.Optional(Type.Union(CATALOGUE_SIZE_BAND_KEYS.map((key) => Type.Literal(key)))),
+  /** Portrait, landscape or square by the image size, with a 5 % tolerance for square. */
+  orientation: Type.Optional(
+    Type.Union(CATALOGUE_ORIENTATION_KEYS.map((key) => Type.Literal(key))),
+  ),
+  /** `framed`: can be had framed; `unframed`: can be had unframed. A work can be both. */
+  framing: Type.Optional(Type.Union(CATALOGUE_FRAMING_KEYS.map((key) => Type.Literal(key)))),
   /** One catalogued technique (the medium), matched exactly. */
   technique: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   sort: Type.Optional(PublicArtworkSortSchema),
@@ -87,6 +97,8 @@ function filterFromQuery(query: ListQuery) {
     ...(query.minPrice !== undefined ? { minPricePence: query.minPrice } : {}),
     ...(query.maxPrice !== undefined ? { maxPricePence: query.maxPrice } : {}),
     ...(query.size !== undefined ? { sizeBand: query.size } : {}),
+    ...(query.orientation !== undefined ? { orientation: query.orientation } : {}),
+    ...(query.framing !== undefined ? { framing: query.framing } : {}),
     ...(query.technique !== undefined ? { technique: query.technique } : {}),
     ...(query.sort !== undefined ? { sort: query.sort } : {}),
     ...(query.q !== undefined ? { q: query.q } : {}),

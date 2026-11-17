@@ -28,6 +28,7 @@ import {
   parsePublicMerchandiseProductDetail,
   parsePublicMerchandiseProductList,
 } from "@auction/shop-contracts";
+import type { CatalogueFramingKey, CatalogueOrientationKey } from "@auction/shop-domain";
 
 const DEFAULT_SHOP_API_BASE_URL = "http://localhost:3011";
 const SHOP_FETCH_TIMEOUT_MS = 2500;
@@ -102,6 +103,8 @@ export async function fetchPublicArtworks(input: {
   minPrice?: number;
   maxPrice?: number;
   size?: "small" | "medium" | "large";
+  orientation?: CatalogueOrientationKey;
+  framing?: CatalogueFramingKey;
   technique?: string;
   sort?: "newest" | "titleAsc" | "priceAsc" | "priceDesc";
   q?: string;
@@ -126,6 +129,8 @@ type CatalogueFilterInput = {
   minPrice?: number;
   maxPrice?: number;
   size?: "small" | "medium" | "large";
+  orientation?: CatalogueOrientationKey;
+  framing?: CatalogueFramingKey;
   technique?: string;
   q?: string;
 };
@@ -141,6 +146,8 @@ function catalogueFilterParams(input: CatalogueFilterInput): URLSearchParams {
   if (input.saleState) params.set("saleState", input.saleState);
   if (input.availability) params.set("availability", input.availability);
   if (input.size) params.set("size", input.size);
+  if (input.orientation) params.set("orientation", input.orientation);
+  if (input.framing) params.set("framing", input.framing);
   if (input.technique) params.set("technique", input.technique);
   if (input.q) params.set("q", input.q);
   return params;
