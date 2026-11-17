@@ -7,8 +7,6 @@ import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
 const { Pool } = pg;
 
-export const E2E_ROLLOUT_PASSWORD = "Password123!";
-
 /** Legacy demo users — mutated in place so admin client visuals keep a stable directory. */
 export const E2E_ROLLOUT_IDS = {
   complete: "90000000-0000-4000-8000-000000000003",

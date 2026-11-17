@@ -30,4 +30,12 @@ export {
   demoSeedRefusal,
   MARK_DEMO_SEED_TARGET_SQL,
 } from "./seed/shared/demo-seed-target.js";
+export {
+  type SeedTarget,
+  type SeedTargetEnv,
+  assertSeedEnvironment,
+  assertSeedTarget,
+  isLocalSeedAddress,
+  seedTargetEnvFromProcess,
+} from "./seed/shared/seed-target-guard.js";
 export { liftZohoCampaignsOptOut } from "./services/lift-zoho-campaigns-opt-out.js";

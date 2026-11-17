@@ -26,7 +26,7 @@ Only if ops maintains a curated script:
 1. Stop workers and API writers to the test DB.
 2. Truncate or delete in **dependency order** (sessions, bids, payments, lots, legal entities, users, domain events, outbox).
 3. Re-run `pnpm db:migrate` if schema drifted.
-4. Run `pnpm db:seed` if a baseline demo dataset is required.
+4. If a baseline demo dataset is required: mark the database `test` (`docs/runbooks/demo-seed.md`), then run `pnpm --filter @auction/db db:seed:dev` with `APP_ENV=test` and the `SEED_ACCOUNT_PASSWORD` secret. Never run `pnpm db:seed` here: that is the local entry point.
 
 **Do not** paste ad-hoc `DELETE FROM user` snippets into production tooling.
 

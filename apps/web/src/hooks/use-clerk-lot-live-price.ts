@@ -18,6 +18,8 @@ export type ClerkLotLiveBidState = {
   leaderAmount: string | null;
   placedVia: string | null;
   leaderLabel: string | null;
+  /** When the last socket bid update for this lot was applied (`Date.now()`); unset before one. */
+  livePriceAt?: number;
 };
 
 const EMPTY_STATE: ClerkLotLiveBidState = {
@@ -76,6 +78,7 @@ export function useClerkLotLiveBidState(
         leaderAmount: mapped.amount,
         placedVia: mapped.placedVia ?? null,
         leaderLabel: null,
+        livePriceAt: Date.now(),
       }));
     };
 

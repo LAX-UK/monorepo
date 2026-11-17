@@ -1,11 +1,12 @@
 import { Hono } from "hono";
-import { ok } from "neverthrow";
+import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createAdminRoutes } from "./admin.js";
 
 const SALE_ID = "00000000-0000-4000-8000-000000000002";
+const LOT_ID = "00000000-0000-4000-8000-000000000003";
 
 function createSaleroomContainer(partial: {
   saleroom?: Partial<Container["admin"]["saleroom"]>;
@@ -175,5 +176,112 @@ describe("saleroom clerk", () => {
     );
 
     expect(res.status).toBe(403);
+  });
+
+  it("hammers the lot the clerk names, and still hammers for a console that sends no body", async () => {
+    const hammerCurrentLot = vi.fn().mockResolvedValue(ok({ lotId: LOT_ID }));
+    const app = clerkApp(createSaleroomContainer({ saleroom: { hammerCurrentLot } as never }));
+
+    const named = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/hammer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotId: LOT_ID }),
+    });
+    const bare = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/hammer`, {
+      method: "POST",
+    });
+
+    expect(named.status).toBe(200);
+    expect(bare.status).toBe(200);
+    expect(hammerCurrentLot).toHaveBeenNthCalledWith(1, {
+      saleId: SALE_ID,
+      actorUserId: "clerk-1",
+      lotId: LOT_ID,
+    });
+    expect(hammerCurrentLot).toHaveBeenNthCalledWith(2, {
+      saleId: SALE_ID,
+      actorUserId: "clerk-1",
+    });
+  });
+
+  it("answers 409 lot_not_on_block when the named lot has left the block", async () => {
+    const noSaleCurrentLot = vi.fn().mockResolvedValue(
+      err({
+        message: "This lot is no longer on the block",
+        status: 409,
+        code: "lot_not_on_block",
+      }),
+    );
+    const app = clerkApp(createSaleroomContainer({ saleroom: { noSaleCurrentLot } as never }));
+
+    const res = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/no-sale`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotId: LOT_ID }),
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: "This lot is no longer on the block",
+      code: "lot_not_on_block",
+    });
+  });
+
+  it("refuses a hammer whose lot id is not a lot id", async () => {
+    const hammerCurrentLot = vi.fn();
+    const app = clerkApp(createSaleroomContainer({ saleroom: { hammerCurrentLot } as never }));
+
+    const res = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/hammer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotId: "lot-1" }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(hammerCurrentLot).not.toHaveBeenCalled();
+  });
+
+  it("reads the price and reserve of a lot in the sale", async () => {
+    const snapshot = {
+      lotId: LOT_ID,
+      status: "active",
+      currentPrice: "950.00",
+      reservePrice: null,
+    };
+    const getLotSnapshot = vi.fn().mockResolvedValueOnce(snapshot).mockResolvedValueOnce(null);
+    const app = clerkApp(createSaleroomContainer({ saleroom: { getLotSnapshot } as never }));
+
+    const found = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/lots/${LOT_ID}`);
+    const missing = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/lots/${LOT_ID}`);
+
+    expect(found.status).toBe(200);
+    expect(await found.json()).toEqual({ data: snapshot });
+    expect(getLotSnapshot).toHaveBeenCalledWith(SALE_ID, LOT_ID);
+    expect(missing.status).toBe(404);
+  });
+
+  it("cannot read a lot without saleroom access", async () => {
+    const getLotSnapshot = vi.fn();
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "client-1",
+        role: "client",
+        staffRoles: [],
+        scopes: ["bid.read"],
+      }),
+    };
+    const app = new Hono();
+    app.route(
+      "/admin",
+      createAdminRoutes(
+        createSaleroomContainer({ saleroom: { getLotSnapshot } as never }),
+        authenticator,
+      ),
+    );
+
+    const res = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/lots/${LOT_ID}`);
+
+    expect(res.status).toBe(403);
+    expect(getLotSnapshot).not.toHaveBeenCalled();
   });
 });

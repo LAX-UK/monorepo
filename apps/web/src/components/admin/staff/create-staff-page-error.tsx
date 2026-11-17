@@ -4,7 +4,6 @@ import { adminRouteErrorMessage } from "@/lib/admin/admin-route-error-message";
 import { useReportRouteError } from "@/lib/observability/use-report-route-error";
 import { ErrorState, PageHeader, StaffButton } from "@auction/staff-ui";
 import Link from "next/link";
-import { useEffect } from "react";
 
 type StaffPageErrorConfig = {
   /** The page that failed: "Saleroom". */
@@ -26,10 +25,8 @@ export function createStaffPageError(config: StaffPageErrorConfig) {
     error: Error & { digest?: string };
     reset: () => void;
   }) {
+    // Logs the error to the console and reports it to Sentry.
     useReportRouteError(error);
-    useEffect(() => {
-      console.error(error);
-    }, [error]);
 
     return (
       <div className="flex flex-col gap-6">

@@ -23,6 +23,10 @@
     "./next-sentry-options": {
       "types": "./dist/next-sentry-options.d.ts",
       "default": "./dist/next-sentry-options.js"
+    },
+    "./next-size-build": {
+      "types": "./dist/next-size-build.d.ts",
+      "default": "./dist/next-size-build.js"
     }
   },
   "scripts": {

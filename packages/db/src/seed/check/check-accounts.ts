@@ -3,7 +3,8 @@ import type { DemoPerson } from "../demo/demo-topup-ids.js";
 /**
  * Accounts that automated browser checks and screenshot scripts sign in as, so the demo accounts
  * people review (a collector, the administrator) only ever show the devices their owners used.
- * They share the seeded password and are made by `pnpm --filter @auction/db db:seed:check-accounts`.
+ * They share the seeded password (SEED_ACCOUNT_PASSWORD outside a local database) and are made by
+ * `pnpm --filter @auction/db db:seed:check-accounts`.
  */
 
 function id(group: string, n: number): string {

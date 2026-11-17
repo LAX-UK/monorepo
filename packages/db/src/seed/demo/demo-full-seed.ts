@@ -47,12 +47,17 @@ export type DemoFullResult = {
   queues: string[];
 };
 
-export async function runDemoFull(db: Db, now: number = Date.now()): Promise<DemoFullResult> {
+export async function runDemoFull(
+  db: Db,
+  now: number,
+  /** From `seedAccountPassword`; there is no default, so no caller gets the local password by accident. */
+  password: string,
+): Promise<DemoFullResult> {
   // The database itself must say it takes demo data (0398); the address checks come first, in the CLI.
   await assertDemoSeedDatabase(db, "demo-full");
-  const topUp = await runDemoTopUp(db, now);
+  const topUp = await runDemoTopUp(db, now, password);
 
-  const people = await ensurePeople(db, now);
+  const people = await ensurePeople(db, now, password);
   const base = await loadBase(db);
   await ensureNorthbankTeam(db, now, base, people.ids);
 

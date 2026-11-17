@@ -147,6 +147,61 @@ describe("loadShopApiEnv Connect platform", () => {
   });
 });
 
+describe("loadShopApiEnv Stripe on test", () => {
+  // Built from parts so no complete key-shaped string sits in the source.
+  const liveKey = (prefix: string) => `${prefix}_live_${"x".repeat(16)}`;
+  const testBase = (overrides: Record<string, string> = {}) =>
+    productionNodeBase({ APP_ENV: "test", ...overrides });
+
+  it("refuses a live secret key when APP_ENV=test", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_SECRET_KEY: liveKey("sk") }))).toThrow(
+      /STRIPE_SECRET_KEY must use a test key/,
+    );
+  });
+
+  it("refuses a live publishable key when APP_ENV=test", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_PUBLISHABLE_KEY: liveKey("pk") }))).toThrow(
+      /STRIPE_PUBLISHABLE_KEY must use a test key/,
+    );
+  });
+
+  it("refuses the live Connect platform when APP_ENV=test", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art" }))).toThrow(
+      /STRIPE_SHOP_CONNECT_PLATFORM_KEY must be bid_sandbox unless APP_ENV=production/,
+    );
+  });
+
+  it("accepts test keys on the sandbox platform", () => {
+    expect(() => loadShopApiEnv(testBase({ STRIPE_PUBLISHABLE_KEY: "pk_test_key" }))).not.toThrow();
+  });
+
+  it("refuses live keys and the live platform when APP_ENV is unset, even with NODE_ENV=production", () => {
+    // A deployed test host runs NODE_ENV=production; without APP_ENV it must not pass for production.
+    expect(() => loadShopApiEnv(productionNodeBase({ STRIPE_SECRET_KEY: liveKey("sk") }))).toThrow(
+      /STRIPE_SECRET_KEY must use a test key/,
+    );
+    expect(() =>
+      loadShopApiEnv(productionNodeBase({ STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art" })),
+    ).toThrow(/STRIPE_SHOP_CONNECT_PLATFORM_KEY must be bid_sandbox/);
+  });
+
+  it("refuses an APP_ENV that is set but not production, test or development", () => {
+    for (const value of ["Test", "staging", "prod", " production"]) {
+      expect(() => loadShopApiEnv(productionNodeBase({ APP_ENV: value }))).toThrow(
+        /APP_ENV must be one of production, test, development/,
+      );
+    }
+  });
+
+  it("leaves production keys to the production checks", () => {
+    expect(() =>
+      loadShopApiEnv(
+        productionNodeBase({ APP_ENV: "production", STRIPE_SECRET_KEY: liveKey("sk") }),
+      ),
+    ).not.toThrow();
+  });
+});
+
 describe("loadShopApiEnv editorial", () => {
   it("requires a preview secret when editorial is enabled on a production build", () => {
     expect(() => loadShopApiEnv(productionNodeBase({ SHOP_EDITORIAL_ENABLED: "true" }))).toThrow(
@@ -195,9 +250,9 @@ describe("loadShopApiEnv Stripe requirement", () => {
     expect(() => loadShopApiEnv(withoutStripe())).toThrow(
       /STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET required in production/,
     );
-    expect(() => loadShopApiEnv(withoutStripe({ STRIPE_SECRET_KEY: "sk_live_key" }))).toThrow(
-      /STRIPE_WEBHOOK_SECRET required in production/,
-    );
+    expect(() =>
+      loadShopApiEnv(withoutStripe({ APP_ENV: "production", STRIPE_SECRET_KEY: "sk_live_key" })),
+    ).toThrow(/STRIPE_WEBHOOK_SECRET required in production/);
   });
 
   it("starts with payments disabled and a warning while Stripe is not required", () => {
@@ -219,6 +274,7 @@ describe("loadShopApiEnv Stripe requirement", () => {
           withoutStripe({
             SHOP_REQUIRE_STRIPE: "false",
             // Payouts on production need the lax_art platform key; keep that rule out of the way.
+            APP_ENV: "production",
             STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art",
             [flag]: "true",
           }),
@@ -233,6 +289,7 @@ describe("loadShopApiEnv Stripe requirement", () => {
       loadShopApiEnv(
         productionNodeBase({
           SHOP_REQUIRE_STRIPE: "false",
+          APP_ENV: "production",
           STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art",
           [flag]: "true",
         }),

@@ -6,9 +6,9 @@ import {
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
 import { type LotRunwayRow, useLotRunway } from "@/features/saleroom/hooks/use-lot-runway";
+import { clerkAdvance } from "@/features/saleroom/lib/clerk-commands.client";
 import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
-import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
 import { staffRunwayLotStatus } from "@/lib/admin/staff-kit-status";
 import { lotChargeCurrency } from "@/lib/money/currency";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
@@ -145,7 +145,7 @@ export function LotRunwayPanel({
                 variant="primary"
                 size="lg"
                 disabled={!sessionLive}
-                onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
+                onRun={() => clerkAdvance({ saleId, lotId: nextLot.id })}
               >
                 Advance next ({formatLotRunListLabel(nextLot)})
               </SaleroomPendingSubmit>
@@ -170,7 +170,7 @@ export function LotRunwayPanel({
                 variant="secondary"
                 size="lg"
                 disabled={!sessionLive || advanceableLots.length === 0}
-                onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: advanceLotId })}
+                onRun={() => clerkAdvance({ saleId, lotId: advanceLotId })}
               >
                 Put on the block
               </SaleroomPendingSubmit>

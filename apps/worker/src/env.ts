@@ -6,8 +6,10 @@ import {
   resolveStrictBidEligibilityRollout,
 } from "@auction/domain";
 import { parseAuthDekKey } from "@auction/identity-contracts";
+import { stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
+import { zohoCrmNeedsSandboxOrg } from "./integrations/zoho/zoho-live-modes.js";
 
 function parseFromByProduct(val: unknown): unknown {
   if (val === "" || val === null || val === undefined) return undefined;
@@ -542,6 +544,22 @@ export const envSchema = z
           path: ["CLAMAV_URL"],
         });
       }
+    }
+    for (const issue of stripeTestModeKeyIssues(e.APP_ENV, [
+      { name: "STRIPE_SECRET_KEY", kind: "secret", value: e.STRIPE_SECRET_KEY },
+      { name: "STRIPE_BOOKS_READ_KEYS", kind: "restricted", value: e.STRIPE_BOOKS_READ_KEYS },
+    ])) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: [issue.name] });
+    }
+    // Outside production (APP_ENV unset counts) the worker only acts on a Zoho CRM sandbox org;
+    // the org check then confirms it at start.
+    if (zohoCrmNeedsSandboxOrg(e) && e.ZOHO_CRM_EXPECTED_ORG_TYPE !== "sandbox") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "ZOHO_CRM_EXPECTED_ORG_TYPE must be sandbox unless APP_ENV=production when a Zoho mode is live or canary",
+        path: ["ZOHO_CRM_EXPECTED_ORG_TYPE"],
+      });
     }
     if (
       e.ZOHO_ARTWORK_SYNC_MODE !== "off" &&

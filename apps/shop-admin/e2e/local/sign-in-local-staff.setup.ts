@@ -8,8 +8,9 @@ import { signInStaffThroughIdentity } from "../support/staff-sign-in.js";
  * and saves the browser state per role, so later specs can start already signed in:
  *   test.use({ storageState: "e2e/.auth/finance.json" })
  * Run `pnpm --filter @auction/shop-admin test:e2e:local-setup` while the local stack and
- * scripts/local/start-shop-admin.sh are running. LOCAL_STAFF_PASSWORD is the dev seed password
- * (SEED_PASSWORD in packages/db/src/seed/dev/legacy-demo-seed.ts).
+ * scripts/local/start-shop-admin.sh are running. LOCAL_STAFF_PASSWORD is the local seed
+ * password (LOCAL_SEED_PASSWORD in packages/db/src/seed/shared/seed-target-guard.ts), which the dev
+ * seed uses only on a local database marked "local".
  */
 const AUTH_DIR = join(import.meta.dirname, "..", ".auth");
 const AUTH_BASE_URL = process.env.OIDC_ISSUER_URL ?? "http://localhost:3003";

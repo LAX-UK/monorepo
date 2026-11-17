@@ -8,7 +8,7 @@
 docker compose up postgres redis -d
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/auction
 pnpm --filter @auction/db db:migrate
-pnpm --filter @auction/db db:seed:dev
+pnpm db:seed   # marks this fresh local database "local", then runs the dev seed
 DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
 DATABASE_URL_AUTH="$DATABASE_URL" OIDC_CLIENT_IDS=lax-bid-web,lax-shop-web \
   OIDC_CLIENT_SECRET_LAX_BID_WEB=ci-bid-web-client-secret-at-least-32 \
@@ -30,13 +30,13 @@ Or manually: `pnpm dev:shop` (after exporting local `DATABASE_URL*` as above).
 
 4. Stop: `./scripts/local/stop-shop-stack.sh`
 
-**Tips:** Set `SHOP_FAKE_CHECKOUT_ENABLED=true` before start to skip real Stripe. Dev buyer: `user1@lax.bid` / `Password123!`. If pages hang, stop and restart the stack; avoid hammering `/basket` while Next is still compiling.
+**Tips:** Set `SHOP_FAKE_CHECKOUT_ENABLED=true` before start to skip real Stripe. Dev buyer: `user1@lax.bid` with the local seed password (`LOCAL_SEED_PASSWORD` in `packages/db/src/seed/shared/seed-target-guard.ts`; local databases only). If pages hang, stop and restart the stack; avoid hammering `/basket` while Next is still compiling.
 
 ## LAX Admin (staff) locally
 
 LAX Admin (`apps/shop-admin`) signs in through the local identity service and calls shop-api's `/admin/v1`.
 
-**Prerequisites:** the stack above is running (`start-shop-stack.sh` now sets `SHOP_ADMIN_ENABLED=true`, which mounts `/admin/v1`; restart a stack started earlier), and the local database was migrated from `main` and seeded with `pnpm --filter @auction/db db:seed:dev`.
+**Prerequisites:** the stack above is running (`start-shop-stack.sh` now sets `SHOP_ADMIN_ENABLED=true`, which mounts `/admin/v1`; restart a stack started earlier), and the local database was migrated from `main` and seeded with `pnpm db:seed`.
 
 ```bash
 ./scripts/local/start-shop-admin.sh        # http://localhost:3030/
@@ -45,7 +45,7 @@ LAX Admin (`apps/shop-admin`) signs in through the local identity service and ca
 
 The script registers the `lax-shop-admin` OIDC client in the local database (`db:configure-oidc-clients`, scoped to that client), grants staff roles to the dev accounts (`pnpm --filter @auction/shop-api seed:local-admin-staff`) and starts `next dev`. All of it is idempotent. Admin runs on :3030, not :3020, because that is the only local redirect the `lax-shop-admin` client registers, and :3020 is the storefront.
 
-**Signing in:** open http://localhost:3030/ and sign in as one of these accounts with the dev seed password (`SEED_PASSWORD` in `packages/db/src/seed/dev/legacy-demo-seed.ts`). The dev seed leaves staff two-step verification optional, so no TOTP is asked.
+**Signing in:** open http://localhost:3030/ and sign in as one of these accounts with the local seed password (`LOCAL_SEED_PASSWORD` in `packages/db/src/seed/shared/seed-target-guard.ts`). That password is used only on a local database marked `local`; on any other database seeded accounts get the password from the `SEED_ACCOUNT_PASSWORD` secret. On a local database the dev seed leaves staff two-step verification optional, so no TOTP is asked.
 
 | Role | Account | Sees |
 | --- | --- | --- |

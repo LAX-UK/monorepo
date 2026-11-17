@@ -174,7 +174,7 @@ Deployed flags for the new-device email (auth service):
 
 | Environment | Flags | Result |
 | --- | --- | --- |
-| Production | `NODE_ENV=production` (set by the image), `APP_ENV` unset or `production`, `NEW_DEVICE_EMAIL_ENABLED` unset | Sent |
+| Production | `NODE_ENV=production` (set by the image), `APP_ENV=production` (required: without it the API, Shop API and worker refuse live Stripe keys), `NEW_DEVICE_EMAIL_ENABLED` unset | Sent |
 | Test site | `NODE_ENV=production` (set by the image), `APP_ENV=test`, `NEW_DEVICE_EMAIL_ENABLED` unset | Not sent |
 | Test site, checking the email | as above plus `NEW_DEVICE_EMAIL_ENABLED=true` | Sent to the address of whoever signs in |
 
