@@ -7,7 +7,7 @@ import {
 import { Button } from "@auction/ui/lax/button";
 import { cn } from "@auction/ui/lib/utils";
 import Link from "next/link";
-import type { ReactNode, TouchEvent } from "react";
+import type { MouseEvent, ReactNode, TouchEvent } from "react";
 import { useRef } from "react";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";
 import {
@@ -80,6 +80,9 @@ function QuickLookStatusBand({ vm, statusId }: { vm: LotQuickLookVM; statusId: s
         <LotStatusTimer
           layout="inline"
           variant="endingSoon"
+          // The ending-soon chip is glass made for photos; on the panel's plain light surface its
+          // light text washed out. A solid dark shell keeps it legible in both themes.
+          pillSurfaceClassName="bg-brand-900/85 backdrop-blur-none"
           status={vm.status}
           startTime={vm.startTime}
           endTime={vm.endTime}
@@ -201,7 +204,7 @@ export function QuickLookBody({
       )}
     >
       <div
-        className="relative min-h-0 w-full overflow-hidden h-[50dvh] max-h-[58dvh] sm:aspect-square sm:h-auto sm:max-h-[50vh] lg:min-h-[22rem] lg:h-auto lg:max-h-none"
+        className="relative min-h-0 w-full overflow-hidden h-[42dvh] max-h-[58dvh] sm:aspect-square sm:h-auto sm:max-h-[50vh] lg:min-h-[22rem] lg:h-auto lg:max-h-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -262,6 +265,10 @@ type QuickLookMetaPanelProps = {
   deckIndex: number;
   deckLength: number;
   onClose: () => void;
+  /** The link through to the full lot page, shown in the panel's first row. */
+  headerAction?: ReactNode;
+  /** Called by in-panel links that navigate, so they close the quick look and take its entry. */
+  onCtaNavigate: (event: MouseEvent<HTMLAnchorElement>) => void;
   onDeckPrev: () => void;
   onDeckNext: () => void;
 };
@@ -276,6 +283,8 @@ export function QuickLookMetaPanel({
   deckIndex,
   deckLength,
   onClose,
+  headerAction,
+  onCtaNavigate,
   onDeckPrev,
   onDeckNext,
 }: QuickLookMetaPanelProps) {
@@ -288,18 +297,21 @@ export function QuickLookMetaPanel({
       )}
     >
       <div className="quick-look-stagger flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:pr-8">
           <p id={contextId} className="font-body text-xs font-medium text-on-surface-variant">
             {contextLabel}
           </p>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-auto min-h-0 rounded-none font-body font-normal text-link underline-offset-2 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            onClick={onClose}
-          >
-            Back to results
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto min-h-0 rounded-none font-body font-normal text-link underline-offset-2 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              onClick={onClose}
+            >
+              Back to results
+            </Button>
+            {headerAction}
+          </div>
         </div>
 
         <QuickLookStatusBand vm={vm} statusId={statusId} />
@@ -336,6 +348,8 @@ export function QuickLookMetaPanel({
             {vm.buyersPremiumHint}.{" "}
             <Link
               href={BUYER_PREMIUM_CONDITIONS_HREF}
+              replace
+              onClick={onCtaNavigate}
               className="whitespace-nowrap underline underline-offset-2 hover:text-on-surface"
             >
               {CONDITIONS_OF_SALE_LABEL}
