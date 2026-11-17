@@ -29,6 +29,15 @@ import {
 
 const tags = ["shop-admin"];
 
+/**
+ * The app's default body limit (1 KB) holds about 20 artwork ids. A move takes up to
+ * `MOVE_BATCH_MAX` (repeats allowed, counted once) and a 500-character note, which UTF-8 can make
+ * four times as many bytes.
+ */
+const MOVE_BODY_LIMIT = 16_384;
+/** An 80-character name and a 200-character note, at up to four bytes a character. */
+const LIST_BODY_LIMIT = 4_096;
+
 const READ_ERRORS = { 403: ShopApiErrorBodySchema, 404: ShopApiErrorBodySchema } as const;
 const WRITE_ERRORS = {
   400: ShopApiErrorBodySchema,
@@ -79,6 +88,7 @@ export async function registerAdminStockLocationRoutes(
   app.post(
     "/artwork-locations",
     {
+      bodyLimit: LIST_BODY_LIMIT,
       schema: {
         tags,
         body: AdminStockLocationCreateBodySchema,
@@ -97,6 +107,7 @@ export async function registerAdminStockLocationRoutes(
   app.patch(
     "/artwork-locations/:locationId",
     {
+      bodyLimit: LIST_BODY_LIMIT,
       schema: {
         tags,
         params: AdminStockLocationParamsSchema,
@@ -168,6 +179,7 @@ export async function registerAdminStockLocationRoutes(
   app.post(
     "/artwork-location-moves",
     {
+      bodyLimit: MOVE_BODY_LIMIT,
       schema: {
         tags,
         response: { 200: AdminArtworkLocationMoveResultSchema, ...WRITE_ERRORS },

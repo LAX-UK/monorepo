@@ -212,7 +212,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
       return presentArtworkLocation(registerId, current, moves);
     },
 
-    addLocation(
+    async addLocation(
       command: Actor & { name: string; note?: string | null | undefined },
     ): Promise<AdminStockLocationWriteResult> {
       const name = parseName(command.name);
@@ -246,7 +246,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
       );
     },
 
-    updateLocation(
+    async updateLocation(
       command: Actor & {
         locationId: string;
         expectedVersion: number;
@@ -307,7 +307,7 @@ export function createStockLocationService(deps: StockLocationServiceDeps) {
      * `moveArtworksRequestSchema`, so the batch limit holds before any lock is taken. One audit
      * row per artwork that moved; an artwork already there records nothing and is not audited.
      */
-    moveArtworks(
+    async moveArtworks(
       command: Actor & { request: MoveArtworksRequest },
     ): Promise<AdminArtworkLocationMoveResult> {
       const note = textOrRefuse(parseMoveNote(command.request.note), {
