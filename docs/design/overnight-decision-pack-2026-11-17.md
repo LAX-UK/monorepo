@@ -2,6 +2,8 @@
 
 Three build items that can be fully designed now but have no design yet. Each section gives the problem with evidence, the options, one recommendation, numbered decisions to approve, open questions with defaults, a PR plan, risks and a test plan. This is a documentation-only change; nothing here is built yet.
 
+**Approved 2026-11-17.** A: D1–D7 with the defaults (Q1 yes, Q2 no limit in code, Q3 separate ticket). B: D5 and D6 only; D1–D4 are deferred because #1524 removed the root cause (the Stripe Connect script on every lax.art page) and are built only if the flake returns. C: D1–D4 with the defaults (Q1 300 s, Q2 verify no cookie reads, Q3 other routes later). Build order: C, then A.
+
 To approve quickly: reply with the decision numbers you accept (for example "A: D1–D5 yes; B: D1–D6 yes; C: D1–D4 yes, D3 with 600 s"). Any open question you do not answer takes its stated default.
 
 | # | Item | Recommendation in one line | Size |
