@@ -387,11 +387,18 @@ export async function registerAdminReadRoutes(
       const query = request.query as AdminLookupQuery;
       // A broker finds only the clients assigned to them, as on the Clients page.
       const scope = clientListScope(auth.capabilities);
+      // Someone here only to choose a consignor, who cannot read clients, finds them by name alone.
+      const nameOnly =
+        scope === "none" &&
+        !PARTY_LOOKUP_CAPABILITIES.some(
+          (capability) => capability !== "consignor_agreement.manage" && staffCan(auth, capability),
+        );
       return {
         items: await deps.adminRead.lookups.searchParties({
           q: query.q,
           limit: lookupLimit(query),
           ...(scope === "assigned" ? { brokerSubjectId: auth.subject } : {}),
+          ...(nameOnly ? { nameOnly: true } : {}),
         }),
       };
     },

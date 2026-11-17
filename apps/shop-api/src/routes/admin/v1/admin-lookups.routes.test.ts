@@ -93,6 +93,32 @@ describe("staff picker lookups", () => {
     expect(searchParties).toHaveBeenCalledWith({ q: undefined, limit: 5 });
   });
 
+  it("finds clients by name alone for people who choose a consignor without reading clients", async () => {
+    const searchParties = vi.fn(async () => [
+      { partyId: PARTY_ID, displayName: "Ada Lovelace", kind: "person", email: null },
+    ]);
+    const { response } = await get(
+      "catalogue_editor",
+      "/admin/v1/lookups/parties?q=ada",
+      (deps) => {
+        deps.admin.adminRead.lookups.searchParties = searchParties;
+      },
+    );
+    expect(response.statusCode).toBe(200);
+    expect(searchParties).toHaveBeenCalledWith({ q: "ada", limit: 15, nameOnly: true });
+  });
+
+  it.each(["shop_admin", "operations"] as const)(
+    "keeps the email in the people search for %s",
+    async (role) => {
+      const searchParties = vi.fn(async () => []);
+      await get(role, "/admin/v1/lookups/parties?q=ada", (deps) => {
+        deps.admin.adminRead.lookups.searchParties = searchParties;
+      });
+      expect(searchParties).toHaveBeenCalledWith({ q: "ada", limit: 15 });
+    },
+  );
+
   it("rejects a search longer than the limit", async () => {
     const { response } = await get(
       "account_manager",
