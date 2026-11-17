@@ -14,7 +14,8 @@ vi.mock("@/lib/marketing/saleroom/sale-catalogue-live.client", () => ({
   useSaleCatalogueLive: () => liveCards.current,
 }));
 
-vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
+vi.mock("@/components/lot-card/lot-card-bidder-state", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/lot-card/lot-card-bidder-state")>()),
   LotCardBidderState: () => null,
 }));
 

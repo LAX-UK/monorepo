@@ -10,14 +10,6 @@ type Props = {
 };
 
 /**
- * The heart on the line is the toolbar heart (`MarketingWatchlistHeart`, 44px tap area) without
- * its round chrome: a quiet outline, filled in the Bid accent when saved. Styled from here, so the
- * shared heart (and every page that ships it) is unchanged.
- */
-const QUIET_HEART =
-  "-my-2.5 -mr-3 flex shrink-0 [&_button]:border-transparent [&_button]:bg-transparent [&_button]:text-on-surface-variant [&_button:hover]:bg-transparent [&_button:hover]:text-on-surface [&_.fill-live-red]:fill-product-accent [&_.fill-live-red]:stroke-product-accent";
-
-/**
  * The "Lot N" line under a lot card's picture, with the save heart at its right end. The picture
  * itself carries nothing but the sale status pill. The heart keeps its 44px tap area by reaching
  * past the line's own height (negative margins), so the line stays a quiet 24px row.
@@ -36,7 +28,8 @@ export function LotCardLotLine({ label, save, className }: Props) {
       >
         {label ?? "Lot"}
       </p>
-      {save ? <div className={QUIET_HEART}>{save}</div> : null}
+      {/* The heart's quiet look (no chrome, accent when saved): styles/lot-card.css. */}
+      {save ? <div className="lot-card-save">{save}</div> : null}
     </div>
   );
 }

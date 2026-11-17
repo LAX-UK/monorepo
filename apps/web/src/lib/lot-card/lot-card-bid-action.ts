@@ -1,4 +1,3 @@
-import { lotBidHref } from "@/lib/lot-card/lot-bid-href";
 import { LOT_CARD_COPY } from "@/lib/lot-card/lot-card-copy";
 import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
@@ -46,7 +45,7 @@ export function saleAcceptsAdvanceBids(sale: LotCardBidActionInput["sale"]): boo
  * - Open lot: "Bid", to the lot page.
  * - Before it opens and the viewer has a register step: "Register to bid", to that step.
  * - Before it opens, nothing left to do and the sale takes advance bids: "Leave a bid", to the lot
- *   page with the bid dialog open (where the maximum is left).
+ *   page; the button opens its bid dialog there (`lotBidHref`), where the maximum is left.
  * - Otherwise no button: an ended lot is a result, and a lot that takes no bid yet offers none.
  */
 export function lotCardBidAction(input: LotCardBidActionInput): LotCardBidAction | null {
@@ -59,7 +58,7 @@ export function lotCardBidAction(input: LotCardBidActionInput): LotCardBidAction
   }
   const opensLater = lotStatus === "scheduled" && sale?.status !== "draft";
   if (viewer.signedIn && opensLater && saleAcceptsAdvanceBids(sale)) {
-    return { kind: "leave_bid", label: LOT_CARD_COPY.leaveABid, href: lotBidHref(lotHref) };
+    return { kind: "leave_bid", label: LOT_CARD_COPY.leaveABid, href: lotHref };
   }
   return null;
 }

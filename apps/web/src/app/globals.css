@@ -7,6 +7,7 @@
 @import "@auction/marketing-ui/marketing-header.css";
 @import "@auction/marketing-ui/marketing-ui.css";
 @import "../styles/tokens-utilities.css";
+@import "../styles/lot-card.css";
 @import "@auction/staff-ui/theme.css";
 
 /* Scan shared UI package so Tailwind keeps utilities used in @auction/ui */

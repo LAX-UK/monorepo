@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { LotCardGrid } from "@/components/marketing/lot-card";
 import { catalogLotCardExtras } from "@/components/marketing/lot-quick-look/catalog-lot-card-extras";
 import { saleroomLotCardExtras } from "@/components/marketing/lot-quick-look/saleroom-lot-card-extras";
@@ -47,6 +50,25 @@ vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
 vi.mock("@/components/sections/saleroom/saleroom-lot-catalog-overlay", () => ({
   SaleroomLotCatalogOverlay: () => <span data-testid="status-pill">Sold</span>,
 }));
+
+/** What styles/lot-card.css says about the quick look label (jsdom applies no stylesheet). */
+const LOT_CARD_CSS = (() => {
+  const css = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "../../styles/lot-card.css"),
+    "utf8",
+  ).replace(/\/\*[\s\S]*?\*\//g, "");
+  const media = /@media \(hover: hover\) and \(pointer: fine\) \{([\s\S]*?)\n\}/.exec(css);
+  const inMedia = media?.[1] ?? "";
+  return {
+    hiddenByDefault: /^\.lot-card-quick-look \{\s*display: none;\s*\}/m.test(css),
+    shownOnlyFor: /\.lot-card-quick-look \{[^}]*display: inline-flex;[^}]*opacity: 0;/.test(inMedia)
+      ? "(hover: hover) and (pointer: fine)"
+      : null,
+    revealedOnHoverAndFocus:
+      inMedia.includes(".group:hover .lot-card-quick-look") &&
+      inMedia.includes(".group:focus-within .lot-card-quick-look"),
+  };
+})();
 
 function setPointer({ hover }: { hover: boolean }) {
   Object.defineProperty(window, "matchMedia", {
@@ -117,11 +139,15 @@ function pictureBox() {
 
 describe("sale page lot card: clean picture", () => {
   it("puts nothing on the picture at rest but the status pill", () => {
-    setPointer({ hover: false });
     renderSaleCard(true);
     const { imageLink, box } = pictureBox();
     expect(within(imageLink).getByTestId("status-pill")).toBeInTheDocument();
-    expect(within(box).queryAllByRole("button")).toHaveLength(0);
+    // The one control in the picture box is the quick look label, invisible at rest (CSS).
+    const controls = within(box).queryAllByRole("button");
+    expect(controls.map((el) => el.getAttribute("aria-label"))).toEqual([
+      "Quick look at Still Life",
+    ]);
+    expect(controls[0]).toHaveClass("lot-card-quick-look");
     expect(box.querySelector("svg.lucide-heart, svg.lucide-eye")).toBeNull();
   });
 
@@ -142,8 +168,8 @@ describe("sale page lot card: clean picture", () => {
     expect(heart.className).toContain("min-h-[var(--tap-target-min,44px)]");
     expect(heart.className).toContain("min-w-[var(--tap-target-min,44px)]");
     expect(heart.querySelector("svg")?.getAttribute("class")).toContain("fill-transparent");
-    // The line strips the toolbar heart's round chrome.
-    const slot = heart.closest("[class*='[&_button]:bg-transparent']");
+    // The line's slot strips the toolbar heart's round chrome (styles/lot-card.css).
+    const slot = heart.closest(".lot-card-save");
     expect(screen.getByTestId("lot-card-lot-line")).toContainElement(slot as HTMLElement);
   });
 
@@ -152,11 +178,10 @@ describe("sale page lot card: clean picture", () => {
     renderSaleCard(true, { ...saleLot, viewerIsWatching: true });
     const heart = screen.getByRole("button", { name: "Remove Still Life from your watchlist" });
     expect(heart).toHaveAttribute("aria-pressed", "true");
-    // The saved heart is filled; on the Lot line the fill is the Bid accent, not live red.
+    // The saved heart is filled; in the Lot line's slot the fill is the Bid accent
+    // (styles/lot-card.css recolours `.lot-card-save .fill-live-red`).
     expect(heart.querySelector("svg")?.getAttribute("class")).toContain("fill-live-red");
-    const slot = heart.closest("[class*='[&_.fill-live-red]:fill-product-accent']");
-    expect(slot).not.toBeNull();
-    expect(slot?.className).toContain("[&_.fill-live-red]:stroke-product-accent");
+    expect(heart.closest(".lot-card-save")).not.toBeNull();
     await userEvent.click(heart);
     expect(watch.toggle).toHaveBeenCalledTimes(1);
   });
@@ -180,10 +205,10 @@ describe("sale page lot card: quick look trigger", () => {
     expect(trigger).toHaveTextContent("Quick look");
     expect(pictureBox().box).toContainElement(trigger);
     expect(pictureBox().imageLink).not.toContainElement(trigger);
-    // Hidden at rest, shown while the card is hovered or holds keyboard focus.
-    expect(trigger.className).toContain("opacity-0");
-    expect(trigger.className).toContain("group-hover:opacity-100");
-    expect(trigger.className).toContain("group-focus-within:opacity-100");
+    // Hidden at rest, shown on hover or keyboard focus, hover pointers only: styles/lot-card.css.
+    expect(trigger).toHaveClass("lot-card-quick-look");
+    expect(trigger.closest(".group")).not.toBeNull();
+    expect(LOT_CARD_CSS.revealedOnHoverAndFocus).toBe(true);
     await userEvent.click(trigger);
     expect(quickLook.open).toHaveBeenCalledWith(
       expect.objectContaining({ id: "lot-1", title: "Still Life" }),
@@ -204,10 +229,12 @@ describe("sale page lot card: quick look trigger", () => {
     expect(quickLook.open).toHaveBeenCalledTimes(1);
   });
 
-  it("is not drawn on a phone (no hover): a tap opens the lot page", () => {
-    setPointer({ hover: false });
+  it("is shown only where the pointer can hover; on a phone the picture is the lot page link", () => {
     renderSaleCard(true);
-    expect(screen.queryByRole("button", { name: /quick look/i })).not.toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: "Quick look at Still Life" });
+    expect(LOT_CARD_CSS.hiddenByDefault).toBe(true);
+    expect(LOT_CARD_CSS.shownOnlyFor).toBe("(hover: hover) and (pointer: fine)");
+    expect(trigger).toHaveClass("lot-card-quick-look");
     expect(pictureBox().imageLink).toHaveAttribute("href", "/lot/still-life/lot-1");
   });
 });
@@ -242,16 +269,18 @@ function renderSearchCard({ watched = false, isAuthenticated = true } = {}) {
 
 describe("search lot card: the same card", () => {
   it("keeps the picture clean and puts the heart on the Lot N line", () => {
-    setPointer({ hover: false });
     renderSearchCard();
     const picture = screen.getByTestId("img").closest("a");
-    expect(picture?.parentElement?.querySelectorAll("button")).toHaveLength(0);
+    const controls = picture?.parentElement?.querySelectorAll("button") ?? [];
+    expect([...controls].map((el) => el.className)).toEqual([
+      expect.stringContaining("lot-card-quick-look"),
+    ]);
+    expect(picture?.parentElement?.querySelector("svg.lucide-heart, svg.lucide-eye")).toBeNull();
     const line = screen.getByTestId("lot-card-lot-line");
     expect(line).toHaveTextContent("Lot 9");
     expect(line).toContainElement(
       screen.getByRole("button", { name: "Add Harbour at Dusk to your watchlist" }),
     );
-    expect(screen.queryByRole("button", { name: /quick look/i })).not.toBeInTheDocument();
   });
 
   it("shows the saved state and the quick look label on a hover-capable pointer", () => {
@@ -260,7 +289,7 @@ describe("search lot card: the same card", () => {
       name: "Remove Harbour at Dusk from your watchlist",
     });
     expect(heart).toHaveAttribute("aria-pressed", "true");
-    expect(heart.closest("[class*='[&_.fill-live-red]:fill-product-accent']")).not.toBeNull();
+    expect(heart.closest(".lot-card-save")).not.toBeNull();
     const trigger = screen.getByRole("button", { name: "Quick look at Harbour at Dusk" });
     expect(screen.getByTestId("img").closest("a")).not.toContainElement(trigger);
   });
