@@ -41,6 +41,8 @@ const RECENT_SEARCHES_KEY = "lax-art:recent-searches";
 
 type ArtHeaderClientProps = {
   account: AccountChromeState;
+  /** The browser has read the visitor (see ArtViewerChromeProvider); defaults to true. */
+  accountSettled?: boolean;
   productLinks: LaxProductLinkVm[];
   familyLinks: LaxFamilyLinkVm[];
   headerNav: ArtHeaderNavData | null;
@@ -50,6 +52,7 @@ type ArtHeaderClientProps = {
 
 export function ArtHeaderClient({
   account,
+  accountSettled = true,
   productLinks,
   familyLinks,
   headerNav,
@@ -176,6 +179,7 @@ export function ArtHeaderClient({
                 account={
                   <ArtAccountEntry
                     account={account}
+                    settled={accountSettled}
                     productLinks={productLinks}
                     pathname={pathname}
                     headerTone={headerTone}

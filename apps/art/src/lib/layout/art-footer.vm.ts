@@ -1,4 +1,4 @@
-import type { ArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
+import { artFooterAccountLinks } from "@/lib/layout/art-footer-account-state";
 import { ART_LEGAL_INDEX_HREF, artLegalLinks } from "@/lib/layout/art-legal-links";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import {
@@ -12,6 +12,10 @@ export type ArtFooterVm = {
   columns: MarketingFooterColumn[];
 };
 
+export const ART_FOOTER_ACCOUNT_COLUMN_ID = "account";
+
+export { artFooterAccountLinks };
+
 /**
  * Figma footer (`235:226`) content inside the shared LAX column order: site navigation (Gallery,
  * Our services), Account, LAX products, Legal (the shared short column), then Connect, which the
@@ -20,7 +24,6 @@ export type ArtFooterVm = {
  */
 export function buildArtFooterVm(input: {
   crossProductLinks: LaxProductLinkVm[];
-  accountState: ArtFooterAccountState;
   /** Policies that can be linked; drafts hidden on production are left out. */
   linkablePolicies: readonly LaxArtPolicySlug[];
 }): ArtFooterVm {
@@ -37,21 +40,6 @@ export function buildArtFooterVm(input: {
     { label: "Help centre", href: "/help" },
   ];
 
-  const accountLinks: Array<{ label: string; href: string }> = [];
-  if (input.accountState.kind === "guest") {
-    accountLinks.push(
-      { label: "Sign in", href: "/login" },
-      { label: "Create account", href: "/register" },
-    );
-  } else if (input.accountState.kind === "authenticated") {
-    accountLinks.push(
-      { label: "Your account", href: "/account" },
-      { label: "Favourites", href: "/account/favourites" },
-    );
-  } else if (input.accountState.kind === "disabled") {
-    accountLinks.push({ label: "Account status", href: input.accountState.accountHref });
-  }
-
   const laxProductLinks = input.crossProductLinks.map((link) => ({
     label: link.label,
     href: link.href,
@@ -62,9 +50,13 @@ export function buildArtFooterVm(input: {
     { id: "services", title: "Our services", links: servicesLinks },
   ];
 
-  if (accountLinks.length > 0) {
-    columns.push({ id: "account", title: "Account", links: accountLinks });
-  }
+  // Drawn as a guest's: the footer's HTML is shared between visitors, and the browser redraws
+  // this column for the visitor (ArtFooterAccountList).
+  columns.push({
+    id: ART_FOOTER_ACCOUNT_COLUMN_ID,
+    title: "Account",
+    links: artFooterAccountLinks({ kind: "guest" }),
+  });
 
   if (laxProductLinks.length > 0) {
     columns.push({ id: "lax-products", title: "LAX products", links: laxProductLinks });

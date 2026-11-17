@@ -1,6 +1,7 @@
 "use client";
 
 import { useFavoriteToggle } from "@/components/favorites/use-favorite-toggle.client";
+import { useArtPageViewer } from "@/components/viewer/art-page-viewer.client";
 import {
   removeArtworkFavorite,
   saveArtworkFavorite,
@@ -28,10 +29,16 @@ export function ArtArtworkFavoriteToggle({
   size,
   className,
 }: ArtArtworkFavoriteToggleProps) {
+  const pageViewer = useArtPageViewer();
+  const effectiveAuth = pageViewer?.favoriteAuth ?? auth;
   const { active, pending, announcement, error, toggle } = useFavoriteToggle({
-    initialActive: initialSaved,
-    auth,
-    mutate: (next) => (next ? saveArtworkFavorite(slug) : removeArtworkFavorite(slug)),
+    initialActive: pageViewer ? pageViewer.savedArtworkSlugs.has(slug) : initialSaved,
+    auth: effectiveAuth,
+    mutate: (next) => {
+      // A page that draws favourites in the browser has nothing for the server to redraw.
+      const options = pageViewer ? { revalidate: false } : undefined;
+      return next ? saveArtworkFavorite(slug, options) : removeArtworkFavorite(slug, options);
+    },
     messages: { on: `${title} saved to favourites.`, off: `${title} removed from favourites.` },
   });
 
@@ -41,7 +48,7 @@ export function ArtArtworkFavoriteToggle({
         pressed={active}
         onPressedChange={toggle}
         busy={pending}
-        label={auth.signedIn ? `Save ${title} to favourites` : `Sign in to save ${title}`}
+        label={effectiveAuth.signedIn ? `Save ${title} to favourites` : `Sign in to save ${title}`}
         {...(appearance ? { appearance } : {})}
         {...(size ? { size } : {})}
         {...(className ? { className } : {})}

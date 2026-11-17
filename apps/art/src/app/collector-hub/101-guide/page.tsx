@@ -21,6 +21,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // Editorial pages carry no cover image yet, so the guide index uses the plain title band.
+/**
+ * Rendered per request, as before the root layout stopped reading the visitor. Whether this page is
+ * prerendered like the home page is decided per route (apps/art/scripts/check-prerendered-routes.mjs).
+ */
+export const dynamic = "force-dynamic";
+
 export default async function CollectingGuidePage() {
   const index = await loadGuideIndex(SLUG);
   const guides = index.status === "ok" ? index.data.guides : [];

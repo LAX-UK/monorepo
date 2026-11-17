@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareWithZohoPrice, zohoPriceLabel } from "./zoho-price";
+import { compareWithZohoPrice, zohoPriceLabel, zohoPriceMinor } from "./zoho-price";
 
 describe("zohoPriceLabel", () => {
   it("shows Zoho's price in pounds", () => {
@@ -31,5 +31,18 @@ describe("compareWithZohoPrice", () => {
 
   it("has nothing to flag when Zoho has no price", () => {
     expect(compareWithZohoPrice(null, "3900")).toEqual({ label: null, differs: false });
+  });
+});
+
+describe("zohoPriceMinor", () => {
+  it("is Zoho's price in pence, for sorting", () => {
+    expect(zohoPriceMinor("4800.00")).toBe(480000);
+    expect(zohoPriceMinor("250.5")).toBe(25050);
+  });
+
+  it("is null when Zoho has no price, so unpriced works sort together", () => {
+    expect(zohoPriceMinor(null)).toBeNull();
+    expect(zohoPriceMinor("0.00")).toBeNull();
+    expect(zohoPriceMinor("abc")).toBeNull();
   });
 });

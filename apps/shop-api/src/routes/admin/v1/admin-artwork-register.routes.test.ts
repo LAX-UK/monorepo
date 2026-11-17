@@ -45,9 +45,12 @@ const resolved = {
 
 type Resolve = ConstructorParameters<typeof ArtworkRegisterReviewService>[0]["resolver"];
 
+type Overview = ConstructorParameters<typeof ArtworkRegisterReviewService>[0]["overview"];
+
 async function buildApp(
   role: ShopStaffRole,
   resolveConflict: Resolve["resolveConflict"] = async () => ({ ok: true, conflict: resolved }),
+  listAll: Overview["listAll"] = async () => ({ rows: [], total: 0 }),
 ) {
   vi.mocked(verifyBearerToken).mockResolvedValue({
     subject: `${role}-subject`,
@@ -78,7 +81,7 @@ async function buildApp(
       listHeldArtists: async () => [],
     },
     overview: {
-      listAll: async () => ({ rows: [], total: 0 }),
+      listAll,
       listArtists: async () => [],
       countPlaces: async () => ({
         not_offered: 0,
@@ -188,6 +191,25 @@ describe("From Zoho queue routes", () => {
       headers: auth,
     });
     expect(response.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("orders the All list by Zoho's price on the server, and refuses an unknown order", async () => {
+    const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+    const app = await buildApp("read_only", undefined, listAll);
+    const sorted = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?sort=-zohoPrice&page=2",
+      headers: auth,
+    });
+    expect(sorted.statusCode).toBe(200);
+    expect(listAll).toHaveBeenCalledWith({}, { limit: 25, offset: 25 }, "-zohoPrice");
+    const unknown = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?sort=title",
+      headers: auth,
+    });
+    expect(unknown.statusCode).toBe(400);
     await app.close();
   });
 

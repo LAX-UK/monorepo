@@ -1,13 +1,8 @@
-import { ArtAuthLink } from "@/components/art-auth-link";
-import { isArtAuthHref } from "@/lib/is-art-auth-href";
-import type { ArtFooterVm } from "@/lib/layout/art-footer.vm";
+import { ArtFooterAccountList } from "@/components/layout/art-footer-account-list.client";
+import { ArtFooterLink } from "@/components/layout/art-footer-link";
+import { ART_FOOTER_ACCOUNT_COLUMN_ID, type ArtFooterVm } from "@/lib/layout/art-footer.vm";
 import { FOCUS_RING, productCopyrightLine } from "@auction/branding";
-import {
-  LaxLogo,
-  MarketingFooter,
-  type MarketingFooterLink,
-  MarketingFooterSocials,
-} from "@auction/marketing-ui";
+import { LaxLogo, MarketingFooter, MarketingFooterSocials } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 
@@ -15,41 +10,13 @@ type ArtFooterProps = {
   vm: ArtFooterVm;
 };
 
+/** Drawn on the server; only the Account list, which follows the visitor, is drawn in the browser. */
 export function ArtFooter({ vm }: ArtFooterProps) {
-  const linkClass = cn(
-    "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
-    FOCUS_RING,
+  const columns = vm.columns.map((column) =>
+    column.id === ART_FOOTER_ACCOUNT_COLUMN_ID
+      ? { ...column, list: <ArtFooterAccountList /> }
+      : column,
   );
-
-  const renderLink = (link: MarketingFooterLink) => {
-    if (isArtAuthHref(link.href)) {
-      return (
-        <ArtAuthLink href={link.href} className={linkClass}>
-          {link.label}
-        </ArtAuthLink>
-      );
-    }
-    if (link.href.startsWith("#")) {
-      return (
-        <a href={link.href} className={linkClass}>
-          {link.label}
-        </a>
-      );
-    }
-    if (link.href.startsWith("http://") || link.href.startsWith("https://")) {
-      return (
-        <a href={link.href} className={linkClass} rel="noopener noreferrer">
-          {link.label}
-        </a>
-      );
-    }
-    return (
-      <Link href={link.href} className={linkClass}>
-        {link.label}
-      </Link>
-    );
-  };
-
   return (
     <MarketingFooter
       logo={
@@ -57,10 +24,10 @@ export function ArtFooter({ vm }: ArtFooterProps) {
           <LaxLogo className="art-footer__logo" />
         </Link>
       }
-      columns={vm.columns}
+      columns={columns}
       socials={<MarketingFooterSocials product="art" />}
       copyright={productCopyrightLine("art")}
-      renderLink={renderLink}
+      renderLink={(link) => <ArtFooterLink link={link} />}
     />
   );
 }

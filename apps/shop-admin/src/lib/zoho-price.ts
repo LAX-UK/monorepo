@@ -3,9 +3,15 @@ import { formatStaffMoney } from "@auction/staff-ui";
 
 /** Zoho's price ("4800.00", pounds) as "£4,800.00"; null when Zoho has none. */
 export function zohoPriceLabel(zohoPrice: string | null): string | null {
+  const minor = zohoPriceMinor(zohoPrice);
+  return minor === null ? null : formatStaffMoney(minor);
+}
+
+/** Zoho's price in pence; null when Zoho has none (empty, zero or not a number). */
+export function zohoPriceMinor(zohoPrice: string | null): number | null {
   if (zohoPrice === null) return null;
   const pounds = Number(zohoPrice);
-  return Number.isFinite(pounds) && pounds > 0 ? formatStaffMoney(Math.round(pounds * 100)) : null;
+  return Number.isFinite(pounds) && pounds > 0 ? Math.round(pounds * 100) : null;
 }
 
 /**

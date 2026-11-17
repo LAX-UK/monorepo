@@ -1,8 +1,10 @@
 import { ART_EDITORIAL_CACHE_TAG } from "@/lib/art-cache-tags";
 import {
   ART_SLUG_LOOKUP,
+  type ArtSlugReadMode,
   artCatalogueApiBaseUrl,
   artCatalogueFetch,
+  artSlugReadInit,
 } from "@/lib/art-catalogue.server";
 import { isArtEditorialEnabled } from "@/lib/art-runtime-flags";
 import type {
@@ -79,11 +81,11 @@ export function fetchEditorialExhibitions(
   );
 }
 
-export function fetchEditorialExhibitionBySlug(slug: string) {
+export function fetchEditorialExhibitionBySlug(slug: string, mode: ArtSlugReadMode = "fresh") {
   return fetchEditorial(
     slugPath("/v1/editorial/exhibitions", slug),
     EditorialExhibitionDetailSchema,
-    ART_SLUG_LOOKUP,
+    artSlugReadInit(mode) ?? PUBLISHED_CACHE,
   );
 }
 
@@ -133,11 +135,11 @@ export function fetchEditorialVenues(): Promise<ArtEditorialFetchResult<ArtEdito
   return fetchEditorial("/v1/editorial/venues", VenueListSchema);
 }
 
-export function fetchEditorialVenueBySlug(slug: string) {
+export function fetchEditorialVenueBySlug(slug: string, mode: ArtSlugReadMode = "fresh") {
   return fetchEditorial(
     slugPath("/v1/editorial/venues", slug),
     EditorialVenueDetailSchema,
-    ART_SLUG_LOOKUP,
+    artSlugReadInit(mode) ?? PUBLISHED_CACHE,
   );
 }
 

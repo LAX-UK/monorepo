@@ -148,14 +148,15 @@ export function MarketingAccountEntry({
           <MarketingAvatar
             viewer={viewer}
             className={cn(
-              "size-8 text-xs",
+              "size-8 shrink-0 text-xs",
               onDark ? "bg-hero-foreground/15" : "bg-surface-container-high",
             )}
           />
-          <span data-testid="account-entry-name">
+          {/* Truncates only when the product caps the trigger's width (lax.art's account slot). */}
+          <span data-testid="account-entry-name" className="min-w-0 truncate">
             {cutAccountEntryName(accountTriggerName(viewer.displayName, viewer.email))}
           </span>
-          <MarketingChevronDownIcon className="size-4" />
+          <MarketingChevronDownIcon className="size-4 shrink-0" />
         </>
       )}
       {dot}

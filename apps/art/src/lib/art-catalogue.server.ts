@@ -43,6 +43,19 @@ export function artCatalogueApiServerUrl(path: string): string {
  */
 export const ART_SLUG_LOOKUP: RequestInit = { cache: "no-store" };
 
+/**
+ * How a detail read by slug is cached. "fresh" (the default) bypasses the data cache, for the
+ * reason above. "cached" is for a page prerendered and shared between visitors (the home page):
+ * an uncached read there would make Next refuse to regenerate it. It is safe there because such a
+ * page reads a detail only for an entity a fresh list still names, and it is itself purged on every
+ * catalogue and editorial write.
+ */
+export type ArtSlugReadMode = "fresh" | "cached";
+
+export function artSlugReadInit(mode: ArtSlugReadMode): RequestInit | undefined {
+  return mode === "fresh" ? ART_SLUG_LOOKUP : undefined;
+}
+
 export async function artCatalogueFetch(path: string, init?: RequestInit): Promise<Response> {
   const resource = path.split(/[/?]/).filter(Boolean)[1] ?? "catalogue";
   const url = `${artCatalogueApiBaseUrl()}${path}`;
@@ -221,10 +234,11 @@ export async function fetchArtChannelArtists(input: ArtArtistListQuery): Promise
 
 export async function fetchArtChannelArtistBySlug(
   slug: string,
+  mode: ArtSlugReadMode = "fresh",
 ): Promise<PublicArtistDetail | null> {
   const response = await artCatalogueFetch(
     `/v1/artists/${encodeURIComponent(slug)}`,
-    ART_SLUG_LOOKUP,
+    artSlugReadInit(mode),
   );
   if (response.status === 404) {
     return null;
