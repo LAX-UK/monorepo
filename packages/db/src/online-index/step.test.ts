@@ -8,7 +8,7 @@ import {
   runOnlineIndexStep,
 } from "./step.js";
 
-type IndexRow = { valid: boolean } | null;
+type IndexRow = { oid?: number; valid: boolean } | null;
 
 /**
  * A scripted client: `tableSchema` answers the table lookup, `index` answers each index
@@ -19,6 +19,8 @@ function fakeClient(script: {
   index?: IndexRow[];
   build?: () => void;
   drop?: () => void;
+  /** Pids of other sessions building on the table or index, as the ownership check sees them. */
+  others?: number[];
 }) {
   const queries: string[] = [];
   const indexAnswers = [...(script.index ?? [null])];
@@ -27,7 +29,10 @@ function fakeClient(script: {
       queries.push(text.trim());
       if (text.includes("to_regclass")) {
         const schema = script.tableSchema === undefined ? "public" : script.tableSchema;
-        return { rows: schema === null ? [] : [{ schema }] } as never;
+        return { rows: schema === null ? [] : [{ schema, oid: 100 }] } as never;
+      }
+      if (text.includes("pg_stat_progress_create_index")) {
+        return { rows: (script.others ?? []).map((pid) => ({ pid })) } as never;
       }
       if (text.includes("FROM pg_index")) {
         const row = indexAnswers.length > 1 ? indexAnswers.shift() : indexAnswers[0];
@@ -126,6 +131,73 @@ describe("runOnlineIndexStep", () => {
     await expect(runOnlineIndexStep(client, [declaration], options)).rejects.toThrow(
       OnlineIndexBuildError,
     );
+    expect(queries.some((q) => q.startsWith("DROP"))).toBe(false);
+  });
+
+  it("leaves a new INVALID index in place when another session is building it, then fails", async () => {
+    // Another session created the index between the check and this build, and this build then
+    // timed out waiting for the table lock: the INVALID index is that session's build.
+    const { client, queries } = fakeClient({
+      index: [null, { oid: 200, valid: false }],
+      others: [4242],
+      build: () => {
+        throw new Error("canceling statement due to lock timeout");
+      },
+    });
+    const run = runOnlineIndexStep(client, [declaration], options);
+    await expect(run).rejects.toBeInstanceOf(OnlineIndexBuildError);
+    await expect(run).rejects.toThrow(
+      /left the INVALID index "public"\."e_idx" in place: another session \(pid 4242\)/,
+    );
+    expect(queries.some((q) => q.startsWith("DROP"))).toBe(false);
+  });
+
+  it("checks for other builders with the table and the new index OIDs before dropping", async () => {
+    const seen: unknown[][] = [];
+    const { client } = fakeClient({
+      index: [null, { oid: 200, valid: false }],
+      build: () => {
+        throw new Error("deadlock detected");
+      },
+    });
+    const spy: OnlineIndexClient = {
+      query: (text, values) => {
+        if (text.includes("pg_stat_progress_create_index")) seen.push(values ?? []);
+        return client.query(text, values);
+      },
+    };
+    await expect(runOnlineIndexStep(spy, [declaration], options)).rejects.toThrow(
+      /dropped the INVALID index/,
+    );
+    expect(seen).toEqual([[100, 200]]);
+  });
+
+  it("leaves the INVALID index in place when the ownership check itself fails", async () => {
+    const { client, queries } = fakeClient({
+      index: [null, { oid: 200, valid: false }],
+      build: () => {
+        throw new Error("deadlock detected");
+      },
+    });
+    const broken: OnlineIndexClient = {
+      query: (text, values) =>
+        text.includes("pg_stat_progress_create_index")
+          ? Promise.reject(new Error("permission denied"))
+          : client.query(text, values),
+    };
+    await expect(runOnlineIndexStep(broken, [declaration], options)).rejects.toThrow(
+      /left the INVALID index "public"\."e_idx" in place: could not check whether another session is building it \(permission denied\)/,
+    );
+    expect(queries.some((q) => q.startsWith("DROP"))).toBe(false);
+  });
+
+  it("fails without dropping when IF NOT EXISTS skipped over another session's INVALID index", async () => {
+    // The CREATE succeeds (skipped with a notice) because another session created the index
+    // after the check; that session's build then failed.
+    const { client, queries } = fakeClient({ index: [null, { oid: 200, valid: false }] });
+    const run = runOnlineIndexStep(client, [declaration], options);
+    await expect(run).rejects.toBeInstanceOf(OnlineIndexBuildError);
+    await expect(run).rejects.toThrow(/is INVALID after the build \(another session built it/);
     expect(queries.some((q) => q.startsWith("DROP"))).toBe(false);
   });
 

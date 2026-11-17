@@ -50,10 +50,20 @@ describe("parseOnlineIndexStatement", () => {
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "t" ("c"); DROP TABLE "t"`,
     ],
     ["a line comment", `-- note\nCREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "t" ("c")`],
+    // Only the comment rule catches this one: the statement prefix is valid and there is no `;`.
+    ["a trailing line comment", `CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "t" ("c") -- c`],
     ["a block comment", `CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" /* x */ ON "t" ("c")`],
     ["an empty chunk", "  \n"],
   ])("rejects %s", (_name, sql) => {
     expect(() => parse(sql)).toThrow(OnlineIndexDeclarationError);
+  });
+
+  it.each([
+    `CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "t" ("c") -- c`,
+    `CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "t" ("c") --`,
+    `CREATE INDEX CONCURRENTLY IF NOT EXISTS "a" ON "t" ("c") -- c\n`,
+  ])("rejects a trailing -- comment with the comment rule: %j", (sql) => {
+    expect(() => parse(sql)).toThrow(/comments are not allowed in a declaration/);
   });
 });
 

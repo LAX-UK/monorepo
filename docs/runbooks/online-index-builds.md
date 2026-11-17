@@ -1,19 +1,34 @@
-# Online index builds
+The migrate jobs build declared indexes with `CREATE INDEX CONCURRENTLY` before the transactional migration runner. Writers keep inserting while the index builds; nobody has to run anything in psql before the deploy.
 
-The production migrate (`pnpm db:migrate:prod`, the App Platform `PRE_DEPLOY` job on production and on the test environment) builds declared indexes with `CREATE INDEX CONCURRENTLY` before the transactional migration runner. Writers keep inserting while the index builds; nobody has to run anything in psql before the deploy.
+Which migrate runs the step:
+
+| Entry point | Used by | Step |
+|---|---|---|
+| `dist/migrate-prod.js` (`pnpm db:migrate:prod`) | production App Platform `PRE_DEPLOY`; the manual `identity-migration-maintenance-test.yml` workflow | always, with the production ceiling |
+| `dist/migrate.js` (`pnpm db:migrate`) | the **test environment** App Platform migrate job (`scripts/ci/verify-staging-migrate-contract.mjs` requires this script there) | only with `ONLINE_INDEX_STEP=1`, over the whole journal |
+| `dist/migrate.js` (`pnpm db:migrate`) | local and CI | never: `ONLINE_INDEX_STEP` is unset, so they migrate exactly as before |
+
+Both scripts call the same entry, `runOnlineIndexPreStep` in `src/online-index/index.ts`. `ONLINE_INDEX_STEP` accepts only `1` (on) or unset, empty or `0` (off); any other value fails the migrate before anything runs.
+
+**The test environment runs the step only once `ONLINE_INDEX_STEP=1` is set on its migrate job in `auction-infra` (`terraform/ephemeral/test/main.tf`).** That is a separate infra change. Until it is merged and applied, the test deploy builds 0399/0400 with the plain transactional `CREATE INDEX`, and the test rehearsal (looking for `lax-online-index` in `pg_stat_activity`) will not see the step. Do not set the variable on the production job; `migrate-prod.js` runs the step without it.
 
 Code: [`packages/db/src/online-index/`](../../packages/db/src/online-index/). Declarations: [`packages/db/drizzle/online/`](../../packages/db/drizzle/online/). Design: section A of the 2026-11-17 overnight decision pack (BA-15 follow-up).
 
 ## How it works
 
-1. `migrate-prod.ts` resolves the production ceiling, then opens one extra connection in autocommit mode (`application_name = lax-online-index`).
+1. `migrate-prod.ts` resolves the production ceiling (`migrate.ts` with `ONLINE_INDEX_STEP=1` uses the whole journal), then opens one extra connection in autocommit mode (`application_name = lax-online-index`).
 2. For every migration that is **not in the ledger yet** and is **within the ceiling**, it reads `drizzle/online/<migration tag>.sql`, if there is one, and runs each statement in order:
    - table not created yet (a pending migration creates it): skipped, and the migration builds the index in its own transaction;
    - index already exists and is valid: skipped (`already built`);
    - index exists but is **INVALID**: the step stops and the deploy fails. It does not drop it, because a failed build and a build still running in another session look the same in `pg_index`;
-   - otherwise: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ...`, logged with its duration.
+   - otherwise: `CREATE INDEX CONCURRENTLY IF NOT EXISTS ...`, logged with its duration. The step then checks that the index is valid: if another session created it in the meantime, `IF NOT EXISTS` skips without an error, and that session's index may be INVALID. The step then fails and leaves it alone.
 3. Session settings: `lock_timeout = '5s'` (a concurrent build only needs short locks at its start and end), `statement_timeout = 0` (no limit in code; the pre-deploy job timeout is the limit).
-4. If a build fails, the step drops the INVALID index **that build created** (`DROP INDEX CONCURRENTLY IF EXISTS`), never a valid index and never one that existed before, and exits non-zero. No migration has run at that point.
+4. If a build fails, the step drops the INVALID index left behind (`DROP INDEX CONCURRENTLY IF EXISTS`) only when all of these hold:
+   - the index did not exist before this build (its OID is new);
+   - no other session is building it: no other row in `pg_stat_progress_create_index` for the table or the index, and no other client session holding or waiting for the `SHARE UPDATE EXCLUSIVE` lock that every concurrent build keeps on its table (autovacuum is ignored);
+   - the ownership check itself succeeded.
+
+   Otherwise it leaves the index in place and says why (`left the INVALID index ... in place: another session (pid N) ...`). It never drops a valid index or one that existed before. Either way it exits non-zero, and no migration has run at that point.
 5. The transactional runner then applies the migrations as before. Each migration keeps its plain `CREATE INDEX IF NOT EXISTS` and its INVALID guard, so it finds the index and records the ledger row without rebuilding it. Local and CI (`pnpm db:migrate`) do not run the step and behave exactly as before.
 
 A rerun is safe at any point: valid indexes are skipped, and migrations already in the ledger are not considered.
@@ -73,6 +88,10 @@ The job log names the index and the cause. No migration was applied and the live
 - **`canceling statement due to lock timeout`.** The build could not get its short lock within 5 s (a long transaction on the table). Find the blocker as above and redeploy. The step has already dropped any INVALID index it left; the log says so.
 - **`could not create unique index`** (a `UNIQUE` declaration over duplicate data). Fix the data or the migration; the INVALID index has been dropped.
 - **`could not drop the INVALID index ... drop it by hand`.** Run the `DROP INDEX CONCURRENTLY IF EXISTS` above, then redeploy.
+- **`left the INVALID index ... in place: another session (pid N) ...`** or **`is INVALID after the build (another session built it at the same time)`.** Someone built the same index by hand while the deploy ran. Look at that pid in `pg_stat_activity` and `pg_stat_progress_create_index`. Wait for that build to finish, or cancel it and drop its index as above, then redeploy.
+- **`ONLINE_INDEX_STEP must be 1`.** The test migrate job has a value other than `1`, `0` or empty. Fix the variable in `auction-infra`.
+
+Do not build a declared index by hand while a deploy runs. The checks above cover a build that is still running in another session. One narrow case remains: a manual build that starts and also fails while the step's own build is failing. The step cannot tell that index from its own and drops it, which is harmless, because that index was INVALID and unused anyway.
 - **The job hit its timeout.** The build session ends with the job and leaves an INVALID index. Drop it as above. To finish a very long build by hand instead, run the declaration's statements in psql (autocommit, outside a transaction), wait for them to finish, and redeploy: the step and the migration then find the valid index and skip it.
 
 ## Rolling back

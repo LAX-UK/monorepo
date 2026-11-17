@@ -13,6 +13,7 @@ import { withTemporaryDatabase } from "../testing/temporary-database.js";
 import {
   ONLINE_INDEX_APPLICATION_NAME,
   OnlineIndexBuildError,
+  type OnlineIndexClient,
   parseOnlineIndexDeclaration,
   runOnlineIndexStep,
   runPendingOnlineIndexBuilds,
@@ -30,6 +31,42 @@ const INDEXES = [
 ];
 const PACKAGE_ROOT = resolve(import.meta.dirname, "../..");
 const MIGRATE_PROD_JS = resolve(PACKAGE_ROOT, "dist/migrate-prod.js");
+const MIGRATE_JS = resolve(PACKAGE_ROOT, "dist/migrate.js");
+
+type ScriptResult = { code: number; stdout: string; stderr: string };
+
+/** Runs a built migrate script; ONLINE_INDEX_STEP is never inherited from the test process. */
+function runScript(script: string, env: Record<string, string>): Promise<ScriptResult> {
+  if (!existsSync(script)) {
+    throw new Error("Build @auction/db first: pnpm --filter @auction/db build");
+  }
+  const { ONLINE_INDEX_STEP: _inherited, ...base } = process.env;
+  return promisify(execFile)(process.execPath, [script], {
+    cwd: PACKAGE_ROOT,
+    env: { ...base, ...env },
+  }).then(
+    ({ stdout, stderr }) => ({ code: 0, stdout, stderr }),
+    (error: ScriptResult) => error,
+  );
+}
+
+/** Sessions running a concurrent build under the step's application name. */
+async function onlineBuilds(pool: pg.Pool): Promise<number> {
+  const { rows } = await pool.query<{ query: string }>(
+    "select query from pg_stat_activity where application_name = $1 and datname = current_database()",
+    [ONLINE_INDEX_APPLICATION_NAME],
+  );
+  return rows.filter((r) => /CREATE INDEX CONCURRENTLY/i.test(r.query)).length;
+}
+
+async function waitFor(check: () => Promise<boolean>, ms: number): Promise<boolean> {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (await check()) return true;
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return false;
+}
 
 const INSERT_EVENT = `insert into domain_events (aggregate_type, aggregate_id, event_type, payload, producer)
   values ('payment', '1', 'online.test', '{}'::jsonb, 'migration-test')`;
@@ -187,9 +224,6 @@ describe.skipIf(!url)("online index step", { timeout: 180_000 }, () => {
   });
 
   it("migrate-prod exits non-zero before any migration when an INVALID index is in the way", async () => {
-    if (!existsSync(MIGRATE_PROD_JS)) {
-      throw new Error("Build @auction/db first: pnpm --filter @auction/db build");
-    }
     await withTemporaryDatabase(async (pool, databaseUrl) => {
       await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
       await seed(pool);
@@ -203,21 +237,158 @@ describe.skipIf(!url)("online index step", { timeout: 180_000 }, () => {
       const before = await indexes(pool);
       expect(Object.values(before)).toEqual([[expect.any(Number), false]]);
 
-      const result = await promisify(execFile)(process.execPath, [MIGRATE_PROD_JS], {
-        cwd: PACKAGE_ROOT,
-        env: {
-          ...process.env,
-          DATABASE_URL_OWNER: databaseUrl,
-          PRODUCTION_MIGRATION_THROUGH: "head",
-        },
-      }).then(
-        () => ({ code: 0, stderr: "" }),
-        (error: { code: number; stderr: string }) => error,
-      );
+      const result = await runScript(MIGRATE_PROD_JS, {
+        DATABASE_URL_OWNER: databaseUrl,
+        PRODUCTION_MIGRATION_THROUGH: "head",
+      });
       expect(result.code).not.toBe(0);
-      expect(result.stderr).toMatch(/exists but is INVALID/);
+      // The step's own error, not the 0399 migration guard (which also says "exists but is
+      // INVALID"): only the step raises OnlineIndexBuildError and labels the index with its tag.
+      expect(result.stderr).toMatch(
+        /OnlineIndexBuildError: Online index 0399_domain_events_event_type_aggregate_idx: domain_events_event_type_aggregate_id_idx: public\.domain_events_event_type_aggregate_id_idx exists but is INVALID/,
+      );
+      expect(result.stdout).not.toMatch(/Online index .*: building concurrently/);
       expect(await indexes(pool)).toEqual(before);
       expect(await ledger(pool)).toEqual([]);
+    });
+  });
+
+  it.each([
+    [
+      "migrate-prod.js",
+      MIGRATE_PROD_JS,
+      "DATABASE_URL_OWNER",
+      { PRODUCTION_MIGRATION_THROUGH: "head" },
+    ],
+    ["migrate.js with ONLINE_INDEX_STEP=1", MIGRATE_JS, "DATABASE_URL", { ONLINE_INDEX_STEP: "1" }],
+  ] as const)(
+    "%s builds the indexes concurrently before the runner, with a writer transaction open",
+    async (_name, script, urlEnv, extraEnv) => {
+      await withTemporaryDatabase(async (pool, databaseUrl) => {
+        await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
+        await seed(pool);
+        const writer = await pool.connect();
+        let child: Promise<ScriptResult> | undefined;
+        try {
+          await writer.query("begin");
+          await writer.query(INSERT_EVENT);
+          child = runScript(script, { [urlEnv]: databaseUrl, ...extraEnv });
+
+          // The build waits for the open writer; while it does, no migration has run yet.
+          expect(await waitFor(async () => (await onlineBuilds(pool)) > 0, 30_000)).toBe(true);
+          expect(await ledger(pool)).toEqual([]);
+          const started = Date.now();
+          await writer.query(INSERT_EVENT);
+          await pool.query(INSERT_EVENT);
+          expect(Date.now() - started).toBeLessThan(2_000);
+          await writer.query("commit");
+        } finally {
+          await writer.query("rollback").catch(() => {});
+          writer.release();
+        }
+        const result = await child;
+        expect(result?.stderr).toBe("");
+        expect(result?.code).toBe(0);
+        const out = result?.stdout ?? "";
+        const built = [...out.matchAll(/Online index (\S+): \S+: built in/g)].map((m) => m[1]);
+        expect(built).toEqual([
+          "0399_domain_events_event_type_aggregate_idx",
+          "0400_unapplied_money_shop_payment_idx",
+          "0400_unapplied_money_shop_payment_idx",
+        ]);
+        const lastBuilt = out.lastIndexOf(": built in");
+        const finished = Math.max(
+          out.indexOf("Migrations applied."),
+          out.indexOf("Production migrations and role grants applied."),
+        );
+        expect(lastBuilt).toBeGreaterThan(-1);
+        expect(finished).toBeGreaterThan(lastBuilt);
+        expect(await ledger(pool)).toEqual([WHEN_0399, WHEN_0400]);
+        expect(Object.values(await indexes(pool)).every(([, valid]) => valid)).toBe(true);
+      });
+    },
+  );
+
+  it("migrate.js without ONLINE_INDEX_STEP does not run the step (local and CI)", async () => {
+    await withTemporaryDatabase(async (pool, databaseUrl) => {
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
+      await seed(pool);
+      const result = await runScript(MIGRATE_JS, { DATABASE_URL: databaseUrl });
+      expect(result.code).toBe(0);
+      expect(result.stdout).not.toMatch(/Online index/);
+      expect(result.stdout).toMatch(/Migrations applied\./);
+      // The migrations built the indexes themselves, in their own transactions.
+      expect(Object.keys(await indexes(pool))).toEqual(INDEXES);
+      expect(await ledger(pool)).toEqual([WHEN_0399, WHEN_0400]);
+    });
+  });
+
+  it("migrate.js rejects an ONLINE_INDEX_STEP value other than 1 before migrating", async () => {
+    await withTemporaryDatabase(async (pool, databaseUrl) => {
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
+      const result = await runScript(MIGRATE_JS, {
+        DATABASE_URL: databaseUrl,
+        ONLINE_INDEX_STEP: "true",
+      });
+      expect(result.code).not.toBe(0);
+      expect(result.stderr).toMatch(/ONLINE_INDEX_STEP must be 1/);
+      expect(await ledger(pool)).toEqual([]);
+    });
+  });
+
+  it("does not drop an INVALID index another session created during this build", async () => {
+    await withTemporaryDatabase(async (pool, databaseUrl) => {
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0398);
+      await seed(pool);
+      const name = INDEXES[0];
+      const declaration = parseOnlineIndexDeclaration(
+        "0399_domain_events_event_type_aggregate_idx",
+        `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}" ON "domain_events" ("event_type")`,
+      );
+
+      // An open writer keeps the other session's concurrent build waiting (and its index
+      // INVALID) for as long as the test needs.
+      const writer = await pool.connect();
+      const other = new pg.Client(buildPgConnectionConfig(databaseUrl));
+      await other.connect();
+      let otherBuild: Promise<unknown> | undefined;
+      try {
+        await writer.query("begin");
+        await writer.query(INSERT_EVENT);
+        const run = withClient(databaseUrl, (client) => {
+          // Between the step's "before" check and its CREATE, another session starts the same
+          // build. The step then times out on the table lock that build holds.
+          const racing: OnlineIndexClient = {
+            async query(text, values) {
+              if (text.startsWith("CREATE INDEX CONCURRENTLY") && !otherBuild) {
+                otherBuild = other.query(
+                  `CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}" ON domain_events (event_type)`,
+                );
+                const appeared = await waitFor(
+                  async () => (await indexes(pool))[name] !== undefined,
+                  10_000,
+                );
+                if (!appeared) throw new Error("the other build never created its index");
+              }
+              return client.query(text, values) as never;
+            },
+          };
+          return runOnlineIndexStep(racing, [declaration], { log: () => {} });
+        });
+        await expect(run).rejects.toBeInstanceOf(OnlineIndexBuildError);
+        await expect(run).rejects.toThrow(
+          /lock timeout; left the INVALID index "public"\."domain_events_event_type_aggregate_id_idx" in place: another session \(pid \d+\)/,
+        );
+        // The other session's build is untouched and still in progress.
+        expect((await indexes(pool))[name]?.[1]).toBe(false);
+        await writer.query("commit");
+        await otherBuild;
+        expect((await indexes(pool))[name]?.[1]).toBe(true);
+      } finally {
+        await writer.query("rollback").catch(() => {});
+        writer.release();
+        await other.end();
+      }
     });
   });
 });

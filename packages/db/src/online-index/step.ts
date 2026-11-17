@@ -36,7 +36,8 @@ export class OnlineIndexBuildError extends Error {
   }
 }
 
-type IndexState = { schema: string; valid: boolean } | null;
+type IndexState = { oid: number; valid: boolean } | null;
+type TableRef = { schema: string; oid: number };
 
 function quoteIdent(name: string): string {
   return `"${name.replaceAll('"', '""')}"`;
@@ -46,14 +47,15 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function tableSchema(client: OnlineIndexClient, table: string): Promise<string | null> {
-  const { rows } = await client.query<{ schema: string }>(
-    `SELECT n.nspname AS schema
+async function tableRef(client: OnlineIndexClient, table: string): Promise<TableRef | null> {
+  const { rows } = await client.query<{ schema: string; oid: string | number }>(
+    `SELECT n.nspname AS schema, c.oid::bigint AS oid
        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.oid = to_regclass($1)`,
     [table],
   );
-  return rows[0]?.schema ?? null;
+  const row = rows[0];
+  return row ? { schema: row.schema, oid: Number(row.oid) } : null;
 }
 
 async function indexState(
@@ -61,8 +63,8 @@ async function indexState(
   schema: string,
   indexName: string,
 ): Promise<IndexState> {
-  const { rows } = await client.query<{ valid: boolean }>(
-    `SELECT i.indisvalid AS valid
+  const { rows } = await client.query<{ oid: string | number; valid: boolean }>(
+    `SELECT c.oid::bigint AS oid, i.indisvalid AS valid
        FROM pg_index i
        JOIN pg_class c ON c.oid = i.indexrelid
        JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -70,7 +72,76 @@ async function indexState(
     [schema, indexName],
   );
   const row = rows[0];
-  return row ? { schema, valid: row.valid } : null;
+  return row ? { oid: Number(row.oid), valid: row.valid } : null;
+}
+
+/**
+ * Other client sessions that may be building this index: a CREATE INDEX in progress on the
+ * table or on this index (pg_stat_progress_create_index; a row we may not read the relation of
+ * counts too), or a session holding or waiting for the SHARE UPDATE EXCLUSIVE lock that every
+ * concurrent build keeps on its table. Autovacuum takes that lock as well and is ignored.
+ */
+async function otherBuilders(
+  client: OnlineIndexClient,
+  tableOid: number,
+  indexOid: number,
+): Promise<number[]> {
+  const { rows } = await client.query<{ pid: number }>(
+    `SELECT p.pid
+       FROM pg_stat_progress_create_index p
+      WHERE p.pid <> pg_backend_pid()
+        AND p.datname = current_database()
+        AND (p.relid IS NULL OR p.relid = $1::bigint::oid OR p.index_relid = $2::bigint::oid)
+     UNION
+     SELECT l.pid
+       FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid
+      WHERE l.pid <> pg_backend_pid()
+        AND a.backend_type = 'client backend'
+        AND l.locktype = 'relation'
+        AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database())
+        AND l.relation IN ($1::bigint::oid, $2::bigint::oid)
+        AND l.mode = 'ShareUpdateExclusiveLock'
+      ORDER BY 1`,
+    [tableOid, indexOid],
+  );
+  return rows.map((r) => Number(r.pid));
+}
+
+/**
+ * Decides what to do with the index found after a failed build. It is dropped only when it is
+ * INVALID, its OID did not exist before this build, and no other session is building it. If
+ * ownership cannot be established it is left in place and the error says so.
+ */
+async function cleanupAfterFailure(
+  client: OnlineIndexClient,
+  table: TableRef,
+  indexName: string,
+): Promise<string> {
+  let after: IndexState;
+  try {
+    after = await indexState(client, table.schema, indexName);
+  } catch (error) {
+    return `could not check for an INVALID index it may have left (${messageOf(error)}); check ${table.schema}.${indexName} by hand`;
+  }
+  if (after === null) return "no index was left behind";
+  if (after.valid) return `left the valid index ${table.schema}.${indexName} in place`;
+
+  const qualified = `${quoteIdent(table.schema)}.${quoteIdent(indexName)}`;
+  let others: number[];
+  try {
+    others = await otherBuilders(client, table.oid, after.oid);
+  } catch (error) {
+    return `left the INVALID index ${qualified} in place: could not check whether another session is building it (${messageOf(error)}); see the runbook`;
+  }
+  if (others.length > 0) {
+    return `left the INVALID index ${qualified} in place: another session (pid ${others.join(", ")}) is building on ${table.schema}.${indexName} or its table, so it may not be ours; see the runbook`;
+  }
+  try {
+    await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${qualified}`);
+    return `dropped the INVALID index ${qualified} it left`;
+  } catch (dropError) {
+    return `could not drop the INVALID index ${qualified} it left (${messageOf(dropError)}); drop it by hand`;
+  }
 }
 
 async function buildOne(
@@ -81,13 +152,14 @@ async function buildOne(
   now: () => number,
 ): Promise<void> {
   const label = `${tag}: ${statement.indexName}`;
-  const schema = await tableSchema(client, statement.table);
-  if (schema === null) {
+  const table = await tableRef(client, statement.table);
+  if (table === null) {
     // The table is created by a pending migration, so nothing writes to it yet; the
     // migration builds the index inside its own transaction.
     log(`Online index ${label}: skipped, ${statement.table} does not exist yet.`);
     return;
   }
+  const { schema } = table;
 
   const before = await indexState(client, schema, statement.indexName);
   if (before?.valid) {
@@ -107,20 +179,20 @@ async function buildOne(
   try {
     await client.query(statement.sql);
   } catch (error) {
-    const after = await indexState(client, schema, statement.indexName).catch(() => null);
-    let cleanup = "no index was left behind";
-    if (after && !after.valid) {
-      const qualified = `${quoteIdent(schema)}.${quoteIdent(statement.indexName)}`;
-      try {
-        await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${qualified}`);
-        cleanup = `dropped the INVALID index ${qualified} it left`;
-      } catch (dropError) {
-        cleanup = `could not drop the INVALID index ${qualified} it left (${messageOf(dropError)}); drop it by hand`;
-      }
-    }
+    // `before` was null, so any index found now has an OID that did not exist before this build.
+    const cleanup = await cleanupAfterFailure(client, table, statement.indexName);
     throw new OnlineIndexBuildError(
       `Online index ${label} failed: ${messageOf(error)}; ${cleanup}. No migration was applied.`,
       { cause: error },
+    );
+  }
+  // IF NOT EXISTS skips, without an error, when another session created the index after the
+  // check above. That index may be INVALID (its build failed); it is not ours, so it is reported
+  // and left alone.
+  const after = await indexState(client, schema, statement.indexName);
+  if (!after?.valid) {
+    throw new OnlineIndexBuildError(
+      `Online index ${label}: ${schema}.${statement.indexName} is ${after ? "INVALID" : "missing"} after the build (another session built it at the same time); left in place. See docs/runbooks/online-index-builds.md. No migration was applied.`,
     );
   }
   log(`Online index ${label}: built in ${((now() - started) / 1000).toFixed(1)} s.`);

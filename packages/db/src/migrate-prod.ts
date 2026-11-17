@@ -4,12 +4,9 @@ import {
   readLastAppliedFolderMillis,
   runMigrationsPerTransactionThrough,
 } from "./migrate-runner.js";
-import {
-  ONLINE_INDEX_APPLICATION_NAME,
-  runPendingOnlineIndexBuilds,
-} from "./online-index/index.js";
+import { runOnlineIndexPreStep } from "./online-index/index.js";
 import { resolveProductionMigrationThrough } from "./production-migration-ceiling.js";
-import { buildPgConnectionConfig, buildPgPoolConfig } from "./ssl.js";
+import { buildPgPoolConfig } from "./ssl.js";
 
 async function main() {
   const url = process.env.DATABASE_URL_OWNER;
@@ -29,16 +26,7 @@ async function main() {
     // CONCURRENTLY on an autocommit connection, outside any transaction, before the runner. The
     // migrations' own CREATE INDEX IF NOT EXISTS then adopts them. A failure stops the deploy
     // here, before any migration runs. See docs/runbooks/online-index-builds.md.
-    const onlineClient = new pg.Client({
-      ...buildPgConnectionConfig(url),
-      application_name: ONLINE_INDEX_APPLICATION_NAME,
-    });
-    await onlineClient.connect();
-    try {
-      await runPendingOnlineIndexBuilds(onlineClient, ceiling.folderMillis);
-    } finally {
-      await onlineClient.end();
-    }
+    await runOnlineIndexPreStep(url, ceiling.folderMillis);
     await runMigrationsPerTransactionThrough(pool, ceiling.folderMillis ?? undefined);
     // Re-applies `api_app` / `auth_app` / `worker_app` table + column grants (see migrate-roles.ts).
     // DigitalOcean App Platform PRE_DEPLOY runs this script on each release.
