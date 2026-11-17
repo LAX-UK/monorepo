@@ -1,6 +1,11 @@
 import { verifyBearerToken } from "@auction/auth/token-verifier";
 import { OIDC_ACR_SILVER } from "@auction/identity-contracts";
-import { SHOP_API_ERROR_CODES, isStepUpPath } from "@auction/shop-contracts";
+import {
+  type AdminArtworkConsignor,
+  type AdminConsignorChange,
+  SHOP_API_ERROR_CODES,
+  isStepUpPath,
+} from "@auction/shop-contracts";
 import { SHOP_STAFF_ROLES, type ShopStaffRole } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
 
@@ -24,14 +29,14 @@ const IDEMPOTENCY = "consignor-0001";
 const CAN_READ: ShopStaffRole[] = ["shop_admin", "catalogue_editor"];
 const CAN_MANAGE: ShopStaffRole[] = ["shop_admin", "catalogue_editor"];
 
-const change = {
+const change: AdminConsignorChange = {
   id: CHANGE_ID,
   consignor: { kind: "client", partyId: PARTY_ID, displayName: "Ivo Marren" },
   changeReason: null,
   setAt: "2026-11-17T09:00:00.000Z",
   setByName: "Sam Staff",
 };
-const consignor = {
+const consignor: AdminArtworkConsignor = {
   registerId: REGISTER_ID,
   current: change,
   history: [change],
@@ -41,9 +46,13 @@ const consignor = {
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
-async function buildApp(role: ShopStaffRole, options: { authTime?: number } = {}) {
+async function buildApp(
+  role: ShopStaffRole | ShopStaffRole[],
+  options: { authTime?: number; assignedParties?: string[] } = {},
+) {
+  const roles = Array.isArray(role) ? role : [role];
   vi.mocked(verifyBearerToken).mockResolvedValue({
-    subject: `${role}-subject`,
+    subject: `${roles.join("+")}-subject`,
     payload: {
       scope: "shop.admin",
       acr: OIDC_ACR_SILVER,
@@ -54,12 +63,16 @@ async function buildApp(role: ShopStaffRole, options: { authTime?: number } = {}
     env: { ...createMinimalShopApiTestDeps().env, SHOP_ADMIN_ENABLED: true },
     staffReader: {
       findActiveByIdentitySubject: async (subject: string) => ({
-        roles: [role],
+        roles,
         identitySubjectId: subject,
       }),
       brokerCanAccessClientParty: async () => false,
     },
   });
+  const brokerCanAccessClientParty = vi.fn(async (_broker: string, partyId: string) =>
+    (options.assignedParties ?? []).includes(partyId),
+  );
+  deps.admin.staffReader = { ...deps.admin.staffReader, brokerCanAccessClientParty };
   const artworkConsignors = {
     get: vi.fn(async (): Promise<typeof consignor | null> => consignor),
     set: vi.fn(async () => consignor),
@@ -67,7 +80,7 @@ async function buildApp(role: ShopStaffRole, options: { authTime?: number } = {}
   deps.admin.artworkConsignors = artworkConsignors as never;
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();
-  return { app, artworkConsignors };
+  return { app, artworkConsignors, brokerCanAccessClientParty };
 }
 
 const headers = { authorization: `Bearer ${TOKEN}`, "idempotency-key": IDEMPOTENCY };
@@ -183,6 +196,58 @@ describe("artwork consignor routes", () => {
     const stale = await app.inject({ method: "PUT", url, headers, payload: body });
     expect(stale.statusCode).toBe(409);
     expect(stale.json().currentVersion).toBe(CHANGE_ID);
+    await app.close();
+  });
+});
+
+describe("a broker who also reads the register", () => {
+  // Broker supplies consignor_agreement.read through client.read_assigned; Read-only supplies
+  // artwork_register.read. Together they reach the record, so the client scope must hold.
+  const BROKER_AND_READ_ONLY: ShopStaffRole[] = ["broker", "read_only"];
+
+  it("is refused a work consigned by a client not assigned to them", async () => {
+    const { app, brokerCanAccessClientParty } = await buildApp(BROKER_AND_READ_ONLY);
+    const response = await app.inject({ method: "GET", url, headers });
+    expect(response.statusCode).toBe(403);
+    expect(response.body).not.toContain("Ivo Marren");
+    expect(brokerCanAccessClientParty).toHaveBeenCalledWith("broker+read_only-subject", PARTY_ID);
+    await app.close();
+  });
+
+  it("reads a work consigned by a client assigned to them", async () => {
+    const { app } = await buildApp(BROKER_AND_READ_ONLY, { assignedParties: [PARTY_ID] });
+    const response = await app.inject({ method: "GET", url, headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().current.consignor.displayName).toBe("Ivo Marren");
+    await app.close();
+  });
+
+  it("reads a work LAX owns, or with no consignor yet, without a client check", async () => {
+    const { app, artworkConsignors, brokerCanAccessClientParty } =
+      await buildApp(BROKER_AND_READ_ONLY);
+    const lax: AdminConsignorChange = { ...change, consignor: { kind: "lax" } };
+    artworkConsignors.get.mockResolvedValueOnce({ ...consignor, current: lax, history: [lax] });
+    expect((await app.inject({ method: "GET", url, headers })).statusCode).toBe(200);
+    artworkConsignors.get.mockResolvedValueOnce({ ...consignor, current: null, history: [] });
+    expect((await app.inject({ method: "GET", url, headers })).statusCode).toBe(200);
+    expect(brokerCanAccessClientParty).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("still cannot set the consignor", async () => {
+    const { app, artworkConsignors } = await buildApp(BROKER_AND_READ_ONLY, {
+      assignedParties: [PARTY_ID],
+    });
+    const response = await app.inject({ method: "PUT", url, headers, payload: body });
+    expect(response.statusCode).toBe(403);
+    expect(artworkConsignors.set).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("leaves the client check out for people who keep agreements", async () => {
+    const { app, brokerCanAccessClientParty } = await buildApp(["catalogue_editor", "broker"]);
+    expect((await app.inject({ method: "GET", url, headers })).statusCode).toBe(200);
+    expect(brokerCanAccessClientParty).not.toHaveBeenCalled();
     await app.close();
   });
 });

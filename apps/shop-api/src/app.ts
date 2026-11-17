@@ -223,7 +223,11 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
-        void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
+        void registerAdminArtworkRegisterRoutes(
+          adminScope,
+          options.deps.admin.artworkRegister,
+          options.deps.admin,
+        );
         void registerAdminSoldAttentionRoutes(adminScope, options.deps.admin.soldAttention, {
           stepUpMaxAuthAgeSeconds: options.deps.admin.stepUpMaxAuthAgeSeconds,
         });

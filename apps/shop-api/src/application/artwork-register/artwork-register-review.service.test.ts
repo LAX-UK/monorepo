@@ -272,18 +272,21 @@ describe("ArtworkRegisterReviewService", () => {
       { artistCode: "PH", place: "sold", location: "none" },
       { limit: 25, offset: 25 },
       undefined,
+      undefined,
     );
     expect(deps.overview.countPlaces).toHaveBeenCalledWith("PH");
   });
 
   it("says who consigned each work, with the Consignor filter's choices, to people who may read it", async () => {
     const { service: s, deps } = service();
-    const list = await s.listAll({ consignor: "lax" }, { withConsignor: true });
+    const list = await s.listAll({ consignor: "lax" }, { consignorScope: { kind: "all" } });
     expect(deps.overview.listAll).toHaveBeenCalledWith(
       { consignor: "lax" },
       { limit: 25, offset: 0 },
       undefined,
+      { kind: "all" },
     );
+    expect(deps.overview.countConsignors).toHaveBeenCalledWith({ kind: "all" });
     expect(list.items.map((item) => item.consignor)).toEqual([
       {
         kind: "client",
@@ -302,6 +305,28 @@ describe("ArtworkRegisterReviewService", () => {
     );
   });
 
+  it("leaves a row's consignor out for a print or a client outside the reader's scope", async () => {
+    const { service: s, deps } = service();
+    vi.mocked(deps.overview.listAll).mockResolvedValue({
+      rows: [
+        { entry: entry(), hasLaxArtDraft: false, location: null, consignor: { kind: "not_shown" } },
+        { entry: entry({ id: "b" }), hasLaxArtDraft: false, location: null, consignor: null },
+      ],
+      total: 2,
+    });
+    const scope = { kind: "assigned" as const, brokerSubjectId: "broker-1" };
+    const list = await s.listAll({}, { consignorScope: scope });
+    expect(list.items[0]).not.toHaveProperty("consignor");
+    expect(list.items[1]?.consignor).toBeNull();
+    expect(deps.overview.listAll).toHaveBeenCalledWith(
+      {},
+      { limit: 25, offset: 0 },
+      undefined,
+      scope,
+    );
+    expect(deps.overview.countConsignors).toHaveBeenCalledWith(scope);
+  });
+
   it("leaves consignors out for people who cannot read consignor agreements", async () => {
     const { service: s, deps } = service();
     const list = await s.listAll({});
@@ -313,7 +338,12 @@ describe("ArtworkRegisterReviewService", () => {
   it("passes the order by Zoho's price to the overview, so it holds across pages", async () => {
     const { service: s, deps } = service();
     await s.listAll({ sort: "zohoPrice", page: 3 });
-    expect(deps.overview.listAll).toHaveBeenCalledWith({}, { limit: 25, offset: 50 }, "zohoPrice");
+    expect(deps.overview.listAll).toHaveBeenCalledWith(
+      {},
+      { limit: 25, offset: 50 },
+      "zohoPrice",
+      undefined,
+    );
   });
 
   it("reports both queue sizes for the Overview", async () => {

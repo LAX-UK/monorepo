@@ -444,6 +444,20 @@ describe("AllFromZohoList Consignor column and filter", () => {
     expect(rowOf("Work 3").getByText("Not set")).toBeInTheDocument();
   });
 
+  it("leaves the cell empty for a print, or a client shop-api does not name to this reader", () => {
+    showConsignor();
+    // No `consignor` on the row: shop-api left it out.
+    inShell(
+      <AllFromZohoList
+        query={{ tab: "all" }}
+        page={withConsignors([...rows, item(4, "not_offered")])}
+      />,
+    );
+    expect(rowOf("Work 3").getByText("Not set")).toBeInTheDocument();
+    expect(rowOf("Work 4").queryByText("Not set")).not.toBeInTheDocument();
+    expect(rowOf("Work 4").queryByText("LAX owns this work")).not.toBeInTheDocument();
+  });
+
   it("is not there at all for people shop-api sends no consignors to", () => {
     showConsignor();
     inShell(<AllFromZohoList query={{ tab: "all" }} page={page(rows)} />);

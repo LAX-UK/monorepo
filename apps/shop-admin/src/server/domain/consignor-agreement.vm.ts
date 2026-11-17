@@ -76,10 +76,9 @@ export function commissionText(basisPoints: number | null): string {
  * within each, the newest first. The API sends current before retired; this also puts expired
  * agreements below the ones that still cover anything.
  */
-export function sortAgreements(
-  agreements: readonly AdminConsignorAgreement[],
-  today: string,
-): AdminConsignorAgreement[] {
+export function sortAgreements<
+  T extends Pick<AdminConsignorAgreement, "status" | "startsOn" | "endsOn" | "createdAt">,
+>(agreements: readonly T[], today: string): T[] {
   const rank: Record<AgreementState, number> = {
     in_force: 0,
     not_started: 1,

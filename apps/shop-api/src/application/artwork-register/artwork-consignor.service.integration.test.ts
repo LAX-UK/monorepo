@@ -5,6 +5,7 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleConsignorAgreementStore,
 } from "@auction/persistence/repositories";
+import { ShopDomainError } from "@auction/shop-domain";
 import { and, eq, sql } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -77,13 +78,13 @@ describe.skipIf(!hasShopIntegrationDb)("artwork consignor service (Postgres)", (
     return id;
   }
 
-  async function artwork(): Promise<string> {
+  async function artwork(print?: { sourceOriginalId: string }): Promise<string> {
     const created = await new DrizzleArtworkRegisterRepository(owner()).create(
       {
         zohoProductId: `zoho-${integrationSuffix("c")}`,
-        stockCode: uniqueStockCode("original"),
-        kind: "original",
-        sourceOriginalId: null,
+        stockCode: uniqueStockCode(print ? "print" : "original"),
+        kind: print ? "print" : "original",
+        sourceOriginalId: print?.sourceOriginalId ?? null,
         title: "Harbour at dusk",
         artist: { zohoArtistId: "80", name: "Ada Rowe", code: "CSG" },
         medium: null,
@@ -178,7 +179,17 @@ describe.skipIf(!hasShopIntegrationDb)("artwork consignor service (Postgres)", (
       setAt: NOW.toISOString(),
       setByName: "Name of admin-1",
     });
-    expect(set.agreements.map((item) => item.agreementId)).toEqual([kept.agreementId]);
+    // Where and when the agreement applies; its terms, signed file and note stay on the client.
+    expect(set.agreements).toEqual([
+      {
+        id: kept.id,
+        status: "current",
+        places: ["lax_bid", "lax_art"],
+        startsOn: "2026-03-03",
+        endsOn: "2027-03-02",
+        createdAt: NOW.toISOString(),
+      },
+    ]);
     const [audit] = await audits(registerId);
     expect(audit).toMatchObject({
       actorSubjectId: "admin-1",
@@ -320,5 +331,21 @@ describe.skipIf(!hasShopIntegrationDb)("artwork consignor service (Postgres)", (
       }),
     ).rejects.toMatchObject({ statusCode: 400, issues: [{ field: "reason" }] });
     expect(await links(registerId)).toEqual([]);
+  });
+
+  it("refuses a print, which has no consignor: 404 to read, 409 to set, writing nothing", async () => {
+    const original = await artwork();
+    const print = await artwork({ sourceOriginalId: original });
+    await expect(service().get(print)).rejects.toMatchObject({ statusCode: 404 });
+    await expect(
+      service().set({
+        actorSubjectId: "admin-1",
+        idempotencyKey: key(),
+        registerId: print,
+        consignor: { kind: "lax" },
+      }),
+    ).rejects.toBeInstanceOf(ShopDomainError);
+    expect(await links(print)).toEqual([]);
+    expect(await audits(print)).toEqual([]);
   });
 });

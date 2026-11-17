@@ -8,14 +8,14 @@ import type { ShopTransactionEffects } from "./shop-unit-of-work.js";
 
 /** What the Consignor field on a From Zoho record reads, outside any write. */
 export type ArtworkConsignorReads = {
-  /** Whether the register holds this artwork. */
-  artworkExists(registerId: string): Promise<boolean>;
+  /** Whether the register's artwork is an original or a print; null when it is not on the register. */
+  artworkKind(registerId: string): Promise<"original" | "print" | null>;
   /** The artwork's consignor changes, newest first; the first is the consignor now. */
   listChanges(registerId: string, limit: number): Promise<ConsignorLink[]>;
   /** Client display names by party id; unknown ids are left out. */
   partyNames(partyIds: readonly string[]): Promise<ReadonlyMap<string, string>>;
   /** The client's agreements that are neither replaced nor retired. */
-  currentAgreements(partyId: string): Promise<ConsignorAgreement[]>;
+  currentAgreements(partyId: string): Promise<(ConsignorAgreement & { status: "current" })[]>;
 };
 
 export type SetArtworkConsignorResult =

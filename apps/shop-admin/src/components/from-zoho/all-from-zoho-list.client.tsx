@@ -48,7 +48,8 @@ const HIDDEN_BY_DEFAULT = ["zohoPrice", "consignor"];
 
 /**
  * Who consigned the work. Only for people who can read consignor agreements: shop-api sends the
- * consignor with each row for them alone.
+ * consignor with each original for them alone, and leaves it out for a print and for a client
+ * the reader cannot open, which show an empty cell.
  */
 const CONSIGNOR_COLUMN: DataColumn<AdminRegisterAllItem> = {
   id: "consignor",
@@ -56,7 +57,7 @@ const CONSIGNOR_COLUMN: DataColumn<AdminRegisterAllItem> = {
   width: "190px",
   mobile: "hidden",
   cell: (row) =>
-    row.consignor ? (
+    row.consignor === undefined ? null : row.consignor ? (
       consignorName(row.consignor)
     ) : (
       <span className="text-staff-muted">{CONSIGNOR_NOT_SET}</span>

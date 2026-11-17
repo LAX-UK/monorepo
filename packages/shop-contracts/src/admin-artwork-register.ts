@@ -123,7 +123,8 @@ export const AdminRegisterAllItemSchema = Type.Composite([
     zohoPrice: Type.Union([Type.String(), Type.Null()]),
     /**
      * Who consigned the work (null: not set). Only for people who can read consignor agreements;
-     * left out for everyone else.
+     * left out for everyone else, for a print, and for a client outside the reader's client scope
+     * (a broker reads the clients assigned to them).
      */
     consignor: Type.Optional(Type.Union([AdminConsignorSchema, Type.Null()])),
   }),
@@ -140,9 +141,9 @@ export const AdminRegisterAllListSchema = Type.Object({
     Type.Object({ value: PlaceSchema, label: Type.String(), count: Type.Integer() }),
   ),
   /**
-   * The Consignor filter's choices with how many records each has: no consignor set (`none`),
-   * LAX (`lax`), then every client consignor by name. Only for people who can read consignor
-   * agreements.
+   * The Consignor filter's choices with how many originals each has: no consignor set (`none`),
+   * LAX (`lax`), then every client consignor in the reader's client scope by name. Only for people
+   * who can read consignor agreements.
    */
   consignors: Type.Optional(
     Type.Array(Type.Object({ value: Type.String(), label: Type.String(), count: Type.Integer() })),

@@ -1,14 +1,16 @@
 import {
   CONSIGNOR_CHANGE_REASON_MAX,
   type Consignor,
+  type ConsignorAgreement,
   type ConsignorLink,
 } from "@auction/artwork-register-contracts";
 import type {
   AdminArtworkConsignor,
+  AdminArtworkConsignorAgreement,
   AdminConsignor,
   AdminConsignorChange,
 } from "@auction/shop-contracts";
-import type { ShopStaffCapability } from "@auction/shop-domain";
+import { ShopDomainError, type ShopStaffCapability } from "@auction/shop-domain";
 import { FieldValidationError } from "../../errors/field-validation-error.js";
 import { notFound } from "../../errors/shop-api-error.js";
 import { StaleVersionError } from "../../errors/stale-version-error.js";
@@ -19,7 +21,6 @@ import type {
 } from "../ports/artwork-consignor.ports.js";
 import type { ShopUnitOfWorkFactory } from "../ports/shop-unit-of-work.js";
 import type { StaffNameReader } from "../ports/staff-name.reader.js";
-import { presentAgreement } from "./consignor-agreement.service.js";
 
 const MANAGE: ShopStaffCapability = "consignor_agreement.manage";
 const STAFF_PREFIX = "staff:";
@@ -51,6 +52,24 @@ const auditView = (link: ConsignorLink) => ({
   consignor: link.consignor.kind,
   partyId: partyOf(link.consignor),
   withReason: link.changeReason !== null,
+});
+
+/** Who consigned a work is recorded for originals; a print is LAX's own edition. */
+const ORIGINALS_ONLY = "Only an original has a consignor. A print is LAX's own edition.";
+
+/**
+ * A client's current agreement as the record shows it: where and when it applies. The terms, the
+ * signed file and the note stay on the client's page.
+ */
+const presentRecordAgreement = (
+  agreement: ConsignorAgreement & { status: "current" },
+): AdminArtworkConsignorAgreement => ({
+  id: agreement.id,
+  status: agreement.status,
+  places: agreement.places,
+  startsOn: agreement.startsOn,
+  endsOn: agreement.endsOn,
+  createdAt: agreement.createdAt.toISOString(),
 });
 
 /** The reason as the store reads it: trimmed, empty as none, refused past the limit. */
@@ -104,9 +123,14 @@ export function createArtworkConsignorService(deps: ArtworkConsignorServiceDeps)
     };
   }
 
-  /** The artwork's consignor now, its history and its agreements; null when it is not on the register. */
+  /**
+   * The artwork's consignor now, its history and its agreements; null when it is not on the
+   * register. A print has no consignor: it is refused with 404.
+   */
   async function get(registerId: string): Promise<AdminArtworkConsignor | null> {
-    if (!(await deps.reads.artworkExists(registerId))) return null;
+    const kind = await deps.reads.artworkKind(registerId);
+    if (kind === null) return null;
+    if (kind !== "original") throw notFound(ORIGINALS_ONLY);
     // One more than is shown, to know whether older changes exist.
     const changes = await deps.reads.listChanges(registerId, CONSIGNOR_HISTORY_LIMIT + 1);
     const shown = changes.slice(0, CONSIGNOR_HISTORY_LIMIT);
@@ -125,7 +149,7 @@ export function createArtworkConsignorService(deps: ArtworkConsignorServiceDeps)
       current: history[0] ?? null,
       history,
       moreHistory: changes.length > CONSIGNOR_HISTORY_LIMIT,
-      agreements: agreements.map(presentAgreement),
+      agreements: agreements.map(presentRecordAgreement),
     };
   }
 
@@ -145,6 +169,10 @@ export function createArtworkConsignorService(deps: ArtworkConsignorServiceDeps)
       },
     ): Promise<AdminArtworkConsignor> {
       const reason = reasonOrRefuse(command.reason);
+      // The kind is Zoho's and does not change with a consignor; the store locks the row itself.
+      const kind = await deps.reads.artworkKind(command.registerId);
+      if (kind === null) throw notFound("Artwork");
+      if (kind !== "original") throw new ShopDomainError(ORIGINALS_ONLY);
       await deps.uow.run((tx) =>
         withAdminIdempotency({
           tx,

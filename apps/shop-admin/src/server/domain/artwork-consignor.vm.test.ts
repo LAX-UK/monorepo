@@ -1,4 +1,4 @@
-import type { AdminConsignorAgreement, AdminConsignorChange } from "@auction/shop-contracts";
+import type { AdminArtworkConsignorAgreement, AdminConsignorChange } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   checkConsignorForm,
@@ -31,24 +31,16 @@ const lax: AdminConsignorChange = {
   setByName: "Sam Staff",
 };
 
-function agreement(patch: Partial<AdminConsignorAgreement> = {}): AdminConsignorAgreement {
+function agreement(
+  patch: Partial<AdminArtworkConsignorAgreement> = {},
+): AdminArtworkConsignorAgreement {
   return {
     id: "11111111-1111-4111-8111-111111111111",
-    agreementId: "11111111-1111-4111-8111-111111111111",
-    version: 1,
-    partyId: PARTY,
     places: ["lax_bid"],
     startsOn: "2026-03-03",
     endsOn: null,
-    lowestPricePence: null,
-    commissionBasisPoints: null,
-    signedFileKey: "k",
-    note: null,
     status: "current",
-    replacesId: null,
     createdAt: "2026-03-03T10:00:00.000Z",
-    replacedAt: null,
-    retiredAt: null,
     ...patch,
   };
 }
@@ -71,13 +63,6 @@ describe("the Consignor field", () => {
     expect(consignorAgreementLine({ current: client, agreements: [] }, TODAY)).toEqual({
       kind: "none",
     });
-    // A retired agreement covers nothing, so the client has none.
-    expect(
-      consignorAgreementLine(
-        { current: client, agreements: [agreement({ status: "retired" })] },
-        TODAY,
-      ),
-    ).toEqual({ kind: "none" });
     const line = consignorAgreementLine(
       {
         current: client,

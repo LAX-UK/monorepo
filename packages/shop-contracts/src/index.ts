@@ -1380,6 +1380,7 @@ export {
   zohoMirrorBadgeName,
 } from "./zoho-mirror-copy.js";
 export {
+  AdminArtworkConsignorAgreementSchema,
   AdminArtworkConsignorSchema,
   AdminArtworkConsignorSetBodySchema,
   AdminConsignorAgreementConflictSchema,
@@ -1401,6 +1402,7 @@ export {
   CONSIGNOR_AGREEMENT_FILE_TYPES,
   ConsignmentPlaceSchema,
   type AdminArtworkConsignor,
+  type AdminArtworkConsignorAgreement,
   type AdminArtworkConsignorSetBody,
   type AdminConsignor,
   type AdminConsignorAgreement,

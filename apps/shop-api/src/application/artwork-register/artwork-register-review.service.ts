@@ -37,6 +37,8 @@ import type {
   ListingRunReader,
   RegisterConflictRecord,
   RegisterConsignorCounts,
+  RegisterConsignorScope,
+  RegisterOverviewConsignor,
   RegisterOverviewFilter,
   RegisterOverviewRow,
   RegisterQueueFilter,
@@ -115,6 +117,13 @@ function overviewFilterOf(query: AdminRegisterQueueQuery): RegisterOverviewFilte
     ...(query.location ? { location: query.location } : {}),
     ...(query.consignor ? { consignor: query.consignor } : {}),
   };
+}
+
+/** A row's consignor; left out for a print, or a client the reader does not see. */
+function consignorField(
+  consignor: RegisterOverviewConsignor | null,
+): Pick<AdminRegisterAllItem, "consignor"> {
+  return consignor?.kind === "not_shown" ? {} : { consignor };
 }
 
 /** The Consignor filter's choices: no consignor set, LAX, then every client by name. */
@@ -206,22 +215,22 @@ export class ArtworkRegisterReviewService {
   }
 
   /**
-   * The All tab. With `withConsignor` (the reader can read consignor agreements) each row says
-   * who consigned the work and the Consignor filter's choices come with the page; without it
-   * neither is sent, and the route refuses a consignor filter.
+   * The All tab. With `consignorScope` (the reader can read consignor agreements) each original
+   * says who consigned it, and the Consignor filter's choices come with the page, for the clients
+   * in that scope only; without it neither is sent, and the route refuses a consignor filter.
    */
   async listAll(
     query: AdminRegisterQueueQuery,
-    options: { withConsignor?: boolean } = {},
+    options: { consignorScope?: RegisterConsignorScope } = {},
   ): Promise<AdminRegisterAllList> {
     const { page, limit, offset } = pageOf(query);
-    const withConsignor = options.withConsignor === true;
+    const scope = options.consignorScope;
     const [all, artists, placeCounts, counts, consignorCounts] = await Promise.all([
-      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort),
+      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort, scope),
       this.deps.overview.listArtists(),
       this.deps.overview.countPlaces(query.artist),
       this.counts(),
-      withConsignor ? this.deps.overview.countConsignors() : Promise.resolve(null),
+      scope ? this.deps.overview.countConsignors(scope) : Promise.resolve(null),
     ]);
     return {
       items: all.rows.map((row) => ({
@@ -229,7 +238,7 @@ export class ArtworkRegisterReviewService {
         whereItIs: placeOf(row),
         location: row.location ? presentLocationRef(row.location) : null,
         zohoPrice: row.entry.zohoPrice ?? null,
-        ...(withConsignor ? { consignor: row.consignor } : {}),
+        ...(scope ? consignorField(row.consignor) : {}),
       })),
       ...(consignorCounts ? { consignors: consignorChoices(consignorCounts) } : {}),
       artists,

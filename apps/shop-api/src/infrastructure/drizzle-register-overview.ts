@@ -6,6 +6,7 @@ import {
   artworkLocationMove,
   artworkRegister as register,
   shopArtwork,
+  shopClientAssignment,
   shopParty,
 } from "@auction/db/schema";
 import {
@@ -14,11 +15,12 @@ import {
   REGISTER_LOCATION_NONE,
   REGISTER_PLACE_VALUES,
 } from "@auction/shop-contracts";
-import { type SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
+import { type SQL, and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type {
   ArtworkRegisterOverview,
   RegisterConsignorCounts,
+  RegisterConsignorScope,
   RegisterOverviewConsignor,
   RegisterOverviewFilter,
   RegisterOverviewSort,
@@ -78,20 +80,28 @@ function currentConsignorColumn(column: "id" | "consignor" | "party_id"): SQL {
 const currentLink = alias(artworkConsignorLink, "current_consignor_link");
 const consignorParty = alias(shopParty, "consignor_party");
 
-function consignorCondition(consignor: string): SQL {
-  if (consignor === REGISTER_CONSIGNOR_NONE) return sql`${currentConsignorColumn("id")} IS NULL`;
+/** Who consigned a work is recorded for originals; a print is LAX's own edition. */
+const ORIGINAL = eq(register.kind, "original");
+
+function consignorCondition(consignor: string): SQL | undefined {
+  if (consignor === REGISTER_CONSIGNOR_NONE)
+    return and(ORIGINAL, sql`${currentConsignorColumn("id")} IS NULL`);
   if (consignor === REGISTER_CONSIGNOR_LAX)
-    return sql`${currentConsignorColumn("consignor")} = 'lax'`;
-  return sql`${currentConsignorColumn("party_id")} = ${consignor}`;
+    return and(ORIGINAL, sql`${currentConsignorColumn("consignor")} = 'lax'`);
+  return and(ORIGINAL, sql`${currentConsignorColumn("party_id")} = ${consignor}`);
 }
 
 function consignorOf(row: {
+  kind: string;
   consignorKind: string | null;
   consignorPartyId: string | null;
   consignorName: string | null;
+  consignorInScope: boolean | null;
 }): RegisterOverviewConsignor | null {
+  if (row.kind !== "original") return { kind: "not_shown" };
   if (row.consignorKind === "lax") return { kind: "lax" };
   if (row.consignorKind === "client" && row.consignorPartyId) {
+    if (row.consignorInScope !== true) return { kind: "not_shown" };
     return {
       kind: "client",
       partyId: row.consignorPartyId,
@@ -136,8 +146,23 @@ export function createDrizzleRegisterOverviewReader(
   db: Database,
   toEntry: (row: typeof register.$inferSelect) => ArtworkRegisterEntry,
 ): ArtworkRegisterOverview {
+  /**
+   * Whether the current consignor's client is one the reader sees: every client, or the clients
+   * assigned to the broker, as on the Clients page.
+   */
+  function partyInScope(scope: RegisterConsignorScope | undefined): SQL {
+    if (!scope || scope.kind === "all") return sql`true`;
+    return inArray(
+      currentLink.partyId,
+      db
+        .select({ id: shopClientAssignment.clientPartyId })
+        .from(shopClientAssignment)
+        .where(eq(shopClientAssignment.brokerSubjectId, scope.brokerSubjectId)),
+    );
+  }
+
   return {
-    async listAll(filter, page, sort) {
+    async listAll(filter, page, sort, consignorScope) {
       const where = conditionOf(filter);
       const [rows, [counted]] = await Promise.all([
         db
@@ -150,6 +175,7 @@ export function createDrizzleRegisterOverviewReader(
             consignorKind: currentLink.consignor,
             consignorPartyId: currentLink.partyId,
             consignorName: consignorParty.displayName,
+            consignorInScope: sql<boolean | null>`${partyInScope(consignorScope)}`,
           })
           .from(register)
           .leftJoin(shopArtwork, LISTING_JOIN)
@@ -174,12 +200,12 @@ export function createDrizzleRegisterOverviewReader(
             row.locationId && row.locationName && row.locationStatus
               ? { id: row.locationId, name: row.locationName, status: row.locationStatus }
               : null,
-          consignor: consignorOf(row),
+          consignor: consignorOf({ ...row, kind: row.entry.kind }),
         })),
         total: counted?.total ?? 0,
       };
     },
-    async countConsignors() {
+    async countConsignors(consignorScope) {
       const rows = await db
         .select({
           consignorKind: currentLink.consignor,
@@ -190,13 +216,15 @@ export function createDrizzleRegisterOverviewReader(
         .from(register)
         .leftJoin(currentLink, eq(currentLink.id, currentConsignorColumn("id")))
         .leftJoin(consignorParty, eq(consignorParty.id, currentLink.partyId))
+        // Originals only; a client outside the reader's scope is left out, not counted elsewhere.
+        .where(and(ORIGINAL, or(isNull(currentLink.partyId), partyInScope(consignorScope))))
         .groupBy(currentLink.consignor, currentLink.partyId, consignorParty.displayName);
       const counts: RegisterConsignorCounts = { none: 0, lax: 0, clients: [] };
       for (const row of rows) {
-        const consignor = consignorOf(row);
+        const consignor = consignorOf({ ...row, kind: "original", consignorInScope: true });
         if (consignor === null) counts.none += row.count;
         else if (consignor.kind === "lax") counts.lax += row.count;
-        else
+        else if (consignor.kind === "client")
           counts.clients.push({
             partyId: consignor.partyId,
             displayName: consignor.displayName,

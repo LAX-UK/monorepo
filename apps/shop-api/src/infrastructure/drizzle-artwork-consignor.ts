@@ -15,13 +15,13 @@ export function createDrizzleArtworkConsignorReads(
 ): ArtworkConsignorReads {
   const store = storeOn(db);
   return {
-    async artworkExists(registerId) {
+    async artworkKind(registerId) {
       const [row] = await db
-        .select({ id: artworkRegister.id })
+        .select({ kind: artworkRegister.kind })
         .from(artworkRegister)
         .where(eq(artworkRegister.id, registerId))
         .limit(1);
-      return row !== undefined;
+      return row?.kind ?? null;
     },
     listChanges: (registerId, limit) => store.listConsignorChanges(registerId, limit),
     async partyNames(partyIds) {
@@ -34,7 +34,10 @@ export function createDrizzleArtworkConsignorReads(
     },
     async currentAgreements(partyId) {
       const agreements = await store.listAgreements(partyId);
-      return agreements.filter((agreement) => agreement.status === "current");
+      return agreements.filter(
+        (agreement): agreement is typeof agreement & { status: "current" } =>
+          agreement.status === "current",
+      );
     },
   };
 }

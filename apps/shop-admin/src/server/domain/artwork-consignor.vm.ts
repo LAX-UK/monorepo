@@ -1,7 +1,7 @@
 import type {
   AdminArtworkConsignor,
+  AdminArtworkConsignorAgreement,
   AdminConsignor,
-  AdminConsignorAgreement,
   AdminConsignorChange,
 } from "@auction/shop-contracts";
 import type { TimelineEvent } from "@auction/staff-ui";
@@ -47,7 +47,7 @@ export type ConsignorAgreementLine =
   /** The client's leading agreement: in force first, then not started, then expired. */
   | {
       kind: "agreement";
-      agreement: AdminConsignorAgreement;
+      agreement: AdminArtworkConsignorAgreement;
       badge: { label: string; tone: "success" | "info" | "neutral" | "warning" };
       places: string;
       dates: string;
@@ -63,10 +63,8 @@ export function consignorAgreementLine(
   const consignor = view.current?.consignor ?? null;
   if (consignor === null) return { kind: "not_set" };
   if (consignor.kind === "lax") return { kind: "lax" };
-  const [lead, ...rest] = sortAgreements(
-    view.agreements.filter((agreement) => agreement.status === "current"),
-    today,
-  );
+  // shop-api sends the current agreements only: retired and replaced ones cover nothing.
+  const [lead, ...rest] = sortAgreements(view.agreements, today);
   if (!lead) return { kind: "none" };
   return {
     kind: "agreement",

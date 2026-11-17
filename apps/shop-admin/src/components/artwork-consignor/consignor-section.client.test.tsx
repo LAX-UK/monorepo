@@ -2,7 +2,7 @@
 import { laxStaffAccess } from "@/server/domain/lax-staff-access";
 import type {
   AdminArtworkConsignor,
-  AdminConsignorAgreement,
+  AdminArtworkConsignorAgreement,
   AdminConsignorChange,
 } from "@auction/shop-contracts";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
@@ -55,24 +55,16 @@ function change(patch: Partial<AdminConsignorChange> = {}): AdminConsignorChange
   };
 }
 
-function agreement(patch: Partial<AdminConsignorAgreement> = {}): AdminConsignorAgreement {
+function agreement(
+  patch: Partial<AdminArtworkConsignorAgreement> = {},
+): AdminArtworkConsignorAgreement {
   return {
     id: "11111111-1111-4111-8111-111111111111",
-    agreementId: "11111111-1111-4111-8111-111111111111",
-    version: 1,
-    partyId: PARTY,
     places: ["lax_bid", "lax_art"],
     startsOn: "2026-03-03",
     endsOn: "2027-03-02",
-    lowestPricePence: null,
-    commissionBasisPoints: null,
-    signedFileKey: `private/consignor-agreements/${PARTY}/a.pdf`,
-    note: null,
     status: "current",
-    replacesId: null,
     createdAt: "2026-03-03T10:00:00.000Z",
-    replacedAt: null,
-    retiredAt: null,
     ...patch,
   };
 }
