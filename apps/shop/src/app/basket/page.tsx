@@ -2,6 +2,7 @@ import { BasketLinesClient } from "@/components/basket/basket-lines.client";
 import { ShopBasketCancelNotice } from "@/components/basket/shop-basket-cancel-notice.client";
 import { ShopBasketResumePayment } from "@/components/basket/shop-basket-resume-payment.client";
 import { CatalogueGrid } from "@/components/catalogue-grid";
+import { ExpressCheckoutRow } from "@/components/checkout/express-checkout-row.client";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopAuthLink } from "@/components/shop-auth-link";
 import { ShopCommerceButton, shopButtonClassName } from "@/components/shop-commerce-button";
@@ -20,6 +21,7 @@ import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication
 import { fetchPublicArtworks } from "@/lib/shop-api.server";
 import { fetchShopBasket, listShopOrders } from "@/lib/shop-commerce.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
+import { shopExpressCheckoutPublishableKey } from "@/lib/shop-runtime-flags";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
@@ -92,12 +94,27 @@ export default async function BasketPage() {
   const known = basketResult.status === "ok" || basketResult.status === "empty";
   const suggestions = known && lines.length === 0 ? await loadSuggestedEditions() : [];
 
+  // GAP-49: the wallet row under "Checkout", for anyone who could check out now.
+  const expressKey = shopExpressCheckoutPublishableKey();
+  const expressBasketId = basketResult.status === "ok" ? basketResult.data.basketId : null;
+  const expressCheckout =
+    expressKey &&
+    expressBasketId &&
+    (viewer.kind === "guest" || (viewer.kind === "authenticated" && viewer.emailVerified !== false))
+      ? {
+          publishableKey: expressKey,
+          audience: viewer.kind === "guest" ? ("guest" as const) : ("account" as const),
+          basketId: expressBasketId,
+        }
+      : null;
+
   const checkoutAction =
     basketCheckoutEntry(viewer.kind) === "checkout" ? (
       <>
         <ShopCommerceButton href="/checkout" className="w-full">
           Checkout
         </ShopCommerceButton>
+        <ExpressCheckoutRow config={expressCheckout} placement="basket" />
         {viewer.kind === "guest" ? (
           <p className="shop-basket__summary-note">
             Sign in for saved addresses. You can also check out as a guest.

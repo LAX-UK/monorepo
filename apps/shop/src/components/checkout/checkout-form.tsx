@@ -12,6 +12,10 @@ import {
   CheckoutSummaryDisclosure,
 } from "@/components/checkout/checkout-order-summary";
 import { DeliveryQuoteSent } from "@/components/checkout/delivery-quote-sent";
+import {
+  type ExpressCheckoutConfig,
+  ExpressCheckoutRow,
+} from "@/components/checkout/express-checkout-row.client";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import {
   type CheckoutDeliveryChoice,
@@ -53,6 +57,8 @@ type Props = {
   manageAddressesHref: string | null;
   /** Checkout without an account, after the email step. */
   guest?: GuestCheckoutBuyer;
+  /** GAP-49 wallet row; null or absent while express checkout is off. */
+  expressCheckout?: ExpressCheckoutConfig | null;
 };
 
 /** The guest the email step let through, and the ways back to that step. */
@@ -108,6 +114,7 @@ export function CheckoutForm({
   showTermsNotice,
   manageAddressesHref,
   guest,
+  expressCheckout,
 }: Props) {
   const initialAddress = initialCheckoutAddress(savedAddresses);
   const initialPhone =
@@ -302,6 +309,13 @@ export function CheckoutForm({
       <CheckoutSummaryDisclosure basket={basket} fulfilment={details.choice} />
       <form id={FORM_ID} className="shop-checkout__form" noValidate onSubmit={onSubmit}>
         <MarketingFormErrorSummary errors={summaryErrors} focusKey={failedSubmits} />
+        {/* Kept mounted but hidden on the quote paths: nothing is paid there yet. */}
+        <ExpressCheckoutRow
+          config={expressCheckout ?? null}
+          placement="details"
+          hidden={quoting}
+          marketingConsent={guest?.marketingConsent ?? false}
+        />
         {guest ? (
           <section className="shop-checkout__section" aria-labelledby="checkout-you-heading">
             <div className="shop-checkout__section-head">

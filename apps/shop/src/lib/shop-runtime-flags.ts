@@ -20,3 +20,17 @@ export function isShopFramingEnabled(): boolean {
 export function isShopExpressCheckoutEnabled(): boolean {
   return loadShopEnv().SHOP_EXPRESS_CHECKOUT;
 }
+
+/** A Stripe publishable key as Stripe issues it; anything else leaves the wallet row off. */
+const PUBLISHABLE_KEY_PATTERN = /^pk_(test|live)_[A-Za-z0-9]+$/;
+
+/**
+ * The publishable key for the wallet row, or null when express checkout is off or no valid key is
+ * set. Pages show the row only when this is a key.
+ */
+export function shopExpressCheckoutPublishableKey(): string | null {
+  const env = loadShopEnv();
+  if (!env.SHOP_EXPRESS_CHECKOUT) return null;
+  const key = env.SHOP_STRIPE_PUBLISHABLE_KEY;
+  return key && PUBLISHABLE_KEY_PATTERN.test(key) ? key : null;
+}
