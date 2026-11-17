@@ -23,15 +23,13 @@ import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
  * all demo data.
  *
  * Run: DATABASE_URL=... pnpm --filter @auction/db db:seed:dev
- * Same password for every seeded account (email/password sign-in).
- * Admin login: admin@lax.bid / Password123!
+ * Every seeded account shares one password (email/password sign-in): on a local database the
+ * local password (LOCAL_SEED_PASSWORD in ../shared/seed-target-guard.ts); on any other target the
+ * one in SEED_ACCOUNT_PASSWORD, which the seed then requires. See ../runners/dev-runner.ts.
  */
 import { seedLotEstimate } from "./seed-lot-estimate.js";
 
 const { Pool } = pg;
-
-/** One password for all seeded accounts — safe for local/staging only. */
-const SEED_PASSWORD = "Password123!";
 
 // ─── Seeded user IDs (stable UUIDs — required where APIs/validators expect uuid) ─
 const U = {
@@ -498,7 +496,13 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(user);
 }
 
-export async function runLegacyDemoSeed() {
+/** Run through `runDevSeed`, which checks the target and picks the password first. */
+export async function runLegacyDemoSeed(options: {
+  /** From `seedAccountPassword`. */
+  password: string;
+  /** From `assertSeedTarget`: only a hermetic database is cleared without the empty-database check. */
+  hermetic: boolean;
+}) {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is required");
@@ -509,11 +513,7 @@ export async function runLegacyDemoSeed() {
     options: "-c lock_timeout=5s -c statement_timeout=120s",
   });
   const db = drizzle(pool, { schema });
-  const appEnv = process.env.APP_ENV;
-  await assertDevSeedMayRunDestructiveClear(db, {
-    databaseUrl: url,
-    ...(appEnv ? { appEnv } : {}),
-  });
+  await assertDevSeedMayRunDestructiveClear(db, { hermetic: options.hermetic });
   const now = DEMO_SEED_NOW.getTime();
   const day = 86_400_000;
   const hour = 3_600_000;
@@ -567,7 +567,7 @@ export async function runLegacyDemoSeed() {
 
   await clearAll(db);
 
-  const passwordHash = await hashPassword(SEED_PASSWORD);
+  const passwordHash = await hashPassword(options.password);
 
   const credentialAccount = (userId: string) => ({
     id: randomUUID(),
@@ -5046,7 +5046,9 @@ export async function runLegacyDemoSeed() {
   console.log("");
   console.log("Seed complete — comprehensive LAX demo dataset loaded.");
   console.log("");
-  console.log("  Every seeded login shares one password: SEED_PASSWORD in this file.");
+  console.log(
+    "  Every seeded login shares one password: the local password on a local database, SEED_ACCOUNT_PASSWORD elsewhere.",
+  );
   console.log("");
   console.log("  ┌─────────────────────────────────────────────────────────────────────────┐");
   console.log("  │  Login accounts                                                         │");

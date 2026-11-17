@@ -1,47 +1,20 @@
 #!/usr/bin/env node
 /**
- * Grants one LAX Admin staff role to each existing dev-seed account (packages/db
- * src/seed/dev/legacy-demo-seed.ts), so every role can be signed in locally without inventing
- * identities. Re-running converges on the same roles.
+ * Grants one LAX Admin staff role to each existing dev-seed account
+ * (infrastructure/seed/local-admin-staff-seed.ts).
  *
- * Local only: refuses a non-local database or NODE_ENV=production. Never creates users; it fails
- * if a dev account is missing (run `pnpm --filter @auction/db db:seed:dev` first).
+ * Local only: refuses a non-local address, NODE_ENV=production, and any Shop database that is not
+ * marked "local". Never creates users; it fails if a dev account is missing (run `pnpm db:seed`
+ * first).
  */
-import { closeDb, createDb } from "@auction/db";
-import type { ShopStaffRole } from "@auction/shop-domain";
+import { closeDb, createDb, seedTargetEnvFromProcess } from "@auction/db";
 import pg from "pg";
 import { loadShopApiEnv } from "../env.js";
-import { grantShopStaffRole } from "../infrastructure/grant-staff-role.js";
-
-/**
- * broker has no dedicated dev account; gallery-admin is the closest fit because brokers act for
- * gallery-side clients.
- */
-export const LOCAL_ADMIN_STAFF: ReadonlyArray<{ role: ShopStaffRole; email: string }> = [
-  { role: "shop_admin", email: "admin@lax.bid" },
-  { role: "catalogue_editor", email: "staff-catalogue@lax.bid" },
-  // Editorial work moved to its own role; the catalogue account keeps it.
-  { role: "editor", email: "staff-catalogue@lax.bid" },
-  { role: "operations", email: "staff-operations@lax.bid" },
-  { role: "finance", email: "accountant@lax.bid" },
-  { role: "account_manager", email: "staff-advisor@lax.bid" },
-  { role: "broker", email: "gallery-admin@lax.bid" },
-];
-
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
-const OPERATOR = "seed:local-admin-staff";
-
-function assertLocalTarget(urls: readonly string[]): void {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("Refusing to seed local staff: NODE_ENV is production");
-  }
-  for (const url of urls) {
-    const host = new URL(url).hostname;
-    if (!LOCAL_HOSTS.has(host)) {
-      throw new Error(`Refusing to seed local staff: database host "${host}" is not local`);
-    }
-  }
-}
+import {
+  LOCAL_ADMIN_STAFF,
+  assertLocalAddresses,
+  grantLocalAdminStaff,
+} from "../infrastructure/seed/local-admin-staff-seed.js";
 
 async function resolveSubjects(identityUrl: string): Promise<Map<string, string>> {
   const client = new pg.Client({ connectionString: identityUrl });
@@ -60,7 +33,8 @@ async function resolveSubjects(identityUrl: string): Promise<Map<string, string>
 const env = loadShopApiEnv();
 const identityUrl = process.env.DATABASE_URL_AUTH?.trim() || process.env.DATABASE_URL?.trim();
 if (!identityUrl) throw new Error("DATABASE_URL_AUTH or DATABASE_URL is required");
-assertLocalTarget([identityUrl, env.DATABASE_URL_SHOP]);
+const seedEnv = { ...seedTargetEnvFromProcess(), databaseUrl: env.DATABASE_URL_SHOP };
+assertLocalAddresses([identityUrl, env.DATABASE_URL_SHOP], seedEnv);
 
 const subjects = await resolveSubjects(identityUrl);
 const missing = LOCAL_ADMIN_STAFF.filter((entry) => !subjects.has(entry.email));
@@ -72,14 +46,7 @@ if (missing.length > 0) {
 
 const db = createDb(env.DATABASE_URL_SHOP);
 try {
-  for (const { role, email } of LOCAL_ADMIN_STAFF) {
-    await grantShopStaffRole(db, {
-      subject: subjects.get(email) as string,
-      role,
-      operatorSubjectId: OPERATOR,
-    });
-    console.log(`${role.padEnd(17)} ${email}`);
-  }
+  await grantLocalAdminStaff(db, seedEnv, subjects);
 } finally {
   await closeDb(db);
 }

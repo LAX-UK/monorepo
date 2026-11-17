@@ -32,9 +32,11 @@ Legend:
 
 ## Wave 0 baseline (2026-07-24)
 
-Seed fixtures now include: open dispute (`dp_seed_amber_open`), closed dispute (`dp_seed_golden_closed`), AML pending/triaged, SoF pending case with two submitted documents, manual-review payment, payout failure/settlement/clawback, stable invitation id for preview drawers, buyer E2E defaults (`estate-owner@lax.bid` / `Password123!`).
+Seed fixtures now include: open dispute (`dp_seed_amber_open`), closed dispute (`dp_seed_golden_closed`), AML pending/triaged, SoF pending case with two submitted documents, manual-review payment, payout failure/settlement/clawback, stable invitation id for preview drawers, buyer E2E defaults (`estate-owner@lax.bid` with the local seed password, `LOCAL_SEED_PASSWORD` in `packages/db/src/seed/shared/seed-target-guard.ts`; a local database only, other databases use `SEED_ACCOUNT_PASSWORD`).
 
 Visual PNG baselines: **414 committed** (Wave 0 lists/forms + Wave 1 detail/tab); **12 PNGs blocked** (invitation drawer ×6, disputes drawer ×6). Regenerate with Node 22:
+
+Against a local stack seeded with `pnpm db:seed` (the password below is the local seed password and works only there):
 
 ```bash
 pnpm --filter @auction/web build && PORT=3000 pnpm --filter @auction/web start &

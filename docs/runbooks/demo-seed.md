@@ -15,8 +15,27 @@ The seeds refuse a database unless both are true:
    that names this database. Production never has a row. A copy restored under another name is
    refused, because its row names the database it was written in.
 
-The Bid seed (`db:seed:demo-full`), the Shop seed (`seed:demo-full`) and the staff queue seeders
-check the mark before they write anything.
+Every seed that writes accounts, passwords or staff grants checks the mark before it writes
+anything, through one guard (`packages/db/src/seed/shared/seed-target-guard.ts`): the dev seed
+(`db:seed:dev`, also run by `terraform-test-up` on an empty test database), `db:seed:demo-full`,
+`db:seed:demo-topup`, `db:seed:check-accounts`, the Shop `seed:demo-full`,
+`seed:acceptance-portal`, `seed:acceptance-staff-operations` and `seed:local-admin-staff`, and the
+staff queue seeders. None of them has an override flag.
+
+No seed writes the mark itself, and an address alone never counts: a loopback address can be a
+tunnel or port-forward to a remote database. An unmarked database is refused, whatever its address.
+
+### Seeded passwords and staff two-factor
+
+- **Hermetic** (marked `local`, at a loopback address or the Compose `postgres`/`db` service, with
+  no `APP_ENV=test`/`production`): seeded sign-ins use the local password (`LOCAL_SEED_PASSWORD`)
+  and the dev seed makes staff two-factor optional.
+- **Anything else** (including test, and a test database reached through a tunnel): the seeds need
+  the `SEED_ACCOUNT_PASSWORD` secret (at least 16 characters, not the local password) for every
+  sign-in they create, and the dev seed leaves the staff two-factor policy as it is.
+
+The seed functions take the password from their caller; none of them defaults to the local
+password.
 
 ## Mark the test database (once)
 
@@ -28,7 +47,7 @@ DATABASE_URL=<test owner address> pnpm --filter @auction/db db:seed:mark-demo-ta
 ```
 
 The script applies the production address checks and leaves an existing mark alone. Check it with
-`select * from demo_seed_target;`. For a local database use `local` instead of `test`.
+`select * from demo_seed_target;`.
 
 Last resort only, if the script cannot be run: connect as the owner and insert the row by hand. This
 skips the address checks, so confirm the address is the test database first.
@@ -40,18 +59,34 @@ values ('test', current_database(), '<operator name>');
 
 ### How each environment gets its mark
 
-- **CI** (`account-e2e-pr.yml`, a throwaway database): the workflow runs
-  `pnpm --filter @auction/db db:seed:mark-demo-target test ci` after `db:migrate` and before
-  `db:seed:demo-full`. The script uses the owner address, applies the same production address checks
-  as the seeds, and leaves an existing mark alone. Any new workflow that runs a demo seed on a fresh
-  database must run it too; the guard itself is never relaxed.
-- **Local**: run the same command with `local`.
+- **Local**: `pnpm db:seed` (`db:seed:local`) runs `mark-demo-target local` and then the dev seed;
+  `pnpm db:seed:docker` does the same in Compose. `local` is written only at a local address with
+  no `APP_ENV=test`/`production`, and only on a database with no users yet. A local database that
+  already has users and no mark (one seeded before the mark existed) is refused; if it is yours, mark
+  it once with
+  `pnpm --filter @auction/db db:seed:mark-demo-target local <your name> --existing-local-database`.
+- **CI** (throwaway `localhost` databases in `e2e-pr`, `art-e2e-pr`, `account-e2e-pr`,
+  `e2e-stabilization`, `visual-baselines` and the identity preflight): the workflows run
+  `db:seed:local` after `db:migrate`, so the fresh database is marked `local` before any seed. Any
+  new workflow that seeds a fresh database must do the same; the guard itself is never relaxed.
 - **Test** (the shared test database, seeded by **Worker task (test)**): the mark is not added by
   the workflow. The infrastructure owner applies migration 0398 with the test infra apply and then
   marks the database once as above (`'test'`, owner address). Until then the `demo-full` task is
   refused. The Shop seed reads the same mark (`shop_app` has SELECT only), so one mark covers both.
 
 If 0398 is rolled back the mark goes with it; insert it again after the migration is reapplied.
+
+## Live keys outside production
+
+The API, Shop API and worker accept live Stripe keys, and the worker acts on a production Zoho CRM
+org, only when `APP_ENV` is exactly `production`. Every other value, and no value, is treated as
+"not production": every Stripe key must be a test key (`sk_test_`, `pk_test_`, `rk_test_`), the Shop
+Connect platform must be `bid_sandbox`, and any live or canary Zoho CRM mode (and, outside production,
+live artwork sync or quality-check reads) needs `ZOHO_CRM_EXPECTED_ORG_TYPE=sandbox`. The rule fails
+closed on purpose: a deployed test host with `APP_ENV` unset or mis-set refuses to start with live
+keys instead of passing for production. The Shop API also refuses an `APP_ENV` that is set but is
+not `production`, `test` or `development` (the API and worker already did). Production must
+therefore set `APP_ENV=production` on the API, Shop API and worker.
 
 ## What staff see after a run
 

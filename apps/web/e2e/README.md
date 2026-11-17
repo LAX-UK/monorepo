@@ -4,7 +4,9 @@ Browser tests prove critical cross-stack journeys. Unit and component tests own
 field behavior, validation, and presentation details.
 
 The stack must be seeded and available at `http://localhost:3000` (web) and
-`http://localhost:3001` (API). Use **Node.js 22** (`nvm use` reads `.nvmrc`;
+`http://localhost:3001` (API). The passwords below are the local seed password, which seeded
+accounts get only on a local database marked `local` (`pnpm db:seed`). On any other database they
+get the `SEED_ACCOUNT_PASSWORD` secret instead. Use **Node.js 22** (`nvm use` reads `.nvmrc`;
 Playwright hangs on Node 25+ in local runs).
 
 ```bash
@@ -111,7 +113,9 @@ Run checks as the check accounts, not as demo or owner accounts. Add them to a t
 DATABASE_URL=... pnpm --filter @auction/db db:seed:check-accounts
 ```
 
-It is additive, so it does not change what the demo data shows. All share the seeded password.
+It is additive, so it does not change what the demo data shows. All share one password: on a
+test database the `SEED_ACCOUNT_PASSWORD` secret (the command needs it), on a local database the
+local seed password.
 
 | Email | Use |
 | --- | --- |
