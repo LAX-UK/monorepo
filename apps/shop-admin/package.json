@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
     "test:e2e:local-setup": "playwright test --config playwright.local.config.ts",
-    "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test e2e/axe.spec.ts e2e/staff-roles.spec.ts e2e/zoho-mirror-badge.spec.ts e2e/zoho-mirror-orders-column.spec.ts",
+    "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test e2e/axe.spec.ts e2e/staff-roles.spec.ts e2e/zoho-mirror-badge.spec.ts e2e/zoho-mirror-orders-column.spec.ts e2e/stock-location.spec.ts e2e/release-alert-sends.spec.ts",
     "test:e2e:visual": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test e2e/pages-visual.spec.ts",
     "test:e2e:motion": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test e2e/overlay-motion.spec.ts e2e/panel-motion.spec.ts --workers=1",
     "test:e2e:visual-update": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test e2e/pages-visual.spec.ts --update-snapshots --workers=1"

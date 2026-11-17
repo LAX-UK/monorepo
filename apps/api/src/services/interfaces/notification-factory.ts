@@ -141,6 +141,13 @@ export interface INotificationFactory {
     input: { amount: string; currency: string; legalEntityId: string },
   ): CreateNotificationRow;
 
+  /** The team cannot deliver a won lot where the buyer asked, with the reason they gave. */
+  createDeliveryQuoteDeclined(
+    lot: Lot,
+    userId: string,
+    input: { reason: string; legalEntityId: string },
+  ): CreateNotificationRow;
+
   createLotReadyForCollection(
     lot: Lot,
     buyerId: string,

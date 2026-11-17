@@ -772,6 +772,7 @@ export {
   type PurchaseProblemTransitionRefusal,
 } from "./purchase-problem.js";
 export {
+  DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH,
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
   deliveryQuoteDecline,
@@ -1153,6 +1154,16 @@ export {
   type BiddingLimitRefusalNotice,
   type MoneyWords,
 } from "./bidding-limit-refusal.js";
+export {
+  OPERATOR_CAP_ERROR_CODES,
+  SALE_REGISTRATION_LIMIT_ERROR_CODE,
+  SHARED_STAFF_BID_LIMIT_KINDS,
+  STAFF_BID_LIMIT_KINDS,
+  staffBidLimitRefusalFrom,
+  type SharedStaffBidLimitKind,
+  type StaffBidLimitKind,
+  type StaffBidLimitRefusal,
+} from "./staff-bid-limit-refusal.js";
 export {
   WATCHED_LOT_REMINDER_KINDS,
   WATCHED_LOT_REMINDER_NOTE_MAX,

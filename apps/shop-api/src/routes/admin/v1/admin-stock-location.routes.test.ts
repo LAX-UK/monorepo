@@ -10,6 +10,7 @@ vi.mock("@auction/auth/token-verifier", () => ({
 }));
 
 import { createShopApiApp } from "../../../app.js";
+import { FieldValidationError } from "../../../errors/field-validation-error.js";
 import { createMinimalShopApiTestDeps } from "../../../test-app-deps.js";
 
 const TOKEN = "admin-token-placeholder-minimum-length";
@@ -33,6 +34,7 @@ const location = {
   name: "Store room",
   note: null,
   status: "active",
+  label: "Store room",
   version: 1,
   createdAt: "2026-11-17T09:00:00.000Z",
   updatedAt: "2026-11-17T09:00:00.000Z",
@@ -52,6 +54,7 @@ const artworkLocation = {
     location: { id: LOCATION_ID, name: "Store room", status: "active", label: "Store room" },
     movedAt: "2026-11-17T09:00:00.000Z",
     movedBy: "staff:someone",
+    movedByName: "Ana Ruiz",
   },
   moves: [],
   moreMoves: false,
@@ -312,6 +315,42 @@ describe("move requests", () => {
     const { response, stockLocations } = await move(payload);
     expect(response.statusCode).toBe(400);
     expect(stockLocations.moveArtworks).not.toHaveBeenCalled();
+  });
+
+  it("refuses more ids than the route's body schema allows, even one artwork repeated", async () => {
+    // The batch rule counts a repeat once, so only the body schema refuses this.
+    const { response, stockLocations } = await move({
+      registerIds: Array(401).fill(REGISTER_ID),
+      locationId: LOCATION_ID,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.VALIDATION });
+    expect(stockLocations.moveArtworks).not.toHaveBeenCalled();
+  });
+
+  it("passes the service's field issues through in the 400 body", async () => {
+    const { app, stockLocations } = await buildApp("shop_admin");
+    vi.mocked(stockLocations.addLocation).mockRejectedValue(
+      new FieldValidationError([
+        { field: "name", message: "Give the location a name." },
+        { field: "note", message: "Keep the note to 200 characters or fewer." },
+      ]),
+    );
+    const response = await app.inject({
+      method: "POST",
+      url: "/admin/v1/artwork-locations",
+      headers,
+      payload: { name: " ", note: "x".repeat(201) },
+    });
+    await app.close();
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      code: SHOP_API_ERROR_CODES.VALIDATION,
+      issues: [
+        { field: "name", message: "Give the location a name." },
+        { field: "note", message: "Keep the note to 200 characters or fewer." },
+      ],
+    });
   });
 
   it("needs an Idempotency-Key, as other LAX Admin writes do", async () => {

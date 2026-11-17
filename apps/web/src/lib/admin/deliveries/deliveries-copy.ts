@@ -4,6 +4,7 @@ import type { DeliveryStatus } from "@auction/domain";
 export type DeliveryBadgeKey =
   | Exclude<DeliveryStatus, "closed">
   | "withdrawn"
+  | "declined"
   | "cancelled"
   | "collected"
   | "awaiting_payment";
@@ -47,6 +48,7 @@ export const DELIVERIES_COPY = {
     on_the_way: "On the way",
     delivered: "Delivered",
     withdrawn: "Withdrawn by buyer",
+    declined: "Declined by LAX",
     cancelled: "Cancelled",
     collected: "Collected in person",
     awaiting_payment: "Awaiting payment",
@@ -86,6 +88,7 @@ export const DELIVERIES_COPY = {
     on_the_way: (relative: string) => `Dispatched ${relative}`,
     delivered: (relative: string) => `Delivered ${relative}`,
     withdrawn: (relative: string) => `Withdrawn ${relative}`,
+    declined: (relative: string) => `Declined ${relative}`,
     cancelled: (relative: string) => `Cancelled ${relative}`,
     collected: (relative: string) => `Collected ${relative}`,
   } satisfies Record<DeliverySinceKey, (relative: string) => string>,
@@ -100,6 +103,7 @@ export const DELIVERIES_COPY = {
     on_the_way: "Dispatched",
     delivered: "Delivered",
     withdrawn: "Withdrawn",
+    declined: "Declined",
     cancelled: "Cancelled",
     collected: "Collected",
   } satisfies Record<DeliverySinceKey, string>,
@@ -177,6 +181,8 @@ export const DELIVERIES_COPY = {
       note: "Note to the buyer",
       quoted: "Quoted",
       none: "Not priced yet.",
+      /** A declined request: what the buyer was told. */
+      declineReason: "Reason given to the buyer",
     },
     delivery: {
       title: "Delivery",
@@ -216,10 +222,44 @@ export const DELIVERIES_COPY = {
     quotedOf: (price: string) => `LAX sent a quote of ${price}`,
     accepted: "Buyer accepted the quote",
     withdrawn: "Buyer withdrew the request",
+    /** A `withdrawn` step the team took ("Can't deliver", D8). */
+    declined: "Declined by LAX",
     dispatched: "Handed to the courier",
     delivered: "Delivered",
     collected: "Buyer collected it in person",
     cancelled: "Purchase cancelled",
   },
   actors: { buyer: "Buyer", staff: "LAX" },
+  /**
+   * "Can't deliver" (D5, D8): the footer action in Waiting for a price and Quote sent, and its
+   * dialog. The reason is emailed to the buyer as written.
+   */
+  decline: {
+    action: "Can't deliver",
+    title: (lot: string) => `Can't deliver ${lot}?`,
+    description:
+      "The buyer is emailed your reason and the request closes. They can still collect the lot, or ask for delivery to another address.",
+    reasonLabel: "Reason for the buyer",
+    reasonHint: (max: number) => `Sent to the buyer as you write it. Up to ${max} characters.`,
+    /** The API's own message for an empty reason. */
+    reasonMissing: "Tell the buyer why you can't deliver",
+    reasonTooLong: (max: number) => `Use ${max} characters or fewer`,
+    submit: "Decline and email the buyer",
+    /** Saved (D6): "Declined the delivery request for Lot 42 · Harbour at dusk". */
+    declinedToast: (lot: string) => `Declined the delivery request for ${lot}`,
+    cancel: "Cancel",
+    /** D6 stale state: the request moved on while the dialog was open. */
+    stale: {
+      title: "This request changed while you had it open.",
+      description: "Check it and try again. Nothing was sent to the buyer.",
+    },
+    failedTitle: "The request couldn't be declined",
+    errors: {
+      forbidden: "You don't have permission to decline delivery requests.",
+      notFound: "This lot no longer has a buyer. Nothing was sent.",
+      invalid: "Check the reason and try again.",
+      unavailable:
+        "The Bid API didn't answer. Nothing was sent to the buyer. Try again in a moment.",
+    },
+  },
 } as const;

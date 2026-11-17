@@ -27,7 +27,7 @@ import {
   formatStaffDateTime,
 } from "@auction/staff-ui";
 import Link from "next/link";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 const COPY = DELIVERIES_COPY.panel;
 
@@ -56,6 +56,8 @@ export function DeliveryPanel({
   missing = false,
   loadFailed = false,
   onRetry,
+  footerActions,
+  ownChange = null,
 }: {
   row: DeliveryView | null;
   canWork: boolean;
@@ -67,8 +69,18 @@ export function DeliveryPanel({
   loadFailed?: boolean;
   /** Reads the page again, for the load error's Try again. */
   onRetry?: () => void;
+  /**
+   * The footer's actions for this delivery (D5), e.g. "Can't deliver"; the caller decides who
+   * sees which. Nothing for read-only staff, so the panel has no footer.
+   */
+  footerActions?: ReactNode;
+  /**
+   * A state the person just moved this delivery to themselves (`lotId` and its
+   * `deliveryStateKey`), so their own change is not announced as the buyer's.
+   */
+  ownChange?: { lotId: string; key: string } | null;
 }) {
-  const changed = useChangedWhileOpen(row);
+  const changed = useChangedWhileOpen(row, ownChange);
   if (!row && loadFailed) {
     // D6 error: never "not found" for a read that failed; say so and offer Try again.
     return (
@@ -172,6 +184,7 @@ export function DeliveryPanel({
           }
         : {})}
       {...(canWork ? { fullPage: { href: lotFulfilmentHref(row.lotId), Link } } : {})}
+      {...(footerActions ? { footer: footerActions } : {})}
       summary={[
         { label: COPY.summary.destination, value: row.destination, copyValue: row.destination },
         { label: COPY.summary.size, value: row.lot.dimensions },
@@ -205,6 +218,11 @@ export function DeliveryPanel({
         ) : (
           <p className="text-staff-sm text-staff-muted">{COPY.quote.none}</p>
         )}
+        {row.quote.declineReason ? (
+          <KeyValueList
+            items={[{ label: COPY.quote.declineReason, value: row.quote.declineReason }]}
+          />
+        ) : null}
       </PanelSection>
       {booked ? (
         <PanelSection title={COPY.delivery.title}>
@@ -246,12 +264,17 @@ export function DeliveryPanel({
  * status or quote status (the buyer withdrew or accepted, or the courier took it). Opening
  * another lot starts again from what that one shows.
  */
-function useChangedWhileOpen(row: DeliveryView | null): boolean {
+function useChangedWhileOpen(
+  row: DeliveryView | null,
+  ownChange: { lotId: string; key: string } | null,
+): boolean {
   const current = row ? { lotId: row.lotId, key: deliveryStateKey(row) } : null;
   // What the panel first showed for the open lot, kept in state (never a ref written while
   // rendering) and reset when another lot opens, React's "adjust state when a prop changes".
   const [seen, setSeen] = useState(current);
-  if (current?.lotId !== seen?.lotId) {
+  const mine =
+    current !== null && current.lotId === ownChange?.lotId && current.key === ownChange.key;
+  if (current?.lotId !== seen?.lotId || (mine && seen?.key !== current.key)) {
     setSeen(current);
     return false;
   }

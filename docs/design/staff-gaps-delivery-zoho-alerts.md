@@ -1,10 +1,11 @@
-# Bid admin delivery screen, Zoho mirrored badge, release-alert log (proposed design, awaiting owner approval)
+# Bid admin delivery screen, Zoho mirrored badge, release-alert log (design; build status in each section)
 
 Register items GAP-47, GAP-18 and LA-3. The register is not in the repository, so each item is
 taken as worded in the request: "Bid admin has no delivery screen", "'Mirrored to Zoho' badge in
 LAX Admin" and "release-alert send log". This note proposes a recommended option for each so the
-owner can approve or change it before anything is built. Nothing here is built yet. There is no
-code and no migration in this change.
+owner can approve or change it before anything is built. It was written before any of it was
+built; where a part has since been built, its section says so and records what changed in the
+build (for LA-3, "As built" at the end of section 3).
 
 Every staff screen below uses the staff kit (`@auction/staff-ui`) and is audited against
 `docs/design/staff-design-standard.md` (rule IDs such as `TBL-11` refer to it). All copy is plain
@@ -150,7 +151,7 @@ audit row and needs no step-up beyond what that list already applies.
 | List quotes by view, with search, filters, paging | No | `GET /admin/deliveries?view=waiting\|quoted\|to_dispatch\|on_the_way\|delivered\|closed&q=&saleId=&country=&cursor=` returning lot, sale, buyer, destination, quote, fulfilment summary. Read model joins `delivery_quote` and `lot_fulfilment`; no new table. |
 | Nav count | No | `GET /admin/deliveries/summary` → `{waitingCount}`, added to the existing nav counts. |
 | One delivery for the panel | Partly (`GET /admin/lot-fulfilment/:lotId`) | Extend it, or add `GET /admin/deliveries/:lotId`, with the quote and its history. |
-| Staff decline | No (Shop has `deliveryQuoteDecline`) | `POST /admin/deliveries/:lotId/decline {reason}` and a staff step in the Bid table of moves (D8). |
+| Staff decline | No (Shop has `deliveryQuoteDecline`) | `POST /admin/deliveries/:lotId/decline {quoteId, expectedStatus, reason}` and a staff step in the Bid table of moves (D8). The quote id and status name the request staff saw, so a buyer who withdrew and asked again, or a colleague who priced it, gets `quote_changed` (D6) rather than a reason meant for another request. |
 | History | Columns on the quote only (requested/quoted/decided at and by) | Enough for the first release; a full event history would read the domain events the service already raises, if any, else show the three stamps. |
 
 **D8. Staff can turn a request down ("Can't deliver").** *Recommended*, matching LAX Admin. Today
@@ -384,6 +385,35 @@ the toast. Captured with Playwright against the shop-admin visual fixtures
 - The view tab carries no count (it is history, not a queue, `NAV-3`).
 - Light and dark from kit tokens; at 375 px the table stacks to "Edition · status · Emailed 398 of
   412".
+
+### As built (PR 1 #1519, PR 2 #1529)
+
+L1, L2, L3 and L5 are built, and the L6 screenshots are taken. L4 is still a follow-up.
+
+- **L1 / Q8.** A **Release alerts** view tab on Leads, after the lead tabs, at
+  `/leads/release-alerts`, shown to roles with `lead.read`. No count on it (`NAV-3`).
+- **L2.** The columns and badges are as above, with one more status, **Counts not kept** (neutral
+  ✓), for releases from before the counts were kept (L3's alternative, used only for those rows).
+  Counts are right-aligned (`TBL-13`). At 375 px a row reads "Edition · status · Emailed 398 of
+  412"; a queued release, whose people are not worked out yet, shows only its badge rather than
+  "Emailed 0 of 0".
+- **The Edition title opens the release's panel, not the artwork.** A release has no page of its
+  own, so its panel is the record (`TBL-8`, `PRD-7`): the title links to the panel's URL
+  (`?release=`), and the artwork is reached from the panel's "Open artwork" or the row's `…`,
+  for roles that can open artworks. This replaces "link to the artwork" in L2.
+- **A panel link to a release on another page opens it** (`PRD-7`): the page reads that one
+  release (`GET /admin/v1/release-alerts/sends/:artworkId`, `lead.read`) and opens its panel. A
+  link naming no release in the log opens a panel that says "Release alert not found".
+- **L3.** Who published, and the matched, emailed and dropped counts, are kept on the announcement
+  (migration 0405, the alternatives above) rather than read from the audit log; so the log stays
+  true after the prune, with no audit lookup.
+- **L5.** Empty, loading, error and permission-denied states are built. **There is no "No results"
+  state**, because the log has no search or filters; it comes with search, if that is added.
+- **L6.** The captures, with the send log's own states, are in
+  `docs/design/screenshots/release-alerts/` with a README. The browser gate seeds one release per
+  status (`seed:release-alert-sends`, hermetic local databases only, with one long title) and runs
+  with `ALERTS_SEND_MODE=off` pinned, so the scheduler's digest task leaves the fixtures as they
+  are.
 
 ---
 

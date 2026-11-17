@@ -27,6 +27,7 @@ const LATER_TYPES = [
   "collection_reminder",
   "sale_registration_decided",
   "bidding_limit_changed",
+  "delivery_quote_declined",
 ];
 const TYPES_AT_0299 = NOTIFICATION_TYPES.filter((t) => !LATER_TYPES.includes(t));
 

@@ -6,6 +6,7 @@ import {
   GUEST_LEAD_SOURCE_LABEL,
   GUEST_LEAD_STATUS_LABEL,
   GUEST_LEAD_TABS,
+  GUEST_LEAD_TAB_LABEL,
   type GuestLeadCrmState,
   type GuestLeadSource,
   type GuestLeadStatus,
@@ -19,6 +20,8 @@ import {
   parseStaffPageSize,
 } from "@auction/staff-ui";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
+import { RELEASE_ALERT_SENDS_COPY } from "./release-alert-sends.copy";
+import { RELEASE_ALERT_SENDS_CAPABILITY, RELEASE_ALERT_SENDS_PATH } from "./release-alert-sends.vm";
 
 export const LEAD_LIST_PATH = "/leads";
 
@@ -75,6 +78,33 @@ export function parseLeadListQuery(params: RawSearchParams): LeadListQuery {
     ...(cursor ? { cursor } : {}),
     ...(limit !== STAFF_DEFAULT_PAGE_SIZE ? { limit: String(limit) } : {}),
   };
+}
+
+/** The Leads page's views: the lead tabs, then the release-alert send log. */
+export type LeadsViewId = GuestLeadTab | "release-alerts";
+
+/**
+ * The view tabs on the Leads page (design LA-3, L1): the lead tabs, each with its count when the
+ * counts were read, then "Release alerts" for people whose role can read the send log. That tab
+ * carries no count: it is history, not a queue (NAV-3). On the send log the lead counts are not
+ * read, so the lead tabs show no number rather than a false zero.
+ */
+export function leadsViews(
+  query: LeadListQuery,
+  counts: Readonly<Partial<Record<GuestLeadTab, number>>> | null,
+  capabilities: readonly string[],
+): Array<{ id: LeadsViewId; label: string; href: string; count?: number }> {
+  const leadTabs = GUEST_LEAD_TABS.map((tab) => ({
+    id: tab,
+    label: GUEST_LEAD_TAB_LABEL[tab],
+    href: leadListHref(query, { tab: tab === "all" ? null : tab }),
+    ...(counts ? { count: counts[tab] ?? 0 } : {}),
+  }));
+  if (!capabilities.includes(RELEASE_ALERT_SENDS_CAPABILITY)) return leadTabs;
+  return [
+    ...leadTabs,
+    { id: "release-alerts", label: RELEASE_ALERT_SENDS_COPY.tab, href: RELEASE_ALERT_SENDS_PATH },
+  ];
 }
 
 /** True when anything narrows the list beyond the tab; paging does not count. */

@@ -23,6 +23,7 @@ function record(overrides: Partial<AdminDeliveryRecord> = {}): AdminDeliveryReco
       requestedAt: at("2026-11-14T10:12:00Z"),
       quotedAt: null,
       decidedAt: null,
+      declineReason: null,
     },
     lot: {
       title: "Harbour at dusk",
@@ -249,5 +250,38 @@ describe("deliveryHistory", () => {
       }),
     );
     expect(history.map((event) => event.kind)).toEqual(["requested", "withdrawn"]);
+  });
+
+  it("names the buyer for a withdrawal and the team for a decline, with the reason shown", async () => {
+    const withdrawn = { ...record().quote, status: "withdrawn" as const };
+    const decidedAt = at("2026-11-15T08:00:00Z");
+    const byBuyer = deliveryHistory(
+      record({ status: "closed", closedReason: "withdrawn", quote: { ...withdrawn, decidedAt } }),
+    );
+    expect(byBuyer.at(-1)).toEqual({ kind: "withdrawn", at: decidedAt.toISOString(), by: "buyer" });
+
+    const declined = record({
+      status: "closed",
+      closedReason: "withdrawn",
+      quote: { ...withdrawn, decidedAt, declineReason: "We don't ship to Lyon" },
+    });
+    expect(deliveryHistory(declined).at(-1)).toEqual({
+      kind: "withdrawn",
+      at: decidedAt.toISOString(),
+      by: "staff",
+    });
+    const view = (
+      await new AdminDeliveriesService(reader([declined])).list({
+        view: "closed",
+        sort: "newest",
+        limit: 50,
+        offset: 0,
+      })
+    ).items[0];
+    // The closed reason and history kinds stay as the list already reads them.
+    expect(view).toMatchObject({
+      closedReason: "withdrawn",
+      quote: { status: "withdrawn", declineReason: "We don't ship to Lyon" },
+    });
   });
 });

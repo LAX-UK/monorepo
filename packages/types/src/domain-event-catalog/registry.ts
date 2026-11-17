@@ -28,6 +28,7 @@ import {
   bidFirstForUserPayloadSchemaV1,
   bidLotWonPayloadSchemaV1,
   bidOutbidPayloadSchemaV1,
+  bidStaffBidRefusedAtLimitPayloadSchemaV1,
   bidUserSuspendedPayloadSchemaV1,
   bidUserUnsuspendedPayloadSchemaV1,
   looseDomainEventPayloadV1,
@@ -138,6 +139,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "bid.lot_won",
   "bid.outbid",
   "bid.proxy_cancelled",
+  "bid.staff_bid_refused_at_limit",
   "lax.staff_access.granted",
   "lax.staff_access.revoked",
   "staff.role_assigned",
@@ -250,6 +252,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "collection.place.updated",
   "collection.exception.added",
   "collection.exception.removed",
+  "delivery_quote.declined",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
   "marketing_enquiry.attachment_viewed",
@@ -459,6 +462,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "bid.proxy_cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
+  "bid.staff_bid_refused_at_limit": {
+    schema: bidStaffBidRefusedAtLimitPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: [],
+    piiClassification: "none",
+  },
   "sale.cancelled": {
     consumers: ["notification_fanout", "zoho_artwork_listing"],
     piiClassification: "none",
@@ -1158,6 +1167,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "collection.exception.removed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  /** Staff declined a buyer's delivery quote ("Can't deliver"). The reason stays on the quote. */
+  "delivery_quote.declined": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

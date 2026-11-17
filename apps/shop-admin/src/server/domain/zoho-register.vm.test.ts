@@ -50,6 +50,25 @@ describe("the queue's URL state", () => {
     );
   });
 
+  it("reads the Locations tab, and the All tab's Location filter: an id or none", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    expect(parseZohoQueueQuery({ tab: "locations" })).toEqual({ tab: "locations" });
+    expect(parseZohoQueueQuery({ tab: "all", location: id })).toEqual({ tab: "all", location: id });
+    expect(parseZohoQueueQuery({ tab: "all", location: "none" })).toEqual({
+      tab: "all",
+      location: "none",
+    });
+    expect(parseZohoQueueQuery({ tab: "all", location: "Store room" })).toEqual({ tab: "all" });
+    expect(hasActiveZohoFilters({ tab: "all", location: "none" })).toBe(true);
+    expect(zohoQueueApiQuery({ tab: "all", location: id, page: "2" })).toEqual({
+      location: id,
+      page: "2",
+    });
+    expect(zohoQueueHref({ tab: "all", location: id, page: "2" }, { location: null })).toBe(
+      "/from-zoho?tab=all",
+    );
+  });
+
   it("reads the Sync health tab and its drift list, which only that tab has", () => {
     expect(parseZohoQueueQuery({ tab: "health" })).toEqual({ tab: "health" });
     expect(parseZohoQueueQuery({ tab: "health", drift: "status_mismatch", page: "2" })).toEqual({
@@ -266,6 +285,25 @@ describe("setInLaxLine", () => {
 });
 
 describe("buildRegisterTimeline", () => {
+  it("says a move between locations happened; the Location panel names the places", () => {
+    const [moved] = buildRegisterTimeline([
+      {
+        id: "e1",
+        type: "location_moved",
+        actor: "staff",
+        actorName: "Ana Ruiz",
+        payload: { moveId: "m", fromLocationId: null, toLocationId: "l" },
+        createdAt: "2026-11-17T09:00:00.000Z",
+      },
+    ]);
+    expect(moved).toEqual({
+      id: "e1",
+      at: "2026-11-17T09:00:00.000Z",
+      actor: "Ana Ruiz",
+      title: "Location changed",
+    });
+  });
+
   const event = (
     over: Partial<AdminRegisterEvent> & Pick<AdminRegisterEvent, "type">,
   ): AdminRegisterEvent => ({

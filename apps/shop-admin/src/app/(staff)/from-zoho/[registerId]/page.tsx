@@ -1,5 +1,9 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { FromZohoRecord } from "@/components/from-zoho/from-zoho-record.client";
+import {
+  LocationPanelSection,
+  LocationPanelSkeleton,
+} from "@/components/stock-location/location-panel-section";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { loadZohoFailedJobsHref } from "@/server/application/load-zoho-failed-jobs-href";
@@ -8,6 +12,7 @@ import { presentZohoMirror } from "@/server/domain/zoho-mirror.vm";
 import { zohoProductUrl } from "@/server/domain/zoho-register.vm";
 import type { AdminRegisterDetail, AdminZohoMirrorStatus } from "@auction/shop-contracts";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 
 export async function generateMetadata({ params }: { params: Promise<{ registerId: string }> }) {
   const { registerId } = await params;
@@ -49,6 +54,11 @@ export default async function FromZohoRecordPage({
         result.data.zohoProductId,
         result.data.zohoModule,
       )}
+      locationPanel={
+        <Suspense fallback={<LocationPanelSkeleton />}>
+          <LocationPanelSection registerId={result.data.registerId} title={result.data.title} />
+        </Suspense>
+      }
     />
   );
 }

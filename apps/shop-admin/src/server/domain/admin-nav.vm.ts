@@ -64,7 +64,14 @@ export type AdminSessionNavInput = {
   deliveryQuoteWaitingCount?: number;
 };
 
-function hasCapability(
+/**
+ * Who can open Artworks and an artwork's page. Finance sets edition prices there without editing
+ * the catalogue.
+ */
+export const ARTWORKS_CAPABILITIES = ["catalogue.read", "artwork_price.write"] as const;
+
+/** Whether the capabilities hold this one, or any one of these. */
+export function hasCapability(
   capabilities: readonly string[],
   capability: ShopStaffCapability | readonly ShopStaffCapability[],
 ): boolean {
@@ -88,8 +95,7 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           href: "/artworks",
           icon: "artworks" as const,
           label: "Artworks",
-          // Finance sets edition prices here without editing the catalogue.
-          capability: ["catalogue.read", "artwork_price.write"] as const,
+          capability: ARTWORKS_CAPABILITIES,
         },
         {
           href: "/artists",

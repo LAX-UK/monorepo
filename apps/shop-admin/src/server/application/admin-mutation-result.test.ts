@@ -21,6 +21,21 @@ describe("mapAdminMutationErrorBody", () => {
     });
   });
 
+  it("carries the error code, so an idempotency conflict reads apart from a state conflict", () => {
+    expect(
+      mapAdminMutationErrorBody(
+        409,
+        { code: SHOP_API_ERROR_CODES.IDEMPOTENCY_CONFLICT, message: "Key reused" },
+        "x",
+      ),
+    ).toEqual({
+      ok: false,
+      kind: "conflict",
+      message: "Key reused",
+      code: SHOP_API_ERROR_CODES.IDEMPOTENCY_CONFLICT,
+    });
+  });
+
   it("carries the current version of a row that someone else saved first", () => {
     expect(
       mapAdminMutationErrorBody(

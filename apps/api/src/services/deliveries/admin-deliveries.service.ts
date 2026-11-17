@@ -28,7 +28,9 @@ export function deliveryHistory(record: AdminDeliveryRecord): AdminDeliveryEvent
   if (quote.quotedAt)
     events.push({ kind: "quoted", at: quote.quotedAt.toISOString(), by: "staff" });
   if (quote.decidedAt && (quote.status === "accepted" || quote.status === "withdrawn")) {
-    events.push({ kind: quote.status, at: quote.decidedAt.toISOString(), by: "buyer" });
+    // A withdrawal with a reason is the team declining it ("Can't deliver", D8).
+    const by = quote.declineReason ? "staff" : "buyer";
+    events.push({ kind: quote.status, at: quote.decidedAt.toISOString(), by });
   }
   if (record.closedReason === "cancelled") {
     events.push({ kind: "cancelled", at: null, by: "staff" });
@@ -64,6 +66,7 @@ export function toDeliveryView(record: AdminDeliveryRecord): AdminDeliveryView {
       requestedAt: quote.requestedAt.toISOString(),
       quotedAt: iso(quote.quotedAt),
       decidedAt: iso(quote.decidedAt),
+      declineReason: quote.declineReason,
     },
     lot: {
       title: lot.title,

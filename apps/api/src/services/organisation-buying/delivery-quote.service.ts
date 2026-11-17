@@ -22,9 +22,13 @@ import { buyingError, memberIsPayer, quoteView } from "./purchase-view.js";
 /** Every quote is priced in pounds sterling, like the invoice it joins. */
 const QUOTE_CURRENCY = "GBP";
 
-/** Tells the buyer a quote is ready to accept. Best effort: a failed notice never undoes the quote. */
-export interface IDeliveryQuoteReadyNotifier {
+/**
+ * Tells the buyer what the team decided: a quote is ready to accept, or the team cannot deliver.
+ * Best effort: a failed notice never undoes the decision.
+ */
+export interface IDeliveryQuoteNotifier {
   quoteReady(quote: DeliveryQuoteRow): Promise<void>;
+  quoteDeclined(quote: DeliveryQuoteRow): Promise<void>;
 }
 
 /** The won lot a quote is for: its buying account, from the lot itself. */
@@ -34,24 +38,24 @@ export interface IQuoteLotLookup {
 
 type Move = { action: DeliveryQuoteAction; actor: DeliveryQuoteActor };
 
-/** Applies one move from the domain table to the stored quote, or says why it cannot. */
+type MoveResult =
+  | { ok: true; quote: DeliveryQuoteRow }
+  | { ok: false; code: "quote_step_not_allowed" | "quote_wrong_actor" | "quote_changed" };
+
+/**
+ * Applies one move from the domain table to the stored quote, or says why it cannot. `save`
+ * writes the move only while the quote is still in the state it was read in (`null` otherwise).
+ */
 async function applyMove(
-  quotes: IDeliveryQuoteRepository,
   current: DeliveryQuoteRow | null,
   move: Move,
-  write: { actorUserId: string; amount?: string; quoteNote?: string | null },
-): Promise<
-  | { ok: true; quote: DeliveryQuoteRow }
-  | { ok: false; code: "quote_step_not_allowed" | "quote_wrong_actor" | "quote_changed" }
-> {
+  save: (current: DeliveryQuoteRow, next: DeliveryQuoteStatus) => Promise<DeliveryQuoteRow | null>,
+): Promise<MoveResult> {
   const from: DeliveryQuoteStatus | null = current?.status ?? null;
   const decision = deliveryQuoteTransition(from, move.action, move.actor);
   if (!decision.allowed) return { ok: false, code: decision.reason };
   if (!current) return { ok: false, code: "quote_step_not_allowed" };
-  const moved = await quotes.transition(current.id, current.status, {
-    status: decision.next,
-    ...write,
-  });
+  const moved = await save(current, decision.next);
   return moved ? { ok: true, quote: moved } : { ok: false, code: "quote_changed" };
 }
 
@@ -116,25 +120,26 @@ export class DeliveryQuoteService implements IDeliveryQuoteService {
     const refused = await this.guard(actor, lotId);
     if (refused) return err(refused);
     const current = await this.deps.quotes.findLatest(lotId, actor.legalEntityId);
-    const result = await applyMove(
-      this.deps.quotes,
-      current,
-      { action, actor: "buyer" },
-      {
+    const result = await applyMove(current, { action, actor: "buyer" }, (quote, next) =>
+      this.deps.quotes.transition(quote.id, quote.status, {
+        status: next,
         actorUserId: actor.userId,
-      },
+      }),
     );
     return result.ok ? ok(quoteView(result.quote, actor)) : err(buyingError(result.code));
   }
 }
 
-/** The saleroom team prices a requested quote for the account that won the lot. */
+/**
+ * The saleroom team's side: price a requested quote, or decline it ("Can't deliver", D8), for the
+ * account that won the lot. The buyer is told either way.
+ */
 export class StaffDeliveryQuoteService implements IStaffDeliveryQuoteService {
   constructor(
     private readonly deps: {
       quotes: IDeliveryQuoteRepository;
       lots: IQuoteLotLookup;
-      notifier: IDeliveryQuoteReadyNotifier;
+      notifier: IDeliveryQuoteNotifier;
     },
   ) {}
 
@@ -144,17 +149,59 @@ export class StaffDeliveryQuoteService implements IStaffDeliveryQuoteService {
     amount: string;
     note: string | null;
   }): BuyingResult<DeliveryQuoteRow> {
-    const account = await this.deps.lots.buyerAccountOf(input.lotId);
-    if (!account) return err(buyingError("purchase_not_found"));
-    const current = await this.deps.quotes.findLatest(input.lotId, account);
-    const result = await applyMove(
-      this.deps.quotes,
-      current,
-      { action: "quote", actor: "staff" },
-      { actorUserId: input.staffUserId, amount: input.amount, quoteNote: input.note },
+    const result = await this.move(input.lotId, "quote", (quote, next) =>
+      this.deps.quotes.transition(quote.id, quote.status, {
+        status: next,
+        actorUserId: input.staffUserId,
+        amount: input.amount,
+        quoteNote: input.note,
+      }),
     );
-    if (!result.ok) return err(buyingError(result.code));
-    await this.deps.notifier.quoteReady(result.quote);
-    return ok(result.quote);
+    if (result.isOk()) await this.deps.notifier.quoteReady(result.value);
+    return result;
+  }
+
+  /**
+   * Ends the request staff were looking at as withdrawn, with the reason the buyer is told; audited
+   * with the write. `quote_changed` when the lot's latest quote is no longer that request in that
+   * state (the buyer withdrew and asked again, or a colleague priced it), so a reason written for
+   * one request is never sent for another.
+   */
+  async decline(input: {
+    staffUserId: string;
+    lotId: string;
+    quoteId: string;
+    expectedStatus: DeliveryQuoteStatus;
+    reason: string;
+  }): BuyingResult<DeliveryQuoteRow> {
+    const result = await this.move(
+      input.lotId,
+      "decline",
+      (quote, next) =>
+        this.deps.quotes.decline(quote.id, input.expectedStatus, {
+          status: next,
+          actorUserId: input.staffUserId,
+          reason: input.reason,
+        }),
+      { quoteId: input.quoteId, status: input.expectedStatus },
+    );
+    if (result.isOk()) await this.deps.notifier.quoteDeclined(result.value);
+    return result;
+  }
+
+  private async move(
+    lotId: string,
+    action: "quote" | "decline",
+    save: Parameters<typeof applyMove>[2],
+    seen?: { quoteId: string; status: DeliveryQuoteStatus },
+  ): BuyingResult<DeliveryQuoteRow> {
+    const account = await this.deps.lots.buyerAccountOf(lotId);
+    if (!account) return err(buyingError("purchase_not_found"));
+    const current = await this.deps.quotes.findLatest(lotId, account);
+    if (seen && current && (current.id !== seen.quoteId || current.status !== seen.status)) {
+      return err(buyingError("quote_changed"));
+    }
+    const result = await applyMove(current, { action, actor: "staff" }, save);
+    return result.ok ? ok(result.quote) : err(buyingError(result.code));
   }
 }

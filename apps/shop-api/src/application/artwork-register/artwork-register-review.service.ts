@@ -42,6 +42,7 @@ import type {
 import type { LaxArtListingReader } from "../ports/offer-on-lax-art.ports.js";
 import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import { DRAFT_PROBE, laxArtOfferBlockers } from "./lax-art-offer-blockers.js";
+import { presentLocationRef } from "./location-ref.presenter.js";
 import { presentRegisterEvent, staffIdsOf } from "./register-event.presenter.js";
 import { presentWhereItIs } from "./where-it-is.presenter.js";
 
@@ -108,6 +109,7 @@ function overviewFilterOf(query: AdminRegisterQueueQuery): RegisterOverviewFilte
   return {
     ...(query.artist ? { artistCode: query.artist } : {}),
     ...(query.place ? { place: query.place } : {}),
+    ...(query.location ? { location: query.location } : {}),
   };
 }
 
@@ -196,6 +198,7 @@ export class ArtworkRegisterReviewService {
       items: all.rows.map((row) => ({
         ...presentArtworkSummary(row.entry),
         whereItIs: placeOf(row),
+        location: row.location ? presentLocationRef(row.location) : null,
       })),
       artists,
       places: REGISTER_PLACE_VALUES.map((value) => ({
