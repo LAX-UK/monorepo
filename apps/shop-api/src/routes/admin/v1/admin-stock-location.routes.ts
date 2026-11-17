@@ -56,9 +56,9 @@ const LIST_WRITE_ERRORS = { ...WRITE_ERRORS, 409: AdminStockLocationConflictSche
  * Stock location in LAX Admin (docs/design/stock-location.md).
  *
  * - Reading the list, and where an artwork is and has been: `artwork_location.read`. It comes with
- *   the From Zoho register and with moving, so account managers ("Gallery staff") and operations
- *   ("Fulfilment") read locations without opening the rest of the register.
- * - Moving one artwork or a selection: `artwork_location.move`.
+ *   the From Zoho register and with moving.
+ * - Moving one artwork or a selection: `artwork_location.move`, held by Catalogue editors and
+ *   Administrators only (owner decision, 17 Nov 2026). Every other role gets a 403 here.
  * - Keeping the list (add, rename, retire, restore): `artwork_location.manage`, Administrator only,
  *   with a recent sign-in (`SHOP_ADMIN_STEP_UP_PATHS` lists `/admin/v1/artwork-locations`).
  *

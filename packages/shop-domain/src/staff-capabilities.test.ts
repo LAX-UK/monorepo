@@ -214,13 +214,30 @@ describe("the From Zoho queue", () => {
     expect(can("catalogue_editor", "artwork_register.reopen_sold")).toBe(false);
   });
 
-  it("lets Fulfilment, Gallery staff and Administrators move artworks, and only Administrators keep the list", () => {
-    expect(rolesGranting("artwork_location.move")).toEqual([
-      "shop_admin",
-      "account_manager",
-      "operations",
-    ]);
+  it("lets only Catalogue editors and Administrators move artworks, and only Administrators keep the list", () => {
+    expect(rolesGranting("artwork_location.move")).toEqual(["shop_admin", "catalogue_editor"]);
     expect(rolesGranting("artwork_location.manage")).toEqual(["shop_admin"]);
+  });
+
+  /** Owner decision, 17 Nov 2026: the people responsible for the catalogue move artworks. */
+  const MOVES: Record<ShopStaffRole, boolean> = {
+    shop_admin: true,
+    account_manager: false,
+    broker: false,
+    operations: false,
+    finance: false,
+    catalogue_editor: true,
+    editor: false,
+    read_only: false,
+  };
+
+  it.each(SHOP_STAFF_ROLES)("%s moves artworks only if the owner's rule says so", (role) => {
+    expect(can(role, "artwork_location.move")).toBe(MOVES[role]);
+    // Whoever moves can open the From Zoho record and list, where Move sits.
+    if (MOVES[role]) {
+      expect(can(role, "artwork_register.read")).toBe(true);
+      expect(can(role, "artwork_location.read")).toBe(true);
+    }
   });
 
   it("shows an artwork's location to everyone who can open its record, and to those who move it", () => {
@@ -231,16 +248,8 @@ describe("the From Zoho queue", () => {
     expect(can("read_only", "artwork_location.read")).toBe(true);
     expect(can("read_only", "artwork_location.move")).toBe(false);
     expect(can("catalogue_editor", "artwork_location.read")).toBe(true);
-    expect(can("catalogue_editor", "artwork_location.move")).toBe(false);
-    for (const role of ["broker", "finance", "editor"] as const)
+    for (const role of ["account_manager", "operations", "broker", "finance", "editor"] as const)
       expect(can(role, "artwork_location.read"), role).toBe(false);
-  });
-
-  it("does not open the From Zoho register to the people who only move artworks", () => {
-    for (const role of ["account_manager", "operations"] as const) {
-      expect(can(role, "artwork_location.move")).toBe(true);
-      expect(can(role, "artwork_register.read"), role).toBe(false);
-    }
   });
 
   it("keeps Read-only to viewing", () => {

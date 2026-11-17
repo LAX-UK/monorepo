@@ -18,15 +18,12 @@ const LOCATION_ID = "11111111-1111-4111-8111-111111111111";
 const REGISTER_ID = "44444444-4444-4444-8444-444444444444";
 const KEY = "move-key-0001";
 
-/** Who may do what. Gallery staff are account managers; Fulfilment is operations (#1518). */
-const CAN_READ: ShopStaffRole[] = [
-  "shop_admin",
-  "account_manager",
-  "operations",
-  "catalogue_editor",
-  "read_only",
-];
-const CAN_MOVE: ShopStaffRole[] = ["shop_admin", "account_manager", "operations"];
+/**
+ * Who may do what. Moving is for the people responsible for the catalogue and Administrators
+ * (owner decision, 17 Nov 2026); every other role is refused with a 403.
+ */
+const CAN_READ: ShopStaffRole[] = ["shop_admin", "catalogue_editor", "read_only"];
+const CAN_MOVE: ShopStaffRole[] = ["shop_admin", "catalogue_editor"];
 const CAN_MANAGE: ShopStaffRole[] = ["shop_admin"];
 
 const location = {
@@ -188,24 +185,33 @@ describe("stock location routes: who may do what", () => {
     }
   });
 
-  it("lets account managers and operations read and move without opening the From Zoho register", async () => {
-    for (const role of ["account_manager", "operations"] as const) {
-      const { app } = await buildApp(role);
-      const register = await app.inject({
-        method: "GET",
-        url: `/admin/v1/artwork-register/${REGISTER_ID}`,
+  it("lets a Catalogue editor open the From Zoho record, where Move sits, as well as move", async () => {
+    const { app } = await buildApp("catalogue_editor");
+    const register = await app.inject({
+      method: "GET",
+      url: `/admin/v1/artwork-register/${REGISTER_ID}`,
+      headers,
+    });
+    await app.close();
+    expect(register.statusCode).not.toBe(403);
+  });
+
+  it.each(["account_manager", "operations"] as const)(
+    "refuses a move from %s, who moved artworks before the owner's decision",
+    async (role) => {
+      const { app, stockLocations } = await buildApp(role);
+      const response = await app.inject({
+        method: "POST",
+        url: "/admin/v1/artwork-location-moves",
         headers,
-      });
-      const queue = await app.inject({
-        method: "GET",
-        url: "/admin/v1/artwork-register/new",
-        headers,
+        payload: { registerIds: [REGISTER_ID], locationId: LOCATION_ID },
       });
       await app.close();
-      expect(register.statusCode, role).toBe(403);
-      expect(queue.statusCode, role).toBe(403);
-    }
-  });
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe(SHOP_API_ERROR_CODES.FORBIDDEN);
+      expect(stockLocations.moveArtworks).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("keeping the list needs a recent sign-in", () => {
@@ -231,7 +237,7 @@ describe("keeping the list needs a recent sign-in", () => {
   );
 
   it("does not ask a mover to sign in again", async () => {
-    const { app, stockLocations } = await buildApp("operations", { authTime: stale() });
+    const { app, stockLocations } = await buildApp("catalogue_editor", { authTime: stale() });
     const response = await app.inject({
       method: "POST",
       url: "/admin/v1/artwork-location-moves",
@@ -253,7 +259,7 @@ describe("move requests", () => {
     );
 
   async function move(payload: unknown, extraHeaders: Record<string, string> = headers) {
-    const { app, stockLocations } = await buildApp("account_manager");
+    const { app, stockLocations } = await buildApp("catalogue_editor");
     const response = await app.inject({
       method: "POST",
       url: "/admin/v1/artwork-location-moves",
@@ -273,7 +279,7 @@ describe("move requests", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(moveResult);
     expect(stockLocations.moveArtworks).toHaveBeenCalledWith({
-      actorSubjectId: "account_manager-subject",
+      actorSubjectId: "catalogue_editor-subject",
       idempotencyKey: KEY,
       request: {
         registerIds: [REGISTER_ID, REGISTER_ID],
@@ -399,7 +405,7 @@ describe("move requests", () => {
 
 describe("an artwork's location", () => {
   it("is not found when the artwork is not on the register", async () => {
-    const { app, stockLocations } = await buildApp("operations");
+    const { app, stockLocations } = await buildApp("catalogue_editor");
     stockLocations.artworkLocation.mockResolvedValueOnce(null);
     const response = await app.inject({
       method: "GET",
@@ -411,7 +417,7 @@ describe("an artwork's location", () => {
   });
 
   it("reads the current location, its label and the history", async () => {
-    const { app } = await buildApp("operations");
+    const { app } = await buildApp("catalogue_editor");
     const response = await app.inject({
       method: "GET",
       url: `/admin/v1/artwork-register/${REGISTER_ID}/location`,
