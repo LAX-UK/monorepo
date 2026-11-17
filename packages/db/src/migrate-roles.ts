@@ -174,6 +174,12 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
 ] as const;
 export const API_DENY_TABLES = [
   /**
+   * Consignor agreements (0407): only LAX Admin (shop_app) records what a consignor agreed and who
+   * consigned each original. The Bid API reads neither, and they are the only record of it.
+   */
+  "consignor_agreement",
+  "artwork_consignor_link",
+  /**
    * Stock location (0404): only LAX Admin (shop_app) keeps the list and records moves. The Bid API
    * neither reads nor writes where an artwork physically is, and the moves are the only record
    * of it, so api_app holds nothing that could change or truncate them.
@@ -708,6 +714,21 @@ export const SHOP_ARTWORK_REGISTER_OFFER_TABLES = ["artwork_register"] as const;
  */
 export const SHOP_ARTWORK_LOCATION_TABLES = ["artwork_location"] as const;
 export const SHOP_ARTWORK_LOCATION_MOVE_TABLES = ["artwork_location_move"] as const;
+/**
+ * Consignor agreements (0407, ZI-5): LAX Admin adds agreements and their new versions, and marks a
+ * current version replaced or retired. It may change only those columns (a trigger also refuses
+ * any other change and every delete), so an agreement is never edited in place. The consignor of
+ * each original is append-only: shop_app adds and reads rows, never changes them. Neither the
+ * worker nor the Bid API is granted anything on either table.
+ */
+export const SHOP_CONSIGNOR_AGREEMENT_TABLES = ["consignor_agreement"] as const;
+export const SHOP_CONSIGNOR_AGREEMENT_UPDATE_COLUMNS = [
+  "status",
+  "replaced_at",
+  "retired_at",
+  "retired_by",
+] as const;
+export const SHOP_ARTWORK_CONSIGNOR_LINK_TABLES = ["artwork_consignor_link"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -1736,6 +1757,18 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of SHOP_ARTWORK_LOCATION_MOVE_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of SHOP_CONSIGNOR_AGREEMENT_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
+          await grantColumnUpdateIfExists(
+            client,
+            "shop_app",
+            tableName,
+            SHOP_CONSIGNOR_AGREEMENT_UPDATE_COLUMNS,
+          );
+        }
+        for (const tableName of SHOP_ARTWORK_CONSIGNOR_LINK_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_LOCK_READ_TABLES) {
