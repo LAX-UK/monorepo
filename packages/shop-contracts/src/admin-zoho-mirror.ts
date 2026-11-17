@@ -24,6 +24,7 @@ export type ZohoMirrorState = (typeof ZOHO_MIRROR_STATES)[number];
 export const ZOHO_MIRROR_NOT_APPLICABLE_REASONS = [
   "mirroring_off",
   "not_paid",
+  "not_in_register",
   "nothing_to_mirror",
   "not_sent_yet",
 ] as const;
@@ -41,10 +42,13 @@ export const AdminZohoMirrorStatusQuerySchema = Type.Object({
   id: Type.String({ pattern: IdPattern }),
 });
 
-/** The batched form, for a list column: `ids` is a comma-separated list. */
+/**
+ * The batched form, for a list column: `ids` is a comma-separated list. The length here is only a
+ * loose guard (an id, a comma and some spaces each); the route counts the ids and holds the limit.
+ */
 export const AdminZohoMirrorStatusesQuerySchema = Type.Object({
   entity: Entity,
-  ids: Type.String({ minLength: 1, maxLength: ZOHO_MIRROR_BATCH_LIMIT * 37 }),
+  ids: Type.String({ minLength: 1, maxLength: ZOHO_MIRROR_BATCH_LIMIT * 40 }),
 });
 
 export const AdminZohoMirrorStatusSchema = Type.Object({
@@ -58,7 +62,11 @@ export const AdminZohoMirrorStatusSchema = Type.Object({
     Type.Union(ZOHO_MIRROR_NOT_APPLICABLE_REASONS.map((reason) => Type.Literal(reason))),
     Type.Null(),
   ]),
-  /** How the mirror last ran for this record, as the ledger shows it; null when it shows nothing. */
+  /**
+   * How the mirror ran for this record: what the ledger proves (a success or "already in sync" is
+   * only written live, a dry-run skip only in a dry run), else the mode shop-api is configured
+   * with (`ZOHO_FULFILMENT_MIRROR_MODE` / `ZOHO_ARTWORK_WRITEBACK_MODE`); null when neither says.
+   */
   mode: Type.Union([
     Type.Literal("off"),
     Type.Literal("dry_run"),

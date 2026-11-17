@@ -3,6 +3,7 @@ import type {
   IArtworkRegisterRepository,
   IZohoStatusSourceReader,
 } from "@auction/persistence/interfaces";
+import { ARTWORK_WRITEBACK_EVENT, ARTWORK_WRITEBACK_SKIP } from "@auction/types";
 import type { Logger } from "pino";
 import { crmErrorOutcome } from "../../crm/classify-crm-error.js";
 import { CrmGatewayError } from "../../crm/crm-gateway-error.js";
@@ -18,8 +19,11 @@ import type { ZohoProductWriter } from "./zoho-product-writer.js";
 /** `off` does nothing; `dry_run` logs what would be sent without calling Zoho; `live` sends it. */
 export type ZohoArtworkWritebackMode = "off" | "dry_run" | "live";
 
-export const OFFER_CHANGED_EVENT = "artwork_register.offer_changed";
-export const STOCK_CODE_ASSIGNED_EVENT = "artwork_register.stock_code_assigned";
+export const OFFER_CHANGED_EVENT = ARTWORK_WRITEBACK_EVENT.offerChanged;
+export const STOCK_CODE_ASSIGNED_EVENT = ARTWORK_WRITEBACK_EVENT.stockCodeAssigned;
+
+/** The skip reasons, shared with LAX Admin's "Mirrored to Zoho" read. */
+const SKIP = ARTWORK_WRITEBACK_SKIP;
 
 export type ZohoArtworkWritebackDeps = {
   mode: ZohoArtworkWritebackMode;
@@ -57,22 +61,22 @@ export class ZohoArtworkWritebackService {
 
   async deliver(event: WritebackEvent): Promise<CrmSyncResult> {
     const { mode } = this.deps;
-    if (mode === "off") return { outcome: "skipped", reason: "writeback_off" };
+    if (mode === "off") return { outcome: "skipped", reason: SKIP.writebackOff };
 
     const registerId = registerIdOf(event.payload);
-    if (!registerId) return { outcome: "skipped", reason: "payload_without_register_id" };
+    if (!registerId) return { outcome: "skipped", reason: SKIP.payloadWithoutRegisterId };
     if (event.eventType !== OFFER_CHANGED_EVENT && event.eventType !== STOCK_CODE_ASSIGNED_EVENT) {
-      return { outcome: "skipped", reason: "event_type_not_handled" };
+      return { outcome: "skipped", reason: SKIP.eventTypeNotHandled };
     }
 
     try {
       const entry = await this.deps.register.findById(registerId);
-      if (!entry) return { outcome: "skipped", reason: "register_entry_missing" };
+      if (!entry) return { outcome: "skipped", reason: SKIP.registerEntryMissing };
       // A print group's Zoho record is a Print_Products one, whose code is its Print_Group_ID; the
       // Products fields written here do not exist for it. A print that came in from Zoho is a
       // Product and is written like any other.
       if (zohoModuleOf(entry) === "Print_Products") {
-        return { outcome: "skipped", reason: "print_group_not_a_product" };
+        return { outcome: "skipped", reason: SKIP.printGroupNotAProduct };
       }
       return event.eventType === OFFER_CHANGED_EVENT
         ? await this.sendStatus(entry, event)
@@ -101,7 +105,7 @@ export class ZohoArtworkWritebackService {
     const current = await this.requireProduct(entry);
     const update = planStockCodeUpdate(entry.stockCode, current);
     if (update) await this.deps.products.update(entry.zohoProductId, update.fields);
-    return this.finish(entry, update, "stock_code_already_in_sync");
+    return this.finish(entry, update, SKIP.stockCodeAlreadyInSync);
   }
 
   private dryRun(
@@ -120,7 +124,7 @@ export class ZohoArtworkWritebackService {
       },
       "zoho_artwork_writeback_dry_run",
     );
-    return { outcome: "skipped", reason: "dry_run" };
+    return { outcome: "skipped", reason: SKIP.dryRun };
   }
 
   private async requireProduct(entry: ArtworkRegisterEntry) {
@@ -154,9 +158,9 @@ function statusResult(
     case "written":
       return { outcome: "success", providerReference: `Products:${entry.zohoProductId}` };
     case "in_sync":
-      return { outcome: "skipped", reason: "status_already_in_sync" };
+      return { outcome: "skipped", reason: SKIP.statusAlreadyInSync };
     case "conflict":
-      return { outcome: "skipped", reason: "status_conflict_raised" };
+      return { outcome: "skipped", reason: SKIP.statusConflictRaised };
     case "skipped":
       return { outcome: "skipped", reason: outcome.reason };
     case "stale":
@@ -174,7 +178,7 @@ function statusResult(
         retryable: outcome.retryable,
       });
     case undefined:
-      return { outcome: "skipped", reason: "register_entry_missing" };
+      return { outcome: "skipped", reason: SKIP.registerEntryMissing };
   }
 }
 

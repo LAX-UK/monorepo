@@ -323,10 +323,14 @@ export function createMinimalShopApiTestDeps(
       }),
       zohoSyncHealth: createTestZohoSyncHealth(),
       zohoMirror: new ZohoMirrorStatusService({
-        read: async (_entity, ids) => ({
-          consumer: "zoho_fulfilment",
-          deliveries: new Map(ids.map((id) => [id, []])),
-        }),
+        ledger: {
+          read: async (_entity, ids) => ({
+            consumer: "zoho_fulfilment",
+            deliveries: new Map(ids.map((id) => [id, []])),
+          }),
+        },
+        orders: { paidOf: async () => new Map() },
+        modes: { order: null, artwork: null },
       }),
       artworkRegister: new ArtworkRegisterReviewService({
         catalogueChanges: { changesFor: async () => [] },

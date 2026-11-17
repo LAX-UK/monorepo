@@ -3,6 +3,7 @@ import { legalEntityFor } from "@auction/branding";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { parseFinancialYearEnd } from "@auction/shop-domain";
 import { allowsLiveStripeKeys, stripeTestModeKeyIssues } from "@auction/stripe-connect";
+import { ZOHO_MIRROR_MODES } from "@auction/types";
 import { z } from "zod";
 
 type AppEnv = "production" | "test" | "development";
@@ -136,6 +137,13 @@ export const shopApiEnvSchema = z.object({
    * in stock notices are not held back by this switch.
    */
   ALERTS_SEND_MODE: z.enum(["off", "dry_run", "on"]).default("off"),
+  /**
+   * The worker's Zoho mirror modes, read here only to word LAX Admin's "Mirrored to Zoho" badge
+   * (an order reads "Zoho mirroring is off" when the fulfilment mirror is off). Set them to the
+   * worker's values. Unset, the badge says only what the delivery ledger shows.
+   */
+  ZOHO_FULFILMENT_MIRROR_MODE: z.enum(ZOHO_MIRROR_MODES).optional(),
+  ZOHO_ARTWORK_WRITEBACK_MODE: z.enum(ZOHO_MIRROR_MODES).optional(),
   /**
    * Turns on the Shop and lax.art alert retention prune. Off (the default) it runs as a dry run:
    * it logs what it would remove and deletes nothing. Read like the worker's flags: `1`, `true`,

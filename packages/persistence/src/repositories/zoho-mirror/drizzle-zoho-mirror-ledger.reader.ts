@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
 import { domainEventDelivery as delivery, domainEvent } from "@auction/db/schema";
+import {
+  ARTWORK_WRITEBACK_EVENT,
+  ORDER_MIRROR_EVENT_TYPES,
+  ZOHO_MIRROR_CONSUMER,
+} from "@auction/types";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type {
   IZohoMirrorLedgerReader,
@@ -8,21 +13,25 @@ import type {
   ZohoMirrorLedgerEntity,
 } from "../../interfaces/zoho-mirror-ledger.js";
 
-/** The consumer that mirrors each kind of record. */
-export const ZOHO_MIRROR_CONSUMER: Record<ZohoMirrorLedgerEntity, string> = {
-  order: "zoho_fulfilment",
-  artwork: "zoho_artwork_writeback",
-};
-
 /**
- * A record's events: an order's carry `orderId` in the payload (they are raised on the order, a
- * line or the fulfilment); an artwork's are raised on its register entry.
+ * A record's events. An order's are raised on the order, a line or the fulfilment and all carry
+ * `orderId` in the payload; an artwork's are raised on its register entry.
+ *
+ * Each is held to the event types its consumer handles, so Postgres reaches the rows through
+ * `domain_events_event_type_idx` (orders) or `domain_events_event_type_aggregate_id_idx`
+ * (artworks) instead of reading every event LAX has ever raised. The plan is in PR #1516.
  */
 const KEY = {
-  order: { key: sql<string>`${domainEvent.payload}->>'orderId'`, scope: undefined },
+  order: {
+    key: sql<string>`${domainEvent.payload}->>'orderId'`,
+    scope: inArray(domainEvent.eventType, [...ORDER_MIRROR_EVENT_TYPES]),
+  },
   artwork: {
     key: sql<string>`${domainEvent.aggregateId}`,
-    scope: eq(domainEvent.aggregateType, "artwork_register"),
+    scope: and(
+      inArray(domainEvent.eventType, Object.values(ARTWORK_WRITEBACK_EVENT)),
+      eq(domainEvent.aggregateType, "artwork_register"),
+    ),
   },
 } as const;
 
@@ -40,6 +49,7 @@ export class DrizzleZohoMirrorLedgerReader implements IZohoMirrorLedgerReader {
       .select({
         key,
         eventId: delivery.eventId,
+        eventType: domainEvent.eventType,
         status: delivery.status,
         attempts: delivery.attempts,
         nextRetryAt: delivery.nextRetryAt,

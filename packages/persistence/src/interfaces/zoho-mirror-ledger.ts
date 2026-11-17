@@ -1,5 +1,7 @@
+import type { ZohoMirrorRecord } from "@auction/types";
+
 /** The records whose Zoho mirror the ledger can be asked about. */
-export type ZohoMirrorLedgerEntity = "order" | "artwork";
+export type ZohoMirrorLedgerEntity = ZohoMirrorRecord;
 
 export type DeliveryLedgerStatus =
   | "pending"
@@ -12,6 +14,8 @@ export type DeliveryLedgerStatus =
 /** One consumer's delivery of one event for a record, as `domain_event_delivery` holds it. */
 export type ZohoMirrorLedgerDelivery = {
   eventId: number;
+  /** The event's type: which of the record's writes this delivery made. */
+  eventType: string;
   status: DeliveryLedgerStatus;
   attempts: number;
   nextRetryAt: Date | null;

@@ -1322,4 +1322,14 @@ export {
   type ZohoMirrorNotApplicableReason,
   type ZohoMirrorState,
 } from "./admin-zoho-mirror.js";
-export { ZOHO_MIRROR_BADGE_LABEL, ZOHO_MIRROR_NOT_APPLICABLE_COPY } from "./zoho-mirror-copy.js";
+export {
+  ZOHO_MIRROR_BADGE_LABEL,
+  ZOHO_MIRROR_COPY_RECORD_ID,
+  ZOHO_MIRROR_DETAILS,
+  ZOHO_MIRROR_NOT_APPLICABLE_COPY,
+  ZOHO_MIRROR_NOT_MIRRORED,
+  ZOHO_MIRROR_OPEN_FAILED_JOBS,
+  ZOHO_MIRROR_RECORD_LABEL,
+  ZOHO_MIRROR_SEPARATOR,
+  zohoMirrorBadgeName,
+} from "./zoho-mirror-copy.js";

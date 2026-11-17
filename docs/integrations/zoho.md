@@ -317,17 +317,25 @@ Roll out: add the fields in the sandbox; sandbox `dry_run` and read the logged w
 
 LAX Admin can ask whether an order or an artwork reached Zoho (design: `docs/design/staff-gaps-delivery-zoho-alerts.md`, GAP-18). Nothing is stored for it: the state is worked out from `domain_event_delivery` on every read.
 
-`GET /admin/v1/zoho-mirror/status?entity=order|artwork&id=…` (one record) and `GET /admin/v1/zoho-mirror/statuses?entity=…&ids=a,b,c` (up to 100, for a list column). `order` reads the `zoho_fulfilment` deliveries of the events whose payload `orderId` is the order and needs `order.read`; `artwork` reads the `zoho_artwork_writeback` deliveries of the register entry's events and needs `artwork_register.read`.
+`GET /admin/v1/zoho-mirror/status?entity=order|artwork&id=…` (one record) and `GET /admin/v1/zoho-mirror/statuses?entity=…&ids=a,b,c` (up to 100, for a list column; the route counts the ids). `order` reads the `zoho_fulfilment` deliveries of the order-mirror events (`FULFILMENT_TRIGGER_KINDS`) whose payload `orderId` is the order, and needs `order.read`; `artwork` reads the `zoho_artwork_writeback` deliveries of the register entry's `artwork_register.offer_changed` and `artwork_register.stock_code_assigned` events, and needs `artwork_register.read`.
+
+**An artwork's state reads `zoho_artwork_writeback` only** (the Status and the stock code). A dead-lettered `zoho_artwork_listing` write (the LAX listing fields) does not show as "Not in Zoho" here; it is in Failed jobs. Reading the listing consumer too is a follow-up to settle before the artwork record shows the badge (PR 3).
+
+The consumer names, the events and the skip reasons are written once, in `packages/types/src/zoho-mirror.ts`; the worker emits them from there and the read interprets them from there, so a renamed reason cannot silently read as "nothing to mirror".
 
 | State | Derived from |
 |-------|--------------|
-| `mirrored` | the newest delivery succeeded, or was skipped because Zoho already held the data (`order_already_in_sync`, `status_already_in_sync`, `stock_code_already_in_sync`) |
+| `failed` | a delivery dead-lettered, or was skipped `order_prints_not_mirrored` (order) or `status_conflict_raised` (artwork), and no later good delivery of **the same part of the record** has put it right. It wins over anything newer. For an order, a print failure is put right only by a later good `shop.order.paid` or `shop.print.swapped` delivery (`ORDER_EVENTS_THAT_SET_PRINTS`), since the pick and dispatch steps succeed without reporting prints; any other order failure by any later good delivery. For an artwork, a failed Status is put right only by a later good Status write and a failed stock code by a later good stock code write. |
+| `mirrored` | otherwise, the newest delivery succeeded, or was skipped because Zoho already held the data (`order_already_in_sync`, `status_already_in_sync`, `stock_code_already_in_sync`) |
 | `pending` | the newest delivery is `pending`, `processing` or `retryable` |
-| `failed` | a delivery dead-lettered, or was skipped `order_prints_not_mirrored`, with no later good delivery; this wins over a newer unfinished one |
 | `dry_run` | the newest delivery was skipped as `dry_run` |
-| `not_applicable` | no delivery yet, `order_not_paid`, `writeback_off`, or any other skip reason (the answer says which) |
+| `not_applicable` | `mirroring_off` (the mirror is configured off and the record is not already mirrored, or skipped `writeback_off`); `not_paid` (an order with nothing sent that is not paid, or skipped `order_not_paid`); `not_in_register` (skipped `register_entry_missing`); `not_sent_yet` (a paid order or an artwork with nothing sent); `nothing_to_mirror` (any other skip reason) |
 
-The mode shown (`off`, `dry_run`, `live`) is what the newest delivery shows, not the worker's setting. The error text is the ledger's already redacted `last_error`; no buyer data is read.
+`mode` is what the ledger proves (a success or an "already in sync" skip is recorded only live, a dry-run skip only in a dry run, an off skip only when off); otherwise it is the mode shop-api is configured with, from `ZOHO_FULFILMENT_MIRROR_MODE` (orders) and `ZOHO_ARTWORK_WRITEBACK_MODE` (artworks) set on **shop-api** to the worker's values. They are optional there: unset, `mode` is `null` for a failed or pending record, and "Zoho mirroring is off" is shown only when the ledger says so. `zoho_sync_health` does not hold these two modes, and the read stores nothing.
+
+Whether an order is paid (`shop_order.paid_at`, as the order mirror decides it) is read only for orders with no delivery, in one query by primary key for the batch. The error text is the ledger's already redacted `last_error`; no buyer data is read. The badge and details copy (Z3) is in `packages/shop-contracts/src/zoho-mirror-copy.ts`.
+
+Query plan: the order read is held to the order-mirror event types, so Postgres reaches `domain_events` through `domain_events_event_type_idx` instead of scanning every event; the artwork read uses `domain_events_aggregate_idx` and `domain_event_delivery_consumer_event_id_unique`. The plans are in PR #1516.
 
 ## Quality checks from Zoho (inbound)
 

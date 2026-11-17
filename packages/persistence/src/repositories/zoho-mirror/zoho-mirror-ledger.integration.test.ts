@@ -164,6 +164,41 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
     ]);
   });
 
+  it("names each delivery's event type, and reads only the events the order mirror handles", async () => {
+    const paid = await orderEvent("shop.order.paid", ORDER_A, "shop_order");
+    await deliver(paid, "zoho_fulfilment", "dead_lettered", { error: "print_order_not_mirrored" });
+    // An event the fulfilment mirror does not hear, even with the order's id and a delivery row.
+    const other = await orderEvent("shop.order.checkout_started", ORDER_A, "shop_order");
+    await deliver(other, "zoho_fulfilment", "succeeded");
+
+    const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("order", [ORDER_A]);
+    expect(deliveries.get(ORDER_A)?.map((row) => [row.eventType, row.status])).toEqual([
+      ["shop.order.paid", "dead_lettered"],
+    ]);
+  });
+
+  it("reads only the register events the write-back sends for an artwork", async () => {
+    const code = await event({
+      type: "artwork_register.stock_code_assigned",
+      aggregateType: "artwork_register",
+      aggregateId: REGISTER,
+      payload: { registerId: REGISTER },
+    });
+    await deliver(code, "zoho_artwork_writeback", "succeeded");
+    const other = await event({
+      type: "artwork_register.entry_created",
+      aggregateType: "artwork_register",
+      aggregateId: REGISTER,
+      payload: { registerId: REGISTER },
+    });
+    await deliver(other, "zoho_artwork_writeback", "skipped", { error: "event_type_not_handled" });
+
+    const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("artwork", [REGISTER]);
+    expect(deliveries.get(REGISTER)?.map((row) => [row.eventType, row.status])).toEqual([
+      ["artwork_register.stock_code_assigned", "succeeded"],
+    ]);
+  });
+
   it("answers an empty batch without reading", async () => {
     const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("order", []);
     expect(deliveries.size).toBe(0);

@@ -139,6 +139,7 @@ import { createDrizzleLeadReader } from "./infrastructure/drizzle-lead.reader.js
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
+import { createDrizzleOrderPaymentStateReader } from "./infrastructure/drizzle-order-payment-state.reader.js";
 import { createDrizzleOrderProblemReportWriter } from "./infrastructure/drizzle-order-problem-report.writer.js";
 import { createDrizzleOriginalMoveReader } from "./infrastructure/drizzle-original-move.reader.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
@@ -794,7 +795,14 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           outbound: new DrizzleZohoOutboundQueueReader(db),
           drift: new DrizzleZohoDriftReader(db),
         }),
-        zohoMirror: new ZohoMirrorStatusService(new DrizzleZohoMirrorLedgerReader(db)),
+        zohoMirror: new ZohoMirrorStatusService({
+          ledger: new DrizzleZohoMirrorLedgerReader(db),
+          orders: createDrizzleOrderPaymentStateReader(db),
+          modes: {
+            order: env.ZOHO_FULFILMENT_MIRROR_MODE ?? null,
+            artwork: env.ZOHO_ARTWORK_WRITEBACK_MODE ?? null,
+          },
+        }),
         catalogueChange,
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,
