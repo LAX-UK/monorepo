@@ -4,7 +4,7 @@ import type {
   LocationRef,
   RegisterConflictField,
 } from "@auction/artwork-register-contracts";
-import type { AdminRegisterPlace } from "@auction/shop-contracts";
+import type { AdminRegisterAllSort, AdminRegisterPlace } from "@auction/shop-contracts";
 
 /**
  * What the From Zoho queue needs from the artwork register. The register belongs to neither Shop
@@ -70,6 +70,12 @@ export type RegisterOverviewFilter = {
   location?: string;
 };
 
+/**
+ * The All list's order across every page: by Zoho's price, lowest or highest first. A price of
+ * zero reads as unset, as everywhere else; unpriced works come last in both directions.
+ */
+export type RegisterOverviewSort = AdminRegisterAllSort;
+
 export type RegisterOverviewRow = {
   entry: ArtworkRegisterEntry;
   /** A lax.art listing made from the record that buyers cannot see yet. */
@@ -83,10 +89,14 @@ export type RegisterOverviewRow = {
  * draft exists. The register belongs to neither product; the draft is Shop's, so Shop reads both.
  */
 export interface ArtworkRegisterOverview {
-  /** Newest Zoho edit first. `total` counts every match, not just this page. */
+  /**
+   * Newest Zoho edit first, or in `sort`'s order; ties by id, so pages never overlap. `total`
+   * counts every match, not just this page.
+   */
   listAll(
     filter: RegisterOverviewFilter,
     page: RegisterQueuePage,
+    sort?: RegisterOverviewSort,
   ): Promise<{ rows: RegisterOverviewRow[]; total: number }>;
   /** The artists with records, for the artist filter, by name. */
   listArtists(): Promise<{ code: string; name: string; count: number }[]>;

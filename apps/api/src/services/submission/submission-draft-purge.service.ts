@@ -31,7 +31,9 @@ export type DeletedDraftPurgeResult = {
  * any thread (ON DELETE CASCADE), then their photos. Each photo goes to the image clean-up job,
  * which deletes the object through the storage port once nothing else refers to it: a draft
  * started from a bought lot or an earlier work shares that work's photos, which must stay. The
- * rows go first, so the job never finds a photo still held by the draft it belonged to.
+ * rows go first, so the job never finds a photo still held by the draft it belonged to (queueing
+ * first would make it keep them). If the hand-off fails, the storage keys are logged so the
+ * photos can be removed by hand.
  * Running it again changes nothing.
  */
 export class SubmissionDraftPurgeService {
@@ -55,7 +57,11 @@ export class SubmissionDraftPurgeService {
         } catch (error) {
           result.photoFailures += 1;
           this.log?.warn(
-            { submissionId: draft.id, error: error instanceof Error ? error.message : error },
+            {
+              submissionId: draft.id,
+              imageKeys: draft.images,
+              error: error instanceof Error ? error.message : error,
+            },
             "purge-deleted-drafts: photos not handed to clean-up",
           );
         }

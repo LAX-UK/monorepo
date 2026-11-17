@@ -4,9 +4,11 @@ import {
   BOOKED_UNPAID,
   COLLECTED,
   DECLINED,
+  DELIVERED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
   REFUNDED,
+  TO_DISPATCH,
   deliveryFixture,
 } from "./deliveries.fixture";
 import {
@@ -18,6 +20,7 @@ import {
   deliveryBadge,
   deliveryBadges,
   deliveryBuyerLine,
+  deliveryFulfilmentStep,
   deliveryLotTitle,
   deliveryPaidLine,
   deliveryPanelHref,
@@ -29,6 +32,7 @@ import {
   deliveryTabs,
   deliveryTimeline,
   hasDeliveriesFilters,
+  lotFulfilmentHref,
   paddleLine,
   parseDeliveriesSearch,
 } from "./deliveries.vm";
@@ -355,5 +359,56 @@ describe("copy", () => {
     expect(tabs.find((tab) => tab.id === "waiting")?.countLabel).toBe("waiting");
     expect(tabs.filter((tab) => tab.countLabel)).toHaveLength(1);
     expect(deliveryTabs({}, null).some((tab) => tab.countLabel)).toBe(false);
+  });
+});
+
+describe("deliveryFulfilmentStep (D9 part 4)", () => {
+  const href = (lotId: string) => `/admin/lot-fulfilment?q=${lotId}&lot=${lotId}`;
+
+  it("links a booked delivery to its next step on Lot fulfilment", () => {
+    expect(deliveryFulfilmentStep(TO_DISPATCH)).toEqual({
+      id: "released",
+      label: "Ship lot on Lot fulfilment",
+      href: href(TO_DISPATCH.lotId),
+    });
+    expect(deliveryFulfilmentStep(ON_THE_WAY)).toEqual({
+      id: "in_transit",
+      label: "Mark delivered on Lot fulfilment",
+      href: href(ON_THE_WAY.lotId),
+    });
+    const fulfilment = TO_DISPATCH.fulfilment as NonNullable<typeof TO_DISPATCH.fulfilment>;
+    expect(
+      deliveryFulfilmentStep({
+        ...TO_DISPATCH,
+        fulfilment: { ...fulfilment, status: "awaiting_release" },
+      })?.label,
+    ).toBe("Release lot on Lot fulfilment");
+    expect(
+      deliveryFulfilmentStep({
+        ...TO_DISPATCH,
+        fulfilment: { ...fulfilment, status: "ready_for_collection", method: "collection" },
+      })?.label,
+    ).toBe("Mark collected on Lot fulfilment");
+  });
+
+  it("has no step before payment, once delivered, or outside To dispatch and On the way", () => {
+    expect(deliveryFulfilmentStep(BOOKED_UNPAID)).toBeNull();
+    const fulfilment = TO_DISPATCH.fulfilment as NonNullable<typeof TO_DISPATCH.fulfilment>;
+    expect(
+      deliveryFulfilmentStep({
+        ...TO_DISPATCH,
+        fulfilment: { ...fulfilment, status: "awaiting_payment" },
+      }),
+    ).toBeNull();
+    expect(deliveryFulfilmentStep(DELIVERED)).toBeNull();
+    expect(deliveryFulfilmentStep(COLLECTED)).toBeNull();
+    expect(deliveryFulfilmentStep(REFUNDED)).toBeNull();
+    expect(deliveryFulfilmentStep(deliveryFixture())).toBeNull();
+  });
+
+  it("names the lot by its id so Lot fulfilment finds and opens it", () => {
+    expect(lotFulfilmentHref("10700000-0000-4000-8000-000000000042")).toBe(
+      href("10700000-0000-4000-8000-000000000042"),
+    );
   });
 });

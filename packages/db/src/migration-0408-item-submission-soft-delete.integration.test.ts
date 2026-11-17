@@ -11,18 +11,18 @@ import { laterRollbackSql } from "./testing/later-rollbacks.js";
 import { withTemporaryDatabase } from "./testing/temporary-database.js";
 
 const url = process.env.MIGRATION_TEST_DATABASE_URL;
-/** The journal time of 0406, the migration before 0407. */
-const THROUGH_0406 = 1813320000000;
+/** The journal time of 0407, the migration before 0408. */
+const THROUGH_0407 = 1813406400000;
 /** This migration's journal time, which its rollback removes from the ledger. */
-const WHEN_0407 = 1813406400000;
+const WHEN_0408 = 1813492800000;
 const CHECK_VIOLATION = "23514";
 
 const rollbackSql = () =>
-  readFile(resolve(import.meta.dirname, "../drizzle/0407_rollback.sql"), "utf8");
+  readFile(resolve(import.meta.dirname, "../drizzle/0408_rollback.sql"), "utf8");
 
 /** A seller account and a submission of it in `status`. */
 async function seed(pool: pg.Pool) {
-  const userId = `u-0407-${randomUUID().slice(0, 8)}`;
+  const userId = `u-0408-${randomUUID().slice(0, 8)}`;
   const entityId = randomUUID();
   await pool.query(
     `insert into "user" (id, name, email, email_verified, created_at, updated_at)
@@ -37,7 +37,7 @@ async function seed(pool: pg.Pool) {
   return async (status: string) => {
     const { rows } = await pool.query<{ id: string }>(
       `insert into item_submission (legal_entity_id, title, status, submitted_by_user_id)
-       values ($1, 'Work 0407', $2, $3) returning id`,
+       values ($1, 'Work 0408', $2, $3) returning id`,
       [entityId, status, userId],
     );
     return rows[0]?.id as string;
@@ -61,10 +61,10 @@ const hasColumn = async (pool: pg.Pool) =>
     )
   ).rowCount === 1;
 
-describe.skipIf(!url)("migration 0407 item submission soft delete", { timeout: 180_000 }, () => {
+describe.skipIf(!url)("migration 0408 item submission soft delete", { timeout: 180_000 }, () => {
   it("keeps existing submissions, deletes only drafts, rolls back and applies again", async () => {
     await withTemporaryDatabase(async (pool) => {
-      await runMigrationsPerTransactionThrough(pool, THROUGH_0406);
+      await runMigrationsPerTransactionThrough(pool, THROUGH_0407);
       const submission = await seed(pool);
       const existing = await submission("submitted");
 
@@ -90,7 +90,7 @@ describe.skipIf(!url)("migration 0407 item submission soft delete", { timeout: 1
         ),
       ).toBe(CHECK_VIOLATION);
 
-      await pool.query(laterRollbackSql(407));
+      await pool.query(laterRollbackSql(408));
       await pool.query(await rollbackSql());
 
       expect(await hasColumn(pool)).toBe(false);
@@ -105,7 +105,7 @@ describe.skipIf(!url)("migration 0407 item submission soft delete", { timeout: 1
       ]);
       const ledger = await pool.query(
         "select 1 from drizzle.__drizzle_migrations where created_at = $1",
-        [WHEN_0407],
+        [WHEN_0408],
       );
       expect(ledger.rowCount).toBe(0);
 

@@ -86,7 +86,7 @@ describe("SubmissionDraftPurgeService (GAP-53)", () => {
     ).purgeDeletedDrafts(NOW);
     expect(result).toEqual({ purged: 2, photos: 1, photoFailures: 1 });
     expect(log.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ submissionId: "a" }),
+      expect.objectContaining({ submissionId: "a", imageKeys: ["k1"] }),
       expect.stringContaining("photos not handed"),
     );
   });

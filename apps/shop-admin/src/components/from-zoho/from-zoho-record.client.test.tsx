@@ -141,6 +141,21 @@ describe("FromZohoRecord: Zoho changed since it was listed", () => {
   });
 });
 
+describe("FromZohoRecord Price in Zoho", () => {
+  it("shows Zoho's price in the catalogue list", () => {
+    show(detail({ zohoPrice: "4800.00" }));
+    expect(screen.getByText("Price in Zoho")).toBeInTheDocument();
+    expect(screen.getByText("£4,800.00")).toBeInTheDocument();
+  });
+
+  it("says Not set in Zoho, in muted text and with no warning, when Zoho has no price", () => {
+    show(detail({ zohoPrice: null }));
+    const note = screen.getByText("Not set in Zoho");
+    expect(note).toHaveClass("text-staff-muted");
+    expect(screen.queryByText(/Still missing/)).not.toBeInTheDocument();
+  });
+});
+
 describe("FromZohoRecord offer on lax.art", () => {
   beforeEach(() => assess.mockReset());
 

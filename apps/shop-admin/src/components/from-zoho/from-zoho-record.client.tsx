@@ -11,6 +11,7 @@ import {
   useCanOfferOnLaxArt,
   useOfferOnLaxArt,
 } from "@/components/from-zoho/use-offer-on-lax-art.client";
+import { ZohoPriceValue } from "@/components/from-zoho/zoho-price-value";
 import { ZohoMirrorBadge } from "@/components/zoho/zoho-mirror-badge";
 import { bidLotUrl } from "@/lib/offer-at-auction-links";
 import { whereItIsLine } from "@/server/domain/where-it-is.vm";
@@ -285,6 +286,7 @@ export function FromZohoRecord({
               { label: "Year", value: detail.year === null ? null : String(detail.year) },
               { label: "Images", value: imagesLine(detail.imageCount) },
               { label: "Status in Zoho", value: detail.catalogueStatus },
+              { label: "Price in Zoho", value: <ZohoPriceValue zohoPrice={detail.zohoPrice} /> },
               {
                 label: "Zoho product",
                 value: detail.zohoProductId,

@@ -184,6 +184,18 @@ jobs:
       TF_VAR_admin_email_address: ${{ secrets.ADMIN_EMAIL_ADDRESS }}
       TF_VAR_xero_client_id: ${{ secrets.XERO_CLIENT_ID }}
       TF_VAR_xero_client_secret: ${{ secrets.XERO_CLIENT_SECRET }}
+      TF_VAR_xero_token_dek_key: ${{ secrets.XERO_TOKEN_DEK_KEY }}
+      TF_VAR_bid_enquiry_notification_email: ${{ vars.BID_ENQUIRY_NOTIFICATION_EMAIL }}
+      TF_VAR_shop_enquiry_notification_email: ${{ vars.SHOP_ENQUIRY_NOTIFICATION_EMAIL }}
+      TF_VAR_collection_booking_email: ${{ vars.COLLECTION_BOOKING_EMAIL }}
+      TF_VAR_collection_organizer_email: ${{ vars.COLLECTION_ORGANIZER_EMAIL }}
+      TF_VAR_collection_organizer_name: ${{ vars.COLLECTION_ORGANIZER_NAME || 'London Auction Xchange' }}
+      TF_VAR_zoho_artwork_listing_mode: ${{ vars.ZOHO_ARTWORK_LISTING_MODE || 'dry_run' }}
+      TF_VAR_zoho_qc_ready_mode: ${{ vars.ZOHO_QC_READY_MODE || 'off' }}
+      TF_VAR_lax_admin_crm_record_url_template: ${{ vars.LAX_ADMIN_CRM_RECORD_URL_TEMPLATE }}
+      TF_VAR_zoho_qc_webhook_secret: ${{ secrets.ZOHO_QC_WEBHOOK_SECRET }}
+      TF_VAR_sentry_dsn_account: ${{ secrets.SENTRY_DSN_ACCOUNT }}
+      TF_VAR_sentry_dsn_admin: ${{ secrets.SENTRY_DSN_ADMIN }}
       TF_VAR_xero_redirect_uri: ${{ secrets.XERO_REDIRECT_URI }}
       TF_VAR_xero_webhook_key: ${{ secrets.XERO_WEBHOOK_KEY }}
       TF_VAR_xero_post_connect_web_redirect: ${{ secrets.XERO_POST_CONNECT_WEB_REDIRECT }}

@@ -1412,6 +1412,18 @@ export type {
   UpdateLocationInput,
 } from "./artwork-location.js";
 export type {
+  AddAgreementInput,
+  AddAgreementResult,
+  AgreementChangeResult,
+  IConsignorAgreementReader,
+  IConsignorAgreementStore,
+  IConsignorAgreementWriter,
+  ReplaceAgreementInput,
+  RetireAgreementInput,
+  SetConsignorInput,
+  SetConsignorResult,
+} from "./consignor-agreement.js";
+export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
   IOpenLotPlaceReader,

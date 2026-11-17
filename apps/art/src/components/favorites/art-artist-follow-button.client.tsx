@@ -1,6 +1,7 @@
 "use client";
 
 import { useFavoriteToggle } from "@/components/favorites/use-favorite-toggle.client";
+import { useArtPageViewer } from "@/components/viewer/art-page-viewer.client";
 import { followArtist, unfollowArtist } from "@/lib/favorites/art-favorites-actions.server";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { cn } from "@auction/ui";
@@ -28,10 +29,15 @@ export function ArtArtistFollowButton({
   onActiveChange,
   className,
 }: ArtArtistFollowButtonProps) {
+  const pageViewer = useArtPageViewer();
   const { active, pending, announcement, error, toggle } = useFavoriteToggle({
-    initialActive: initialFollowing,
-    auth,
-    mutate: (next) => (next ? followArtist(slug) : unfollowArtist(slug)),
+    initialActive: pageViewer ? pageViewer.followedArtistSlugs.has(slug) : initialFollowing,
+    auth: pageViewer?.favoriteAuth ?? auth,
+    mutate: (next) => {
+      // A page that draws favourites in the browser has nothing for the server to redraw.
+      const options = pageViewer ? { revalidate: false } : undefined;
+      return next ? followArtist(slug, options) : unfollowArtist(slug, options);
+    },
     messages: { on: `Following ${name}.`, off: `Unfollowed ${name}.` },
   });
 

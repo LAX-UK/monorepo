@@ -2,6 +2,7 @@
 
 import { ArtEnquiryConfirmation } from "@/components/enquiry/art-enquiry-confirmation";
 import { ArtEnquiryForm } from "@/components/enquiry/art-enquiry-form.client";
+import { useArtPageViewer } from "@/components/viewer/art-page-viewer.client";
 import type { ArtEnquiryContact } from "@/lib/artwork/artwork-detail-page.composer";
 import { sendArtGeneralEnquiry } from "@/lib/enquiry/art-general-enquiry-actions.server";
 import { buildEnquiryConfirmation } from "@/lib/enquiry/enquiry-confirmation.vm";
@@ -44,18 +45,37 @@ type Props = {
   renderTrigger?: (open: () => void) => ReactNode;
 };
 
+/**
+ * On a prerendered page the props describe a guest; once the browser has read a signed-in visitor
+ * their details are prefilled as on any other page.
+ */
+function usePageViewerContact(contact: ArtEnquiryContact, viewerKind: Props["viewerKind"]) {
+  const viewer = useArtPageViewer()?.viewer;
+  if (!viewer) return { contact, viewerKind };
+  if (viewer.kind !== "authenticated") return { contact, viewerKind: "guest" as const };
+  return {
+    contact: {
+      name: viewer.displayName ?? "",
+      email: viewer.email ?? "",
+      phone: viewer.verifiedPhone ?? "",
+    },
+    viewerKind: "authenticated" as const,
+  };
+}
+
 /** Figma 614:12257 (desktop panel), 533:9469 (mobile sheet), 616:12737 (sent). */
 export function ArtGeneralEnquirySheet({
   defaultTopic = "general",
   contextSlug = null,
   contextLabel = null,
-  contact,
+  contact: contactProp,
   triggerLabel = "Send a message",
   triggerVariant = "default",
   triggerClassName,
-  viewerKind,
+  viewerKind: viewerKindProp,
   renderTrigger,
 }: Props) {
+  const { contact, viewerKind } = usePageViewerContact(contactProp, viewerKindProp);
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState<ArtGeneralEnquiryTopic>(defaultTopic);
   const action = useMemo(() => sendArtGeneralEnquiry.bind(null, contextSlug), [contextSlug]);

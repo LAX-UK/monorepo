@@ -230,7 +230,7 @@ async function withOwnerDocuments<T>(
 }
 
 describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
-  it("deletes a draft and purges it: writes deleted_at and deletes the row (0407)", async () => {
+  it("deletes a draft and purges it: writes deleted_at and deletes the row (0408)", async () => {
     await withApiClient(async (client) => {
       for (const privilege of ["SELECT", "UPDATE"]) {
         const result = await client.query<{ allowed: boolean }>(
@@ -275,6 +275,28 @@ describe.skipIf(!API_URL)("api_app role contract", { timeout: 60_000 }, () => {
             where id = '00000000-0000-4000-8000-000000000000' and status = 'quoted'`,
         ),
       ).resolves.toMatchObject({ rowCount: 0 });
+    });
+  });
+
+  it("has no privilege on consignor agreements or the consignor of an original", async () => {
+    await withApiClient(async (client) => {
+      for (const table of ["consignor_agreement", "artwork_consignor_link"]) {
+        for (const privilege of [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "DELETE",
+          "TRUNCATE",
+          "REFERENCES",
+          "TRIGGER",
+        ]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+        }
+      }
     });
   });
 

@@ -5,16 +5,16 @@ import { describe, expect, it } from "vitest";
 
 const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
 const read = (name: string) => readFileSync(join(drizzleDir, name), "utf8");
-const TAG = "0407_item_submission_soft_delete";
+const TAG = "0408_item_submission_soft_delete";
 /** The migration before this one. */
-const PREVIOUS = "0406_delivery_quote_decline";
+const PREVIOUS = "0407_consignor_agreement";
 const migration = read(`${TAG}.sql`);
-const rollback = read("0407_rollback.sql");
+const rollback = read("0408_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0407 item submission soft delete", () => {
+describe("migration 0408 item submission soft delete", () => {
   it("is the next journal entry, and its rollback removes its own ledger row", () => {
     const entry = journal.entries.find((e) => e.tag === TAG);
     const previous = journal.entries.find((e) => e.tag === PREVIOUS);

@@ -189,7 +189,7 @@ export class ArtworkRegisterReviewService {
   async listAll(query: AdminRegisterQueueQuery): Promise<AdminRegisterAllList> {
     const { page, limit, offset } = pageOf(query);
     const [all, artists, placeCounts, counts] = await Promise.all([
-      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }),
+      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort),
       this.deps.overview.listArtists(),
       this.deps.overview.countPlaces(query.artist),
       this.counts(),
@@ -199,6 +199,7 @@ export class ArtworkRegisterReviewService {
         ...presentArtworkSummary(row.entry),
         whereItIs: placeOf(row),
         location: row.location ? presentLocationRef(row.location) : null,
+        zohoPrice: row.entry.zohoPrice ?? null,
       })),
       artists,
       places: REGISTER_PLACE_VALUES.map((value) => ({

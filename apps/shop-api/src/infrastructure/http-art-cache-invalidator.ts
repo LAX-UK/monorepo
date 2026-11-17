@@ -7,11 +7,18 @@ import type {
 const EDITORIAL_TAG = "art:editorial";
 const ARTWORKS_TAG = "art:artworks";
 const ARTISTS_TAG = "art:artists";
+/**
+ * The prerendered lax.art home page. It shows editorial placements, exhibitions, stories and
+ * venues, featured artworks and featured artists, so every write this port reports changes it.
+ */
+const HOME_TAG = "art:home";
+
+const EDITORIAL_TAGS: readonly string[] = [EDITORIAL_TAG, HOME_TAG];
 
 /** Editorial pages show artworks and artists, so a catalogue change purges them too. */
 const CATALOGUE_TAGS: Record<ArtCatalogueScope, readonly string[]> = {
-  artworks: [ARTWORKS_TAG, EDITORIAL_TAG],
-  artists: [ARTISTS_TAG, ARTWORKS_TAG, EDITORIAL_TAG],
+  artworks: [ARTWORKS_TAG, EDITORIAL_TAG, HOME_TAG],
+  artists: [ARTISTS_TAG, ARTWORKS_TAG, EDITORIAL_TAG, HOME_TAG],
 };
 const ATTEMPT_TIMEOUT_MS = 2_000;
 const RETRY_DELAY_MS = 500;
@@ -62,7 +69,7 @@ export function createHttpArtCacheInvalidator(
   }
 
   return {
-    invalidateEditorial: () => send([EDITORIAL_TAG]),
+    invalidateEditorial: () => send(EDITORIAL_TAGS),
     invalidateCatalogue: (scope) => send(CATALOGUE_TAGS[scope]),
   };
 }

@@ -5,9 +5,12 @@ import {
   API_ACCOUNTING_READ_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
   SHOP_ACCOUNTING_READ_COLUMNS,
+  SHOP_ARTWORK_CONSIGNOR_LINK_TABLES,
   SHOP_ARTWORK_LOCATION_MOVE_TABLES,
   SHOP_ARTWORK_LOCATION_TABLES,
   SHOP_COMMERCE_TABLES,
+  SHOP_CONSIGNOR_AGREEMENT_TABLES,
+  SHOP_CONSIGNOR_AGREEMENT_UPDATE_COLUMNS,
   SHOP_CRM_READ_TABLES,
   SHOP_DEMO_SEED_TARGET_READ_TABLES,
   SHOP_EMAIL_OUTBOX_TABLES,
@@ -89,6 +92,40 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
           expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(allowed);
         }
       }
+    });
+  });
+
+  it("adds agreements and consignors, changes only an agreement's status, and deletes neither", async () => {
+    await withShopClient(async (client) => {
+      const expected: Record<string, Record<string, boolean>> = {};
+      for (const table of [
+        ...SHOP_CONSIGNOR_AGREEMENT_TABLES,
+        ...SHOP_ARTWORK_CONSIGNOR_LINK_TABLES,
+      ])
+        expected[table] = {
+          SELECT: true,
+          INSERT: true,
+          UPDATE: false,
+          DELETE: false,
+          TRUNCATE: false,
+        };
+      for (const [table, privileges] of Object.entries(expected)) {
+        for (const [privilege, allowed] of Object.entries(privileges)) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(allowed);
+        }
+      }
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name, has_column_privilege(current_user, 'public.consignor_agreement', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'consignor_agreement'
+          order by column_name`,
+      );
+      const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(updatable.sort()).toEqual([...SHOP_CONSIGNOR_AGREEMENT_UPDATE_COLUMNS].sort());
     });
   });
 

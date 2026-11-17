@@ -28,6 +28,13 @@ const GapSchema = Type.Union(REGISTER_GAP_VALUES.map((gap) => Type.Literal(gap))
 
 export const ADMIN_REGISTER_PAGE_SIZE = 25;
 
+/**
+ * The All tab's orders besides the default (newest Zoho edit first): by Zoho's price, lowest or
+ * highest first. Works Zoho has not priced come last either way, so staff can page to them.
+ */
+export const REGISTER_ALL_SORT_VALUES = ["zohoPrice", "-zohoPrice"] as const;
+export type AdminRegisterAllSort = (typeof REGISTER_ALL_SORT_VALUES)[number];
+
 /** The All tab's location filter value for artworks with no location recorded. */
 export const REGISTER_LOCATION_NONE = "none";
 
@@ -61,6 +68,8 @@ export const AdminRegisterQueueQuerySchema = Type.Object({
   location: Type.Optional(
     Type.Union([Type.String({ format: "uuid" }), Type.Literal(REGISTER_LOCATION_NONE)]),
   ),
+  /** The All tab only: the order of the rows across every page (newest Zoho edit when absent). */
+  sort: Type.Optional(Type.Union(REGISTER_ALL_SORT_VALUES.map((sort) => Type.Literal(sort)))),
   page: Type.Optional(Type.Integer({ minimum: 1, maximum: 10000 })),
 });
 
@@ -94,6 +103,8 @@ export const AdminRegisterAllItemSchema = Type.Composite([
   Type.Object({
     whereItIs: Type.Pick(AdminWhereItIsSchema, ["key", "chip"]),
     location: Type.Union([AdminLocationRefSchema, Type.Null()]),
+    /** Zoho's price in pounds ("250.00"); null when Zoho has none. Information only. */
+    zohoPrice: Type.Union([Type.String(), Type.Null()]),
   }),
 ]);
 

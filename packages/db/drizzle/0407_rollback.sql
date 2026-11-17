@@ -1,28 +1,33 @@
--- Rollback for 0407_item_submission_soft_delete. Roll the release back first: the previous release
--- neither deletes drafts nor reads deleted_at, so a soft-deleted draft would show again in its
--- account. Each was deleted by its client ("This cannot be undone"), so they are removed for good
--- here rather than brought back; their rows' documents, categories and threads go with them (ON
--- DELETE CASCADE). Their photos stay in storage: run the purge job before rolling back to remove
--- them too. Also removes this migration's ledger row so a later deploy reapplies it.
+-- Rollback for 0407_consignor_agreement. Roll the release back first: the previous release
+-- neither reads nor writes these tables. The agreements and consignor links are the only record
+-- of what each consignor agreed and who consigned each work, so this refuses while any exist
+-- (export them first, then delete them as the owner with the triggers disabled).
+-- Also removes this migration's ledger row so a later deploy reapplies it.
 BEGIN;
 
 SET LOCAL lock_timeout = '30s';
 
--- Re-runnable, like the other rollbacks: once the column is gone there is nothing to remove, and
--- the statement is run dynamically so it is not planned against a column that no longer exists.
+-- Nested, not AND: the whole condition is planned at once, which fails once the table is gone.
 DO $$
 BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-     WHERE table_schema = 'public' AND table_name = 'item_submission' AND column_name = 'deleted_at'
-  ) THEN
-    EXECUTE 'DELETE FROM "item_submission" WHERE "deleted_at" IS NOT NULL';
+  IF to_regclass('public.artwork_consignor_link') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM "artwork_consignor_link") THEN
+      RAISE EXCEPTION 'artwork_consignor_link holds consignors; export them before rolling back';
+    END IF;
+  END IF;
+  IF to_regclass('public.consignor_agreement') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM "consignor_agreement") THEN
+      RAISE EXCEPTION 'consignor_agreement holds agreements; export them before rolling back';
+    END IF;
   END IF;
 END $$;
 
-ALTER TABLE "item_submission" DROP CONSTRAINT IF EXISTS "item_submission_deleted_draft_check";
-
-ALTER TABLE "item_submission" DROP COLUMN IF EXISTS "deleted_at";
+DROP TABLE IF EXISTS "artwork_consignor_link";
+DROP FUNCTION IF EXISTS artwork_consignor_link_append_only();
+DROP FUNCTION IF EXISTS artwork_consignor_link_reason();
+DROP TABLE IF EXISTS "consignor_agreement";
+DROP FUNCTION IF EXISTS consignor_agreement_frozen();
+DROP FUNCTION IF EXISTS consignor_agreement_lineage();
 
 DELETE FROM drizzle.__drizzle_migrations WHERE created_at = 1813406400000;
 

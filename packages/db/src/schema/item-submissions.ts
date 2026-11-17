@@ -94,7 +94,7 @@ export const itemSubmission = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     /**
-     * When its client deleted this draft (GAP-53, migration 0407). Readers of the account's
+     * When its client deleted this draft (GAP-53, migration 0408). Readers of the account's
      * submissions leave it out; the purge job removes it and its photos 30 days later. Only a
      * draft is ever deleted (`item_submission_deleted_draft_check`).
      */

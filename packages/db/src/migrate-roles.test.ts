@@ -35,6 +35,7 @@ import {
   LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
   SELLER_TERMS_INSERT_SELECT_TABLES,
   SELLER_TERMS_RECOMPUTE_UPDATE_COLUMNS,
+  SHOP_ARTWORK_CONSIGNOR_LINK_TABLES,
   SHOP_ARTWORK_LOCATION_MOVE_TABLES,
   SHOP_ARTWORK_LOCATION_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
@@ -43,6 +44,8 @@ import {
   SHOP_ARTWORK_REGISTER_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  SHOP_CONSIGNOR_AGREEMENT_TABLES,
+  SHOP_CONSIGNOR_AGREEMENT_UPDATE_COLUMNS,
   SHOP_DEMO_SEED_TARGET_READ_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
   WORKER_ACCOUNTING_APPEND_ONLY_TABLES,
@@ -821,6 +824,26 @@ describe("migrate-roles invariants", () => {
 
   it("keeps the Bid API away from stock locations, so it cannot change or truncate the moves", () => {
     for (const table of [...SHOP_ARTWORK_LOCATION_TABLES, ...SHOP_ARTWORK_LOCATION_MOVE_TABLES]) {
+      expect([...API_DENY_TABLES]).toContain(table);
+    }
+  });
+
+  it("lets LAX Admin add consignor agreements and only mark a version replaced or retired", () => {
+    expect([...SHOP_CONSIGNOR_AGREEMENT_TABLES]).toEqual(["consignor_agreement"]);
+    expect([...SHOP_CONSIGNOR_AGREEMENT_UPDATE_COLUMNS]).toEqual([
+      "status",
+      "replaced_at",
+      "retired_at",
+      "retired_by",
+    ]);
+    expect([...SHOP_ARTWORK_CONSIGNOR_LINK_TABLES]).toEqual(["artwork_consignor_link"]);
+  });
+
+  it("keeps the Bid API away from consignor agreements and consignors", () => {
+    for (const table of [
+      ...SHOP_CONSIGNOR_AGREEMENT_TABLES,
+      ...SHOP_ARTWORK_CONSIGNOR_LINK_TABLES,
+    ]) {
       expect([...API_DENY_TABLES]).toContain(table);
     }
   });

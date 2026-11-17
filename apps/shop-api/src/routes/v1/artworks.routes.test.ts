@@ -23,6 +23,8 @@ function createCatalogueDeps() {
         artists: [],
         priceBands: [],
         sizes: [],
+        orientations: [],
+        framing: [],
         techniques: [],
         objectTypes: [],
         saleStates: [],
@@ -44,6 +46,8 @@ describe("artworks routes", () => {
       artists: [{ slug: "emmett-king", name: "Emmett King", count: 2 }],
       priceBands: [{ key: "under-50", count: 4 }],
       sizes: [{ key: "small", count: 4 }],
+      orientations: [{ key: "portrait", count: 3 }],
+      framing: [{ key: "unframed", count: 4 }],
       techniques: [{ value: "Screenprint", count: 4 }],
       objectTypes: [],
       saleStates: [],
@@ -57,6 +61,8 @@ describe("artworks routes", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().availability).toEqual({ available: 3, soldOut: 1 });
+    expect(response.json().orientations).toEqual([{ key: "portrait", count: 3 }]);
+    expect(response.json().framing).toEqual([{ key: "unframed", count: 4 }]);
     expect(countArtworkFacets).toHaveBeenCalledWith({
       salesChannel: "shop",
       availability: "available",
@@ -102,6 +108,33 @@ describe("artworks routes", () => {
     });
     const bad = await app.inject({ method: "GET", url: "/v1/artworks?size=huge" });
     expect(bad.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("passes the orientation and framing filters to the list and the counts", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(async () => ({ items: [] }));
+    const countArtworkFacets = vi.fn(deps.catalogue.countArtworkFacets);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    deps.catalogue.countArtworkFacets = countArtworkFacets;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const query = "orientation=landscape&framing=framed";
+    await app.inject({ method: "GET", url: `/v1/artworks?${query}` });
+    await app.inject({ method: "GET", url: `/v1/artwork-facets?${query}` });
+    expect(listPublicArtworks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: expect.objectContaining({ orientation: "landscape", framing: "framed" }),
+      }),
+    );
+    expect(countArtworkFacets).toHaveBeenCalledWith({
+      orientation: "landscape",
+      framing: "framed",
+    });
+    for (const bad of ["orientation=round", "framing=framed_only"]) {
+      const response = await app.inject({ method: "GET", url: `/v1/artworks?${bad}` });
+      expect(response.statusCode).toBe(400);
+    }
     await app.close();
   });
 
@@ -343,6 +376,8 @@ describe("artworks routes", () => {
         artists: [],
         priceBands: [],
         sizes: [],
+        orientations: [],
+        framing: [],
         techniques: [],
         objectTypes: [],
         saleStates: [],

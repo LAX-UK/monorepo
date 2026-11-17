@@ -179,6 +179,25 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("has no privilege on consignor agreements or the consignor of an original", async () => {
+    await withWorkerClient(async (client) => {
+      for (const table of ["consignor_agreement", "artwork_consignor_link"]) {
+        const any = await client.query<{ allowed: boolean }>(
+          "select has_any_column_privilege(current_user, $1, 'SELECT, INSERT, UPDATE, REFERENCES') as allowed",
+          [`public.${table}`],
+        );
+        expect(any.rows[0]?.allowed, table).toBe(false);
+        for (const privilege of ["DELETE", "TRUNCATE", "TRIGGER"]) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(false);
+        }
+      }
+    });
+  });
+
   it("reads what the Bid accounting facts need, writes invoice.raised and starts a projector cursor", async () => {
     await withWorkerClient(async (client) => {
       const can = async (table: string, privilege: string) =>
