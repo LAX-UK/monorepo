@@ -20,4 +20,16 @@ describe("loadShopEnv", () => {
       }).LAX_BID_PUBLIC_URL,
     ).toBeUndefined();
   });
+
+  it("keeps express checkout off unless SHOP_EXPRESS_CHECKOUT is true", () => {
+    expect(loadShopEnv({}).SHOP_EXPRESS_CHECKOUT).toBe(false);
+    expect(loadShopEnv({ SHOP_EXPRESS_CHECKOUT: "false" }).SHOP_EXPRESS_CHECKOUT).toBe(false);
+    expect(loadShopEnv({ SHOP_EXPRESS_CHECKOUT: " " }).SHOP_EXPRESS_CHECKOUT).toBe(false);
+    expect(loadShopEnv({ SHOP_EXPRESS_CHECKOUT: "true" }).SHOP_EXPRESS_CHECKOUT).toBe(true);
+  });
+
+  it("refuses any other SHOP_EXPRESS_CHECKOUT value", () => {
+    expect(() => loadShopEnv({ SHOP_EXPRESS_CHECKOUT: "1" })).toThrow();
+    expect(() => loadShopEnv({ SHOP_EXPRESS_CHECKOUT: "TRUE" })).toThrow();
+  });
 });
