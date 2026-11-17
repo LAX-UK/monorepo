@@ -407,7 +407,9 @@ export const BESIDE_PANEL_MEDIA = "(min-width: 80rem)";
 
 function subscribeBesideWidth(onChange: () => void): () => void {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const query = window.matchMedia(BESIDE_PANEL_MEDIA);
+  // A stubbed `matchMedia` may answer nothing: then the width never changes.
+  const query = window.matchMedia(BESIDE_PANEL_MEDIA) as MediaQueryList | undefined;
+  if (!query || typeof query.addEventListener !== "function") return () => {};
   query.addEventListener("change", onChange);
   return () => query.removeEventListener("change", onChange);
 }
@@ -416,7 +418,7 @@ function besideWidthNow(): boolean {
   return (
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
-    window.matchMedia(BESIDE_PANEL_MEDIA).matches
+    (window.matchMedia(BESIDE_PANEL_MEDIA) as MediaQueryList | undefined)?.matches === true
   );
 }
 

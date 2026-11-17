@@ -188,6 +188,13 @@ describe("DetailPanel beside its list", () => {
     expect(document.querySelector("[data-lax-motion='scrim']")).not.toBeNull();
   });
 
+  it("is the usual panel when matchMedia answers nothing, as a reset test stub does", () => {
+    window.matchMedia = (() => undefined) as unknown as typeof window.matchMedia;
+    renderBeside();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(document.querySelector("[data-staff-panel-beside]")).toBeNull();
+  });
+
   it("keeps the panel's 480px clear on the list only while it is open", () => {
     const { rerender, container } = render(
       <BesidePanelInset open={false}>
