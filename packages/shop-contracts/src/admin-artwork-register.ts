@@ -94,6 +94,8 @@ export const AdminRegisterAllItemSchema = Type.Composite([
   Type.Object({
     whereItIs: Type.Pick(AdminWhereItIsSchema, ["key", "chip"]),
     location: Type.Union([AdminLocationRefSchema, Type.Null()]),
+    /** Zoho's price in pounds ("250.00"); null when Zoho has none. Information only. */
+    zohoPrice: Type.Union([Type.String(), Type.Null()]),
   }),
 ]);
 

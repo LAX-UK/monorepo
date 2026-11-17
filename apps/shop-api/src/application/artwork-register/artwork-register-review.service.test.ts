@@ -3,7 +3,12 @@ import {
   CATALOGUE_GAPS,
   REOPEN_REFUSAL_MESSAGE,
 } from "@auction/artwork-register-contracts";
-import { type AdminAuctionOfferAssessment, REGISTER_GAP_VALUES } from "@auction/shop-contracts";
+import {
+  type AdminAuctionOfferAssessment,
+  AdminRegisterAllItemSchema,
+  REGISTER_GAP_VALUES,
+} from "@auction/shop-contracts";
+import { Value } from "@sinclair/typebox/value";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ArtworkRegisterOverview,
@@ -206,6 +211,22 @@ describe("ArtworkRegisterReviewService", () => {
       { id: "loc-1", name: "Framer", status: "retired", label: "Framer (retired)" },
       null,
     ]);
+  });
+
+  it("carries Zoho's price on each list item, and null when Zoho has none", async () => {
+    const { service: s, deps } = service();
+    vi.mocked(deps.overview.listAll).mockResolvedValue({
+      rows: [
+        { entry: entry({ zohoPrice: "4800.00" }), hasLaxArtDraft: false, location: null },
+        { entry: entry({ id: "b" }), hasLaxArtDraft: false, location: null },
+      ],
+      total: 2,
+    });
+    const list = await s.listAll({});
+    expect(list.items.map((item) => item.zohoPrice)).toEqual(["4800.00", null]);
+    expect(
+      Value.Check(AdminRegisterAllItemSchema.properties.zohoPrice, list.items[0]?.zohoPrice),
+    ).toBe(true);
   });
 
   it("keeps a withdrawn record reading Withdrawn in the list, whatever its age", async () => {

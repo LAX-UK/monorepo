@@ -7,7 +7,9 @@ import {
   useQueueFrame,
 } from "@/components/from-zoho/use-queue-frame.client";
 import { useRegisterRowActions } from "@/components/from-zoho/use-register-row-actions.client";
+import { ZohoPriceValue } from "@/components/from-zoho/zoho-price-value";
 import { MoveArtworksDialog } from "@/components/stock-location/move-artworks-dialog.client";
+import { zohoPriceMinor } from "@/lib/zoho-price";
 import { LOCATION_NOT_RECORDED, locationFilterOptions } from "@/server/domain/stock-location.vm";
 import {
   type ZohoQueueQuery,
@@ -34,6 +36,8 @@ import {
 import { MapPin } from "@auction/staff-ui/icons";
 import { useMemo, useState } from "react";
 
+const HIDDEN_BY_DEFAULT = "zohoPrice";
+
 const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
   { id: "artwork", header: "Artwork", mobile: "title", cell: artworkCell },
   {
@@ -59,6 +63,19 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     width: "110px",
     hideBelow: "md",
     cell: (row) => kindLabel(row.kind),
+  },
+  {
+    // Information only, hidden by default (TBL-12). Sorting groups the unpriced works together.
+    id: "zohoPrice",
+    header: "Price in Zoho",
+    width: "140px",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "asc",
+    mobile: "hidden",
+    truncate: false,
+    sortValue: (row) => zohoPriceMinor(row.zohoPrice),
+    cell: (row) => <ZohoPriceValue zohoPrice={row.zohoPrice} />,
   },
   {
     id: "edited",
@@ -210,6 +227,7 @@ export function AllFromZohoList({
           data: page.items,
           getRowId: (row) => row.registerId,
           defaultDensity: "comfortable",
+          defaultHiddenColumns: [HIDDEN_BY_DEFAULT],
           onRowOpen: (row) => navigate(`/from-zoho/${row.registerId}`),
           rowActions: {
             label: (row) => `Actions for ${row.title}`,

@@ -199,6 +199,7 @@ export class ArtworkRegisterReviewService {
         ...presentArtworkSummary(row.entry),
         whereItIs: placeOf(row),
         location: row.location ? presentLocationRef(row.location) : null,
+        zohoPrice: row.entry.zohoPrice ?? null,
       })),
       artists,
       places: REGISTER_PLACE_VALUES.map((value) => ({

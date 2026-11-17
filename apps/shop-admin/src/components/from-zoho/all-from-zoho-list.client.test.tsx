@@ -8,7 +8,7 @@ import type {
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -81,6 +81,7 @@ function item(
     zohoModifiedAt: "2026-11-04T09:40:00.000Z",
     whereItIs: { key, chip: CHIPS[key] },
     location: null,
+    zohoPrice: null,
     ...patch,
   };
 }
@@ -121,6 +122,42 @@ const rowOf = (title: string) => {
   if (!row) throw new Error(`no row for ${title}`);
   return within(row);
 };
+
+describe("AllFromZohoList Price in Zoho column", () => {
+  const priced = [
+    item(1, "not_offered", { zohoPrice: "4800.00" }),
+    item(2, "not_offered"),
+    item(3, "not_offered", { zohoPrice: "250.00" }),
+  ];
+
+  it("is hidden until it is chosen from Display", () => {
+    window.localStorage.clear();
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={page(priced)} />);
+    expect(screen.queryByRole("columnheader", { name: /Price in Zoho/ })).not.toBeInTheDocument();
+  });
+
+  it("shows the price or Not set in Zoho once shown, and sorts unpriced works together", async () => {
+    window.localStorage.setItem(
+      "staff.columns.from-zoho-all",
+      JSON.stringify({
+        hidden: [],
+        known: ["artwork", "where", "location", "kind", "zohoPrice", "edited"],
+      }),
+    );
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={page(priced)} />);
+    expect(rowOf("Work 1").getByText("£4,800.00")).toBeInTheDocument();
+    expect(rowOf("Work 2").getByText("Not set in Zoho")).toBeInTheDocument();
+    const header = screen.getByRole("columnheader", { name: /Price in Zoho/ });
+    fireEvent.click(within(header).getByRole("button"));
+    const order = screen
+      .getAllByRole("row")
+      .map((row) => /Work \d/.exec(row.textContent ?? "")?.[0])
+      .filter(Boolean);
+    expect(order).toEqual(["Work 3", "Work 1", "Work 2"]);
+  });
+
+  afterEach(() => window.localStorage.clear());
+});
 
 describe("AllFromZohoList", () => {
   const rows = [item(1, "not_offered"), item(2, "draft_lax_art"), item(3, "sold")];
