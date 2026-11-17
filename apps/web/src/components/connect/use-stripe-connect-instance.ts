@@ -2,7 +2,7 @@
 
 import { PAYOUT_SETUP_LOAD_FAILED } from "@/lib/connect/connect-error-copy";
 import { useConnectAppearance } from "@/lib/connect/use-connect-appearance";
-import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js";
+import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js/pure";
 import { useEffect, useRef, useState } from "react";
 
 type Options = {
