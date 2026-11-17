@@ -841,6 +841,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           staffNames: createDrizzleStaffNameReader(db),
         }),
         releaseAlertSummary: shopAlerts.summary,
+        releaseAlertSends: shopAlerts.sendLog,
         printParties: createDrizzlePrintPartyStore(db),
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {

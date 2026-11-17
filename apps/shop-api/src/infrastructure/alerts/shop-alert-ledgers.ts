@@ -20,6 +20,8 @@ import {
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 
 const INSERT_CHUNK = 500;
+/** The send log counts release alerts only; back-in-stock and lax.art matches are not counted. */
+const RELEASE_TOPIC = "shop.releases";
 
 function toPending(row: {
   id: string;
@@ -103,12 +105,30 @@ export class ShopAlertMatchLedger implements MatchLedger {
     return rows.map(toPending);
   }
 
+  /**
+   * Drops matches, and counts the release-alert ones on their announcement in the same statement
+   * (design LA-3, Q10), so the send log keeps why they were not sent after the matches are gone.
+   */
   async drop(matchIds: readonly string[], reason: string, _now: Date) {
     if (matchIds.length === 0) return;
-    await this.db
-      .update(m)
-      .set({ droppedReason: reason })
-      .where(and(inArray(m.id, [...matchIds]), isNull(m.droppedReason)));
+    await this.db.execute(sql`
+      WITH dropped AS (
+        UPDATE ${m} SET dropped_reason = ${reason}
+         WHERE ${m.id} IN (${sql.join(
+           matchIds.map((id) => sql`${id}::uuid`),
+           sql`, `,
+         )}) AND ${m.droppedReason} IS NULL
+        RETURNING ${m.itemKey} AS item_key, ${m.topic} AS topic
+      ), per_item AS (
+        SELECT item_key, count(*)::int AS n FROM dropped
+         WHERE topic = ${RELEASE_TOPIC} GROUP BY item_key
+      )
+      UPDATE ${a} SET
+        dropped_count = ${a.droppedCount} + per_item.n,
+        dropped_reasons = coalesce(${a.droppedReasons}, '{}'::jsonb)
+          || jsonb_build_object(${reason}::text, coalesce((${a.droppedReasons} ->> ${reason}::text)::int, 0) + per_item.n)
+        FROM per_item
+       WHERE ${a.itemKey} = per_item.item_key AND ${a.droppedCount} IS NOT NULL`);
   }
 }
 
@@ -161,8 +181,26 @@ export class ShopAlertDigestLedger implements DigestLedger {
       .limit(limit);
   }
 
+  /**
+   * Marks a digest sent once, and in the same statement counts its release-alert matches as
+   * emailed on their announcements (design LA-3, Q10), so the send log keeps them after the
+   * matches are pruned or their subscriber is removed. Marking it again changes nothing.
+   */
   async markSent(digestId: string, now: Date) {
-    await this.db.update(d).set({ sentAt: now }).where(eq(d.id, digestId));
+    await this.db.execute(sql`
+      WITH sent AS (
+        UPDATE ${d} SET sent_at = ${now.toISOString()}::timestamptz
+         WHERE ${d.id} = ${digestId}::uuid AND ${d.sentAt} IS NULL
+        RETURNING ${d.id} AS id
+      ), per_item AS (
+        SELECT ${m.itemKey} AS item_key, count(*)::int AS n
+          FROM ${m} JOIN sent ON ${m.digestId} = sent.id
+         WHERE ${m.topic} = ${RELEASE_TOPIC} AND ${m.droppedReason} IS NULL
+         GROUP BY ${m.itemKey}
+      )
+      UPDATE ${a} SET emailed_count = ${a.emailedCount} + per_item.n
+        FROM per_item
+       WHERE ${a.itemKey} = per_item.item_key AND ${a.emailedCount} IS NOT NULL`);
   }
 }
 
@@ -188,10 +226,14 @@ export class ShopAlertAnnouncementStore implements AnnouncementStore {
     };
   }
 
+  /** Also keeps how many people the release matched, for the send log (design LA-3, Q10). */
   async markExpanded(itemKey: string, now: Date) {
     await this.db
       .update(a)
-      .set({ expandedAt: now })
+      .set({
+        expandedAt: now,
+        matchedCount: sql`(SELECT count(*)::int FROM ${m} WHERE ${m.itemKey} = ${itemKey} AND ${m.topic} = ${RELEASE_TOPIC})`,
+      })
       .where(and(eq(a.itemKey, itemKey), sql`${a.expandedAt} IS NULL`));
   }
 }

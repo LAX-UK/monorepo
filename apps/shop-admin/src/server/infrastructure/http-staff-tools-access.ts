@@ -31,6 +31,17 @@ function readTools(payload: unknown): StaffToolId[] | null {
   return KNOWN_TOOLS.filter((tool) => listed.includes(tool));
 }
 
+/** The Failed jobs sources Bid listed; none when it listed none or answered in another shape. */
+function readFailedJobSources(payload: unknown): string[] {
+  if (!payload || typeof payload !== "object" || !("data" in payload)) return [];
+  const data = payload.data;
+  if (!data || typeof data !== "object" || !("failedJobSources" in data)) return [];
+  const listed = data.failedJobSources;
+  return Array.isArray(listed)
+    ? listed.filter((source): source is string => typeof source === "string")
+    : [];
+}
+
 /**
  * Asks the Bid API which staff tools the signed-in person can open, as that person: the session's
  * ID token is exchanged (RFC 8693) for a token bound to the Bid API with the read-only
@@ -69,8 +80,11 @@ export function createHttpStaffToolsAccess(options: HttpStaffToolsAccessOptions)
           cache: "no-store",
         });
         if (!response.ok) return UNAVAILABLE;
-        const tools = readTools(await response.json().catch(() => null));
-        return tools ? { status: "ok", tools } : UNAVAILABLE;
+        const payload: unknown = await response.json().catch(() => null);
+        const tools = readTools(payload);
+        return tools
+          ? { status: "ok", tools, failedJobSources: readFailedJobSources(payload) }
+          : UNAVAILABLE;
       } catch {
         return UNAVAILABLE;
       } finally {

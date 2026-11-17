@@ -100,6 +100,10 @@ if [[ $sha != "$start_sha" ]] && { ! grep -q '"ROUTE_JS_SIZE_BUILD"' turbo.json 
   flags+=(--force)
 fi
 
+# The CI build job's cap on concurrent builds (BUILD_CONCURRENCY in ci.yml): every Next app build
+# gets the job's large heap, and all of them at once overrun the runner's memory.
+if [[ -n ${BUILD_CONCURRENCY:-} ]]; then flags+=(--concurrency="$BUILD_CONCURRENCY"); fi
+
 # shellcheck disable=SC2086 # filters is a list of flags
 pnpm turbo run build "${flags[@]}" $filters
 

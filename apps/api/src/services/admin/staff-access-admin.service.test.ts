@@ -1,4 +1,5 @@
 import type { LaxStaffAccessHistoryEntry } from "@auction/persistence/interfaces";
+import { type UserStaffRole, userStaffRoles } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import {
   type StaffAccessActor,
@@ -69,6 +70,39 @@ describe("StaffAccessAdminService tools", () => {
 
     expect(await service.myTools(SPECIALIST)).toEqual(["bid-admin", "lax-admin"]);
     expect(await service.myTools(CLIENT)).toEqual(["lax-admin"]);
+  });
+
+  // Q7 / PRM-1: LAX Admin's "Open in Failed jobs" on a record not in Zoho is drawn only for the
+  // roles Bid shows Zoho failures to. Spelt out per role so a change to the access table is seen.
+  const CAN_READ_ZOHO_FAILED_JOBS: Record<UserStaffRole, boolean> = {
+    administrator: true,
+    sales_manager: false,
+    saleroom_clerk: false,
+    cataloguer: false,
+    specialist: false,
+    client_services: false,
+    finance: false,
+    fulfilment: false,
+    compliance: false,
+    read_only: true,
+  };
+
+  it.each(userStaffRoles)("says whether a Bid %s can read Zoho rows in Failed jobs", (role) => {
+    const { service } = setup();
+    const sources = service.myFailedJobSources({
+      userId: "usr_x",
+      role: "staff",
+      staffRoles: [role],
+    });
+    expect(sources.includes("integrations.zoho")).toBe(CAN_READ_ZOHO_FAILED_JOBS[role]);
+  });
+
+  it("gives Finance its Xero and Books rows but not Zoho's, and a non-staff session nothing", () => {
+    const { service } = setup();
+    expect(
+      service.myFailedJobSources({ userId: "usr_f", role: "staff", staffRoles: ["finance"] }),
+    ).toEqual(["integrations.xero", "integrations.books"]);
+    expect(service.myFailedJobSources({ ...CLIENT, staffRoles: ["administrator"] })).toEqual([]);
   });
 });
 

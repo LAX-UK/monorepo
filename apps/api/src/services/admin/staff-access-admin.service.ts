@@ -5,6 +5,7 @@ import type {
   LaxStaffAccessHistoryEntry,
 } from "@auction/persistence/interfaces";
 import {
+  type FailedJobSource,
   LAX_STAFF_PLATFORMS,
   type LaxStaffAccessProduct,
   NO_STAFF_ROLES,
@@ -12,6 +13,7 @@ import {
   type StaffToolId,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
+  failedJobSourcesFor,
   staffToolsFromGrants,
   userHasAccessTo,
 } from "@auction/types";
@@ -65,6 +67,11 @@ export type StaffAccessDetail = {
 const HISTORY_LIMIT = 50;
 export const STAFF_ACCESS_SUMMARY_BATCH = 100;
 
+/** Bid access follows the Bid session itself, which is what Bid enforces on arrival. */
+function bidRolesOf(actor: StaffAccessActor): StaffRoles {
+  return actor.role === "staff" ? (actor.staffRoles ?? NO_STAFF_ROLES) : NO_STAFF_ROLES;
+}
+
 const forbidden: StaffAccessError = { status: 403, message: "forbidden" };
 
 /**
@@ -87,11 +94,19 @@ export class StaffAccessAdminService {
    */
   async myTools(actor: StaffAccessActor): Promise<StaffToolId[]> {
     const entries = await this.deps.access.listForSubjects([actor.userId]);
-    const bidRoles = actor.role === "staff" ? (actor.staffRoles ?? NO_STAFF_ROLES) : NO_STAFF_ROLES;
     return staffToolsFromGrants([
       ...entries.filter((e) => e.product !== "bid"),
-      ...bidRoles.map((role) => ({ product: "bid" as const, role })),
+      ...bidRolesOf(actor).map((role) => ({ product: "bid" as const, role })),
     ]);
+  }
+
+  /**
+   * The Failed jobs sources the signed-in person can read in Bid admin, from the same access table
+   * the Failed jobs API and screen use, so another product links there only for people Bid will
+   * show the rows to ("Open in Failed jobs" on a LAX Admin record that is not in Zoho).
+   */
+  myFailedJobSources(actor: StaffAccessActor): FailedJobSource[] {
+    return failedJobSourcesFor(bidRolesOf(actor), "read");
   }
 
   async summaries(

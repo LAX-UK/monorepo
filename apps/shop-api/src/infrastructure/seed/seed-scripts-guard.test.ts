@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { seedAcceptancePortal, seedAcceptanceStaffOperations } from "./acceptance-seed-target.js";
 import { runShopDemoFull } from "./demo-full-runner.js";
 import { grantLocalAdminStaff } from "./local-admin-staff-seed.js";
+import { seedZohoMirrorBadgeFixtures } from "./zoho-mirror-badge-seed.js";
 
 /**
  * Each Shop seed script that writes staff grants or demo data runs one of these functions, which
@@ -87,6 +88,19 @@ const CASES: Case[] = [
         write as never,
       ),
   },
+  {
+    name: "seed:zoho-mirror-badge",
+    // Its writes run in transactions; the spy stands for them.
+    run: (db, url, write) =>
+      seedZohoMirrorBadgeFixtures(
+        Object.assign(db, {
+          transaction: async () => {
+            write();
+          },
+        }),
+        { databaseUrl: url },
+      ),
+  },
 ];
 
 describe.each(CASES)("$name", ({ name, run }) => {
@@ -112,7 +126,7 @@ describe.each(CASES)("$name", ({ name, run }) => {
     expect(write).toHaveBeenCalled();
   });
 
-  if (name === "seed:local-admin-staff") {
+  if (name === "seed:local-admin-staff" || name === "seed:zoho-mirror-badge") {
     it("writes nothing on a database marked test, even through a loopback tunnel", async () => {
       const write = vi.fn(async () => ({}));
       await expect(run(fakeDb(TEST_MARK), LOCAL_URL, write)).rejects.toThrow(/marked "test"/);
@@ -136,6 +150,7 @@ describe("Shop seed script wiring", () => {
     ["seed-demo-full.ts", "runShopDemoFull(", "seedDemoShopStates"],
     ["seed-demo-full.ts", "runShopDemoFull(", "seedDemoFull("],
     ["seed-local-admin-staff.ts", "grantLocalAdminStaff(", "grantShopStaffRole"],
+    ["seed-zoho-mirror-badge.ts", "seedZohoMirrorBadgeFixtures(", "INSERT INTO"],
   ])("%s goes through the guarded function", (file, guarded, raw) => {
     const source = read(file);
     expect(source).toContain(guarded);

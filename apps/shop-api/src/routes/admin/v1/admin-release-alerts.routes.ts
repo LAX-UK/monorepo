@@ -1,12 +1,24 @@
-import { AdminReleaseAlertSummarySchema, ShopApiErrorBodySchema } from "@auction/shop-contracts";
+import {
+  AdminReleaseAlertSendListSchema,
+  type AdminReleaseAlertSendsQuery,
+  AdminReleaseAlertSendsQuerySchema,
+  AdminReleaseAlertSummarySchema,
+  ShopApiErrorBodySchema,
+} from "@auction/shop-contracts";
 import type { FastifyInstance } from "fastify";
-import type { ReleaseAlertSummaryReader } from "../../../application/alerts/alert-ports.js";
+import type {
+  ReleaseAlertSendLogReader,
+  ReleaseAlertSummaryReader,
+} from "../../../application/alerts/alert-ports.js";
 import { requireShopStaffCapability } from "../../../plugins/shop-admin-auth.js";
 
-/** How many people are on the release alert list. Reading it needs `lead.read`, like leads. */
+/**
+ * The release alert list in LAX Admin: how many people are on it, and what each published release
+ * sent. Reading either needs `lead.read`, like leads. Both are counts; no subscriber is named.
+ */
 export async function registerAdminReleaseAlertRoutes(
   app: FastifyInstance,
-  summary: ReleaseAlertSummaryReader,
+  readers: { summary: ReleaseAlertSummaryReader; sends: ReleaseAlertSendLogReader },
 ) {
   app.get(
     "/release-alerts/summary",
@@ -18,7 +30,27 @@ export async function registerAdminReleaseAlertRoutes(
     },
     async (request) => {
       requireShopStaffCapability(request, "lead.read");
-      return summary.counts();
+      return readers.summary.counts();
+    },
+  );
+
+  app.get<{ Querystring: AdminReleaseAlertSendsQuery }>(
+    "/release-alerts/sends",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminReleaseAlertSendsQuerySchema,
+        response: {
+          200: AdminReleaseAlertSendListSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "lead.read");
+      const { cursor, limit } = request.query;
+      return readers.sends.list({ cursor, limit });
     },
   );
 }
