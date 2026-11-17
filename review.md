@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of #1528 "Bid admin Deliveries, part 3: decline a delivery quote"
 
@@ -147,3 +147,118 @@ The migration, grants, transaction, idempotency, validation and notice are other
 **Commits and PR body**
 - All 4 commits are by `mahmoudamrspace <mahmoudamr.space@gmail.com>` with no trailers.
 - The PR body has no AI footer.
+
+## Final recheck
+
+Rechecked head `6eaeef5d` (8 commits), merged locally with today's `origin/main` (`310c9417`, one commit past the PR's base, #1527). The merge is clean. The setup was a local Postgres 16, `db:migrate` and `db:roles`.
+
+**Result: F1, F2, F3, F4, F6, F7 and F8 are resolved. F5 needed no change. Nothing blocks shipping.**
+
+### Findings
+
+| Finding | Status | Evidence |
+| --- | --- | --- |
+| F1 decline tied to the quote staff saw | Fixed | See below |
+| F2 dialog in the panel (D9 step 3) | Fixed, option (a) | See below |
+| F3 audit in the same transaction | Fixed | See below |
+| F4 two error shapes | Fixed | See below |
+| F5 422 on a reused key | No change asked | Unchanged |
+| F6 write guard untested | Fixed | See below |
+| F7 NOT VALID comment | Fixed | See below |
+| F8 PR body out of date | Fixed, with one cosmetic slip | See below |
+
+**F1 — the decline is tied to the quote staff saw**
+- The body is now strict: `{quoteId: uuid, expectedStatus: enum, reason: trim, 1-500}` (`packages/validators/src/admin-deliveries.ts`).
+- `StaffDeliveryQuoteService.decline` returns `quote_changed` when `current.id !== quoteId` or `current.status !== expectedStatus`. It passes `expectedStatus` as the `from` state to `repo.decline`.
+- New service tests:
+  - "withdrawn and asked again while the dialog was open" (Lyon request seen, London request current) gives `quote_changed`. The London quote stays `requested` with no reason, and `quoteDeclined` is not called.
+  - "priced by a colleague while the dialog was open" gives `quote_changed`. The quote stays `quoted` with no reason, and there is no notice.
+- Mutations:
+
+| Mutation | Result |
+| --- | --- |
+| The seen check removed entirely | The "asked again" test fails |
+| Status check removed and `from = quote.status` | The "priced by a colleague" test fails |
+| Only the status half of the check removed (`from` still `expectedStatus`) | Tests pass, and the behaviour is still correct, because the conditional update on `expectedStatus` refuses the write. The status check is defence in depth, not a gap. |
+
+- On Postgres, the repository test "changes nothing and audits nothing when the quote moved on" covers the `from` guard.
+
+**F2 — the dialog is in the panel**
+- **Where it shows:** `DeclineDeliveryAction` sits in the `DetailPanel` footer. `canDeclineDelivery` allows it only for `waiting`+`requested` or `quoted`+`quoted`, and only when `canWork`. `canWork` is `DELIVERIES_ACCESS` (`deliveries/page.tsx:41`), so only the write roles see it. The server action calls `denyUnlessAdminCapability(DELIVERIES_ACCESS)` again.
+- **The form:** `StaffFormDialog` with "Reason for the buyer". The field has `maxLength` 500, the hint "Up to 500 characters", and an inline error under the field ("Tell the buyer why you can't deliver") with focus going back to it.
+- **Stale state:** on `quote_changed` or `quote_step_not_allowed`, the dialog shows a warning Notice ("This request changed while you had it open. Check it and try again. Nothing was sent to the buyer.") and the panel refreshes. The wording differs from D6 on purpose; the PR body's Decisions section says why. Other failures show a Notice in the dialog, not a toast.
+- **After a decline:** the panel shows "Declined by LAX" as the badge and as an Activity step, plus "Reason given to the buyer". `declineReason` is in `admin-deliveries.schema.ts`, and the copy is in `deliveries-copy.ts`.
+- **Screenshots:** all 16 PNGs are present at 1440×1000 and 375×812, light and dark. I looked at 1-dialog 1440 light, 2-reason-missing 375 light, 3-stale 1440 light and dark, 3-stale 375 dark, and 4-declined 1440 dark. They render the states the README describes, with no sideways scroll at 375.
+- **e2e in CI:** the spec is `apps/web/e2e/admin-deliveries-decline.spec.ts`, tagged `@smoke @journey` with `retries: 0`, and it has no skip path.
+  - In the browser-gates job (133999600758), the `--list` step at line 723 lists `[staff-chromium] › admin-deliveries-decline.spec.ts:189:3 › deliveries: can't deliver @smoke @journey › declines a buyer's request with a reason, and refuses a request that changed`.
+  - That job checked out `HEAD is now at 284dd0ed Merge 6eaeef5d… into 2646590a…`.
+  - The run that includes it was `playwright test --grep "@smoke|@roles" --no-deps --workers=1`: "Running 92 tests", ending "6 skipped / 86 passed (6.6m)" with no failed and no retries.
+  - The run uses the dot reporter, so the log has no per-test line. Because the spec cannot skip, 0 failed means it passed.
+- **Local tests:** web deliveries, notifications and labels: 16 files and 169 tests pass. `staff-form-dialog` passes 2 tests.
+
+**F3 — the audit is written in the same transaction**
+- The new repository test makes the transaction fail at commit with a `DEFERRABLE INITIALLY DEFERRED` constraint trigger on `delivery_quote`, after the audit insert. It then asserts the quote is still `requested` and that no `delivery_quote.declined` row exists.
+- All 4 repository integration tests pass on Postgres 16.
+- With `tx.insert(domainEvent)` mutated to `this.db.insert(domainEvent)`, the new test fails ("expected [ { id: 7, … } ] to have a length of +0 but got 1"), and the 3 others pass. The trigger and function are dropped in `finally`, and none was left on the database afterwards.
+
+**F4 — both error shapes**
+- Both shapes are documented in the PR body and in the route's comment.
+- A route test asserts the 422 body `{error: "This Idempotency-Key was already used for a different request", code: "idempotency_key_reuse"}`.
+- The web server action reads `code` first, then `error`.
+- With the idempotency guard removed, the idempotency test fails.
+
+**F6 — read-only guard**
+- With the read guard open to everyone, a `read_only` POST gets 403 and the service is not called.
+- With `requireDeliveries` removed, that test fails.
+
+**F7 — comment**
+- The 0406 comment now says the split saves no lock time inside one transaction, and that the scan is short because the table is small.
+
+**F8 — PR body**
+- The body is current: base, scope, D9 step 3, both error shapes, a "Changes after review" section, and the migration-number note.
+- One cosmetic slip: the `2-reason-missing` / 1440 light cell is malformed (`&lt;img src="`` https://… `` width="220">`). It shows as text, not the image, although the file exists at `b09283df`.
+
+### Migration
+- `0406_delivery_quote_decline` still sorts after `origin/main`'s latest migration (`0405_shop_alert_send_log`, journal `idx` 397).
+- **The renumber is not needed today.** `main` has no 0406. If another migration lands first, the author must renumber at ship time. That is noted here and was not done by me.
+- **Journal:** `idx` 398 and `when` 1813320000000, after 1813233600000. After `db:migrate`, `drizzle.__drizzle_migrations` has 398 rows, the newest `1813320000000`.
+- **Rollback:**
+  - I migrated database A through 0405 (0406 hidden from the journal temporarily, then restored), and database B through 0406 followed by `0406_rollback.sql`.
+  - The `pg_dump -s` output of the two was identical once the `\restrict` lines were removed. Both ledgers had 397 rows, newest 1813233600000.
+  - Running `db:migrate` again on B reapplied 0406 (398 rows, `decline_reason` back).
+  - The PR's 0406 static and integration tests pass: 6 tests, covering apply over 0405, the reason rules, roll back, and apply again.
+- **Grants:** the 0406 probes pass for `api_app`, `worker_app`, `shop_app` and `auth_app`. Each mutation fails exactly one probe, and `db:roles` restored all 4 to passing:
+
+| Grant mutation | Probes failing |
+| --- | --- |
+| `revoke update on delivery_quote from api_app` | 1 |
+| `revoke insert on domain_events from api_app` | 1 |
+| `grant update (decline_reason) … to worker_app` | 1 |
+| `grant select on delivery_quote to shop_app` | 1 |
+| `grant select (decline_reason) … to auth_app` | 1 |
+
+- `migration-0402-in-app-opt-outs.integration.test.ts` fails on an empty migration-test database ("relation notification does not exist"). The PR does not touch that file, and the failure comes from that test's setup expecting a migrated database.
+
+### Gates on the merged tree
+
+| Gate | Result |
+| --- | --- |
+| `turbo typecheck`: api, web, persistence, shop-api, worker, staff-ui, validators, domain | Pass (45 tasks) |
+| `lint:layers`, `lint:deps` (no new circular dependencies), `lint:admin-capability-drift`, `lint:z-schema-transform`, `lint:test-mocks`, `lint:datetime`, `lint:route-js-budget`, `lint:e2e-tags`, `lint:e2e-portfolio`, `lint:client-copy` | All exit 0 |
+| `biome check` on the changed files | Exit 0 |
+| apps/api: deliveries routes, organisation-buying, deliveries service | 275 pass, 7 skipped |
+| domain: delivery-quote, notification-mutes | 52 pass |
+| shop-api: tests matching "delivery" | 99 pass |
+| CI on `6eaeef5d` | 40 success, 1 skipped (`art-browser-gates`), 0 failed |
+
+### Hygiene
+- No route-JS budget or baseline file, allowance, workflow, `playwright.config`, `budgets.json` or `scripts/` file changed.
+- **No stray files.** Every changed path is under `apps/api/src`, `apps/web/src`, `apps/web/e2e`, `packages/`, `docs/design/` or `docs/pr-evidence/bid-admin-deliveries-decline/`, which follows the existing `docs/pr-evidence/*` convention. The only deletion is `delivery-quote-ready-notifier.ts`, replaced by `delivery-quote-notifier.ts`.
+- All 8 commits are authored and committed by `mahmoudamrspace <mahmoudamr.space@gmail.com>` (`2646590a` is `main`'s squash merge). They have no Co-Authored-By, Signed-off-by or Claude trailers.
+- The PR body has no AI footer.
+
+### Non-blocking notes (fine to do after merge)
+1. Fix the malformed `2-reason-missing` 1440 light image cell in the PR body.
+2. `3-stale-375-dark.png` looks dimmed, with a low-contrast Notice, compared with `3-stale-1440-dark.png`. It may have been shot mid-transition. Worth re-shooting.
+3. After a stale Notice the reason field is disabled, but "Decline and email the buyer" stays enabled. A second submit only gets `quote_changed` again, which is harmless, but it is better disabled or replaced by "Close".
+4. `errors.unavailable` says "Nothing was sent to the buyer" when the fetch throws. A timeout after the API committed would make that untrue; "may not have been sent" is safer. A retry with the same key replays the stored answer, so no second email goes out.
