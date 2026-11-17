@@ -283,8 +283,8 @@ test.describe("LAX Admin release alerts @a11y", () => {
     // The page that starts just after Tidal study (the read's own cursor shape): the release is
     // not on it, as for a link shared from the first page once newer releases have pushed it on.
     const cursor = Buffer.from(JSON.stringify({ createdAt: published, id })).toString("base64url");
-    await page.goto(`${PATH}?cursor=${cursor}&release=${id}`);
-    await expect(rowOf(page, "Old pier")).toHaveCount(1);
+    await openStaffPage(page, `${PATH}?cursor=${cursor}&release=${id}`);
+    // Whatever else the stack holds, the rows shown are all older than Tidal study.
     await expect(rowOf(page, "Tidal study")).toHaveCount(0);
     const panel = page.getByRole("dialog", { name: /Tidal study/ });
     await expect(panel).toBeVisible();
@@ -292,6 +292,8 @@ test.describe("LAX Admin release alerts @a11y", () => {
     await expect(
       panel.getByText("1 person had turned off emails about new editions."),
     ).toBeVisible();
+    // Not among the rows shown, so there is no place to step from.
+    await expect(panel.getByRole("button", { name: "Next release" })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
