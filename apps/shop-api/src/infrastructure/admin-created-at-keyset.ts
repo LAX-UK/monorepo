@@ -1,6 +1,10 @@
 import { type SQL, and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import type { CatalogueCursor } from "../application/catalogue-cursor.js";
+import {
+  type CatalogueCursor,
+  encodeCatalogueCursor,
+  truncateCatalogueCursorDate,
+} from "../application/catalogue-cursor.js";
 
 export function msTimestamp(column: AnyPgColumn): SQL {
   return sql`date_trunc('milliseconds', ${column})`;
@@ -93,4 +97,26 @@ export function orderByRawTimestampId(
   return direction === "desc"
     ? ([desc(timestampColumn), desc(idColumn)] as const)
     : ([asc(timestampColumn), asc(idColumn)] as const);
+}
+
+/** The first `limit` rows and the cursor for the rest (the sort column and the id). */
+export function pageOf<T, R>(
+  rows: readonly T[],
+  limit: number,
+  keyOf: (row: T) => CatalogueCursor,
+  mapRow: (row: T) => R,
+): { items: R[]; nextCursor: string | null } {
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const last = page.at(-1);
+  if (!hasMore || !last) return { items: page.map(mapRow), nextCursor: null };
+  const key = keyOf(last);
+  return {
+    items: page.map(mapRow),
+    nextCursor: encodeCatalogueCursor({
+      createdAt: truncateCatalogueCursorDate(key.createdAt),
+      id: key.id,
+      createdAtMicros: key.createdAtMicros,
+    }),
+  };
 }

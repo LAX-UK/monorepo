@@ -358,7 +358,16 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
 
     const quiet = await readyArtwork("release-quiet");
     expect((await publish(quiet.artworkId, false)).releaseAlertsQueued).toBeUndefined();
-    expect(await announcementOf(quiet.artworkId)).toMatchObject({ announce: false });
+    // What the work was and who published it are kept for the send log, with counters from zero.
+    expect(await announcementOf(quiet.artworkId)).toMatchObject({
+      announce: false,
+      kind: "shop_release",
+      announcedBy: ACTOR,
+      matchedCount: null,
+      emailedCount: 0,
+      droppedCount: 0,
+      droppedReasons: {},
+    });
 
     const loud = await readyArtwork("release-loud");
     const result = await publish(loud.artworkId, true);
@@ -375,6 +384,11 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     expect(await matchesOf(waiting.id)).toHaveLength(0);
     expect(await matchesOf(stopped.id)).toHaveLength(0);
     expect(await announcementOf(loud.artworkId)).not.toMatchObject({ expandedAt: null });
+    const releaseMatches = await db
+      .select()
+      .from(shopAlertMatch)
+      .where(eq(shopAlertMatch.itemKey, `artwork:${loud.artworkId}`));
+    expect((await announcementOf(loud.artworkId))?.matchedCount).toBe(releaseMatches.length);
 
     // Unpublishing and publishing again never tells the same person about the same edition twice.
     await writer.setVisibility({
@@ -383,9 +397,21 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       actorSubjectId: ACTOR,
       idempotencyKey: key(),
     });
-    expect((await publish(loud.artworkId, true)).releaseAlertsQueued).toBe(0);
+    expect(
+      (
+        await writer.setVisibility({
+          artworkId: loud.artworkId,
+          action: "publish",
+          sendReleaseAlert: true,
+          actorSubjectId: `${ACTOR}-again`,
+          idempotencyKey: key(),
+        })
+      ).releaseAlertsQueued,
+    ).toBe(0);
     await alerts.matching.run();
     expect(await matchesOf(confirmed.id)).toHaveLength(1);
+    // The first publisher stays the release's publisher.
+    expect(await announcementOf(loud.artworkId)).toMatchObject({ announcedBy: ACTOR });
   });
 
   it("tells the followers of an artist about a published original, and nobody else", async () => {
@@ -435,6 +461,12 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       ["art.followed_artists", `artwork:${original.artworkId}`, original.artistId],
     ]);
     expect(await matches(other.id)).toHaveLength(0);
+    // Kept as an original, so the Shop's release-alert send log never lists it.
+    const [announcement] = await db
+      .select({ kind: shopAlertAnnouncement.kind })
+      .from(shopAlertAnnouncement)
+      .where(eq(shopAlertAnnouncement.itemKey, `artwork:${original.artworkId}`));
+    expect(announcement?.kind).toBe("art_original");
   });
 
   it("reports each artwork's outcome in a bulk publish", async () => {
