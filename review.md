@@ -96,3 +96,89 @@ All passed, against a throwaway Postgres 16 on port 55432 (migrated, `db:roles` 
 - **shop-contracts:** 128 tests.
 - **Typecheck and guards:** shop-api and shop-admin typecheck. `lint:ui-guardrails`, `client-boundary`, `admin-capability-drift`, `layers`, `lib-admin-boundaries`, `datetime`, `staff-route-composition`, `staff-list-template`, `client-copy`, `test-mocks` and `route-js-budget` pass.
 - **Not run:** a full `next build`.
+
+## Fixes after review
+
+The fixes are on `zi-5-consignor-artwork-link` at `cb2f9cee`, in commits `3dc066e9`, `7273924f` and `cb2f9cee`. #1552 had not merged when this was pushed, so main was not merged in.
+
+### Blocking 1: client scope on consignor reads (`7273924f`)
+
+- **Shared rule:** `consignorClientScope(auth)` in `apps/shop-api/src/routes/admin/v1/admin-client-access.ts:37`.
+  - Without `consignor_agreement.read` it is `none`.
+  - With `consignor_agreement.manage` it is `all`.
+  - Otherwise it follows `clientListScope` (`all`, `assigned` or `none`).
+- **GET `/artwork-register/:registerId/consignor`** (`apps/shop-api/src/routes/admin/v1/admin-artwork-consignor.routes.ts:62-71`):
+  - When the current consignor is a client and the scope is not `all`, the route calls `requireClientPartyReadAccess` on that party.
+  - LAX or no consignor needs no party check.
+- **GET `/artwork-register/all`** (`apps/shop-api/src/routes/admin/v1/admin-artwork-register.routes.ts:74-93`): the scope goes to `listAll` and `countConsignors`, through `RegisterConsignorScope` (`artwork-register-review.ports.ts:91`).
+  - **The reader:** with the `assigned` scope, `partyInScope` limits clients to the broker's assignments (`drizzle-register-overview.ts:153`).
+  - **Out-of-scope clients:**
+    - The row's consignor is left off (`artwork-register-review.service.ts:123`).
+    - The client is left out of the filter choices and counts (`:220`).
+  - **`none`:** no consignor data is sent.
+  - **Filtering by a client outside scope:** 403, the same as opening that client's page. "Not set" and LAX stay open.
+- **Tests for a member who is both Broker and Read-only:**
+  - The record GET, `admin-artwork-consignor.routes.test.ts:203`:
+    - refused on an unassigned client, allowed on an assigned one;
+    - LAX or no consignor needs no check;
+    - still cannot PUT;
+    - a Catalogue editor who is also a Broker skips the check.
+  - The All list, `admin-artwork-register.routes.test.ts:275`:
+    - the column and the filter are limited to assigned clients;
+    - any other client in the filter gets 403;
+    - holders of manage see every client.
+  - The assigned scope in SQL: `drizzle-register-overview.integration.test.ts`.
+
+### Non-blocking
+
+1. **The record GET is trimmed to what the section shows:**
+   - `AdminArtworkConsignorAgreementSchema` (`packages/shop-contracts/src/admin-consignor-agreement.ts:146`) holds the id, status, places, `startsOn`, `endsOn` and `createdAt`. `createdAt` is kept for the sort order.
+   - The service builds it with `presentRecordAgreement` (`apps/shop-api/src/application/artwork-register/artwork-consignor.service.ts:64`).
+   - There is no lowest price, commission, signed file key or note.
+   - A contract test (`:137`) refuses them.
+2. **Originals only:**
+   - GET on a print returns 404 (`artwork-consignor.service.ts:133`).
+   - PUT on a print returns 409 (`:175`), before the unit of work, so nothing is written.
+   - The column, filter and counts are limited to `kind = 'original'` (`drizzle-register-overview.ts:84,101,220`).
+   - Tests:
+     - service integration `:336`: prints are refused and nothing is written;
+     - overview integration: a print is neither shown nor counted.
+3. **The section is left out without `consignor_agreement.read`** (`cb2f9cee`):
+   - The record page gates the loader on the session's capability (`apps/shop-admin/src/app/(staff)/from-zoho/[registerId]/page.tsx:49,73`).
+   - A remaining 403 renders nothing (`consignor-section.tsx:23`). This is a broker looking at a work consigned by an unassigned client.
+   - `AccessDeniedState` is removed, along with the no-permission screenshots and their README entries.
+   - `page.test.tsx:156` covers this.
+4. **Name-only party lookup** (`3dc066e9`):
+   - When the client scope is `none` and `consignor_agreement.manage` is the only lookup capability held, `/lookups/parties` neither returns nor matches on email (`admin-read.routes.ts:391-401`, `drizzle-admin-lookup.reader.ts:51,62`).
+   - People who can read clients keep the email.
+   - Tested at `admin-lookups.routes.test.ts:96,112`.
+5. **`id="consignor"`** is on the Consignor Section, both loaded and error (`consignor-section.client.tsx:38,64,92`). The test is at `consignor-section.client.test.tsx:162`.
+6. **The contract's reason `maxLength` is 500** (`admin-consignor-agreement.ts:190`), with a test at `:201`. The PUT body limit is lowered to match.
+
+Not changed:
+
+- **Item 7** (dropping a crafted `?consignor=` on the client) is not in this round.
+- **Item 8** (consolidating the duplicate reads with #1554) is left for a follow-up and noted in the PR body.
+- **History entries** can still name an earlier client consignor outside a broker's scope. The check covers the current consignor, as asked. Redact earlier ones in a follow-up if needed.
+
+### Tests run after the fixes
+
+Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_INTEGRATION_REQUIRED=true`, shop suites as `shop_app`, `--maxWorkers=2`. Everything passed:
+
+- **shop-api, 165 tests:**
+  - `admin-artwork-consignor.routes` (27)
+  - `admin-artwork-register.routes` (63)
+  - `admin-lookups.routes` (30)
+  - `artwork-register-review.service` (32)
+  - `artwork-consignor.service.integration` (9)
+  - `drizzle-register-overview.integration` (4)
+- **persistence:** `consignor-agreement.integration` (14).
+- **shop-admin, 145 tests across 8 files:**
+  - the five suites listed in the review;
+  - the From Zoho record page;
+  - `consignor-agreement.vm`;
+  - `agreements-section.client`.
+- **shop-contracts:** 130 tests.
+- **Typecheck:** shop-api, shop-admin and shop-contracts pass.
+- **Guards:** `lint:ui-guardrails`, `client-boundary`, `admin-capability-drift`, `layers`, `lib-admin-boundaries`, `datetime`, `staff-route-composition`, `staff-list-template`, `client-copy` and `test-mocks` pass. `biome check` on the changed files is clean.
+- **Not run:** a full `next build`.
