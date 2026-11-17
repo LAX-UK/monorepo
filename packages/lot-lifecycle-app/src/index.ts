@@ -4,6 +4,7 @@ export { SaleLifecycleService } from "./sale-lifecycle.service.js";
 export { TimedLotTransitionRunner } from "./timed-lot-transition-runner.js";
 export type { LotCloseOutcome } from "./lot-lifecycle-types.js";
 export type {
+  ClerkOutcomeOptions,
   ILifecycleDomainEventSink,
   ILotLifecycleNotifications,
   ILotLifecycleTransitionRecorder,
