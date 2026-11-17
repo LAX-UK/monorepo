@@ -84,6 +84,70 @@ describe("catalogue filter rail", () => {
     ).toBeNull();
   });
 
+  it("orders the groups Artist, Price, Size, Orientation, Framing, Technique", () => {
+    const rail = buildCatalogueFilterRail({
+      state: state(),
+      facets: {
+        ...many,
+        techniques: [
+          { value: "Giclée print", count: 3 },
+          { value: "Screenprint", count: 1 },
+        ],
+        orientations: [
+          { key: "portrait", count: 2 },
+          { key: "landscape", count: 1 },
+          { key: "square", count: 1 },
+        ],
+        framing: [
+          { key: "framed", count: 1 },
+          { key: "unframed", count: 4 },
+        ],
+      },
+      artists: [],
+    });
+    expect(rail.groups.map((group) => group.title)).toEqual([
+      "Artist",
+      "Price",
+      "Size",
+      "Orientation",
+      "Framing",
+      "Technique",
+    ]);
+    const framing = rail.groups.find((group) => group.key === "framing");
+    expect(framing?.options.map((o) => [o.label, o.count, o.href])).toEqual([
+      ["Available framed", 1, "/artworks?framing=framed"],
+      ["Available unframed", 4, "/artworks?framing=unframed"],
+    ]);
+  });
+
+  it("leaves out orientation and framing with one option, or without their counts", () => {
+    const oneEach = {
+      ...flora,
+      orientations: [
+        { key: "portrait", count: 4 },
+        { key: "landscape", count: 0 },
+        { key: "square", count: 0 },
+      ],
+      framing: [
+        { key: "framed", count: 0 },
+        { key: "unframed", count: 4 },
+      ],
+    };
+    const keys = (facets: PublicArtworkFacetCounts, params: Record<string, string> = {}) =>
+      buildCatalogueFilterRail({ state: state(params), facets, artists: [] }).groups.map(
+        (group) => group.key,
+      );
+    expect(keys(oneEach)).toEqual(["price", "size"]);
+    expect(keys(flora)).toEqual(["price", "size"]);
+    // An applied option keeps its group, so it can be taken off where it was put on.
+    expect(keys(oneEach, { orientation: "portrait", framing: "framed" })).toEqual([
+      "price",
+      "size",
+      "orientation",
+      "framing",
+    ]);
+  });
+
   it("falls back to uncounted artists and prices when the counts did not load", () => {
     const rail = buildCatalogueFilterRail({
       state: state(),
@@ -140,6 +204,27 @@ describe("catalogue applied chips", () => {
     ]);
     expect(chips.find((chip) => chip.key === "price")?.removeHref).toBe(
       "/artworks?q=vessel&artistSlug=ada&availability=available",
+    );
+  });
+
+  it("names orientation and framing chips in the rail's order", () => {
+    const chips = buildArtworkCatalogueActiveChips(
+      state({
+        technique: "Screenprint",
+        framing: "unframed",
+        orientation: "square",
+        size: "large",
+      }),
+      { categories: [], artists: [] },
+    );
+    expect(chips.map((chip) => chip.label)).toEqual([
+      "Large, 100 cm and over",
+      "Square",
+      "Available unframed",
+      "Screenprint",
+    ]);
+    expect(chips.find((chip) => chip.key === "framing")?.removeHref).toBe(
+      "/artworks?size=large&orientation=square&technique=Screenprint",
     );
   });
 

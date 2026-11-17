@@ -27,16 +27,18 @@ function movesOf(count: number): LocationMove[] {
   });
 }
 
-function serviceReading(moves: LocationMove[]) {
-  const listMoves = vi.fn(async (_registerId: string, limit: number) => moves.slice(0, limit));
+/** A service reading `moves` for the artwork; null reads as an artwork not on the register. */
+function serviceReading(moves: LocationMove[] | null) {
+  const artworkMoves = vi.fn(async (_registerId: string, limit: number) =>
+    moves ? moves.slice(0, limit) : null,
+  );
   const namesFor = vi.fn(
     async (subjects: readonly string[]) =>
       new Map(subjects.map((subject) => [subject, "Ana Ruiz"])),
   );
   const reads: StockLocationReads = {
     listLocations: async () => [],
-    registerExists: async () => true,
-    listMoves,
+    artworkMoves,
   };
   const service = createStockLocationService({
     uow: { run: () => Promise.reject(new Error("no writes here")) } as ShopUnitOfWorkFactory,
@@ -46,14 +48,14 @@ function serviceReading(moves: LocationMove[]) {
     },
     staffNames: { namesFor },
   });
-  return { service, listMoves, namesFor };
+  return { service, artworkMoves, namesFor };
 }
 
 describe("an artwork's location and history", () => {
   it(`shows ${LOCATION_HISTORY_LIMIT} moves and says there are no more when there are exactly that many`, async () => {
-    const { service, listMoves } = serviceReading(movesOf(LOCATION_HISTORY_LIMIT));
+    const { service, artworkMoves } = serviceReading(movesOf(LOCATION_HISTORY_LIMIT));
     const read = await service.artworkLocation(REGISTER_ID);
-    expect(listMoves).toHaveBeenCalledWith(REGISTER_ID, LOCATION_HISTORY_LIMIT + 1);
+    expect(artworkMoves).toHaveBeenCalledWith(REGISTER_ID, LOCATION_HISTORY_LIMIT + 1);
     expect(read?.moves).toHaveLength(LOCATION_HISTORY_LIMIT);
     expect(read?.moreMoves).toBe(false);
   });
@@ -93,5 +95,11 @@ describe("an artwork's location and history", () => {
       moves: [],
       moreMoves: false,
     });
+  });
+
+  it("reads null for an artwork not on the register, without looking up names", async () => {
+    const { service, namesFor } = serviceReading(null);
+    expect(await service.artworkLocation(REGISTER_ID)).toBeNull();
+    expect(namesFor).not.toHaveBeenCalled();
   });
 });

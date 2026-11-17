@@ -169,6 +169,12 @@ export function XeroIntegrationPanel({
 
       {notice}
 
+      {!status.connected && status.reason === "reconnect_required" ? (
+        <Notice
+          tone="warning"
+          title="The saved Xero connection can no longer be read. Connect Xero again."
+        />
+      ) : null}
       {status.connectionStatus === "needs_reauth" ? (
         <Notice tone="danger" title="Xero stopped accepting Bid's access">
           {status.lastRefreshError ?? "Reconnect Xero so invoices and payments sync again."}

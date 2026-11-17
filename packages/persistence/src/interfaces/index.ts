@@ -731,6 +731,7 @@ export type {
   PaymentExternalSyncStatus,
   XeroConnectionInsert,
   XeroConnectionRow,
+  XeroConnectionSummaryRow,
   XeroConnectionStatus,
   XeroWebhookEventInsert,
 } from "./xero.repository.js";

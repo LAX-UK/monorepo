@@ -19,15 +19,20 @@ export function createDrizzleStockLocationReads(
   const store = storeOn(db);
   return {
     listLocations: (options) => store.listLocations(options),
-    listMoves: (registerId, limit) => store.listMoves(registerId, limit),
-    async registerExists(registerId) {
-      const [row] = await db
-        .select({ id: artworkRegister.id })
-        .from(artworkRegister)
-        .where(eq(artworkRegister.id, registerId))
-        .limit(1);
-      return row !== undefined;
-    },
+    artworkMoves: (registerId, limit) =>
+      db.transaction(
+        async (tx) => {
+          const [row] = await tx
+            .select({ id: artworkRegister.id })
+            .from(artworkRegister)
+            .where(eq(artworkRegister.id, registerId))
+            .limit(1);
+          if (!row) return null;
+          return storeOn(tx).listMoves(registerId, limit);
+        },
+        // One snapshot for both reads, taken by the first; read only, so it holds no locks.
+        { isolationLevel: "repeatable read", accessMode: "read only" },
+      ),
   };
 }
 
