@@ -6,9 +6,13 @@ const env = seedTargetEnvFromProcess("DATABASE_URL_SHOP");
 const url = assertDemoSeedTarget(env);
 const db = createDb(url);
 try {
-  const { counts, queues } = await runShopDemoFull(db, env);
+  const { counts, queues, states } = await runShopDemoFull(db, env);
+  console.log(`shop-api: demo-full seed ${JSON.stringify(counts)}`);
   console.log(`shop-api: demo staff queues ${JSON.stringify(queues)}`);
-  console.log(`shop-api: demo-full seed complete ${JSON.stringify(counts)}`);
+  const { skipped, ...stateCounts } = states;
+  console.log(`shop-api: demo shop states ${JSON.stringify(stateCounts)}`);
+  for (const reason of skipped) console.warn(`shop-api: demo shop state not seeded: ${reason}`);
+  console.log("shop-api: demo-full seed complete");
 } finally {
   await closeDb(db);
 }

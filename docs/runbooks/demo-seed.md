@@ -18,9 +18,9 @@ The seeds refuse a database unless both are true:
 Every seed that writes accounts, passwords or staff grants checks the mark before it writes
 anything, through one guard (`packages/db/src/seed/shared/seed-target-guard.ts`): the dev seed
 (`db:seed:dev`, also run by `terraform-test-up` on an empty test database), `db:seed:demo-full`,
-`db:seed:demo-topup`, `db:seed:check-accounts`, the Shop `seed:demo-full`,
-`seed:acceptance-portal`, `seed:acceptance-staff-operations` and `seed:local-admin-staff`, and the
-staff queue seeders. None of them has an override flag.
+`db:seed:demo-topup`, `db:seed:check-accounts`, the Shop `seed:demo-full` (which also fills
+the Shop staff queues and the dispatched, returned and reserved states), `seed:acceptance-portal`,
+`seed:acceptance-staff-operations` and `seed:local-admin-staff`, and the staff queue seeders. None of them has an override flag.
 
 No seed writes the mark itself, and an address alone never counts: a loopback address can be a
 tunnel or port-forward to a remote database. An unmarked database is refused, whatever its address.
@@ -100,12 +100,72 @@ therefore set `APP_ENV=production` on the API, Shop API and worker.
 | Lot fulfilment; Work inbox | Two paid lots awaiting release, one ready for collection |
 | Submissions, awaiting review; Work inbox | A complete consignment nobody has looked at |
 | Private sales, Active | A deal at the offer stage, converted from an enquiry |
-| LAX Admin: Fulfilment, "To fulfil" | The paid demo print orders |
-| LAX Admin: "Failed refunds", `/orders?refund=failed` | A goodwill part refund that cannot be sent (the demo orders have no Stripe payment, so a retry fails again without calling Stripe) |
+| LAX Admin: Fulfilment, "To fulfil" | The paid demo print orders not dispatched |
+| LAX Admin: "Failed refunds", `/orders?refund=failed` | A goodwill part refund that cannot be sent, and the cancellation refund of the returned order (£280.00 on the seeded data) (the demo orders have no Stripe payment, so a retry fails again without calling Stripe) |
 | LAX Admin: Disputes | An open dispute on a demo print order, a different order from the refund; it has no Stripe payment, so there is no "Open in Stripe" link |
+| LAX Admin: Orders, Fulfilment (in transit) | The demo order of "Harbour at Dusk" (artist's proof), order key `seed:edition-order:harbour-at-dusk-artists-proof`, dispatched with carrier "Demo Carrier" and tracking number `DEMO-TRACK-0001`. Its print was confirmed at packing through the packing service, so its print history shows "pack confirmed" by `seed:demo-shop-states` and the certificate the run calls for is recorded, as for staff |
+| LAX Admin: Orders (order page, returns) | The demo order of "Shoreline Estate" (`seed:edition-order:shoreline-estate`), packed and dispatched the same way, delivered, then cancelled after possession: a return received back on sale, and a cancellation refund recorded as failed (no Stripe payment exists, so it can never be sent) |
+| LAX Admin: Original sales (reserved) | "Quiet Orchard" (lax.art original) reserved for an invented buyer ("Demo Original Buyer") at £1,450.00, with no expiry and no invoice. lax.art has no reserved state: the original still shows there as for sale at £1,450. The reservation is visible in LAX Admin only |
 
-Events the seeds write carry the producer `demo-seed`; the notification fan-out and the collection
-notices skip them, so no one is emailed about demo data.
+The two orders are chosen by their fixed order keys, never by position, so they are always
+different orders from the goodwill refund and the dispute of the Shop staff queues.
+
+### Coverage of the GAP-31 states
+
+| State | Seeded? | By |
+| --- | --- | --- |
+| Purchase problem (staff queue) | Yes | Bid seed, `packages/db/src/seed/demo/queues/purchase-problem.seeder.ts` |
+| Unapplied money (staff queue) | Yes | Bid seed, `packages/db/src/seed/demo/queues/unapplied-money.seeder.ts` |
+| Data request (staff queue) | Yes | Bid seed, `packages/db/src/seed/demo/queues/data-request.seeder.ts` (goes overdue, see below) |
+| Shop order dispatched | Yes | Shop seed, `demo-shop-states-seed.ts` |
+| Shop order returned | Yes, received back on sale | Shop seed, `demo-shop-states-seed.ts` |
+| Reserved lax.art original | Yes, in LAX Admin | Shop seed, `demo-shop-states-seed.ts`; not shown as reserved on lax.art (no such state exists) |
+| A paid or invoiced original, a sent refund, Stripe links | No | Needs real Stripe or Zoho Books objects, see below |
+| A return still in transit | No | The seeded return goes on to received |
+
+### What the demo cannot show, and why
+
+- **Money that really moved.** The demo orders and the reserved original have no Stripe payment,
+  invoice, Payment Link or Books invoice, and no invented provider id is written for them. The
+  refund of the returned order is recorded as failed ("Order missing stripe_payment_intent_id"),
+  not sent. Anything that needs a real Stripe or Zoho Books object (a paid or invoiced original, a
+  sent refund, "Open in Stripe" links) needs live provider data: create it with Stripe test mode
+  and the Shop's own test flow.
+- **A return still in transit.** The seeded return is received (the "returned" state). Staff can
+  open another by cancelling a delivered demo order after possession in LAX Admin.
+- **A reserved original on lax.art.** lax.art has no reserved state (`shop_sale_state` is for
+  sale, price on application or sold), so the reserved "Quiet Orchard" still shows there as for sale
+  at £1,450. The reservation is visible in LAX Admin only. A public "Reserved" label would be a
+  product change, not a seed change.
+
+Events the Bid seeds write carry the producer `demo-seed`; the notification fan-out and the
+collection notices skip them, so no one is emailed about demo data. The Shop seed runs real Shop
+handlers and services, so its events (such as `shop.fulfilment.dispatched`,
+`shop.print.pack_confirmed`, `shop.possession.recorded`, `shop.cancellation.requested` and
+`shop.original_sale.reserved`) carry `shop-api`; no email is sent because the seed buyers have no
+email address. The Worker's Zoho fulfilment mirror subscribes to some of them, as it already does to
+the demo orders' `shop.order.paid`.
+
+## Run it
+
+```sh
+DATABASE_URL_SHOP=<test shop address> pnpm --filter @auction/shop-api seed:demo-full
+```
+
+It is the Shop half of **Worker task (test)** `demo-full`. Run it again at any time: a step runs
+only on a row the seed itself last moved (its audit trail shows `seed:demo-shop-states`), so work
+staff did on an item is kept and nothing outside the seed's own rows is touched. The returned order
+and the reservation are written once; if staff cancel or complete the reservation it is not made
+again, and a later run never sets "Quiet Orchard" (or any seeded original with a live or completed
+sale) back to for sale.
+
+If a run stops part-way (a lost connection, say), the next run finishes the remaining steps from
+where it stopped. Each step has a fixed idempotency key, so nothing is done twice.
+
+The run prints one line per state it left alone because staff had taken it on (`demo shop state not
+seeded: ...`). If a state cannot be seeded at all (a demo order or "Quiet Orchard" is missing, for
+example because `seed:catalogue` has not run on this database), the run fails with a message naming
+each missing state and exits non-zero.
 
 ## Items that go stale (clock-bound)
 
