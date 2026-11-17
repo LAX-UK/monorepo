@@ -297,6 +297,33 @@ jobs:
         run: node scripts/ci/run-platform-onboarding-conformance.mjs
       - name: Prepare auth sessions and run PR browser gates
         run: node scripts/ci/run-pr-browser-gates.mjs --skip-static
+      # Bid admin Deliveries (docs/design/staff-gaps-delivery-zoho-alerts.md, D9): the @journey
+      # against the seeded stack, with the sessions the gates above prepared. It adds its own
+      # delivery requests. A skipped test fails this step, so a green run means the journey ran.
+      - name: Run Bid admin Deliveries journey
+        env:
+          PLAYWRIGHT_E2E: "1"
+          PLAYWRIGHT_AUTH_PREPARED: "1"
+          PLAYWRIGHT_JSON_OUTPUT_NAME: e2e-evidence/deliveries/report.json
+        run: |
+          pnpm --filter @auction/web exec playwright test e2e/admin-deliveries.spec.ts \
+            --project=staff-chromium --no-deps --workers=1 --reporter=list,json
+          node -e '
+            const { stats } = require("./apps/web/e2e-evidence/deliveries/report.json");
+            if (stats.expected < 1 || stats.skipped > 0 || stats.unexpected > 0) {
+              console.error("Deliveries journey did not run in full:", JSON.stringify(stats));
+              process.exit(1);
+            }
+            console.log("Deliveries journey ran:", JSON.stringify(stats));
+          '
+      - name: Upload Bid admin Deliveries screens
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deliveries-journey-screens
+          path: apps/web/e2e-evidence/deliveries
+          if-no-files-found: warn
+          retention-days: 14
       - name: Seed Shop catalogue
         run: pnpm --filter @auction/shop-api seed:catalogue
       # Each public loading screen against the seeded stack (docs/design/motion.md, MO12): no

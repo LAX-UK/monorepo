@@ -16,6 +16,7 @@ coverage
 *.tsbuildinfo
 playwright-report
 test-results
+e2e-evidence
 apps/web/.vitest-reports
 apps/web/e2e/.auth
 apps/shop-admin/e2e/.auth
