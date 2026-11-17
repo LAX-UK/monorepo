@@ -161,18 +161,29 @@ export class StaffDeliveryQuoteService implements IStaffDeliveryQuoteService {
     return result;
   }
 
-  /** Ends the request as withdrawn with the reason the buyer is told; audited with the write. */
+  /**
+   * Ends the request staff were looking at as withdrawn, with the reason the buyer is told; audited
+   * with the write. `quote_changed` when the lot's latest quote is no longer that request in that
+   * state (the buyer withdrew and asked again, or a colleague priced it), so a reason written for
+   * one request is never sent for another.
+   */
   async decline(input: {
     staffUserId: string;
     lotId: string;
+    quoteId: string;
+    expectedStatus: DeliveryQuoteStatus;
     reason: string;
   }): BuyingResult<DeliveryQuoteRow> {
-    const result = await this.move(input.lotId, "decline", (quote, next) =>
-      this.deps.quotes.decline(quote.id, quote.status, {
-        status: next,
-        actorUserId: input.staffUserId,
-        reason: input.reason,
-      }),
+    const result = await this.move(
+      input.lotId,
+      "decline",
+      (quote, next) =>
+        this.deps.quotes.decline(quote.id, input.expectedStatus, {
+          status: next,
+          actorUserId: input.staffUserId,
+          reason: input.reason,
+        }),
+      { quoteId: input.quoteId, status: input.expectedStatus },
     );
     if (result.isOk()) await this.deps.notifier.quoteDeclined(result.value);
     return result;
@@ -182,10 +193,14 @@ export class StaffDeliveryQuoteService implements IStaffDeliveryQuoteService {
     lotId: string,
     action: "quote" | "decline",
     save: Parameters<typeof applyMove>[2],
+    seen?: { quoteId: string; status: DeliveryQuoteStatus },
   ): BuyingResult<DeliveryQuoteRow> {
     const account = await this.deps.lots.buyerAccountOf(lotId);
     if (!account) return err(buyingError("purchase_not_found"));
     const current = await this.deps.quotes.findLatest(lotId, account);
+    if (seen && current && (current.id !== seen.quoteId || current.status !== seen.status)) {
+      return err(buyingError("quote_changed"));
+    }
     const result = await applyMove(current, { action, actor: "staff" }, save);
     return result.ok ? ok(result.quote) : err(buyingError(result.code));
   }

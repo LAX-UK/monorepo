@@ -2,12 +2,30 @@ import type { StaffRoles } from "@auction/types";
 import { userStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { err, ok } from "neverthrow";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buyingError } from "../../services/organisation-buying/purchase-view.js";
 import { createTestStaffGuards } from "../../testing/staff-mutation-guards.js";
 import { attachAdminDeliveriesRoutes } from "./deliveries.routes.js";
 
+/**
+ * Today D5's read and write requirements name the same roles, so the write guard is tested by
+ * opening the read guard to everyone (as D5's later View-only readers would be) and checking the
+ * POST is still refused.
+ */
+const access = vi.hoisted(() => ({ readOpenToAll: false }));
+vi.mock("../../middleware/require-capability.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../../middleware/require-capability.js")>();
+  return {
+    ...real,
+    requireDeliveriesRead: ((c, next) =>
+      access.readOpenToAll
+        ? next()
+        : real.requireDeliveriesRead(c, next)) as typeof real.requireDeliveriesRead,
+  };
+});
+
 const LOT = "d0000000-0000-4000-8000-0000000000c1";
+const QUOTE = "d0000000-0000-4000-8000-0000000000d1";
 const SALE = "d0000000-0000-4000-8000-0000000000aa";
 
 function createApp(staffRoles: StaffRoles | undefined) {
@@ -154,7 +172,25 @@ describe("POST /deliveries/:lotId/decline", () => {
     },
     body: JSON.stringify(body),
   });
-  const REASON = { reason: "  We don't ship to Lyon  " };
+  const REASON = {
+    quoteId: QUOTE,
+    expectedStatus: "requested",
+    reason: "  We don't ship to Lyon  ",
+  };
+
+  afterEach(() => {
+    access.readOpenToAll = false;
+  });
+
+  it("keeps its own write guard: a reader who is not Fulfilment or an Administrator gets 403", async () => {
+    access.readOpenToAll = true;
+    const { app, deliveries, deliveryQuotes } = createApp(["read_only"]);
+    expect((await app.request(`http://test/deliveries/${LOT}`)).status).toBe(200);
+    expect(deliveries.detail).toHaveBeenCalledTimes(1);
+    const res = await app.request(path, post(REASON, "decline-readonly-0001"));
+    expect(res.status).toBe(403);
+    expect(deliveryQuotes.decline).not.toHaveBeenCalled();
+  });
 
   it.each(userStaffRoles)("%s: only Fulfilment and Administrators may decline", async (role) => {
     const { app, deliveryQuotes } = createApp([role]);
@@ -175,6 +211,8 @@ describe("POST /deliveries/:lotId/decline", () => {
     expect(deliveryQuotes.decline).toHaveBeenCalledWith({
       staffUserId: "staff-1",
       lotId: LOT,
+      quoteId: QUOTE,
+      expectedStatus: "requested",
       reason: "We don't ship to Lyon",
     });
   });
@@ -193,16 +231,30 @@ describe("POST /deliveries/:lotId/decline", () => {
     expect(await again.json()).toEqual(await first.json());
     expect(deliveryQuotes.decline).toHaveBeenCalledTimes(1);
 
-    const changed = await app.request(path, post({ reason: "Other" }, "decline-key-0002"));
+    // The shared idempotency middleware answers `{error: <sentence>, code}`, unlike the route's own
+    // `{error: <code>, message}`; the client reads `code` for these.
+    const changed = await app.request(
+      path,
+      post({ ...REASON, reason: "Other" }, "decline-key-0002"),
+    );
     expect(changed.status).toBe(422);
+    expect(await changed.json()).toEqual({
+      error: "This Idempotency-Key was already used for a different request",
+      code: "idempotency_key_reuse",
+    });
     expect(deliveryQuotes.decline).toHaveBeenCalledTimes(1);
   });
 
+  const seen = { quoteId: QUOTE, expectedStatus: "quoted" };
   it.each([
-    ["no reason", {}],
-    ["a blank reason", { reason: "   " }],
-    ["a reason over 500 characters", { reason: "x".repeat(501) }],
-    ["an unknown field", { reason: "No", amount: "1.00" }],
+    ["no reason", { ...seen }],
+    ["a blank reason", { ...seen, reason: "   " }],
+    ["a reason over 500 characters", { ...seen, reason: "x".repeat(501) }],
+    ["an unknown field", { ...seen, reason: "No", amount: "1.00" }],
+    ["no quote id", { expectedStatus: "quoted", reason: "No" }],
+    ["a quote id that is not a uuid", { ...seen, quoteId: "quote-1", reason: "No" }],
+    ["no expected status", { quoteId: QUOTE, reason: "No" }],
+    ["an unknown expected status", { ...seen, expectedStatus: "declined", reason: "No" }],
   ])("refuses %s before touching the quote", async (_label, body) => {
     const { app, deliveryQuotes } = createApp(["fulfilment"]);
     const res = await app.request(path, post(body, `decline-bad-${_label.replaceAll(" ", "-")}`));

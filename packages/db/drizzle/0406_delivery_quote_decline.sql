@@ -11,8 +11,10 @@ SET LOCAL lock_timeout = '30s';
 ALTER TABLE "delivery_quote" ADD COLUMN IF NOT EXISTS "decline_reason" text;
 --> statement-breakpoint
 -- Every existing row has no reason yet, so the check holds for all of them. It is added NOT VALID
--- and validated in its own statement; delivery_quote holds one row per delivery a buyer asked
--- for, so the validating scan is short.
+-- and then validated, but the whole migration runs in one transaction, so the ACCESS EXCLUSIVE
+-- lock from ADD CONSTRAINT is held through the VALIDATE scan: the split saves no lock time. That
+-- is acceptable because delivery_quote holds one row per delivery a buyer asked for, so the scan
+-- is short. If the table ever grows, validate in a later migration instead.
 ALTER TABLE "delivery_quote" DROP CONSTRAINT IF EXISTS "delivery_quote_decline_reason_check";
 --> statement-breakpoint
 ALTER TABLE "delivery_quote"

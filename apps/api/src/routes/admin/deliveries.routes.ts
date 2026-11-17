@@ -52,7 +52,9 @@ export function attachAdminDeliveriesRoutes(
   /**
    * POST /admin/deliveries/:lotId/decline — "Can't deliver" (D8): ends a requested or quoted
    * quote as withdrawn and tells the buyer the reason. One decline per Idempotency-Key, so a double
-   * submit sends one email; a stale screen gets `quote_step_not_allowed` or `quote_changed`.
+   * submit sends one email; a stale screen (another request, or one
+   * no longer in `expectedStatus`) gets `quote_changed`. Errors from this handler are
+   * `{error: <code>, message}`; the shared idempotency middleware answers `{error: <sentence>, code}`.
    */
   platform.post(
     "/deliveries/:lotId/decline",
@@ -61,10 +63,13 @@ export function attachAdminDeliveriesRoutes(
     zValidator("param", adminDeliveryLotIdParamSchema),
     zValidator("json", adminDeliveryDeclineBodySchema),
     async (c) => {
+      const body = c.req.valid("json");
       const result = await container.admin.deliveryQuotes.decline({
         staffUserId: c.get("userId") as string,
         lotId: c.req.valid("param").lotId,
-        reason: c.req.valid("json").reason,
+        quoteId: body.quoteId,
+        expectedStatus: body.expectedStatus,
+        reason: body.reason,
       });
       c.header("Cache-Control", "no-store");
       return result.match(

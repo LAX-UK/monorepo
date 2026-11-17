@@ -189,4 +189,45 @@ describe.skipIf(!HAS_DB)("delivery quote repository: decline (integration)", () 
       await db.delete(user).where(inArray(user.id, userIds));
     }
   });
+
+  it("leaves no audit row when the decline fails after the audit insert", async () => {
+    // The reverse of the test above: the audit row is written, then the transaction fails at
+    // commit (a deferred constraint trigger on the quote). An audit written outside the decline's
+    // transaction would commit on its own and claim a decline that never happened. Committed for
+    // real, then cleaned up.
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const { quoteId, lotId, entityId, staffId, userIds } = await seed(db, "requested");
+    const trigger = `fail_decline_commit_${quoteId.replaceAll("-", "")}`;
+    try {
+      await db.execute(
+        sql.raw(`
+        create function ${trigger}() returns trigger language plpgsql as $$
+        begin raise exception 'commit refused'; end $$`),
+      );
+      await db.execute(
+        sql.raw(`
+        create constraint trigger ${trigger} after update on delivery_quote
+        deferrable initially deferred for each row
+        when (new.id = '${quoteId}') execute function ${trigger}()`),
+      );
+      await expect(
+        new DrizzleDeliveryQuoteRepository(db).decline(quoteId, "requested", {
+          status: "withdrawn",
+          actorUserId: staffId,
+          reason: REASON,
+        }),
+      ).rejects.toThrow();
+      const [row] = await db.select().from(deliveryQuote).where(eq(deliveryQuote.id, quoteId));
+      expect(row).toMatchObject({ status: "requested", declineReason: null, decidedAt: null });
+      expect(await declinedEvents(db, quoteId)).toHaveLength(0);
+    } finally {
+      await db.execute(sql.raw(`drop trigger if exists ${trigger} on delivery_quote`));
+      await db.execute(sql.raw(`drop function if exists ${trigger}()`));
+      await db.delete(domainEvent).where(eq(domainEvent.aggregateId, quoteId));
+      await db.delete(lot).where(eq(lot.id, lotId));
+      await db.delete(legalEntity).where(eq(legalEntity.id, entityId));
+      await db.delete(user).where(inArray(user.id, userIds));
+    }
+  });
 });

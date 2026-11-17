@@ -17,10 +17,12 @@ import {
   deliverySaleLine,
   deliverySince,
   deliverySinceExact,
+  deliveryStateKey,
   deliveryTabs,
   lotFulfilmentHref,
   paddleLine,
 } from "@/lib/admin/deliveries/deliveries.vm";
+import { canDeclineDelivery } from "@/lib/admin/deliveries/delivery-decline";
 import type { DeliveriesPage, DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import {
@@ -36,11 +38,13 @@ import {
   PrimaryCell,
   StatusBadge,
   TableSearch,
+  toast,
   useBesidePanelWidth,
 } from "@auction/staff-ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { DeclineDeliveryAction } from "./decline-delivery-dialog";
 import { DeliveryPanel } from "./delivery-panel";
 
 export type DeliveriesListProps = {
@@ -71,8 +75,9 @@ const BESIDE_PANEL_HIDDEN = new Set(["buyer", "destination"]);
 /**
  * Every won lot a buyer wants delivered, on the staff list template (D1–D6): one tab per delivery
  * status with its count, search and a sale filter, and a queue panel (PRD-7) that steps through
- * the rows with J and K. Pricing a quote arrives in the next change; until then the page reads,
- * and dispatch, tracking and delivered stay on Lot fulfilment.
+ * the rows with J and K. Fulfilment and Administrators can decline a request ("Can't deliver",
+ * D8) from the panel footer; pricing a quote arrives in its own change. Dispatch, tracking and
+ * delivered stay on Lot fulfilment.
  */
 export function DeliveriesList(props: DeliveriesListProps) {
   const { page, search, filters, canWork } = props;
@@ -231,6 +236,33 @@ export function DeliveriesList(props: DeliveriesListProps) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [panelOpen, router]);
 
+  // "Can't deliver" (D5, D8) in the panel footer, for Fulfilment and Administrators while the
+  // request waits for a price or has a quote out. The person's own decline is not announced as
+  // the buyer's change.
+  const [ownChange, setOwnChange] = useState<{ lotId: string; key: string } | null>(null);
+  const record = queue.record;
+  const panelFooterActions =
+    record && canDeclineDelivery(record, canWork) ? (
+      <DeclineDeliveryAction
+        // Keyed by lot only: when the request changes under an open dialog, the dialog stays
+        // with its stale Notice while the panel reloads.
+        key={record.lotId}
+        row={record}
+        onDeclined={() => {
+          setOwnChange({
+            lotId: record.lotId,
+            key: deliveryStateKey({
+              status: "closed",
+              quote: { ...record.quote, status: "withdrawn" },
+            }),
+          });
+          toast.success(DELIVERIES_COPY.decline.declinedToast(deliveryLotTitle(record.lot)));
+          router.refresh();
+        }}
+        onStale={() => router.refresh()}
+      />
+    ) : null;
+
   if (props.denied) {
     return (
       <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
@@ -357,6 +389,8 @@ export function DeliveriesList(props: DeliveriesListProps) {
         missing={missing}
         loadFailed={props.selectedError}
         onRetry={() => router.refresh()}
+        ownChange={ownChange}
+        footerActions={panelFooterActions}
       />
     </>
   );

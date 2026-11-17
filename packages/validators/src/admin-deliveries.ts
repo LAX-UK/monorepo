@@ -1,4 +1,8 @@
-import { DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH, DELIVERY_STATUSES } from "@auction/domain";
+import {
+  DELIVERY_QUOTE_DECLINE_REASON_MAX_LENGTH,
+  DELIVERY_QUOTE_STATUSES,
+  DELIVERY_STATUSES,
+} from "@auction/domain";
 import { z } from "zod";
 
 /** The order of a Deliveries view: the newest request first, or the one waiting longest. */
@@ -25,11 +29,15 @@ export type AdminDeliveriesListQuery = z.infer<typeof adminDeliveriesListQuerySc
 export const adminDeliveryLotIdParamSchema = z.object({ lotId: z.string().uuid() });
 
 /**
- * Staff decline a delivery quote ("Can't deliver", D8). The reason is sent to the buyer as written,
- * trimmed; the same limits hold in the database.
+ * Staff decline a delivery quote ("Can't deliver", D8). `quoteId` and `expectedStatus` name the
+ * request staff were looking at: if the buyer withdrew and asked again, or a colleague priced it,
+ * the decline is refused as `quote_changed` (D6) instead of declining a request nobody has seen.
+ * The reason is sent to the buyer as written, trimmed; the same limits hold in the database.
  */
 export const adminDeliveryDeclineBodySchema = z
   .object({
+    quoteId: z.string().uuid(),
+    expectedStatus: z.enum(DELIVERY_QUOTE_STATUSES),
     reason: z
       .string()
       .trim()

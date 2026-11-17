@@ -3,6 +3,7 @@ import type {
   ChosenPaymentMethod,
   CollectionBookingOffer,
   DeliveryQuoteAction,
+  DeliveryQuoteStatus,
   PaySeveralSkipReason,
   PayTogetherDecision,
   PurchaseCollectBy,
@@ -260,10 +261,15 @@ export interface IStaffDeliveryQuoteService {
     amount: string;
     note: string | null;
   }): BuyingResult<DeliveryQuoteRow>;
-  /** Declines a requested or quoted quote ("Can't deliver"); the buyer is told the reason. */
+  /**
+   * Declines the requested or quoted quote staff saw ("Can't deliver"); the buyer is told the
+   * reason. `quote_changed` when the lot's latest quote is not `quoteId` in `expectedStatus`.
+   */
   decline(input: {
     staffUserId: string;
     lotId: string;
+    quoteId: string;
+    expectedStatus: DeliveryQuoteStatus;
     reason: string;
   }): BuyingResult<DeliveryQuoteRow>;
 }
