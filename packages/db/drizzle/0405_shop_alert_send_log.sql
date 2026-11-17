@@ -13,6 +13,10 @@
 -- The counters get their defaults only after the columns exist, so rows from before this migration
 -- keep NULL counts: the log says their counts were not kept, instead of passing what is left for
 -- the whole send. kind and announced_by are filled once below from the work and its audit row.
+-- Deploy overlap: a release announced by the previous build after this backfill has run keeps kind
+-- and announced_by NULL. The log reads a NULL kind through the same current-flags rule as the
+-- backfill (shop channel and edition-eligible), so it is still listed, with its publisher unknown;
+-- no rerun of the backfill is needed.
 -- shop_alert_match gains an (item_key, topic) index so the log's per-page live read of waiting and
 -- stuck matches is an index lookup. Plain CREATE INDEX: the migration runner is transactional, so
 -- CONCURRENTLY is not available; the build briefly blocks writes to the bounded match table, and the

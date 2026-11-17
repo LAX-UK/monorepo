@@ -11,7 +11,7 @@ import {
   type AdminReleaseAlertSend,
   RELEASE_ALERT_REMOVED_BEFORE_SENDING,
 } from "@auction/shop-contracts";
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { artworkItemKey } from "../../application/alerts/alert-items.js";
 import type { ReleaseAlertSendLogReader } from "../../application/alerts/alert-ports.js";
 import {
@@ -160,6 +160,10 @@ export class ReleaseAlertSendLogStore implements ReleaseAlertSendLogReader {
    * listed by what the work was when it was published (`kind`), so changing its flags later never
    * takes it out of the log. The publisher is the subject kept on the announcement, named through
    * the profile's primary key: no audit lookup.
+   *
+   * A release with no `kind` was announced by a build from before 0405 after the migration's one-off
+   * backfill ran (the deploy overlap). It is read through the current-flags rule the backfill used,
+   * so it still appears; its publisher was never kept, so it reads as unknown.
    */
   private async page(cursorValue: string | undefined, limit: number) {
     const cursor = decodeCatalogueCursor(cursorValue);
@@ -188,7 +192,19 @@ export class ReleaseAlertSendLogStore implements ReleaseAlertSendLogReader {
       .from(n)
       .innerJoin(shopArtwork, sql`${n.itemKey} = 'artwork:' || ${shopArtwork.id}::text`)
       .leftJoin(shopUserProfile, eq(shopUserProfile.identitySubjectId, n.announcedBy))
-      .where(and(eq(n.kind, "shop_release"), after))
+      .where(
+        and(
+          or(
+            eq(n.kind, "shop_release"),
+            and(
+              isNull(n.kind),
+              eq(shopArtwork.salesChannel, "shop"),
+              eq(shopArtwork.eligibleForEditionAllocation, true),
+            ),
+          ),
+          after,
+        ),
+      )
       .orderBy(desc(n.announcedAt), desc(n.itemKey))
       .limit(limit + 1);
   }

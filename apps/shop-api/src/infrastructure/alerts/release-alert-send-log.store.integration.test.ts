@@ -78,6 +78,48 @@ async function digest(db: Database, subscriberId: string, madeAt: Date) {
 }
 
 /**
+ * A back-in-stock match on the same work: not part of the release alert, so never counted. It is
+ * only inserted here; `settleOtherTopic` settles it, so a fixture can record it before the release
+ * expands and settle it after, as the engine would.
+ */
+type OtherTopic = "emailed" | "dropped" | { unsentFor: number };
+
+async function otherTopicMatch(db: Database, artworkId: string, settle: OtherTopic) {
+  const subscriberId = await subscriber(db);
+  const digestId =
+    settle === "emailed"
+      ? await digest(db, subscriberId, ago(2 * HOUR))
+      : typeof settle === "object"
+        ? await digest(db, subscriberId, ago(settle.unsentFor))
+        : null;
+  const [row] = await db
+    .insert(shopAlertMatch)
+    .values({
+      subscriberId,
+      topic: "shop.back_in_stock",
+      itemKey: artworkItemKey(artworkId),
+      snapshot: { title: "fixture", path: "/artworks/fixture" },
+      digestId,
+    })
+    .returning({ id: shopAlertMatch.id });
+  if (!row) throw new Error("other-topic match fixture missing");
+  return { matchId: row.id, digestId, settle };
+}
+
+async function settleOtherTopic(
+  db: Database,
+  match: Awaited<ReturnType<typeof otherTopicMatch>>,
+  droppedReason = "withdrawn",
+) {
+  if (match.settle === "emailed" && match.digestId) {
+    await new ShopAlertDigestLedger(db).markSent(match.digestId, ago(HOUR));
+  }
+  if (match.settle === "dropped") {
+    await new ShopAlertMatchLedger(db).drop([match.matchId], droppedReason, NOW);
+  }
+}
+
+/**
  * How one person's match ends up: emailed (its digest marked sent), waiting for a digest, in an
  * unsent digest made `unsentFor` ago, or dropped with an engine reason.
  */
@@ -91,14 +133,22 @@ async function release(
   artworkId: string,
   at: Date,
   kinds: readonly MatchKind[],
-  opts: { announce?: boolean; expanded?: boolean; kind?: string; by?: string; topic?: string } = {},
+  opts: {
+    announce?: boolean;
+    expanded?: boolean;
+    kind?: string | null;
+    by?: string;
+    topic?: string;
+    /** Runs after the release's own matches are recorded and before it expands. */
+    beforeExpand?: () => Promise<void>;
+  } = {},
 ): Promise<Fixture[]> {
   const itemKey = artworkItemKey(artworkId);
   await db.insert(shopAlertAnnouncement).values({
     itemKey,
     announcedAt: at,
     announce: opts.announce ?? true,
-    kind: opts.kind ?? "shop_release",
+    kind: opts.kind === undefined ? "shop_release" : opts.kind,
     announcedBy: opts.by ?? null,
   });
   const made: Fixture[] = [];
@@ -124,6 +174,7 @@ async function release(
     if (!row) throw new Error("match fixture missing");
     made.push({ subscriberId, matchId: row.id, digestId, kind });
   }
+  await opts.beforeExpand?.();
   if (opts.expanded !== false) await new ShopAlertAnnouncementStore(db).markExpanded(itemKey, at);
   for (const fixture of made) {
     if (fixture.kind === "emailed" && fixture.digestId) {
@@ -172,31 +223,26 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
     fixtures.queued = await release(db, await artwork("queued"), ago(50 * HOUR), [], {
       expanded: false,
     });
+    // Another topic's matches for the same work, one emailed and one dropped, are not part of
+    // the release alert. They exist before the release expands, so the matched count taken then
+    // has to leave them out, and they settle through the same ledgers as the release's own.
+    const sendingId = await artwork("sending");
+    const sendingOthers: Awaited<ReturnType<typeof otherTopicMatch>>[] = [];
     fixtures.sending = await release(
       db,
-      await artwork("sending"),
+      sendingId,
       ago(40 * HOUR),
       ["emailed", "waiting", { dropped: "topic_off" }],
-      { by: publisher },
+      {
+        by: publisher,
+        beforeExpand: async () => {
+          for (const settle of ["emailed", "dropped"] as const) {
+            sendingOthers.push(await otherTopicMatch(db, sendingId, settle));
+          }
+        },
+      },
     );
-    // Another topic's matches for the same work, one emailed and one dropped, are not part of
-    // the release alert: neither the kept counts nor the live ones count them.
-    for (const settle of ["emailed", "dropped"] as const) {
-      const subscriberId = await subscriber(db);
-      const digestId = settle === "emailed" ? await digest(db, subscriberId, ago(2 * HOUR)) : null;
-      const [other] = await db
-        .insert(shopAlertMatch)
-        .values({
-          subscriberId,
-          topic: "shop.back_in_stock",
-          itemKey: artworkItemKey(ids.sending as string),
-          snapshot: { title: "fixture", path: "/artworks/fixture" },
-          digestId,
-        })
-        .returning({ id: shopAlertMatch.id });
-      if (digestId) await new ShopAlertDigestLedger(db).markSent(digestId, ago(HOUR));
-      else await new ShopAlertMatchLedger(db).drop([other?.id ?? ""], "withdrawn", NOW);
-    }
+    for (const other of sendingOthers) await settleOtherTopic(db, other);
     fixtures.stuck = await release(db, await artwork("stuck"), ago(35 * HOUR), [
       { unsentFor: 30 * HOUR },
       "emailed",
@@ -208,6 +254,9 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
       { dropped: "topic_off" },
       { dropped: "topic_off" },
     ]);
+    // A back-in-stock match on the finished release, still in a digest unsent for over a day:
+    // it is neither waiting for the release alert nor a reason to call the release stuck.
+    await otherTopicMatch(db, ids.sent as string, { unsentFor: 30 * HOUR });
     fixtures.tie = await release(db, await artwork("tie"), ago(20 * HOUR), []);
     fixtures.tie2 = await release(db, await artwork("tie2"), ago(20 * HOUR), []);
   });
@@ -375,9 +424,39 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
       expect(kept).toEqual({ matched: 3, emailed: 1, dropped: 1, reasons: { topic_off: 1 } });
     });
 
+    it("never report fewer matched than were emailed, dropped or still waiting", async () => {
+      // A kept matched count below what has since settled (a match recorded after expansion)
+      // is raised to the settled total, never read as a negative "removed before sending".
+      await db
+        .update(shopAlertAnnouncement)
+        .set({ matchedCount: 1 })
+        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(ids.sent as string)));
+      expect(await row("sent")).toMatchObject({
+        status: "sent",
+        matched: 5,
+        emailed: 2,
+        notSent: 3,
+        notSentReasons: [
+          { reason: "topic_off", count: 2 },
+          { reason: "withdrawn", count: 1 },
+        ],
+      });
+    });
+
+    it("leave a waiting other-topic match out of a finished release", async () => {
+      expect(await row("sent")).toMatchObject({
+        status: "sent",
+        waiting: 0,
+        matched: 5,
+        notSent: 3,
+      });
+    });
+
     it("are not claimed for a release from before they were kept", async () => {
       const legacy = await artwork("legacy");
       await release(db, legacy, ago(80 * HOUR), ["emailed", { dropped: "withdrawn" }]);
+      // A dropped back-in-stock match: its reason is not one of the release's.
+      await settleOtherTopic(db, await otherTopicMatch(db, legacy, "dropped"), "not_subscribed");
       await db
         .update(shopAlertAnnouncement)
         .set({ matchedCount: null, emailedCount: null, droppedCount: null, droppedReasons: null })
@@ -421,16 +500,37 @@ describe.skipIf(!hasShopIntegrationDb)("ReleaseAlertSendLogStore (integration)",
     it("leaves out works announced as lax.art originals, whatever their flags say now", async () => {
       const original = await artwork("original");
       await release(db, original, ago(HOUR), [], { kind: "art_original" });
-      const unknown = await artwork("unknown");
-      await release(db, unknown, ago(HOUR), []);
-      await db
-        .update(shopAlertAnnouncement)
-        .set({ kind: null })
-        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(unknown)));
       const listed = (await store().list({ limit: 50 })).items.map((i) => i.artworkId);
       expect(listed).not.toContain(original);
-      expect(listed).not.toContain(unknown);
       expect(listed).toHaveLength(7);
+    });
+
+    it("reads a release with no kept kind through the work's current flags", async () => {
+      // Published by the old build during the deploy overlap, after 0405's backfill ran: no kind
+      // and no publisher were kept. An edition shop work is listed, with the publisher unknown.
+      const overlap = await artwork("overlap");
+      await release(db, overlap, ago(HOUR), ["emailed"], { kind: null });
+      // The old build expanded and sent it too: no matched count, counters left at their defaults.
+      await db
+        .update(shopAlertAnnouncement)
+        .set({ matchedCount: null, emailedCount: 0, droppedCount: 0, droppedReasons: {} })
+        .where(eq(shopAlertAnnouncement.itemKey, artworkItemKey(overlap)));
+      const overlapArt = await artwork("overlap-art");
+      await release(db, overlapArt, ago(HOUR), [], { kind: null });
+      await db
+        .update(shopArtwork)
+        .set({ eligibleForEditionAllocation: false, salesChannel: "art" })
+        .where(eq(shopArtwork.id, overlapArt));
+      const listed = (await store().list({ limit: 50 })).items;
+      expect(listed.map((i) => i.artworkId)).not.toContain(overlapArt);
+      expect(listed).toHaveLength(8);
+      expect(listed.find((i) => i.artworkId === overlap)).toMatchObject({
+        status: "counts_not_kept",
+        countsKept: false,
+        matched: 1,
+        emailed: 1,
+        publishedByName: null,
+      });
     });
   });
 
