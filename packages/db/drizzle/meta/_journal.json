@@ -2787,6 +2787,13 @@
       "when": 1813320000000,
       "tag": "0406_delivery_quote_decline",
       "breakpoints": true
+    },
+    {
+      "idx": 399,
+      "version": "7",
+      "when": 1813406400000,
+      "tag": "0407_consignor_agreement",
+      "breakpoints": true
     }
   ]
 }

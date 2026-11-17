@@ -12,6 +12,7 @@ export {
 } from "./drizzle-zoho-listing.js";
 export { DrizzleSoldAttentionStore } from "./drizzle-sold-attention.store.js";
 export { DrizzleStockLocationStore } from "./drizzle-stock-location.store.js";
+export { DrizzleConsignorAgreementStore } from "./drizzle-consignor-agreement.store.js";
 export { DrizzleLotNumberReader } from "./drizzle-lot-number.reader.js";
 export { DrizzleBidPublishSettings } from "./drizzle-bid-publish-settings.js";
 export { DrizzleRegisterLotIntegrityReader } from "./drizzle-register-lot-integrity.reader.js";
