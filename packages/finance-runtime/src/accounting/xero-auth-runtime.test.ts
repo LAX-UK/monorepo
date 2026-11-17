@@ -1,3 +1,4 @@
+import { XeroTokenSealingError } from "@auction/db/xero-token-sealing";
 import type { IXeroConnectionRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { describe, expect, it, vi } from "vitest";
@@ -24,6 +25,24 @@ describe("proactiveRefreshXeroTokens without a usable sealing key", () => {
     expect(result).toEqual({ ok: false, reason: "xero_token_sealing_key_missing" });
     expect(createXeroClientForOAuth).not.toHaveBeenCalled();
     expect(connections.updateConnectionStatus).not.toHaveBeenCalled();
+    expect(connections.updateTokens).not.toHaveBeenCalled();
+  });
+
+  it("refuses to refresh tokens that were sealed with another key", async () => {
+    const connections = {
+      findLatest: vi.fn().mockRejectedValue(new XeroTokenSealingError("unreadable")),
+      updateConnectionStatus: vi.fn(),
+      updateTokens: vi.fn(),
+    } as unknown as IXeroConnectionRepository;
+
+    const result = await proactiveRefreshXeroTokens({
+      env: { XERO_CLIENT_ID: "id", XERO_CLIENT_SECRET: "secret", XERO_REDIRECT_URI: "https://x" },
+      connections,
+      redis: {} as Redis,
+    });
+
+    expect(result).toEqual({ ok: false, reason: "xero_token_sealing_unreadable" });
+    expect(createXeroClientForOAuth).not.toHaveBeenCalled();
     expect(connections.updateTokens).not.toHaveBeenCalled();
   });
 });

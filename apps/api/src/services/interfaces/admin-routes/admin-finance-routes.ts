@@ -76,8 +76,15 @@ export interface IAdminStripeConnectApplicationService {
 
 export type XeroConnectionHealth = "healthy" | "degraded" | "disconnected";
 
+/**
+ * Why a status reads as not connected when a connection row exists: `reconnect_required` means
+ * the saved tokens can no longer be opened, so Xero must be connected again.
+ */
+export type XeroStatusReason = "reconnect_required";
+
 export type XeroStatusPayload = {
   connected: boolean;
+  reason: XeroStatusReason | null;
   tenantId: string | null;
   tenantName: string | null;
   expiresAt: string | null;
