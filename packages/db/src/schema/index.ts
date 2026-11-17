@@ -90,6 +90,7 @@ export * from "./accounting-stripe.js";
 export * from "./bid-finance-setting.js";
 export * from "./sale-seller-terms.js";
 export * from "./artwork-register.js";
+export * from "./artwork-location.js";
 export * from "./bid-catalogue-setting.js";
 export * from "./zoho-artwork-sync.js";
 export * from "./zoho-sync-health.js";

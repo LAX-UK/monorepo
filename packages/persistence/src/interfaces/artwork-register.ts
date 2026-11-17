@@ -34,7 +34,8 @@ export type RegisterEventType =
   | "sold_while_live_resolved"
   | "sold_while_live_overridden"
   | "gallery_sale_recorded"
-  | "gallery_sale_reopened";
+  | "gallery_sale_reopened"
+  | "location_moved";
 
 export type RegisterEvent = {
   id: string;

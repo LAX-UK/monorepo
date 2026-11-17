@@ -694,6 +694,13 @@ export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as 
  * and LAX Bid): it reads records and updates the offer. History is append-only (see above).
  */
 export const SHOP_ARTWORK_REGISTER_OFFER_TABLES = ["artwork_register"] as const;
+/**
+ * Stock location (0404): LAX Admin keeps the list of locations (add, rename, retire: never
+ * delete, so history keeps reading) and records moves. Moves are append-only, so shop_app may add
+ * them and read them, never change them.
+ */
+export const SHOP_ARTWORK_LOCATION_TABLES = ["artwork_location"] as const;
+export const SHOP_ARTWORK_LOCATION_MOVE_TABLES = ["artwork_location_move"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -1716,6 +1723,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           );
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_EVENT_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_LOCATION_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of SHOP_ARTWORK_LOCATION_MOVE_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_LOCK_READ_TABLES) {

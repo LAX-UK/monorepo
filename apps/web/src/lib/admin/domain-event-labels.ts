@@ -59,6 +59,7 @@ const LABELS: Record<string, string> = {
   "export.requested": "Export requested",
 
   "artwork_register.catalogue_changed": "Zoho changed an artwork's details",
+  "artwork_register.location_changed": "Artwork moved to another location",
   "artwork_register.offer_changed": "Artwork moved to a new place",
   "artwork_register.stock_code_assigned": "Artwork stock code assigned",
   "data_request.viewed": "Data request opened",

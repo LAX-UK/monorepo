@@ -49,3 +49,22 @@ export const artworkRegisterCatalogueChangedPayloadSchemaV1 = z.object({
 export type ArtworkRegisterCatalogueChangedPayloadV1 = z.infer<
   typeof artworkRegisterCatalogueChangedPayloadSchemaV1
 >;
+
+/**
+ * An artwork was moved to another physical location (not where it is offered: that is
+ * `offer_changed`). Ids only: location names are typed by staff and could name a person ("On loan
+ * to ..."), so a reader looks the location up. The Zoho mirror reads the register's current
+ * location rather than trusting this one, so a late or repeated event never writes an old value.
+ */
+export const artworkRegisterLocationChangedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  registerId: z.string().uuid(),
+  zohoProductId: z.string().min(1),
+  stockCode: z.string().min(1),
+  /** Null when the artwork had no location recorded before this move. */
+  fromLocationId: z.string().uuid().nullable(),
+  toLocationId: z.string().uuid(),
+});
+export type ArtworkRegisterLocationChangedPayloadV1 = z.infer<
+  typeof artworkRegisterLocationChangedPayloadSchemaV1
+>;

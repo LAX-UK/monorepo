@@ -75,6 +75,18 @@ export const SHOP_STAFF_CAPABILITIES = [
    * artwork becomes available to offer again, and the sale is Zoho's to record.
    */
   "artwork_register.reopen_sold",
+  /**
+   * Seeing where an artwork physically is and where it has been. Comes with
+   * `artwork_register.read`: anyone who can open the record sees its location.
+   */
+  "artwork_location.read",
+  /** Moving an artwork, or a selection of them, to another location. */
+  "artwork_location.move",
+  /**
+   * Keeping the list of locations: adding, renaming and retiring them. Administrators only: a
+   * rename changes how every artwork's history reads.
+   */
+  "artwork_location.manage",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -105,6 +117,7 @@ export const READ_ONLY_CAPABILITIES = [
   "catalogue.read",
   "editorial.read",
   "artwork_register.read",
+  "artwork_location.read",
 ] as const satisfies readonly ShopStaffCapability[];
 
 /**
@@ -116,12 +129,33 @@ export const READ_IMPLIED_BY_WRITE = {
   "editorial.write": "editorial.read",
   "artwork_register.review": "artwork_register.read",
   "order.write": "order.read",
+  /** Moving an artwork starts from its record, so it opens the record (and so its location). */
+  "artwork_location.move": "artwork_register.read",
+  "artwork_location.manage": "artwork_location.read",
 } as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
 
+/** Reads that come with another read: the second is part of the first's screen. */
+export const READ_INCLUDED_IN_READ = {
+  "artwork_register.read": "artwork_location.read",
+} as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
+
+const IMPLIED: readonly (readonly [string, ShopStaffCapability])[] = [
+  ...Object.entries(READ_IMPLIED_BY_WRITE),
+  ...Object.entries(READ_INCLUDED_IN_READ),
+];
+
+/** Adds every implied read, following chains (a move implies the record, which implies location). */
 function withImpliedReads(granted: readonly ShopStaffCapability[]): readonly ShopStaffCapability[] {
   const all = new Set(granted);
-  for (const [write, read] of Object.entries(READ_IMPLIED_BY_WRITE))
-    if (all.has(write as ShopStaffCapability)) all.add(read);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const [held, implied] of IMPLIED)
+      if (all.has(held as ShopStaffCapability) && !all.has(implied)) {
+        all.add(implied);
+        added = true;
+      }
+  }
   return [...all];
 }
 
@@ -138,6 +172,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "order.read",
     "order.write",
     "lead.read",
+    "artwork_location.move",
   ],
   broker: [
     "stock_hold.write",
@@ -152,6 +187,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "order.read",
     "order.write",
     "enquiry.read",
+    "artwork_location.move",
   ],
   finance: [
     "retained_invoice_data.read",

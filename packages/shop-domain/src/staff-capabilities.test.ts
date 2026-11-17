@@ -198,8 +198,11 @@ describe("separate approver", () => {
 describe("the From Zoho queue", () => {
   it("lets the Administrator and Catalogue editor decide, and anyone who decides read", () => {
     expect(rolesGranting("artwork_register.review")).toEqual(["shop_admin", "catalogue_editor"]);
+    // Fulfilment and Gallery staff open the register to move artworks between locations.
     expect(rolesGranting("artwork_register.read")).toEqual([
       "shop_admin",
+      "account_manager",
+      "operations",
       "catalogue_editor",
       "read_only",
     ]);
@@ -212,6 +215,31 @@ describe("the From Zoho queue", () => {
   it("lets only the Administrator reopen a sale made in the gallery", () => {
     expect(rolesGranting("artwork_register.reopen_sold")).toEqual(["shop_admin"]);
     expect(can("catalogue_editor", "artwork_register.reopen_sold")).toBe(false);
+  });
+
+  it("lets Fulfilment, Gallery staff and Administrators move artworks, and only Administrators keep the list", () => {
+    expect(rolesGranting("artwork_location.move")).toEqual([
+      "shop_admin",
+      "account_manager",
+      "operations",
+    ]);
+    expect(rolesGranting("artwork_location.manage")).toEqual(["shop_admin"]);
+  });
+
+  it("shows an artwork's location to everyone who can open its record, and to those who move it", () => {
+    for (const role of SHOP_STAFF_ROLES) {
+      if (can(role, "artwork_register.read")) expect(can(role, "artwork_location.read")).toBe(true);
+      if (can(role, "artwork_location.move")) {
+        expect(can(role, "artwork_register.read"), role).toBe(true);
+        expect(can(role, "artwork_location.read"), role).toBe(true);
+      }
+    }
+    expect(can("read_only", "artwork_location.read")).toBe(true);
+    expect(can("read_only", "artwork_location.move")).toBe(false);
+    expect(can("catalogue_editor", "artwork_location.read")).toBe(true);
+    expect(can("catalogue_editor", "artwork_location.move")).toBe(false);
+    for (const role of ["broker", "finance", "editor"] as const)
+      expect(can(role, "artwork_location.read"), role).toBe(false);
   });
 
   it("keeps Read-only to viewing", () => {
