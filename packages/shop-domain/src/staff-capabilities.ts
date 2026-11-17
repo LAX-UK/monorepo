@@ -90,6 +90,16 @@ export const SHOP_STAFF_CAPABILITIES = [
    * rename changes how every artwork's history reads.
    */
   "artwork_location.manage",
+  /**
+   * Seeing a consignor's agreements on their client page: the places LAX may offer their works,
+   * the dates, the lowest price, the commission and the signed file. Comes with reading clients.
+   */
+  "consignor_agreement.read",
+  /**
+   * Adding an agreement for a consignor, replacing it with a new version and retiring it, with a
+   * recent sign-in. Held by Administrators and Catalogue editors, who offer the works.
+   */
+  "consignor_agreement.manage",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -138,11 +148,18 @@ export const READ_IMPLIED_BY_WRITE = {
    */
   "artwork_location.move": "artwork_location.read",
   "artwork_location.manage": "artwork_location.read",
+  "consignor_agreement.manage": "consignor_agreement.read",
 } as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
 
 /** Reads that come with another read: the second is part of the first's screen. */
 export const READ_INCLUDED_IN_READ = {
   "artwork_register.read": "artwork_location.read",
+  /**
+   * A client's page shows their agreements as a consignor, to everyone who can open it. A broker
+   * reads only the clients assigned to them; shop-api checks the client as for the page.
+   */
+  "client.read_all": "consignor_agreement.read",
+  "client.read_assigned": "consignor_agreement.read",
 } as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
 
 const IMPLIED: readonly (readonly [string, ShopStaffCapability])[] = [
@@ -213,6 +230,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "artwork_register.review",
     "artwork_register.read",
     "artwork_location.move",
+    "consignor_agreement.manage",
   ],
   /** Stories, exhibitions, venues, pages and help, written and published. */
   editor: ["editorial.write", "editorial.publish"],

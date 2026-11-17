@@ -46,7 +46,8 @@ async function adminJson<T>(path: string, init: RequestInit): Promise<T> {
   return body;
 }
 
-function putWithProgress(
+/** Sends a file to a signed PUT link, reporting progress when asked. */
+export function putWithProgress(
   url: string,
   file: File,
   headers: Record<string, string>,

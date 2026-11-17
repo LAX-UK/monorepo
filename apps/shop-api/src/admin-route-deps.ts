@@ -7,6 +7,7 @@ import type {
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
+import type { ConsignorAgreementService } from "./application/artwork-register/consignor-agreement.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import type { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
 import type { StockLocationService } from "./application/artwork-register/stock-location.service.js";
@@ -126,6 +127,8 @@ export type AdminRoutesDeps = {
   >;
   /** Stock location: the list of places an original can be, and moving artworks between them. */
   stockLocations: StockLocationService;
+  /** A consignor's agreements on their client page: list, add, replace, retire, signed files. */
+  consignorAgreements: ConsignorAgreementService;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
   /** The release-alert send log: counts per published release, never subscribers. */

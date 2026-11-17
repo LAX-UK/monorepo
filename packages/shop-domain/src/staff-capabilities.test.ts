@@ -252,6 +252,25 @@ describe("the From Zoho queue", () => {
       expect(can(role, "artwork_location.read"), role).toBe(false);
   });
 
+  it("lets Administrators and Catalogue editors keep consignor agreements", () => {
+    expect(rolesGranting("consignor_agreement.manage")).toEqual(["shop_admin", "catalogue_editor"]);
+  });
+
+  it("shows a consignor's agreements to everyone who can read clients, and to those who keep them", () => {
+    expect(rolesGranting("consignor_agreement.read")).toEqual([
+      "shop_admin",
+      "account_manager",
+      "broker",
+      "catalogue_editor",
+    ]);
+    for (const role of SHOP_STAFF_ROLES) {
+      if (clientListScope(capabilitiesForRole(role)) !== "none")
+        expect(can(role, "consignor_agreement.read"), role).toBe(true);
+    }
+    for (const role of ["operations", "finance", "editor", "read_only"] as const)
+      expect(can(role, "consignor_agreement.read"), role).toBe(false);
+  });
+
   it("keeps Read-only to viewing", () => {
     expect(capabilitiesForRole("read_only")).toContain("artwork_register.read");
     expect(capabilitiesForRole("read_only")).not.toContain("artwork_register.review");
