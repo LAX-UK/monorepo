@@ -4,6 +4,7 @@ import type { IBidRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
   IAdminPaddleClerkOperations,
   IClerkPaddleBidSummaryPublisher,
@@ -22,6 +23,7 @@ import { AdminSaleroomApplicationService } from "./admin-saleroom-application.se
 import { AdminSaleroomCheckInApplicationService } from "./admin-saleroom-check-in-application.service.js";
 import { AdminSaleroomDisplayApplicationService } from "./admin-saleroom-display-application.service.js";
 import { ClerkPaddleBidTelemetry } from "./clerk-paddle-bid-telemetry.js";
+import { StaffBidLimitRefusalRecorder } from "./staff-bid-limit-refusal.recorder.js";
 
 export type AdminSaleroomRouteServices = Pick<
   AdminOperationsRouteServices,
@@ -44,6 +46,7 @@ export type CreateAdminSaleroomRouteServicesInput = {
   redis: Redis;
   findLotById: (lotId: string) => Promise<{ id: string; saleId: string } | null>;
   clerkPaddleBidTelemetry?: IClerkPaddleBidTelemetry;
+  domainEventSink: IDomainEventSink;
 };
 
 /** Live saleroom route services (session, check-in, clerk bidding, display). */
@@ -79,6 +82,7 @@ export function createAdminSaleroomRouteServices(
     findLotById: input.findLotById,
     clerkPaddleBidSummaryPublisher,
     clerkPaddleBidTelemetry: input.clerkPaddleBidTelemetry ?? new ClerkPaddleBidTelemetry(),
+    limitRefusals: new StaffBidLimitRefusalRecorder(input.domainEventSink),
   });
 
   return { display, saleroom, saleroomCheckIn, liveBidding };

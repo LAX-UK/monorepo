@@ -1155,6 +1155,16 @@ export {
   type MoneyWords,
 } from "./bidding-limit-refusal.js";
 export {
+  OPERATOR_CAP_ERROR_CODES,
+  SALE_REGISTRATION_LIMIT_ERROR_CODE,
+  SHARED_STAFF_BID_LIMIT_KINDS,
+  STAFF_BID_LIMIT_KINDS,
+  staffBidLimitRefusalFrom,
+  type SharedStaffBidLimitKind,
+  type StaffBidLimitKind,
+  type StaffBidLimitRefusal,
+} from "./staff-bid-limit-refusal.js";
+export {
   WATCHED_LOT_REMINDER_KINDS,
   WATCHED_LOT_REMINDER_NOTE_MAX,
   WATCHED_LOT_REMINDER_NOTIFICATION,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { staffBidIdempotencyKeySchema } from "../paddle.js";
 
 export const cancelLotBodySchema = z.object({
   reason: z.string().max(500).optional(),
@@ -56,7 +57,7 @@ export const adminTelephonePlaceBidBodySchema = z.object({
   amount: z.coerce.number().finite().positive().max(1e12),
   maxAutoBidAmount: z.coerce.number().finite().positive().max(1e12).optional(),
   telephoneBookingId: z.string().uuid().optional(),
-  idempotencyKey: z.string().min(8).max(128).optional(),
+  idempotencyKey: staffBidIdempotencyKeySchema.optional(),
 });
 
 export type AdminTelephonePlaceBidBody = z.infer<typeof adminTelephonePlaceBidBodySchema>;

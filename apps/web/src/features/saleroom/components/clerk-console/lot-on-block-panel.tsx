@@ -4,7 +4,12 @@ import {
   ConsolePanel,
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
-import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import {
+  type ClerkBidChannel,
+  type ClerkBidLimitRefusalState,
+  useClerkBidEntry,
+} from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import { clerkBidRefusalNotice } from "@/features/saleroom/lib/clerk-bid-refusal";
 import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
 import { staffRunwayLotStatus } from "@/lib/admin/staff-kit-status";
@@ -229,6 +234,7 @@ export function LotOnBlockPanel({
 
       <div className="flex flex-col gap-3">
         <ConsoleGroupTitle>Paddle bid</ConsoleGroupTitle>
+        <LimitRefusalNotice state={bidEntry.limitRefusal} channel="paddle" currency={lotCurrency} />
         <div className="flex flex-wrap items-start gap-3">
           <Field
             label="Paddle number"
@@ -313,6 +319,11 @@ export function LotOnBlockPanel({
       ) : (
         <div className="flex flex-col gap-3 border-t border-staff-line-subtle pt-4">
           <ConsoleGroupTitle>Telephone bid</ConsoleGroupTitle>
+          <LimitRefusalNotice
+            state={bidEntry.limitRefusal}
+            channel="telephone"
+            currency={lotCurrency}
+          />
           <Field
             label="Telephone line"
             id={`telephone-booking-${saleId}`}
@@ -366,4 +377,26 @@ export function LotOnBlockPanel({
 
 function ConsoleGroupTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-staff-sm font-semibold text-staff-fg">{children}</h3>;
+}
+
+/**
+ * Why a limit refused the clerk's last bid on this form, with the limit and what to do next. It
+ * sits above the form's inputs, as FBK-1 places a Notice above the section it concerns.
+ */
+function LimitRefusalNotice({
+  state,
+  channel,
+  currency,
+}: {
+  state: ClerkBidLimitRefusalState | null;
+  channel: ClerkBidChannel;
+  currency: string;
+}) {
+  if (state?.channel !== channel) return null;
+  const notice = clerkBidRefusalNotice({ ...state, currency });
+  return (
+    <Notice tone="danger" alert title={notice.title}>
+      {notice.body}
+    </Notice>
+  );
 }
