@@ -7,6 +7,7 @@ at 1440 px and 375 px, light and dark. File names read `{theme}-{width}-{case}.p
 | --- | --- |
 | `paddle` | Paddle 142 bids £6,000.00 over its £5,000.00 limit for the sale |
 | `account-limit` | A bid of £9,000.00 on an unnamed phone line stopped at the organisation's own limit. Only the £5,200.00 left on this lot is shown, never the organisation's total |
+| `buyer-agent-total` | A bid of £6,000.00 on an unnamed phone line stopped at a buyer agent's total authorisation. Only the £1,500.00 left on this lot is shown, never the total or what is committed on other lots |
 | `registration` | A bid of £9,000.00 on an unnamed phone line over the buyer's £5,000.00 approved limit for the sale |
 
 Taken from the real panel, hook and command transport on a local dev server. The panel was mounted

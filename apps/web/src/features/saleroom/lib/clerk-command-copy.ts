@@ -12,8 +12,8 @@ const RAISE_THROUGH_OWNERS =
 
 /**
  * What the clerk is told when a limit refused a paddle or telephone bid, by the limit that did.
- * Money arrives already formatted. The organisation's own limit is never shown, only the room it
- * leaves on this lot.
+ * Money arrives already formatted. A limit shared across lots (the organisation's own limit, or a
+ * buyer agent's total authorisation) is never shown, only the room it leaves on this lot.
  */
 export const CLERK_BID_REFUSAL_COPY = {
   title: (bidder: string, amount: string) => `${bidder}'s bid of ${amount} wasn't placed`,
@@ -26,8 +26,7 @@ export const CLERK_BID_REFUSAL_COPY = {
     telephone: (limit: string) => `The telephone booking allows bids up to ${limit}.`,
     registration: (limit: string) => `Their approved limit for this sale is ${limit}.`,
     per_lot: (limit: string) => `Their buyer agent authorisation allows up to ${limit} a lot.`,
-    authorisation_total: (limit: string) =>
-      `It would take them past the ${limit} their buyer agent authorisation allows in total.`,
+    authorisation_total: "It's above what their buyer agent authorisation allows in total.",
     organisation: "It's above what their organisation's bidding limit allows.",
   },
   next: {

@@ -27,24 +27,34 @@ export const STAFF_BID_LIMIT_KINDS: readonly StaffBidLimitKind[] = [
 /**
  * The limit behind the refusal, as far as staff need it.
  *
- * The organisation's own limit is never given to staff: its total, and the exposure it implies
- * across the organisation's other lots and sales, are the organisation's business. Staff get only
- * the room left on this lot, which is all the clerk needs to take a bid that will go.
+ * A limit shared across lots (the organisation's own limit, or a buyer agent's total
+ * authorisation) is never given to staff: its total, and the exposure it implies across the
+ * bidder's other lots and sales, are not the clerk's business. Staff get only the room left on
+ * this lot, which is all the clerk needs to take a bid that will go.
  */
 export type StaffBidLimitRefusal =
   | {
-      kind: Exclude<StaffBidLimitKind, "organisation">;
-      /** GBP, major units, as a decimal string. */
+      kind: Exclude<StaffBidLimitKind, SharedStaffBidLimitKind>;
+      /** GBP, major units, as a decimal string. The cap on this bid or on this lot. */
       limit: string;
-      /** Room left on this lot, when the limit is shared across lots; `null` when it is per bid. */
+      /** For a buyer agent's per-lot limit, the room on this lot (the limit itself); else `null`. */
       available: string | null;
     }
   | {
-      kind: "organisation";
+      kind: SharedStaffBidLimitKind;
+      /** Never given: the total would reveal the bidder's exposure on other lots. */
       limit: null;
-      /** Room left on this lot under the organisation's limit. GBP, major units. */
+      /** Room left on this lot under the shared limit. GBP, major units. */
       available: string;
     };
+
+/** The limits shared across lots, of which staff see only the room left on this lot. */
+export type SharedStaffBidLimitKind = "organisation" | "authorisation_total";
+
+export const SHARED_STAFF_BID_LIMIT_KINDS: readonly SharedStaffBidLimitKind[] = [
+  "organisation",
+  "authorisation_total",
+];
 
 /** The error code an operator cap refuses with, and the facts it carries. */
 export const OPERATOR_CAP_ERROR_CODES = {
@@ -82,9 +92,10 @@ export function staffBidLimitRefusalFrom(
   }
   const refusal = biddingLimitRefusalFrom(code, details);
   if (!refusal) return null;
-  if (refusal.kind === "organisation") {
+  if (refusal.kind === "organisation" || refusal.kind === "authorisation_total") {
+    // The total is dropped here, so it never reaches the clerk, the console or the audit row.
     return MONEY.test(refusal.available)
-      ? { kind: "organisation", limit: null, available: refusal.available }
+      ? { kind: refusal.kind, limit: null, available: refusal.available }
       : null;
   }
   return { kind: refusal.kind, limit: refusal.limit, available: refusal.available };

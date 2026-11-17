@@ -342,6 +342,53 @@ describe("AdminLiveBiddingApplicationService", () => {
       expect(JSON.stringify(out.body)).not.toContain("50000");
     });
 
+    it("tells the clerk and the audit row only the room left for a buyer agent's total authorisation", async () => {
+      // £30,000 in total, £28,500 already committed on other lots: neither may reach the clerk.
+      const { service, publish } = buildService({
+        findLotById: vi.fn().mockResolvedValue({ id: LOT_ID, saleId: SALE_ID }),
+        telephoneBookings: {
+          assertBookingAllowsTelephoneBid: vi.fn().mockResolvedValue(ok({})),
+        },
+        bidPlacer: {
+          placeBidWithIdempotency: refusedBy(
+            new BidError("Past the limit", 403, "authorisation_total_limit_exceeded", {
+              limitKind: "authorisation_total",
+              limit: "30000.00",
+              exposure: "28500.00",
+              available: "1500.00",
+            }),
+          ),
+        },
+      });
+
+      const out = await service.placeTelephoneBid({
+        lotId: LOT_ID,
+        buyerUserId: "buyer-2",
+        buyerLegalEntityId: "le-2",
+        amount: 2000,
+        clerkUserId: "clerk-1",
+        telephoneBookingId: BOOKING_ID,
+      });
+
+      expect(out.type).toBe("err");
+      if (out.type !== "err") return;
+      const body = clerkBidErrorBody(out.error);
+      expect(body).toEqual({
+        error: "Past the limit",
+        code: "authorisation_total_limit_exceeded",
+        refusal: { kind: "authorisation_total", limit: null, available: "1500.00" },
+      });
+      expect(JSON.stringify(body)).not.toMatch(/30000|28500/);
+      expect(publish).toHaveBeenCalledTimes(1);
+      const event = publish.mock.calls[0]?.[0] as { payload: Record<string, unknown> };
+      expect(event.payload).toMatchObject({
+        limit_kind: "authorisation_total",
+        available: "1500.00",
+      });
+      expect(event.payload).not.toHaveProperty("limit");
+      expect(JSON.stringify(event)).not.toMatch(/30000|28500/);
+    });
+
     it("reports and audits a telephone bid over the buyer's approved sale registration limit", async () => {
       const placeBidWithIdempotency = refusedBy(
         new BidError("Bid exceeds your approved limit for this sale", 403, "bid_limit_exceeded", {
@@ -503,6 +550,46 @@ describe("AdminLiveBiddingApplicationService", () => {
       expect(countFailure).toHaveBeenCalledTimes(1);
       expect(countFailure).toHaveBeenCalledWith("staff_bid_refusal_audit_failed");
       expect(error).toHaveBeenCalled();
+      error.mockRestore();
+    });
+
+    it("logs only the failed write's name, code and message, never the error object", async () => {
+      const sinkError = Object.assign(new Error("insert failed"), {
+        code: "23514",
+        detail: "Failing row contains (30000.00, 1500.00)",
+        payload: { limit: "30000.00" },
+      });
+      const failing = { publish: vi.fn().mockRejectedValue(sinkError), withTx: vi.fn() };
+      const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { service } = buildService({
+        limitRefusals: new StaffBidLimitRefusalRecorder(failing as never, vi.fn()),
+        bidPlacer: {
+          placeBidWithIdempotency: refusedBy(
+            new BidError("Bid exceeds authorized limit", 403, "bid_limit_exceeded", {
+              limitKind: "paddle",
+              limit: "5000.00",
+            }),
+          ),
+        },
+      });
+
+      await service.placeClerkPaddleBid({
+        saleId: SALE_ID,
+        lotId: LOT_ID,
+        paddleNumber: 142,
+        amount: 6000,
+        clerkUserId: "clerk-1",
+      });
+
+      expect(error).toHaveBeenCalledTimes(1);
+      const [, logged] = error.mock.calls[0] as [string, Record<string, unknown>];
+      expect(logged).toEqual({
+        lotId: LOT_ID,
+        channel: "saleroom",
+        error: { name: "Error", code: "23514", message: "insert failed" },
+      });
+      expect(Object.values(logged)).not.toContain(sinkError);
+      expect(JSON.stringify(logged)).not.toContain("30000");
       error.mockRestore();
     });
 

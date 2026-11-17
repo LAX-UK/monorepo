@@ -1156,8 +1156,10 @@ export {
 export {
   OPERATOR_CAP_ERROR_CODES,
   SALE_REGISTRATION_LIMIT_ERROR_CODE,
+  SHARED_STAFF_BID_LIMIT_KINDS,
   STAFF_BID_LIMIT_KINDS,
   staffBidLimitRefusalFrom,
+  type SharedStaffBidLimitKind,
   type StaffBidLimitKind,
   type StaffBidLimitRefusal,
 } from "./staff-bid-limit-refusal.js";

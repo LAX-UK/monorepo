@@ -63,7 +63,8 @@ export class StaffBidLimitRefusalRecorder implements IStaffBidLimitRefusalRecord
         payload: {
           channel: input.channel,
           limit_kind: refusal.kind,
-          // The organisation's own limit is never recorded, only the room left on this lot.
+          // A limit shared across lots (the organisation's, or a buyer agent's total authorisation)
+          // arrives without its total, so only the room left on this lot is recorded.
           ...(refusal.limit != null ? { limit: refusal.limit } : {}),
           ...(refusal.available != null ? { available: refusal.available } : {}),
           amount: input.amount.toFixed(2),
@@ -85,12 +86,29 @@ export class StaffBidLimitRefusalRecorder implements IStaffBidLimitRefusalRecord
       } catch {
         /* a metrics fault never changes the clerk's answer */
       }
+      // Only the error's name, code and message: the raw error (a validation or database error)
+      // can echo the payload it was given.
       console.error("[StaffBidLimitRefusalRecorder] refusal audit failed", {
         lotId: input.lotId,
         channel: input.channel,
-        err,
+        error: describeAuditError(err),
       });
     }
     return refusal;
   }
+}
+
+/** What the failure log keeps of an error: its name, code and message, never the object. */
+export function describeAuditError(err: unknown): {
+  name: string;
+  code?: string;
+  message: string;
+} {
+  if (!(err instanceof Error)) return { name: typeof err, message: "non-error thrown" };
+  const code = (err as { code?: unknown }).code;
+  return {
+    name: err.name,
+    ...(typeof code === "string" || typeof code === "number" ? { code: String(code) } : {}),
+    message: err.message,
+  };
 }

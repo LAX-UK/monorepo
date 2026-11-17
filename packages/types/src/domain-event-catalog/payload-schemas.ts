@@ -178,8 +178,9 @@ const moneyMajorString = z.string().regex(/^\d+(\.\d{1,2})?$/);
  *
  * - `request_key` is the bid request's idempotency key. A transport retry of the same request
  *   carries the same key, so readers count distinct keys, not rows.
- * - The organisation's own limit is never recorded, only the room left on this lot (`available`):
- *   the total, and the exposure it implies across other lots and sales, are not needed to audit
+ * - A limit shared across lots (the organisation's own limit, or a buyer agent's total
+ *   authorisation) is never recorded, only the room left on this lot (`available`): the total,
+ *   and the exposure it implies across the bidder's other lots and sales, are not needed to audit
  *   the refusal.
  */
 export const bidStaffBidRefusedAtLimitPayloadSchemaV1 = z
@@ -205,12 +206,12 @@ export const bidStaffBidRefusedAtLimitPayloadSchemaV1 = z
   })
   .strict()
   .superRefine((payload, ctx) => {
-    if (payload.limit_kind === "organisation") {
+    if (payload.limit_kind === "organisation" || payload.limit_kind === "authorisation_total") {
       if (payload.limit !== undefined) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["limit"],
-          message: "The organisation's own limit is not recorded; record the room left",
+          message: "A limit shared across lots is not recorded; record the room left",
         });
       }
       if (payload.available === undefined) {

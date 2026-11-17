@@ -26,11 +26,25 @@ describe("clerkBidRefusalNotice", () => {
     expect(notice({ kind: "per_lot", limit: "20000.00", available: "20000.00" }).body).toBe(
       "Their buyer agent authorisation allows up to £20,000.00 a lot. Take a bid within the limit. Only the organisation's owners or admins can raise it.",
     );
-    expect(
-      notice({ kind: "authorisation_total", limit: "30000.00", available: "1500.00" }).body,
-    ).toBe(
-      "It would take them past the £30,000.00 their buyer agent authorisation allows in total. They can bid up to £1,500.00 on this lot. Take a bid within the limit. Only the organisation's owners or admins can raise it.",
+  });
+
+  it("gives only the room left on this lot for a buyer agent's total authorisation", () => {
+    expect(notice({ kind: "authorisation_total", limit: null, available: "1500.00" }).body).toBe(
+      "It's above what their buyer agent authorisation allows in total. They can bid up to £1,500.00 on this lot. Take a bid within the limit. Only the organisation's owners or admins can raise it.",
     );
+    expect(notice({ kind: "authorisation_total", limit: null, available: "0.00" }).body).toBe(
+      "It's above what their buyer agent authorisation allows in total. There's no room left for them to bid on this lot. Take a bid within the limit. Only the organisation's owners or admins can raise it.",
+    );
+  });
+
+  it("never shows the total of a limit shared across lots, even if the answer carries one", () => {
+    for (const kind of ["organisation", "authorisation_total"] as const) {
+      const refusal = readClerkBidLimitRefusal({ kind, limit: "30000.00", available: "1500.00" });
+      expect(refusal).not.toBeNull();
+      const shown = notice(refusal as ClerkBidLimitRefusal);
+      expect(`${shown.title} ${shown.body}`).not.toMatch(/30,000|30000/);
+      expect(shown.body).toContain("£1,500.00");
+    }
   });
 
   it("gives only the room left on this lot for the organisation's own limit", () => {
@@ -59,6 +73,17 @@ describe("readClerkBidLimitRefusal", () => {
     expect(
       readClerkBidLimitRefusal({ kind: "organisation", limit: "50000.00", available: "2000.00" }),
     ).toEqual({ kind: "organisation", limit: null, available: "2000.00" });
+  });
+
+  it("never keeps a buyer agent's total authorisation, even if one is sent", () => {
+    expect(
+      readClerkBidLimitRefusal({
+        kind: "authorisation_total",
+        limit: "30000.00",
+        available: "1500.00",
+      }),
+    ).toEqual({ kind: "authorisation_total", limit: null, available: "1500.00" });
+    expect(readClerkBidLimitRefusal({ kind: "authorisation_total", limit: "30000.00" })).toBeNull();
   });
 
   it("is null for anything that is not a limit refusal", () => {

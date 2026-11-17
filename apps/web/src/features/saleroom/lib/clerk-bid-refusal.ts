@@ -10,18 +10,23 @@ export type ClerkBidLimitKind =
   | "authorisation_total"
   | "organisation";
 
+/** The limits shared across lots, of which the clerk sees only the room left on this lot. */
+type SharedClerkBidLimitKind = "organisation" | "authorisation_total";
+
 /**
- * A paddle or telephone bid a limit refused: the limit and, for a shared limit, the room left.
- * For the organisation's own limit the API sends only the room left on this lot.
+ * A paddle or telephone bid a limit refused. For a cap on this bid or this lot, the cap. For a
+ * limit shared across lots (the organisation's own limit, or a buyer agent's total authorisation)
+ * the API sends only the room left on this lot: the total would reveal the bidder's exposure on
+ * other lots.
  */
 export type ClerkBidLimitRefusal =
   | {
-      kind: Exclude<ClerkBidLimitKind, "organisation">;
+      kind: Exclude<ClerkBidLimitKind, SharedClerkBidLimitKind>;
       /** Pounds, as a decimal string. */
       limit: string;
       available: string | null;
     }
-  | { kind: "organisation"; limit: null; available: string };
+  | { kind: SharedClerkBidLimitKind; limit: null; available: string };
 
 const KINDS = new Set<string>([
   "paddle",
@@ -40,12 +45,13 @@ export function readClerkBidLimitRefusal(value: unknown): ClerkBidLimitRefusal |
   if (!value || typeof value !== "object") return null;
   const { kind, limit, available } = value as Record<string, unknown>;
   if (typeof kind !== "string" || !KINDS.has(kind)) return null;
-  if (kind === "organisation") {
+  if (kind === "organisation" || kind === "authorisation_total") {
+    // Any total the answer carries is dropped, so it can never be shown.
     return money(available) ? { kind, limit: null, available } : null;
   }
   if (!money(limit)) return null;
   return {
-    kind: kind as Exclude<ClerkBidLimitKind, "organisation">,
+    kind: kind as Exclude<ClerkBidLimitKind, SharedClerkBidLimitKind>,
     limit,
     available: money(available) ? available : null,
   };
@@ -66,21 +72,16 @@ export function clerkBidRefusalNotice(input: {
   const { refusal, currency } = input;
   const copy = CLERK_BID_REFUSAL_COPY;
   const format = (amount: string | number) => formatSaleroomMoney(amount, currency);
-  const room = (available: string | null) => {
-    if (available == null) return "";
-    return Number.parseFloat(available) > 0 ? ` ${copy.room(format(available))}` : "";
-  };
   let reason: string;
   switch (refusal.kind) {
     case "organisation":
-      reason = `${copy.reason.organisation} ${
+    case "authorisation_total":
+      // A shared limit names no amount: only the room it leaves on this lot.
+      reason = `${copy.reason[refusal.kind]} ${
         Number.parseFloat(refusal.available) > 0
           ? copy.room(format(refusal.available))
           : copy.noRoom
       }`;
-      break;
-    case "authorisation_total":
-      reason = `${copy.reason.authorisation_total(format(refusal.limit))}${room(refusal.available)}`;
       break;
     default:
       reason = copy.reason[refusal.kind](format(refusal.limit));
