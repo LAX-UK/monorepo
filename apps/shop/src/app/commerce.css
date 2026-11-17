@@ -1460,7 +1460,9 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   color: var(--color-on-surface-variant);
 }
 
+/* Contained so the wallet frames can never widen the summary or form column (375 px). */
 .shop-express__buttons {
+  contain: inline-size;
   min-width: 0;
   margin: 0;
   padding: 0;
