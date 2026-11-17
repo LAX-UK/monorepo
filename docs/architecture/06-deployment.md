@@ -201,6 +201,8 @@ Health checks: `GET /health/live` and `GET /health/ready`. Readiness checks Redi
 
 A one-shot DigitalOcean Job that runs before each production deploy. It executes `pnpm db:migrate:prod` using the privileged owner connection URI held in `DATABASE_URL_OWNER` (the `auction_owner` Postgres user), which is never available to any long-running process. This is the only place that DDL grants are exercised per F2. The runner is [packages/db/src/migrate-prod.ts](../../packages/db/src/migrate-prod.ts) and applies migrations through the production ceiling (default `0159`; explicit `PRODUCTION_MIGRATION_THROUGH=0160` then `0161`) followed by [migrate-roles.ts](../../packages/db/src/migrate-roles.ts) so the `auth_app`/`api_app`/`worker_app` grants stay current.
 
+Before the transactional runner, the job builds any declared online indexes (`packages/db/drizzle/online/<tag>.sql`) with `CREATE INDEX CONCURRENTLY` on an autocommit connection, so a new index on a hot table such as `domain_events` does not pause writers. A failed build stops the job before any migration runs. See [online-index-builds.md](../runbooks/online-index-builds.md).
+
 `apps/api`'s container entrypoint **does not run migrations** — only the dedicated job does. If migrations fail, the deploy aborts before any new container starts. App Platform's pre-deploy Job semantics handle this — the live deployment continues serving traffic while we figure out why the migration failed.
 
 The job binding (App Platform's `pre_deploy` configuration, the `DATABASE_URL_OWNER` env binding, etc.) is declared in the `digitalocean-app` module under [infra/terraform/modules/digitalocean-app/](../../infra/terraform/modules/digitalocean-app/).
