@@ -16,6 +16,7 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireSaleroomOperate, requireSalesAccess } from "../../middleware/require-capability.js";
 import { saleReadinessForViewer } from "../../services/admin/admin-sale-readiness.service.js";
+import { clerkBidErrorBody } from "../../services/admin/clerk-bid-error-body.js";
 import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -127,11 +128,7 @@ export function attachAdminSaleroomRoutes(
         return c.json(out.body, 201);
       }
       if (out.type === "err") {
-        const e = out.error;
-        return c.json(
-          e.code ? { error: e.message, code: e.code } : { error: e.message },
-          asHttpStatus(e.status),
-        );
+        return c.json(clerkBidErrorBody(out.error), asHttpStatus(out.error.status));
       }
       return c.json(out.body, 201);
     },

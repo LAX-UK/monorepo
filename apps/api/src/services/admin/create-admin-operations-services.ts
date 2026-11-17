@@ -117,6 +117,7 @@ export function createAdminOperationsServices(
     bidRepo: input.bidRepo,
     redis: input.redis,
     findLotById: input.findLotById,
+    domainEventSink: input.domainEventSink,
   });
 
   return {

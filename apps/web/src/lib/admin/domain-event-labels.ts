@@ -42,6 +42,7 @@ const LABELS: Record<string, string> = {
   "bid.outbid": "Bidder outbid",
   "bid.placed": "Bid placed",
   "bid.proxy_cancelled": "Proxy bid cancelled",
+  "bid.staff_bid_refused_at_limit": "Staff-placed bid refused at a limit",
   "bid.user_anonymised": "Bid personal data anonymised",
   "bid.user_suspended": "Bidder suspended",
   "bid.user_unsuspended": "Bidder reactivated",

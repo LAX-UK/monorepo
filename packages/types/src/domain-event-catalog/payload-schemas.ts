@@ -169,6 +169,28 @@ export const bidOutbidPayloadSchemaV1 = z.object({
   newHighAmountCents: z.number().int().nonnegative(),
 });
 
+const moneyMajorString = z.string().regex(/^\d+(\.\d{1,2})?$/);
+
+/**
+ * A bid staff placed on a client's behalf (saleroom paddle or telephone line) that a limit
+ * refused. Audit only: which limit, how much it allows and what was asked; the clerk is the
+ * actor and the lot the aggregate. No names or contact details.
+ */
+export const bidStaffBidRefusedAtLimitPayloadSchemaV1 = z
+  .object({
+    channel: z.enum(["saleroom", "telephone"]),
+    limit_kind: z.enum(["paddle", "telephone", "per_lot", "authorisation_total", "organisation"]),
+    limit: moneyMajorString,
+    available: moneyMajorString.optional(),
+    amount: moneyMajorString,
+    sale_id: z.string().min(1),
+    lot_id: z.string().min(1),
+    bidder_user_id: z.string().min(1),
+    paddle_number: z.number().int().positive().optional(),
+    telephone_booking_id: z.string().min(1).optional(),
+  })
+  .strict();
+
 export const bidLotWonPayloadSchemaV1 = z.object({
   lotId: z.string().uuid(),
   userId: z.string(),

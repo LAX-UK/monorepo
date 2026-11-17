@@ -142,6 +142,23 @@ describe("clerk saleroom commands", () => {
     });
   });
 
+  it("passes on the limit when a limit refused a paddle bid", async () => {
+    const refusal = { kind: "paddle", limit: "5000.00", available: null };
+    stubFetch(
+      json(403, { error: "Bid exceeds authorized limit", code: "bid_limit_exceeded", refusal }),
+    );
+
+    await expect(
+      clerkPlacePaddleBid({ saleId: SALE, lotId: LOT, paddleNumber: 142, amount: 6000 }),
+    ).resolves.toEqual({
+      ok: false,
+      error: "Bid exceeds authorized limit",
+      status: 403,
+      errorCode: "bid_limit_exceeded",
+      meta: { refusal },
+    });
+  });
+
   it("turns a 404 with no JSON body into a result with the fallback message", async () => {
     stubFetch(new Response("<html>Not found</html>", { status: 404 }));
 

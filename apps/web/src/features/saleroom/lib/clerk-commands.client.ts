@@ -39,8 +39,11 @@ function telephoneBookingPath(saleId: string, bookingId: string, suffix: string)
   return `/admin/sales/${encodeURIComponent(saleId)}/telephone-bookings/${encodeURIComponent(bookingId)}/${suffix}`;
 }
 
-/** What the API answers: `{ data }` on success, `{ error, code }` on a refusal. */
-type ApiBody = { data?: unknown; error?: unknown; code?: unknown } | null;
+/**
+ * What the API answers: `{ data }` on success, `{ error, code }` on a refusal, plus `refusal` (the
+ * limit) when a limit refused a paddle or telephone bid. It is passed on as `meta.refusal`.
+ */
+type ApiBody = { data?: unknown; error?: unknown; code?: unknown; refusal?: unknown } | null;
 
 async function sendClerkCommand<T = void>(
   path: string,
@@ -76,6 +79,7 @@ async function sendClerkCommand<T = void>(
             : fallback,
       status: res.status,
       errorCode: code,
+      meta: body?.refusal ? { refusal: body.refusal } : undefined,
     } as ActionResult<T>;
   }
   const data = readData?.(body);

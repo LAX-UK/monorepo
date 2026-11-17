@@ -165,4 +165,57 @@ describe("useClerkBidEntry", () => {
 
     expect(result.current.canPlaceTelephoneBid).toBe(true);
   });
+
+  describe("a bid a limit refused", () => {
+    const refusal = { kind: "paddle" as const, limit: "5000.00", available: null };
+
+    async function refusedPaddleBid() {
+      vi.mocked(notify.error).mockClear();
+      const placePaddleBid = vi
+        .fn()
+        .mockResolvedValue({ ok: false as const, error: "Bid exceeds authorized limit", refusal });
+      const hook = renderHook(
+        ({ currentLotId }) => useClerkBidEntry({ ...baseOptions, currentLotId, placePaddleBid }),
+        { initialProps: { currentLotId: "lot-1" } },
+      );
+      act(() => {
+        hook.result.current.setPaddleNumber("142");
+        hook.result.current.setPaddleAmount("6000");
+      });
+      await act(async () => {
+        hook.result.current.placePaddleBid();
+        await Promise.resolve();
+      });
+      return hook;
+    }
+
+    it("keeps the limit by the paddle form instead of an error toast", async () => {
+      const { result } = await refusedPaddleBid();
+
+      expect(result.current.limitRefusal).toEqual({
+        channel: "paddle",
+        refusal,
+        bidder: "Paddle 142",
+        amount: 6000,
+      });
+      expect(notify.error).not.toHaveBeenCalled();
+      expect(result.current.state.paddleAmount).toBe("6000");
+    });
+
+    it("clears it when the clerk changes the bid or the lot moves on", async () => {
+      const first = await refusedPaddleBid();
+      act(() => {
+        first.result.current.setTelephoneAmount("100");
+      });
+      expect(first.result.current.limitRefusal?.channel).toBe("paddle");
+      act(() => {
+        first.result.current.setPaddleAmount("4000");
+      });
+      expect(first.result.current.limitRefusal).toBeNull();
+
+      const second = await refusedPaddleBid();
+      second.rerender({ currentLotId: "lot-2" });
+      expect(second.result.current.limitRefusal).toBeNull();
+    });
+  });
 });

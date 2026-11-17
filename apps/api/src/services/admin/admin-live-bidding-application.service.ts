@@ -22,6 +22,11 @@ import type {
 } from "../interfaces/admin-routes.js";
 import type { ITelephoneBidBookingBidPolicy } from "../interfaces/telephone-bid-booking-service.js";
 import type { PaddleServiceError } from "../paddle.service.js";
+import { clerkBidErrorBody } from "./clerk-bid-error-body.js";
+import type {
+  IStaffBidLimitRefusalRecorder,
+  StaffPlacedBidRefusal,
+} from "./staff-bid-limit-refusal.recorder.js";
 
 type RateLimitError = {
   message: string;
@@ -40,6 +45,8 @@ export type AdminLiveBiddingApplicationServiceDeps = {
   findLotById: (lotId: string) => Promise<{ id: string; saleId: string } | null>;
   clerkPaddleBidSummaryPublisher: IClerkPaddleBidSummaryPublisher;
   clerkPaddleBidTelemetry: IClerkPaddleBidTelemetry;
+  /** Audits a bid refused at a limit; the clerk's notice is built from the same facts. */
+  limitRefusals: IStaffBidLimitRefusalRecorder;
 };
 
 export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingApplicationService {
@@ -75,11 +82,7 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
         outcome: "error",
         errorMessage: out.error.message,
       });
-      const e = out.error;
-      return {
-        httpStatus: asHttpStatus(e.status),
-        body: e.code ? { error: e.message, code: e.code } : { error: e.message },
-      };
+      return { httpStatus: asHttpStatus(out.error.status), body: clerkBidErrorBody(out.error) };
     }
 
     if (out.type === "ok_with_summary") {
@@ -139,7 +142,21 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
       idempotencyKey,
     });
 
-    if (out.type === "replay" || out.type === "err") {
+    if (out.type === "err") {
+      await this.deps.limitRefusals.record({
+        channel: "saleroom",
+        clerkUserId: input.clerkUserId,
+        bidderUserId: resolved.userId,
+        buyerLegalEntityId: resolved.buyerLegalEntityId,
+        saleId: input.saleId,
+        lotId: input.lotId,
+        amount: committedAmount(input),
+        paddleNumber: input.paddleNumber,
+        error: out.error,
+      });
+      return out;
+    }
+    if (out.type === "replay") {
       return out;
     }
 
@@ -185,10 +202,9 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
       });
       if (bookingCheck.isErr()) {
         const e = bookingCheck.error;
-        return {
-          type: "err",
-          error: new BidError(e.message, e.status, e.code),
-        };
+        const error = new BidError(e.message, e.status, e.code, e.details);
+        await this.deps.limitRefusals.record(telephoneRefusal(input, lotRow.saleId, error));
+        return { type: "err", error };
       }
     }
 
@@ -198,7 +214,7 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
         ? `telephone-booking:${input.lotId}:${input.telephoneBookingId}:${input.amount}`
         : `telephone-clerk:${input.lotId}:${input.clerkUserId}:${input.buyerUserId}:${input.amount}`);
 
-    return this.deps.bidPlacer.placeBidWithIdempotency({
+    const out = await this.deps.bidPlacer.placeBidWithIdempotency({
       placedByUserId: input.buyerUserId,
       buyerLegalEntityId: input.buyerLegalEntityId,
       lotId: input.lotId,
@@ -209,6 +225,10 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
       ...(input.telephoneBookingId != null ? { telephoneBookingId: input.telephoneBookingId } : {}),
       idempotencyKey,
     });
+    if (out.type === "err") {
+      await this.deps.limitRefusals.record(telephoneRefusal(input, lotRow.saleId, out.error));
+    }
+    return out;
   }
 
   async assignPaddle(
@@ -232,4 +252,35 @@ export class AdminLiveBiddingApplicationService implements IAdminLiveBiddingAppl
   listSaleRoster(saleId: string) {
     return this.deps.paddleClerk.listSaleRoster(saleId);
   }
+}
+
+/** What a bid committed to: the bid, or its maximum when higher. */
+function committedAmount(input: { amount: number; maxAutoBidAmount?: number | undefined }) {
+  return Math.max(input.amount, input.maxAutoBidAmount ?? 0);
+}
+
+function telephoneRefusal(
+  input: {
+    lotId: string;
+    buyerUserId: string;
+    buyerLegalEntityId: string;
+    amount: number;
+    clerkUserId: string;
+    maxAutoBidAmount?: number | undefined;
+    telephoneBookingId?: string | undefined;
+  },
+  saleId: string,
+  error: BidError,
+): StaffPlacedBidRefusal {
+  return {
+    channel: "telephone",
+    clerkUserId: input.clerkUserId,
+    bidderUserId: input.buyerUserId,
+    buyerLegalEntityId: input.buyerLegalEntityId,
+    saleId,
+    lotId: input.lotId,
+    amount: committedAmount(input),
+    telephoneBookingId: input.telephoneBookingId,
+    error,
+  };
 }

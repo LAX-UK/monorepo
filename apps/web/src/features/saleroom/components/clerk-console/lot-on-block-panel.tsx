@@ -4,7 +4,12 @@ import {
   ConsolePanel,
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
-import { useClerkBidEntry } from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import {
+  type ClerkBidChannel,
+  type ClerkBidLimitRefusalState,
+  useClerkBidEntry,
+} from "@/features/saleroom/hooks/use-clerk-bid-entry";
+import { clerkBidRefusalNotice } from "@/features/saleroom/lib/clerk-bid-refusal-copy";
 import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
 import { staffRunwayLotStatus } from "@/lib/admin/staff-kit-status";
@@ -283,6 +288,7 @@ export function LotOnBlockPanel({
             {bidEntry.pending ? "Placing…" : "Place paddle bid"}
           </StaffButton>
         </div>
+        <LimitRefusalNotice state={bidEntry.limitRefusal} channel="paddle" currency={lotCurrency} />
         <QuickAmounts
           amounts={bidEntry.incrementOptions}
           currency={lotCurrency}
@@ -351,6 +357,11 @@ export function LotOnBlockPanel({
               {bidEntry.pending ? "Placing…" : "Place telephone bid"}
             </StaffButton>
           </div>
+          <LimitRefusalNotice
+            state={bidEntry.limitRefusal}
+            channel="telephone"
+            currency={lotCurrency}
+          />
           <QuickAmounts
             amounts={bidEntry.incrementOptions}
             currency={lotCurrency}
@@ -366,4 +377,23 @@ export function LotOnBlockPanel({
 
 function ConsoleGroupTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-staff-sm font-semibold text-staff-fg">{children}</h3>;
+}
+
+/** Why a limit refused the clerk's last bid on this form, with the limit and what to do next. */
+function LimitRefusalNotice({
+  state,
+  channel,
+  currency,
+}: {
+  state: ClerkBidLimitRefusalState | null;
+  channel: ClerkBidChannel;
+  currency: string;
+}) {
+  if (state?.channel !== channel) return null;
+  const notice = clerkBidRefusalNotice({ ...state, currency });
+  return (
+    <Notice tone="danger" alert title={notice.title}>
+      {notice.body}
+    </Notice>
+  );
 }
