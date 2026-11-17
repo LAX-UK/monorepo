@@ -220,4 +220,71 @@ describe.skipIf(!hasShopIntegrationDb)("the From Zoho All list (Postgres)", () =
     expect(await at(framer.id)).toEqual({ ids: [movedOn.id], total: 1 });
     expect(await at("none")).toEqual({ ids: [never.id], total: 1 });
   });
+
+  it("orders by Zoho's price across pages, with every unpriced work last either way", async () => {
+    const db = createShopDb(shopPool);
+    const priceCode = `X${integrationSuffix("p").slice(-5).toUpperCase()}`;
+    const owner = createDbFromPool(ownerPool);
+    const register = new DrizzleArtworkRegisterRepository(owner);
+    const work = async (title: string, price: string | null) => {
+      const created = await register.create(
+        {
+          zohoProductId: `zoho-${integrationSuffix("q")}`,
+          stockCode: uniqueStockCode("original"),
+          kind: "original",
+          sourceOriginalId: null,
+          title,
+          artist: { zohoArtistId: "79", name: "Cy Moss", code: priceCode },
+          medium: null,
+          dimensions: null,
+          year: null,
+          imageRefs: [],
+          catalogueStatus: "Available",
+        },
+        "zoho",
+        NOW,
+      );
+      if (!created.ok) throw new Error(created.reason);
+      await owner.execute(
+        sql`UPDATE artwork_register SET zoho_price = ${price} WHERE id = ${created.entry.id}`,
+      );
+      return created.entry;
+    };
+    // Created out of order, so neither the insert order nor the edit date gives the price order.
+    const [p900, none1, p100, zero, p500, none2, p300] = [
+      await work("900", "900.00"),
+      await work("None 1", null),
+      await work("100", "100.00"),
+      // Zero reads as unset, as it does in Admin and the worker.
+      await work("Zero", "0.00"),
+      await work("500", "500.00"),
+      await work("None 2", null),
+      await work("300", "300.00"),
+    ];
+    const unpriced = [none1.id, zero.id, none2.id].sort();
+
+    const reader = createDrizzleRegisterOverviewReader(db, registerRowToEntry);
+    // Pages of three, so the priced works and the unpriced ones meet across a page boundary.
+    const walk = async (sort: "zohoPrice" | "-zohoPrice") => {
+      const pages: string[][] = [];
+      for (let offset = 0; offset < 9; offset += 3) {
+        const page = await reader.listAll({ artistCode: priceCode }, { limit: 3, offset }, sort);
+        expect(page.total).toBe(7);
+        pages.push(page.rows.map((row) => row.entry.id));
+      }
+      return pages;
+    };
+
+    const ascending = await walk("zohoPrice");
+    expect(ascending[0]).toEqual([p100.id, p300.id, p500.id]);
+    expect(ascending[1]?.[0]).toBe(p900.id);
+    // Unpriced last, by id, so the same rows never land on two pages.
+    expect(ascending[1]?.slice(1)).toEqual(unpriced.slice(0, 2));
+    expect(ascending[2]).toEqual(unpriced.slice(2));
+
+    const descending = await walk("-zohoPrice");
+    expect(descending[0]).toEqual([p900.id, p500.id, p300.id]);
+    expect(descending[1]).toEqual([p100.id, ...unpriced.slice(0, 2)]);
+    expect(descending[2]).toEqual(unpriced.slice(2));
+  });
 });

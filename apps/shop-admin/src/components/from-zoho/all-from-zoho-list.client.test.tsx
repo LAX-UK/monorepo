@@ -8,10 +8,12 @@ import type {
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const push = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/from-zoho",
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -81,6 +83,7 @@ function item(
     zohoModifiedAt: "2026-11-04T09:40:00.000Z",
     whereItIs: { key, chip: CHIPS[key] },
     location: null,
+    zohoPrice: null,
     ...patch,
   };
 }
@@ -121,6 +124,60 @@ const rowOf = (title: string) => {
   if (!row) throw new Error(`no row for ${title}`);
   return within(row);
 };
+
+describe("AllFromZohoList Price in Zoho column", () => {
+  const priced = [
+    item(1, "not_offered", { zohoPrice: "4800.00" }),
+    item(2, "not_offered"),
+    item(3, "not_offered", { zohoPrice: "250.00" }),
+  ];
+
+  it("is hidden until it is chosen from Display", () => {
+    window.localStorage.clear();
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={page(priced)} />);
+    expect(screen.queryByRole("columnheader", { name: /Price in Zoho/ })).not.toBeInTheDocument();
+  });
+
+  const showPrice = () =>
+    window.localStorage.setItem(
+      "staff.columns.from-zoho-all",
+      JSON.stringify({
+        hidden: [],
+        known: ["artwork", "where", "location", "kind", "zohoPrice", "edited"],
+      }),
+    );
+  const shownOrder = () =>
+    screen
+      .getAllByRole("row")
+      .map((row) => /Work \d/.exec(row.textContent ?? "")?.[0])
+      .filter(Boolean);
+
+  it("shows the price or Not set in Zoho once shown, and asks the server to sort by it", () => {
+    showPrice();
+    push.mockClear();
+    inShell(<AllFromZohoList query={{ tab: "all", page: "3" }} page={page(priced)} />);
+    expect(rowOf("Work 1").getByText("£4,800.00")).toBeInTheDocument();
+    expect(rowOf("Work 2").getByText("Not set in Zoho")).toBeInTheDocument();
+    const header = screen.getByRole("columnheader", { name: /Price in Zoho/ });
+    fireEvent.click(within(header).getByRole("button"));
+    // The whole list is ordered by the server from page one, not just the 25 rows on screen.
+    expect(push).toHaveBeenCalledWith("/from-zoho?tab=all&sort=zohoPrice", expect.anything());
+    expect(shownOrder()).toEqual(["Work 1", "Work 2", "Work 3"]);
+  });
+
+  it("draws the order from the URL and keeps the server's rows as they came", () => {
+    showPrice();
+    push.mockClear();
+    inShell(<AllFromZohoList query={{ tab: "all", sort: "-zohoPrice" }} page={page(priced)} />);
+    const header = screen.getByRole("columnheader", { name: /Price in Zoho/ });
+    expect(header).toHaveAttribute("aria-sort", "descending");
+    expect(shownOrder()).toEqual(["Work 1", "Work 2", "Work 3"]);
+    fireEvent.click(within(header).getByRole("button"));
+    expect(push).toHaveBeenCalledWith("/from-zoho?tab=all&sort=zohoPrice", expect.anything());
+  });
+
+  afterEach(() => window.localStorage.clear());
+});
 
 describe("AllFromZohoList", () => {
   const rows = [item(1, "not_offered"), item(2, "draft_lax_art"), item(3, "sold")];

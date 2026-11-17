@@ -7,6 +7,7 @@ import {
   useQueueFrame,
 } from "@/components/from-zoho/use-queue-frame.client";
 import { useRegisterRowActions } from "@/components/from-zoho/use-register-row-actions.client";
+import { ZohoPriceValue } from "@/components/from-zoho/zoho-price-value";
 import { MoveArtworksDialog } from "@/components/stock-location/move-artworks-dialog.client";
 import { LOCATION_NOT_RECORDED, locationFilterOptions } from "@/server/domain/stock-location.vm";
 import {
@@ -15,6 +16,8 @@ import {
   kindLabel,
   pageLinks,
   pageSummary,
+  zohoAllSortHref,
+  zohoAllSortState,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
 import type {
@@ -33,6 +36,8 @@ import {
 } from "@auction/staff-ui";
 import { MapPin } from "@auction/staff-ui/icons";
 import { useMemo, useState } from "react";
+
+const HIDDEN_BY_DEFAULT = "zohoPrice";
 
 const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
   { id: "artwork", header: "Artwork", mobile: "title", cell: artworkCell },
@@ -59,6 +64,19 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     width: "110px",
     hideBelow: "md",
     cell: (row) => kindLabel(row.kind),
+  },
+  {
+    // Information only, hidden by default (TBL-12). The server sorts it across every page, with
+    // the unpriced works together at the end either way.
+    id: "zohoPrice",
+    header: "Price in Zoho",
+    width: "140px",
+    numeric: true,
+    sortable: true,
+    defaultSortDirection: "asc",
+    mobile: "hidden",
+    truncate: false,
+    cell: (row) => <ZohoPriceValue zohoPrice={row.zohoPrice} />,
   },
   {
     id: "edited",
@@ -210,6 +228,10 @@ export function AllFromZohoList({
           data: page.items,
           getRowId: (row) => row.registerId,
           defaultDensity: "comfortable",
+          defaultHiddenColumns: [HIDDEN_BY_DEFAULT],
+          // Sorted by the server across every page; the order is in the URL so Back keeps it.
+          sort: zohoAllSortState(query),
+          onSortChange: (next) => navigate(zohoAllSortHref(query, next)),
           onRowOpen: (row) => navigate(`/from-zoho/${row.registerId}`),
           rowActions: {
             label: (row) => `Actions for ${row.title}`,

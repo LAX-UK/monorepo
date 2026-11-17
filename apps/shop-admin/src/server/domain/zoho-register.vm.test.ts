@@ -22,6 +22,8 @@ import {
   setInLaxLine,
   skippedReasonLabel,
   soldAttentionActionHref,
+  zohoAllSortHref,
+  zohoAllSortState,
   zohoProductUrl,
   zohoQueueApiQuery,
   zohoQueueHref,
@@ -108,6 +110,34 @@ describe("the queue's URL state", () => {
       artist: "PH",
       place: "sold",
     });
+  });
+
+  it("keeps the All list's price order in the URL and sends it to the API", () => {
+    expect(parseZohoQueueQuery({ tab: "all", sort: "-zohoPrice", page: "2" })).toEqual({
+      tab: "all",
+      sort: "-zohoPrice",
+      page: "2",
+    });
+    // The price order belongs to All artworks; Link lax.art keeps its own.
+    expect(parseZohoQueueQuery({ tab: "link", sort: "zohoPrice" })).toEqual({ tab: "link" });
+    expect(parseZohoQueueQuery({ tab: "all", sort: "artist" })).toEqual({ tab: "all" });
+    expect(zohoQueueApiQuery({ tab: "all", sort: "zohoPrice", page: "2" })).toEqual({
+      sort: "zohoPrice",
+      page: "2",
+    });
+    expect(zohoQueueApiQuery({ tab: "link", sort: "artist" })).toEqual({});
+    expect(zohoAllSortState({ tab: "all", sort: "-zohoPrice" })).toEqual({
+      columnId: "zohoPrice",
+      direction: "desc",
+    });
+    expect(zohoAllSortState({ tab: "all" })).toBeNull();
+    // A new order starts again from page one, since every page now holds different rows.
+    expect(
+      zohoAllSortHref(
+        { tab: "all", place: "sold", page: "4" },
+        { columnId: "zohoPrice", direction: "desc" },
+      ),
+    ).toBe("/from-zoho?tab=all&place=sold&sort=-zohoPrice");
   });
 
   it("sends only what the API takes", () => {
