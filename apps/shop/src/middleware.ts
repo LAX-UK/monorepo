@@ -2,6 +2,7 @@ import { loadShopEnv } from "@/env";
 import { resolveRetiredShopAccountRedirect } from "@/lib/account/shop-account-routes";
 import { loadShopArtBaseUrl } from "@/lib/ecosystem/product-directory.server";
 import { resolveOriginalWorksRedirect } from "@/lib/original-works-redirect";
+import { expressCheckoutSecurityHeaders, originsOf } from "@/lib/security/express-checkout-headers";
 import {
   X_ROBOTS_TAG_NOINDEX,
   isShopIndexingAllowedForHost,
@@ -49,9 +50,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(retiredAccountRedirect, request.url), 308);
   }
   const response = await resolveSessionResponse(request);
+  const env = loadShopEnv();
   const host = publicRequestHost(request.headers);
-  if (!isShopIndexingAllowedForHost(host, loadShopEnv().SHOP_ALLOW_INDEXING)) {
+  if (!isShopIndexingAllowedForHost(host, env.SHOP_ALLOW_INDEXING)) {
     response.headers.set("X-Robots-Tag", X_ROBOTS_TAG_NOINDEX);
+  }
+  for (const header of expressCheckoutSecurityHeaders({
+    pathname: request.nextUrl.pathname,
+    enabled: env.SHOP_EXPRESS_CHECKOUT,
+    development: process.env.NODE_ENV === "development",
+    identityOrigins: originsOf([env.IDENTITY_PUBLIC_BASE_URL, shopIdentityBaseUrl()]),
+  })) {
+    response.headers.set(header.key, header.value);
   }
   return response;
 }

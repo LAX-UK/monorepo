@@ -23,6 +23,14 @@ const shopEnvSchema = z.object({
    */
   SHOP_UK_DELIVERY_WORKING_DAYS: z.string().min(1).optional(),
   SHOP_COLLECTION_READY_WORKING_DAYS: z.string().min(1).optional(),
+  /**
+   * GAP-49 express checkout (Apple Pay, Google Pay and Link on the basket and Details). Off unless
+   * set to "true"; with it off no Shop page loads or allows Stripe.js.
+   */
+  SHOP_EXPRESS_CHECKOUT: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 export type ShopEnv = z.infer<typeof shopEnvSchema>;
@@ -46,6 +54,7 @@ export function loadShopEnv(
     SHOP_UK_DELIVERY_WORKING_DAYS: source.SHOP_UK_DELIVERY_WORKING_DAYS?.trim() || undefined,
     SHOP_COLLECTION_READY_WORKING_DAYS:
       source.SHOP_COLLECTION_READY_WORKING_DAYS?.trim() || undefined,
+    SHOP_EXPRESS_CHECKOUT: source.SHOP_EXPRESS_CHECKOUT?.trim() || undefined,
   });
   const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
   const hasBidPublicUrl = Boolean(parsed.LAX_BID_PUBLIC_URL ?? parsed.WEB_ORIGIN);
