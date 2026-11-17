@@ -8,11 +8,13 @@ BEGIN;
 
 SET LOCAL lock_timeout = '30s';
 
+-- Nested, not AND: the whole condition is planned at once, which fails once the table is gone.
 DO $$
 BEGIN
-  IF to_regclass('public.artwork_location_move') IS NOT NULL
-     AND EXISTS (SELECT 1 FROM "artwork_location_move") THEN
-    RAISE EXCEPTION 'artwork_location_move holds moves; export them before rolling back';
+  IF to_regclass('public.artwork_location_move') IS NOT NULL THEN
+    IF EXISTS (SELECT 1 FROM "artwork_location_move") THEN
+      RAISE EXCEPTION 'artwork_location_move holds moves; export them before rolling back';
+    END IF;
   END IF;
 END $$;
 

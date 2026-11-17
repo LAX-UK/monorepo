@@ -1,8 +1,18 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { buildPgConnectionConfig } from "./ssl.js";
 
 const migrationUrl = process.env.MIGRATION_TEST_DATABASE_URL;
+const drizzleDir = join(dirname(fileURLToPath(import.meta.url)), "../drizzle");
+/** The file as one script inside the test's transaction: no breakpoints, BEGIN or COMMIT. */
+const script = (name: string) =>
+  readFileSync(join(drizzleDir, name), "utf8")
+    .replaceAll("--> statement-breakpoint", "")
+    .replace(/^BEGIN;$/m, "")
+    .replace(/^COMMIT;$/m, "");
 
 /**
  * Runs against a database migrated to the head. Each test runs in a transaction that is always
@@ -111,6 +121,26 @@ describe.skipIf(!migrationUrl)(
           [registerId, id, "n".repeat(501)],
         ),
       ).toMatch(/^23514/);
+    });
+
+    it("rolls back twice in a row and applies again", async () => {
+      await client.query(script("0404_rollback.sql"));
+      expect((await client.query("select to_regclass('artwork_location') as t")).rows[0]?.t).toBe(
+        null,
+      );
+      await client.query(script("0404_rollback.sql"));
+      await client.query(script("0404_artwork_stock_location.sql"));
+      await location("Store room");
+    });
+
+    it("refuses to roll back while a move exists", async () => {
+      const id = await location("Store room");
+      await client.query(
+        `insert into artwork_location_move (register_id, location_id, moved_at, moved_by)
+       values ($1, $2, now(), 'staff:s1')`,
+        [registerId, id],
+      );
+      expect(await refused(script("0404_rollback.sql"))).toMatch(/holds moves/);
     });
 
     it("accepts location_moved in the record's history", async () => {
