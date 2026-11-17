@@ -234,3 +234,49 @@ Throwaway Postgres 16 on port 55432, migrated with `db:roles` applied, `SHOP_V1_
 1. The race between reading the agreement and recording the move (review item 1) is still open. Soften the "Read again here" comment when it is picked up.
 2. Item 4 (history wording for new entries) and item 5 (ids in raw history payloads) are unchanged.
 3. Consolidating the duplicate reads with #1553 is still open, as planned.
+
+## Merge with main after #1552
+
+#1552 was squash-merged to `main` as `f20f7416`, and its branch was deleted. I merged `origin/main` (`f20f7416`) into `zi-5-move-dialog-agreements` with a merge commit, no rebase. The new head is `af61f755`, pushed with a normal push. #1553 has not merged, so `main` is unchanged and there is nothing more to include.
+
+### Resolution
+
+- **Base used:** the old merge base with `zi-5-consignor-agreements-admin` was `51e5e9ce`. The reviewed change set is `git diff 51e5e9ce 8b3d484a` (98 files).
+- **Method:** I resolved every file this PR touches with a 3-way merge. Base is `51e5e9ce`, ours is this PR's head `8b3d484a`, theirs is `main`. So main's part-1/part-2 files are kept exactly, and only this PR's hunks are layered on top.
+- **4 conflicts:**
+  - `apps/shop-api/src/container.ts` and `apps/shop-api/src/infrastructure/drizzle-consignor-agreement.ts` merged cleanly with that base. `container.ts` carries main's wiring and this PR's move-agreement wiring.
+  - `apps/shop-admin/src/components/consignor-agreements/agreements-section.client.tsx` and its `.test.tsx` are not changed by this PR, so they are main's versions exactly. That includes #1552's later commit `0f9d5c75`.
+- **No other mismatches:** checking every other auto-merged file against the 3-way result found none. All 60 screenshots are byte-identical to `8b3d484a`. There is no behaviour change.
+
+### Verification
+
+- `git diff origin/main...HEAD` (merge base `f20f7416`) lists the same 98 files as `git diff 51e5e9ce 8b3d484a`: 38 source/docs files plus 60 screenshots under `docs/design/screenshots/zi-5-move-dialog-agreements/`.
+- With `index`/`@@` lines ignored, the two diffs are identical.
+- It merges cleanly with the merged #1553 head `fe955ac1` (`git merge-tree`). The shared files are `container.ts`, `index.ts`, `artwork-register-review.service.test.ts` and `drizzle-register-overview.integration.test.ts`.
+
+### Tests (on `af61f755`)
+
+Throwaway Postgres 16 on port 55432, migrated with `db:migrate` and `db:roles`, `SHOP_V1_INTEGRATION_REQUIRED=true`, shop suites as `shop_app`, `--maxWorkers=2`. Everything passed:
+
+- **Typecheck:** shop-api, shop-admin, shop-contracts, shop-domain, persistence and artwork-register-contracts pass, after rebuilding the workspace packages.
+- **Biome:** `biome check` on all 37 changed code files is clean.
+- **shop-api, 288 tests (11 files):**
+  - `original-move.service` (44)
+  - `offer-on-lax-art.service` (19)
+  - `artwork-register-review.service` (29)
+  - `drizzle-lax-art-offer.integration` (11)
+  - `drizzle-register-overview.integration` (3)
+  - `admin-offer-at-auction.routes` (41)
+  - `admin-offer-on-lax-art.routes` (24)
+  - `move-agreement-viewer` (4)
+  - #1552's `admin-consignor-agreement.routes` (62), `consignor-agreement.service.integration` (15) and `step-up-paths.guard` (36), because the wiring was merged.
+- **artwork-register-contracts:** 339 tests.
+- **shop-contracts:** 128 tests.
+- **shop-admin, 154 tests (6 files):**
+  - the offer at auction dialog (35)
+  - the lax.art dialog (18)
+  - `offer-at-auction-form` (13)
+  - `zoho-register.vm` (48)
+  - the agreements section (20)
+  - `consignor-agreement.vm` (20)
+- **Not run:** a full `next build`.
