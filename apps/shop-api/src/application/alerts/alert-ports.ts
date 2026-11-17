@@ -63,4 +63,9 @@ export interface ReleaseAlertSendLogReader {
     items: AdminReleaseAlertSend[];
     nextCursor: string | null;
   }>;
+  /**
+   * One release by its work, for a panel link whose release is not on the page shown (PRD-7);
+   * null when the work has no shop release in the log.
+   */
+  find(artworkId: string): Promise<AdminReleaseAlertSend | null>;
 }

@@ -24,6 +24,25 @@ export const RELEASE_ALERT_SENDS_CAPABILITY = "lead.read";
 /** The search param naming the release open in the panel (a record with no page, PRD-7). */
 export const RELEASE_ALERT_PANEL_PARAM = "release";
 
+/**
+ * The viewer's capabilities as this page uses them. The page renders only when the read behind it
+ * did not refuse `lead.read`, so its own tab is always shown, even when the session could not be
+ * read and its capabilities are unknown.
+ */
+export function releaseAlertSendsCapabilities(capabilities: readonly string[]): readonly string[] {
+  return capabilities.includes(RELEASE_ALERT_SENDS_CAPABILITY)
+    ? capabilities
+    : [...capabilities, RELEASE_ALERT_SENDS_CAPABILITY];
+}
+
+/**
+ * A panel link's release that is not on the page shown (PRD-7), read on its own: found, not in the
+ * log (`not_found`: no such release, or a malformed id), or not readable just now (`failed`).
+ */
+export type ReleaseAlertLinked =
+  | { status: "found"; row: AdminReleaseAlertSend }
+  | { status: "not_found" | "failed"; id: string };
+
 /** The log in the URL: the page (a cursor from the read) and the release open in the panel. */
 export type ReleaseAlertSendsState = { cursor?: string; open?: string };
 
@@ -84,13 +103,14 @@ export function releaseAlertPublishedBy(row: Pick<AdminReleaseAlertSend, "publis
 }
 
 /**
- * The phone's line of counts, "Emailed 398 of 412". A release nobody was told about has no counts
- * to give: its badge says so.
+ * The phone's line of counts, "Emailed 398 of 412". A release nobody was told about, and a queued
+ * one whose people are not worked out yet, have no counts to give ("Emailed 0 of 0" would read as
+ * "went to nobody"): the badge says where they stand.
  */
 export function releaseAlertPhoneCounts(
-  row: Pick<AdminReleaseAlertSend, "toldSubscribers" | "emailed" | "matched">,
+  row: Pick<AdminReleaseAlertSend, "toldSubscribers" | "status" | "emailed" | "matched">,
 ): string | null {
-  if (!row.toldSubscribers) return null;
+  if (!row.toldSubscribers || row.status === "queued") return null;
   return RELEASE_ALERT_SENDS_COPY.emailedOf(
     formatReleaseAlertCount(row.emailed),
     formatReleaseAlertCount(row.matched),

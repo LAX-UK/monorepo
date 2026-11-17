@@ -82,6 +82,8 @@ const NOT_ANNOUNCED = release(4, {
   publishedByName: null,
 });
 const QUEUED = release(5, { title: "First light", status: "queued" });
+const LONG_TITLE =
+  "Untitled (harbour at low tide, after Whistler), second state, signed proof with the artist's annotations";
 const LEGACY = release(6, {
   title: "Old pier",
   status: "counts_not_kept",
@@ -106,6 +108,27 @@ function renderLog(
           ...(query.cursor ? { cursor: query.cursor } : {}),
           ...(query.release ? { open: query.release } : {}),
         }}
+        page={PAGE}
+        summary={{ confirmed: 412, awaitingConfirmation: 9 }}
+        capabilities={["lead.read", "catalogue.read"]}
+        canOpenArtwork
+        {...rest}
+      />
+    </StaffTooltipProvider>,
+  );
+}
+
+/** As `renderLog`, for a test that renders more than once. */
+function renderLogUnmountable(
+  props: Partial<React.ComponentProps<typeof ReleaseAlertSendLog>> & {
+    query?: Record<string, string>;
+  } = {},
+) {
+  const { query = {}, ...rest } = props;
+  return render(
+    <StaffTooltipProvider>
+      <ReleaseAlertSendLog
+        state={query.release ? { open: query.release } : {}}
         page={PAGE}
         summary={{ confirmed: 412, awaitingConfirmation: 9 }}
         capabilities={["lead.read", "catalogue.read"]}
@@ -195,6 +218,49 @@ describe("the release-alert send log", () => {
   });
 });
 
+describe("the send log's columns", () => {
+  const headers = () => within(grid()).getAllByRole("columnheader");
+  const columnIndex = (name: string) =>
+    headers().findIndex((header) => header.textContent === name);
+  const cellOf = (title: string, column: string) =>
+    rowOf(title).querySelectorAll("td")[columnIndex(column)] as HTMLElement;
+
+  it("says whether subscribers were told, from the release's own choice", () => {
+    renderLog();
+    expect(columnIndex("Told subscribers")).toBeGreaterThan(-1);
+    expect(cellOf("Quiet harbour", "Told subscribers")).toHaveTextContent(/^No$/);
+    expect(cellOf("Tidal study", "Told subscribers")).toHaveTextContent(/^Yes$/);
+    expect(cellOf("Salt marsh", "Told subscribers")).toHaveTextContent(/^Yes$/);
+  });
+
+  it("right-aligns every count, header and cell (TBL-13), and nothing else", () => {
+    renderLog();
+    const counts = ["People matched", "Emailed", "Waiting", "Not sent"];
+    for (const name of counts) {
+      const header = headers()[columnIndex(name)] as HTMLElement;
+      expect(header, `${name} header`).toHaveClass("text-right");
+      expect(cellOf("Night ferry", name), `${name} cell`).toHaveClass("text-right", "tabular-nums");
+    }
+    expect(cellOf("Night ferry", "Emailed")).toHaveTextContent("1,204");
+    for (const name of ["Edition", "Published", "Told subscribers", "Status"]) {
+      expect(headers()[columnIndex(name)], `${name} header`).not.toHaveClass("text-right");
+      expect(cellOf("Night ferry", name), `${name} cell`).not.toHaveClass("text-right");
+    }
+  });
+
+  it("keeps a long title whole for screen readers and the panel, on one row", async () => {
+    const long = release(7, { title: LONG_TITLE, status: "sending", matched: 3, emailed: 1 });
+    renderLog({ page: { items: [long, SENT], nextCursor: null } });
+    const link = within(grid()).getByRole("link", { name: LONG_TITLE });
+    expect(link).toHaveAttribute("href", `${PATH}?release=${long.artworkId}`);
+    // Truncated by the kit's link style rather than wrapping the row.
+    expect(link).toHaveClass("truncate");
+    link.click();
+    const panel = await screen.findByRole("dialog", { name: LONG_TITLE });
+    expect(within(panel).getByRole("link", { name: "Open artwork" })).toBeInTheDocument();
+  });
+});
+
 describe("the send log's states", () => {
   it("says what will appear when nothing has been published yet (L5)", () => {
     renderLog({ page: { items: [], nextCursor: null } });
@@ -251,10 +317,26 @@ describe("a release's panel", () => {
     expect(within(panel).getByText("Not recorded")).toBeInTheDocument();
   });
 
-  it("flags a release stuck for more than a day", async () => {
+  it("flags a release stuck for more than a day as needing action, in the danger tone", async () => {
     renderLog({ query: { release: STUCK.artworkId } });
     const panel = await screen.findByRole("dialog", { name: /Salt marsh/ });
-    expect(within(panel).getByText(/still unsent more than a day after/)).toBeInTheDocument();
+    const notice = within(panel)
+      .getByText(/still unsent more than a day after/)
+      .closest("[data-tone]");
+    expect(notice).toHaveAttribute("data-tone", "danger");
+  });
+
+  it("gives every other status's notice the calm info tone", async () => {
+    for (const row of [SENDING, NOT_ANNOUNCED, QUEUED, LEGACY]) {
+      window.history.replaceState(null, "", PATH);
+      const { unmount } = renderLogUnmountable({ query: { release: row.artworkId } });
+      const panel = await screen.findByRole("dialog", { name: new RegExp(row.title) });
+      // The notice is a block; the status badge (a span) carries its own tone.
+      const notices = panel.querySelectorAll("div[data-tone]");
+      expect(notices, row.title).toHaveLength(1);
+      expect(notices[0], row.title).toHaveAttribute("data-tone", "info");
+      unmount();
+    }
   });
 
   it("says when the details are no longer kept in full", async () => {
@@ -279,6 +361,46 @@ describe("a release's panel", () => {
       second: { link: "Night ferry", panel: /Night ferry/, id: SENDING.artworkId },
       total: ALL.length,
     });
+  });
+
+  it("opens a linked release that is not on the page shown, without a place to step from", async () => {
+    const elsewhere = release(8, {
+      title: "Winter jetty",
+      status: "sent",
+      matched: 12,
+      emailed: 12,
+    });
+    renderLog({
+      query: { release: elsewhere.artworkId },
+      linked: { status: "found", row: elsewhere },
+    });
+    const panel = await screen.findByRole("dialog", { name: /Winter jetty/ });
+    expect(within(panel).getByText("Sent")).toBeInTheDocument();
+    expect(within(panel).getAllByText("12")).not.toHaveLength(0);
+    expect(within(panel).queryByRole("button", { name: "Next release" })).toBeNull();
+    expect(within(panel).getByRole("link", { name: "Open artwork" })).toHaveAttribute(
+      "href",
+      `/artworks/${elsewhere.artworkId}`,
+    );
+  });
+
+  it("says plainly when a linked release is not in the log, rather than opening nothing", async () => {
+    const id = "0f0e0d0c-0b0a-4908-8706-000000000099";
+    renderLog({ query: { release: id }, linked: { status: "not_found", id } });
+    const panel = await screen.findByRole("dialog", { name: "Release alert not found" });
+    const notice = within(panel)
+      .getByText(/No published edition in the log matches this link/)
+      .closest("[data-tone]");
+    expect(notice).toHaveAttribute("data-tone", "warning");
+    expect(within(panel).queryByRole("link", { name: "Open artwork" })).toBeNull();
+    expect(within(panel).queryByText("What was sent")).toBeNull();
+  });
+
+  it("says when a linked release could not be read", async () => {
+    const id = "0f0e0d0c-0b0a-4908-8706-000000000098";
+    renderLog({ query: { release: id }, linked: { status: "failed", id } });
+    const panel = await screen.findByRole("dialog", { name: "Release alert could not be loaded" });
+    expect(within(panel).getByText("Try again in a moment.")).toBeInTheDocument();
   });
 
   it("closes on Back", async () => {

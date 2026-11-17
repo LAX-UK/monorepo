@@ -61,6 +61,17 @@ export const RELEASE_ALERT_SENDS_COPY = {
     counts: "What was sent",
     reasons: "Why some were not sent",
     noPublisher: "Not recorded",
+    /** A panel link (`?release=`) that names no release in the log (PRD-7). */
+    notFound: {
+      title: "Release alert not found",
+      description:
+        "No published edition in the log matches this link. The work may have been deleted, or the link may be incomplete.",
+    },
+    /** A panel link whose release could not be read just now. */
+    linkFailed: {
+      title: "Release alert could not be loaded",
+      description: "Try again in a moment.",
+    },
   },
 } as const;
 

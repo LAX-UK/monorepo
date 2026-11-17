@@ -5,15 +5,26 @@
  * with the announcement, matches and digests the alert engine would have left.
  *
  * - Sent: expanded; 3 emailed and 1 dropped (`topic_off`), counted on the announcement.
- * - Sending: expanded; 1 emailed, 2 matches still waiting for a digest.
+ * - Sending: expanded; 1 emailed, 2 matches still waiting for a digest. Its title is long.
  * - Not sent yet: expanded; 1 match in a digest made 30 hours ago and never sent.
  * - Not announced: the publisher unticked "Tell subscribers".
  * - Queued: announced, not yet expanded into matches. Its work went back to draft before the
  *   alert run, so the stack's own alert run leaves it queued rather than expanding it.
  * - Counts not kept: from before migration 0405 (no counters); 2 matches left, both emailed.
  *
+ * The Sending release has a long title, so the log is seen with one at 1440 and 375 px.
+ *
  * The rows are made up, not written by the alert engine, so this runs only on a hermetic local
- * database (marked "local" and at a local address), such as the CI stack, where no worker runs.
+ * database (marked "local" and at a local address), such as the CI browser-gate stack.
+ *
+ * That stack does run shop-api's scheduler (`SHOP_SCHEDULER_ENABLED` defaults to on, every 60s),
+ * with the alert matching and digest tasks. The fixtures hold still under it only because:
+ * - the digest task does nothing while `ALERTS_SEND_MODE` is `off`. That is the default, and the
+ *   browser-gate job pins it (`.github/workflows/e2e-pr.yml`); the send log e2e refuses to run
+ *   in CI under any other mode. With `dry_run` or `on`, the task would build and mark digests for
+ *   Sending's waiting matches and Not sent yet's stuck one, and both would read as Sent;
+ * - the matching task expands only releases of works on sale, so Queued's work is a draft.
+ *
  * Insert-once: works have fixed import keys and a release is written only when its announcement is
  * missing, so a second run changes nothing. Made-up titles and `example.com` addresses only.
  */
@@ -49,6 +60,10 @@ export type ReleaseAlertFixture = {
   matches: readonly Settled[];
 };
 
+/** The Sending fixture's title: long enough to be cut short at 1440 px and on a phone. */
+export const RELEASE_ALERT_LONG_FIXTURE_TITLE =
+  "Night ferry, crossing at low tide after Whistler: second state, signed proof with the artist's annotations";
+
 /** One release per status the log shows, by the status the read derives for it. */
 export const RELEASE_ALERT_FIXTURES = {
   sent: {
@@ -62,7 +77,8 @@ export const RELEASE_ALERT_FIXTURES = {
     matches: ["emailed", "emailed", "emailed", { dropped: "topic_off" }],
   },
   sending: {
-    title: "Night ferry",
+    // Long on purpose: the log's truncation, the phone row and the panel header are seen with it.
+    title: RELEASE_ALERT_LONG_FIXTURE_TITLE,
     publishedHoursAgo: 2,
     announce: true,
     expanded: true,

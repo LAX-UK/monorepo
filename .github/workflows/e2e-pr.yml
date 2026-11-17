@@ -198,6 +198,11 @@ jobs:
       FULL_BUYER_ONBOARDING_ENABLED: "false"
       MARKETING_PROMPTS_ENABLED: "false"
       ADMIN_KPI_TREND_ANCHOR: "2026-08-25T12:00:00.000Z"
+      # Both shop-apis here run the scheduler's alert digest task. The release-alert send log's
+      # fixture releases (seed:release-alert-sends) hold their Sending and Not sent yet states only
+      # while it sends nothing, so the mode is pinned rather than left to the default; the send
+      # log e2e refuses to run in CI under any other mode.
+      ALERTS_SEND_MODE: "off"
       PLAYWRIGHT_E2E: "1"
       PLAYWRIGHT_BASE_URL: http://localhost:3000
       PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid

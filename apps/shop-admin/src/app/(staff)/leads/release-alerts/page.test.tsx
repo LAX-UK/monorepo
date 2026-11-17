@@ -94,4 +94,53 @@ describe("Leads › Release alerts", () => {
     await open();
     expect(lastProps()).toMatchObject({ summary: null, loadFailed: false });
   });
+
+  it("keeps its own tab when the session could not be read", async () => {
+    loadAdminSession.mockResolvedValue({ status: "failed" });
+    answer({ status: "ok", data: PAGE });
+    await open();
+    expect(lastProps()).toMatchObject({ capabilities: ["lead.read"], canOpenArtwork: false });
+  });
+});
+
+describe("a panel link to a release not on the page shown (PRD-7)", () => {
+  const ID = "0f0e0d0c-0b0a-4908-8706-000000000040";
+  const ON_PAGE = { items: [{ artworkId: "on-page" }], nextCursor: null };
+  const ROW = { artworkId: ID, title: "Winter jetty" };
+
+  function answerWith(one: unknown) {
+    fetchAdminJson.mockImplementation(async (path: string) => {
+      if (path === `release-alerts/sends/${ID}`) return one;
+      if (path.startsWith("release-alerts/sends")) return { status: "ok", data: ON_PAGE };
+      return { status: "ok", data: SUMMARY };
+    });
+  }
+
+  it("reads that one release by its work and opens it", async () => {
+    answerWith({ status: "ok", data: ROW });
+    await open({ release: ID });
+    expect(fetchAdminJson).toHaveBeenCalledWith(`release-alerts/sends/${ID}`);
+    expect(lastProps()).toMatchObject({ linked: { status: "found", row: ROW } });
+  });
+
+  it("says the release is not in the log when the read finds none", async () => {
+    answerWith({ status: "not_found" });
+    await open({ release: ID });
+    expect(lastProps()).toMatchObject({ linked: { status: "not_found", id: ID } });
+  });
+
+  it("says it could not be read when the read fails", async () => {
+    answerWith({ status: "failed" });
+    await open({ release: ID });
+    expect(lastProps()).toMatchObject({ linked: { status: "failed", id: ID } });
+  });
+
+  it("reads nothing more for a release already on the page, or with no panel open", async () => {
+    answerWith({ status: "ok", data: ROW });
+    await open({ release: "on-page" });
+    expect(lastProps()).toMatchObject({ linked: null });
+    await open();
+    expect(lastProps()).toMatchObject({ linked: null });
+    expect(fetchAdminJson).not.toHaveBeenCalledWith(`release-alerts/sends/${ID}`);
+  });
 });

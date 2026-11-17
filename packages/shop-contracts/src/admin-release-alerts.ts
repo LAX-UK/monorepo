@@ -96,6 +96,16 @@ export const AdminReleaseAlertSendsQuerySchema = Type.Object(
 );
 export type AdminReleaseAlertSendsQuery = Static<typeof AdminReleaseAlertSendsQuerySchema>;
 
+/**
+ * One release by its work, for a panel link (`?release=`) whose release is not on the page shown
+ * (staff design standard, PRD-7). 404 when the work has no shop release in the log.
+ */
+export const AdminReleaseAlertSendParamsSchema = Type.Object(
+  { artworkId: Type.String({ format: "uuid" }) },
+  { additionalProperties: false },
+);
+export type AdminReleaseAlertSendParams = Static<typeof AdminReleaseAlertSendParamsSchema>;
+
 /** Newest release first; `nextCursor` is null on the last page. */
 export const AdminReleaseAlertSendListSchema = Type.Object(
   {

@@ -15,6 +15,7 @@ import {
   releaseAlertPhoneCounts,
   releaseAlertPublishedAt,
   releaseAlertPublishedBy,
+  releaseAlertSendsCapabilities,
 } from "./release-alert-sends.vm";
 
 const ID = "0f0e0d0c-0b0a-4908-8706-050403020100";
@@ -92,10 +93,32 @@ describe("when and by whom", () => {
 
 describe("the counts", () => {
   it("gives the phone one line, with thousands separated", () => {
-    expect(releaseAlertPhoneCounts({ toldSubscribers: true, emailed: 1204, matched: 1290 })).toBe(
-      "Emailed 1,204 of 1,290",
-    );
-    expect(releaseAlertPhoneCounts({ toldSubscribers: false, emailed: 0, matched: 0 })).toBeNull();
+    expect(
+      releaseAlertPhoneCounts({
+        toldSubscribers: true,
+        status: "sending",
+        emailed: 1204,
+        matched: 1290,
+      }),
+    ).toBe("Emailed 1,204 of 1,290");
+    expect(
+      releaseAlertPhoneCounts({
+        toldSubscribers: false,
+        status: "not_announced",
+        emailed: 0,
+        matched: 0,
+      }),
+    ).toBeNull();
+  });
+
+  it('leaves a queued release\'s counts to its badge, never "Emailed 0 of 0"', () => {
+    expect(
+      releaseAlertPhoneCounts({ toldSubscribers: true, status: "queued", emailed: 0, matched: 0 }),
+    ).toBeNull();
+    // A finished release that matched nobody does say so.
+    expect(
+      releaseAlertPhoneCounts({ toldSubscribers: true, status: "sent", emailed: 0, matched: 0 }),
+    ).toBe("Emailed 0 of 0");
   });
 
   it("lists the panel's counts in the order a send moves through", () => {
@@ -137,5 +160,15 @@ describe("why some were not sent", () => {
       "4 people were not emailed for another reason.",
     ]);
     expect(sentences.join(" ")).not.toMatch(/_/);
+  });
+});
+
+describe("the page's capabilities", () => {
+  it("always keeps the page's own tab, even when the session could not be read", () => {
+    expect(releaseAlertSendsCapabilities([])).toEqual(["lead.read"]);
+    expect(releaseAlertSendsCapabilities(["lead.read", "catalogue.read"])).toEqual([
+      "lead.read",
+      "catalogue.read",
+    ]);
   });
 });

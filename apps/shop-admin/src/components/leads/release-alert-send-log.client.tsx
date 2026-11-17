@@ -10,6 +10,7 @@ import {
 } from "@/server/domain/release-alert-sends.copy";
 import {
   RELEASE_ALERT_PANEL_PARAM,
+  type ReleaseAlertLinked,
   type ReleaseAlertSendsState,
   formatReleaseAlertCount,
   presentReleaseAlertStatus,
@@ -69,6 +70,7 @@ function PublishedTime({ row }: { row: AdminReleaseAlertSend }) {
 export function ReleaseAlertSendLog({
   state,
   page,
+  linked = null,
   loadFailed = false,
   summary,
   capabilities,
@@ -76,6 +78,11 @@ export function ReleaseAlertSendLog({
 }: {
   state: ReleaseAlertSendsState;
   page: AdminReleaseAlertSendList;
+  /**
+   * The release the URL's panel link names when it is not on this page, read on its own so its
+   * panel still opens, or says plainly that it cannot (PRD-7).
+   */
+  linked?: ReleaseAlertLinked | null;
   loadFailed?: boolean;
   /** The list's size for the figures above; null when it could not be read. */
   summary: AdminReleaseAlertSummary | null;
@@ -94,7 +101,13 @@ export function ReleaseAlertSendLog({
     noun: COPY.panel.queueNoun,
     hrefFor,
   });
-  const opened = page.items.find((row) => row.artworkId === panel.openId) ?? null;
+  // A linked release from another page opens without a place in the rows, so J and K have
+  // nothing to step to; the rows' own panels step as usual.
+  const linkedHere = linked && panel.openId !== null && linkedId(linked) === panel.openId;
+  const opened =
+    page.items.find((row) => row.artworkId === panel.openId) ??
+    (linkedHere && linked.status === "found" ? linked.row : null);
+  const missing = !opened && linkedHere && linked.status !== "found" ? linked.status : null;
   const artworkHref = (row: AdminReleaseAlertSend) =>
     canOpenArtwork ? `/artworks/${row.artworkId}` : null;
 
@@ -118,7 +131,7 @@ export function ReleaseAlertSendLog({
       {
         id: "published",
         header: COPY.columns.published,
-        width: "200px",
+        width: "184px",
         hideBelow: "md",
         truncate: false,
         cell: (row) => {
@@ -136,7 +149,7 @@ export function ReleaseAlertSendLog({
       {
         id: "told",
         header: COPY.columns.toldSubscribers,
-        width: "136px",
+        width: "128px",
         hideBelow: "xl",
         cell: (row) => (row.toldSubscribers ? COPY.yes : COPY.no),
       },
@@ -151,7 +164,7 @@ export function ReleaseAlertSendLog({
       {
         id: "emailed",
         header: COPY.columns.emailed,
-        width: "96px",
+        width: "88px",
         numeric: true,
         hideBelow: "md",
         cell: (row) => formatReleaseAlertCount(row.emailed),
@@ -159,7 +172,7 @@ export function ReleaseAlertSendLog({
       {
         id: "waiting",
         header: COPY.columns.waiting,
-        width: "96px",
+        width: "88px",
         numeric: true,
         hideBelow: "lg",
         cell: (row) => formatReleaseAlertCount(row.waiting),
@@ -167,7 +180,7 @@ export function ReleaseAlertSendLog({
       {
         id: "notSent",
         header: COPY.columns.notSent,
-        width: "96px",
+        width: "88px",
         numeric: true,
         hideBelow: "lg",
         cell: (row) => formatReleaseAlertCount(row.notSent),
@@ -175,7 +188,7 @@ export function ReleaseAlertSendLog({
       {
         id: "status",
         header: COPY.columns.status,
-        width: "152px",
+        width: "144px",
         mobile: "badge",
         truncate: false,
         cell: (row) => (
@@ -261,6 +274,7 @@ export function ReleaseAlertSendLog({
       />
       <ReleaseAlertPanel
         row={opened}
+        missing={missing}
         artworkHref={opened ? artworkHref(opened) : null}
         queueProps={panel.queue ? { queue: panel.queue } : {}}
         onOpenChange={panel.onOpenChange}
@@ -269,26 +283,42 @@ export function ReleaseAlertSendLog({
   );
 }
 
-/** One release in full: when and by whom, what was sent, and why some were not. */
+function linkedId(linked: ReleaseAlertLinked): string {
+  return linked.status === "found" ? linked.row.artworkId : linked.id;
+}
+
+/**
+ * One release in full: when and by whom, what was sent, and why some were not. For a link that
+ * names no release, or one that could not be read, the panel opens and says so rather than the
+ * list silently showing no panel (PRD-7).
+ */
 function ReleaseAlertPanel({
   row,
+  missing,
   artworkHref,
   queueProps,
   onOpenChange,
 }: {
   row: AdminReleaseAlertSend | null;
+  missing: "not_found" | "failed" | null;
   artworkHref: string | null;
   queueProps: { queue?: PanelQueue };
   onOpenChange: (open: boolean) => void;
 }) {
   const notice = row ? RELEASE_ALERT_STATUS_NOTICE[row.status] : null;
   const reasons = row ? releaseAlertNotSentSentences(row) : [];
+  const missingCopy =
+    missing === "not_found"
+      ? COPY.panel.notFound
+      : missing === "failed"
+        ? COPY.panel.linkFailed
+        : null;
   return (
     <DetailPanel
-      open={row !== null}
+      open={row !== null || missingCopy !== null}
       onOpenChange={onOpenChange}
       {...queueProps}
-      title={row?.title ?? COPY.panel.fallbackTitle}
+      title={row?.title ?? missingCopy?.title ?? COPY.panel.fallbackTitle}
       status={
         row ? <MappedStatusBadge status={row.status} present={presentReleaseAlertStatus} /> : null
       }
@@ -313,6 +343,10 @@ function ReleaseAlertPanel({
       notice={
         notice && row ? (
           <Notice tone={row.status === "not_sent_yet" ? "danger" : "info"} title={notice} />
+        ) : missingCopy ? (
+          <Notice tone={missing === "failed" ? "danger" : "warning"} title={missingCopy.title}>
+            {missingCopy.description}
+          </Notice>
         ) : null
       }
     >
