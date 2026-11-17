@@ -26,6 +26,7 @@ import { createHomeFeaturesService } from "./application/home-features/home-feat
 import { LeadsService } from "./application/leads/leads.service.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
+import { ZohoMirrorStatusService } from "./application/zoho-mirror/zoho-mirror-status.service.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createInMemoryArtistApplications } from "./test-support/in-memory-artist-applications.js";
@@ -321,6 +322,16 @@ export function createMinimalShopApiTestDeps(
         lots: { numbersFor: async () => new Map() },
       }),
       zohoSyncHealth: createTestZohoSyncHealth(),
+      zohoMirror: new ZohoMirrorStatusService({
+        ledger: {
+          read: async (_entity, ids) => ({
+            consumer: "zoho_fulfilment",
+            deliveries: new Map(ids.map((id) => [id, []])),
+          }),
+        },
+        orders: { paidOf: async () => new Map() },
+        modes: { order: null, artwork: null },
+      }),
       artworkRegister: new ArtworkRegisterReviewService({
         catalogueChanges: { changesFor: async () => [] },
         queue: {

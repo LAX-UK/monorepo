@@ -18,6 +18,8 @@ export type ButtonLinkProps = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>
     prefetch?: boolean;
     /** Forwarded to the app's link component; only meaningful with `Link`. */
     scroll?: boolean;
+    /** Forwarded to the app's link component: replace the current history entry instead of adding one. */
+    replace?: boolean;
   };
 
 /**

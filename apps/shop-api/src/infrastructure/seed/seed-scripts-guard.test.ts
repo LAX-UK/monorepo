@@ -64,7 +64,11 @@ const CASES: Case[] = [
   {
     name: "seed:demo-full",
     run: (db, url, write) =>
-      runShopDemoFull(db, { databaseUrl: url }, { full: write as never, queues: write as never }),
+      runShopDemoFull(
+        db,
+        { databaseUrl: url },
+        { full: write as never, queues: write as never, states: write as never },
+      ),
   },
   {
     name: "seed:local-admin-staff",
@@ -129,6 +133,8 @@ describe("Shop seed script wiring", () => {
       "seedAcceptanceStaffOperationsFixtures",
     ],
     ["seed-demo-full.ts", "runShopDemoFull(", "seedDemoStaffQueues"],
+    ["seed-demo-full.ts", "runShopDemoFull(", "seedDemoShopStates"],
+    ["seed-demo-full.ts", "runShopDemoFull(", "seedDemoFull("],
     ["seed-local-admin-staff.ts", "grantLocalAdminStaff(", "grantShopStaffRole"],
   ])("%s goes through the guarded function", (file, guarded, raw) => {
     const source = read(file);

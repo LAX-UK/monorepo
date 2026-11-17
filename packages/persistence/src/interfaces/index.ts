@@ -1398,6 +1398,17 @@ export type {
   SoldAttentionRecord,
 } from "./artwork-register-sold-attention.js";
 export type {
+  AddLocationInput,
+  IStockLocationReader,
+  IStockLocationStore,
+  IStockLocationWriter,
+  LocationWriteResult,
+  MoveArtworksInput,
+  MoveArtworksResult,
+  SetLocationStatusInput,
+  UpdateLocationInput,
+} from "./artwork-location.js";
+export type {
   DealArtworkSearchInput,
   IDealArtworkSearchReader,
   IOpenLotPlaceReader,
@@ -1432,6 +1443,14 @@ export type {
   ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "./zoho-artwork-sync.js";
+
+export type {
+  DeliveryLedgerStatus,
+  IZohoMirrorLedgerReader,
+  ZohoMirrorLedger,
+  ZohoMirrorLedgerDelivery,
+  ZohoMirrorLedgerEntity,
+} from "./zoho-mirror-ledger.js";
 
 export type {
   IZohoDriftReader,

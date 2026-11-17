@@ -38,6 +38,7 @@ export * from "./lax-staff-platforms.js";
 export * from "./staff-role-refusal.js";
 export * from "./onboarding-steps.js";
 export * from "./document.js";
+export * from "./zoho-mirror.js";
 export * from "./marketing-events.js";
 export * from "./marketing-attribution.js";
 export * from "./gallery.js";

@@ -1,5 +1,6 @@
 import { StockCodeError, printCodeForOriginal } from "@auction/artwork-register-contracts";
 import type { IArtworkRegisterRepository } from "@auction/persistence/interfaces";
+import { ORDER_MIRROR_SKIP } from "@auction/types";
 import type { Logger } from "pino";
 import { CrmGatewayError } from "../../crm/crm-gateway-error.js";
 import type { CrmSyncResult } from "../../crm/crm-sync-result.js";
@@ -105,9 +106,10 @@ export class OrderMirror {
 
   async deliver(orderId: string, options: OrderDeliveryOptions = {}): Promise<CrmSyncResult> {
     const facts = await this.deps.facts.read(orderId);
-    if (!facts) return { outcome: "skipped", reason: "order_not_found" };
-    if (!facts.paid) return { outcome: "skipped", reason: "order_not_paid" };
-    if (facts.prints.length === 0) return { outcome: "skipped", reason: "no_prints_on_order" };
+    if (!facts) return { outcome: "skipped", reason: ORDER_MIRROR_SKIP.orderNotFound };
+    if (!facts.paid) return { outcome: "skipped", reason: ORDER_MIRROR_SKIP.orderNotPaid };
+    if (facts.prints.length === 0)
+      return { outcome: "skipped", reason: ORDER_MIRROR_SKIP.noPrintsOnOrder };
 
     const pass = new OrderPass(this.deps, facts);
     const problems: string[] = [];
@@ -136,13 +138,15 @@ export class OrderMirror {
         "order mirror: prints still not mirrored, already failed for staff",
       );
     }
-    if (this.deps.mode === "dry_run") return { outcome: "skipped", reason: "dry_run" };
+    if (this.deps.mode === "dry_run")
+      return { outcome: "skipped", reason: ORDER_MIRROR_SKIP.dryRun };
     if (pass.wrote > 0) {
       return { outcome: "success", providerReference: `Order:${facts.reference}` };
     }
     return {
       outcome: "skipped",
-      reason: problems.length > 0 ? "order_prints_not_mirrored" : "order_already_in_sync",
+      reason:
+        problems.length > 0 ? ORDER_MIRROR_SKIP.printsNotMirrored : ORDER_MIRROR_SKIP.alreadyInSync,
     };
   }
 }

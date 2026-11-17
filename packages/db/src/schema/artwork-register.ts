@@ -106,6 +106,7 @@ export const artworkRegisterEvent = pgTable(
         | "sold_while_live_overridden"
         | "gallery_sale_recorded"
         | "gallery_sale_reopened"
+        | "location_moved"
       >()
       .notNull(),
     /** `zoho`, `system`, or `staff:<user id>`. */

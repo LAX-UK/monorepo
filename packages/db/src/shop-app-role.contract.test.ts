@@ -5,6 +5,8 @@ import {
   API_ACCOUNTING_READ_TABLES,
   API_ACCOUNTING_SETTING_TABLES,
   SHOP_ACCOUNTING_READ_COLUMNS,
+  SHOP_ARTWORK_LOCATION_MOVE_TABLES,
+  SHOP_ARTWORK_LOCATION_TABLES,
   SHOP_COMMERCE_TABLES,
   SHOP_CRM_READ_TABLES,
   SHOP_DEMO_SEED_TARGET_READ_TABLES,
@@ -55,6 +57,37 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
       expect(allowed.sort()).toEqual([...SHOP_SOLD_ATTENTION_UPDATE_COLUMNS].sort());
       for (const column of ["zoho_product_id", "register_id", "place"]) {
         expect(allowed, column).not.toContain(column);
+      }
+    });
+  });
+
+  it("keeps the location list without deleting from it, and only adds moves", async () => {
+    await withShopClient(async (client) => {
+      const expected: Record<string, Record<string, boolean>> = {};
+      for (const table of SHOP_ARTWORK_LOCATION_TABLES)
+        expected[table] = {
+          SELECT: true,
+          INSERT: true,
+          UPDATE: true,
+          DELETE: false,
+          TRUNCATE: false,
+        };
+      for (const table of SHOP_ARTWORK_LOCATION_MOVE_TABLES)
+        expected[table] = {
+          SELECT: true,
+          INSERT: true,
+          UPDATE: false,
+          DELETE: false,
+          TRUNCATE: false,
+        };
+      for (const [table, privileges] of Object.entries(expected)) {
+        for (const [privilege, allowed] of Object.entries(privileges)) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(allowed);
+        }
       }
     });
   });

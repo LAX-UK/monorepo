@@ -95,6 +95,77 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     ).toBe(false);
   });
 
+  it("describes a location move by ids only, with no location recorded before allowed", () => {
+    const payload = {
+      schemaVersion: 1,
+      registerId: "11111111-1111-4111-8111-111111111111",
+      zohoProductId: "5000000000001000001",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      reason: "moved",
+      fromLocationId: null,
+      toLocationId: "22222222-2222-4222-8222-222222222222",
+    };
+    const entry = DOMAIN_EVENT_REGISTRY["artwork_register.location_changed"];
+    expect(entry.piiClassification).toBe("operational");
+    expect(entry.producers).toEqual(["packages/db"]);
+    expect(parseDomainEventPayload("artwork_register.location_changed", 1, payload).ok).toBe(true);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        fromLocationId: "33333333-3333-4333-8333-333333333333",
+      }).ok,
+    ).toBe(true);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        toLocationId: "Store room",
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        toLocationId: undefined,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("describes a change to the location an artwork is at, naming that location twice", () => {
+    const at = "22222222-2222-4222-8222-222222222222";
+    const payload = {
+      schemaVersion: 1,
+      registerId: "11111111-1111-4111-8111-111111111111",
+      zohoProductId: "5000000000001000001",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      fromLocationId: at,
+      toLocationId: at,
+    };
+    for (const reason of ["location_updated", "location_retired", "location_restored"]) {
+      expect(
+        parseDomainEventPayload("artwork_register.location_changed", 1, { ...payload, reason }).ok,
+      ).toBe(true);
+    }
+    // A move must change location, and a list change must not.
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        reason: "moved",
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        reason: "location_updated",
+        fromLocationId: null,
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseDomainEventPayload("artwork_register.location_changed", 1, {
+        ...payload,
+        reason: undefined,
+      }).ok,
+    ).toBe(false);
+  });
+
   it("routes the print fulfilment events to the Zoho fulfilment consumer", () => {
     const id = "11111111-1111-4111-8111-111111111111";
     const other = "22222222-2222-4222-8222-222222222222";

@@ -1,7 +1,9 @@
+import { ZOHO_MIRROR_CONSUMER } from "@auction/types";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import { processZohoProductDeliveries } from "./lib/zoho-product-deliveries.js";
 
-export const ZOHO_ARTWORK_WRITEBACK_PROJECTOR = "zoho_artwork_writeback";
+/** The consumer whose ledger LAX Admin reads for an artwork's "Mirrored to Zoho" badge. */
+export const ZOHO_ARTWORK_WRITEBACK_PROJECTOR = ZOHO_MIRROR_CONSUMER.artwork;
 
 /** Sends artwork register changes (the Status and the stock code) to Zoho Products. */
 export async function processZohoArtworkWriteback(ctx: ProjectorRunContext): Promise<void> {
