@@ -5,6 +5,10 @@ import { RowStep } from "@/components/workspace/row-step";
 import type { ConsignmentRecord } from "@/lib/seller/consignment-records";
 import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
 import type { ConsignmentStep } from "@/lib/seller/consignment-step";
+import {
+  SELL_ANOTHER_LIKE_THIS_LABEL,
+  sellAnotherLikeThisHref,
+} from "@/lib/seller/sell-another-like-this";
 import { notify } from "@/lib/ui/notify";
 import {
   InlineActionMenu,
@@ -55,6 +59,16 @@ export function ConsignmentRow({
             type: "item" as const,
             label: "View lot",
             onSelect: () => router.push(record.lotHref ?? ""),
+          },
+        ]
+      : []),
+    // Every consignment starts from a submission; a lot with none behind it has nothing to copy.
+    ...(record.submissionId
+      ? [
+          {
+            type: "item" as const,
+            label: SELL_ANOTHER_LIKE_THIS_LABEL,
+            onSelect: () => router.push(sellAnotherLikeThisHref(record.submissionId ?? "")),
           },
         ]
       : []),
