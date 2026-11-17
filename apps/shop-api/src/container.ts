@@ -35,6 +35,7 @@ import {
 import { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
+import { createStockLocationService } from "./application/artwork-register/stock-location.service.js";
 import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { ZohoSyncHealthService } from "./application/artwork-register/zoho-sync-health.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
@@ -166,6 +167,10 @@ import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createDrizzleStaffNameReader } from "./infrastructure/drizzle-staff-name.reader.js";
+import {
+  createDrizzleStockLocationReads,
+  drizzleStockLocationWritesFor,
+} from "./infrastructure/drizzle-stock-location.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import {
   createDrizzleZohoLinkListingReader,
@@ -826,6 +831,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
             toEntry: registerRowToEntry,
           }),
           settings: createDrizzleZohoLinkSettings(db),
+        }),
+        stockLocations: createStockLocationService({
+          uow: shopUow,
+          reads: createDrizzleStockLocationReads(db),
+          writesFor: drizzleStockLocationWritesFor,
         }),
         releaseAlertSummary: shopAlerts.summary,
         printParties: createDrizzlePrintPartyStore(db),

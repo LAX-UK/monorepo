@@ -27,6 +27,8 @@ export const SHOP_ADMIN_STEP_UP_PATHS = [
   "/admin/v1/guests/:guestCustomerId/erasure",
   "/admin/v1/artwork-register/attention/:attentionId/dealt-with",
   "/admin/v1/artwork-register/:registerId/reopen-sale",
+  // Keeping the list of stock locations (Administrator only). Moving artworks is not under it.
+  "/admin/v1/artwork-locations",
 ] as const;
 
 function segmentsOf(path: string): string[] {
