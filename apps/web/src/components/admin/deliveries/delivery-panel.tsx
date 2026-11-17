@@ -1,5 +1,6 @@
 "use client";
 
+import { sendDeliveryQuoteAction } from "@/lib/actions/admin/admin-deliveries";
 import { DELIVERIES_COPY } from "@/lib/admin/deliveries/deliveries-copy";
 import {
   deliveryBadges,
@@ -11,8 +12,10 @@ import {
   deliveryTimeline,
   lotFulfilmentHref,
 } from "@/lib/admin/deliveries/deliveries.vm";
+import { quoteActionFor } from "@/lib/admin/deliveries/delivery-quote-form";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
+import { notify } from "@/lib/ui/notify";
 import {
   DetailPanel,
   type DetailPanelProps,
@@ -26,12 +29,35 @@ import {
   ViewOnlyBadge,
   formatStaffDateTime,
 } from "@auction/staff-ui";
+import { PencilLine, Send } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useState } from "react";
+import { DeliveryQuoteDialog, type QuoteDialogOutcome } from "./delivery-quote-dialog";
 
 const COPY = DELIVERIES_COPY.panel;
 
+/** D6: the "Quote sent" toast stays 5 seconds. */
+const SENT_TOAST_MS = 5000;
+
 type PanelProps = Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
+
+export type DeliveryPanelProps = {
+  row: DeliveryView | null;
+  canWork: boolean;
+  panelProps: PanelProps;
+  now: Date;
+  /** A lot is open in the URL and no delivery was found for it. */
+  missing?: boolean;
+  /** With `missing`: the read failed (not a 404), so the delivery may well exist. */
+  loadFailed?: boolean;
+  /** Reads the page again, for the load error's Try again. */
+  onRetry?: () => void;
+  /** Whether the Send or Change quote dialog is open (the row menu opens it too). */
+  quoteOpen?: boolean;
+  onQuoteOpenChange?: (open: boolean) => void;
+  /** The server action that sends the quote; injectable for tests. */
+  sendQuote?: typeof sendDeliveryQuoteAction;
+};
 
 /**
  * One delivery beside the list (D4): the lot and its status in the header, the buyer, sale and
@@ -47,28 +73,25 @@ type PanelProps = Pick<DetailPanelProps, "open" | "onOpenChange" | "queue">;
  * a way back to the list; a read that failed says so with Try again (never "not found"); a
  * request that moves on while its panel is open (the list refreshed and its status or quote
  * changed) says the buyer changed it.
+ *
+ * Fulfilment and Administrators price it from the footer (D5, PRD-2): Send quote while the buyer
+ * waits, Change quote once one is sent. Read-only staff get no footer (PRM-3).
  */
-export function DeliveryPanel({
-  row,
-  canWork,
-  panelProps,
-  now,
-  missing = false,
-  loadFailed = false,
-  onRetry,
-}: {
-  row: DeliveryView | null;
-  canWork: boolean;
-  panelProps: PanelProps;
-  now: Date;
-  /** A lot is open in the URL and no delivery was found for it. */
-  missing?: boolean;
-  /** With `missing`: the read failed (not a 404), so the delivery may well exist. */
-  loadFailed?: boolean;
-  /** Reads the page again, for the load error's Try again. */
-  onRetry?: () => void;
-}) {
-  const changed = useChangedWhileOpen(row);
+export function DeliveryPanel(props: DeliveryPanelProps) {
+  const {
+    row,
+    canWork,
+    panelProps,
+    now,
+    missing = false,
+    loadFailed = false,
+    onRetry,
+    sendQuote = sendDeliveryQuoteAction,
+  } = props;
+  const { changed, expect } = useChangedWhileOpen(row);
+  const [ownQuoteOpen, setOwnQuoteOpen] = useState(false);
+  const quoteOpen = props.quoteOpen ?? ownQuoteOpen;
+  const setQuoteOpen = props.onQuoteOpenChange ?? setOwnQuoteOpen;
   if (!row && loadFailed) {
     // D6 error: never "not found" for a read that failed; say so and offer Try again.
     return (
@@ -138,10 +161,26 @@ export function DeliveryPanel({
   }
   const price = deliveryPrice(row);
   const booked = row.quote.status === "accepted" || row.fulfilment !== null;
+  const quoteAction = canWork ? quoteActionFor(row) : null;
+  const lotTitle = deliveryLotTitle(row.lot);
+  const onQuoteOutcome = (outcome: QuoteDialogOutcome) => {
+    // The panel's own write, or another person's price, is not the buyer changing the request:
+    // the panel takes the quoted state as its new starting point, so the notice stays for the
+    // buyer's own moves (D6). A request the buyer withdrew or accepted still shows it.
+    if (outcome.kind === "sent" || outcome.by === "staff") expect(row.lotId, "quoted:quoted");
+    if (outcome.kind === "sent") {
+      notify.success(DELIVERIES_COPY.quote.sent(lotTitle), { duration: SENT_TOAST_MS });
+    }
+  };
   return (
     <DetailPanel
       {...panelProps}
       beside
+      {...(quoteAction
+        ? {
+            footer: <DeliveryPanelFooter action={quoteAction} onQuote={() => setQuoteOpen(true)} />,
+          }
+        : {})}
       title={deliveryLotTitle(row.lot)}
       status={
         <span className="flex flex-wrap items-center gap-1.5">
@@ -237,6 +276,16 @@ export function DeliveryPanel({
           />
         </PanelSection>
       ) : null}
+      {quoteAction ? (
+        <DeliveryQuoteDialog
+          row={row}
+          action={quoteAction}
+          open={quoteOpen}
+          onOpenChange={setQuoteOpen}
+          send={sendQuote}
+          onOutcome={onQuoteOutcome}
+        />
+      ) : null}
     </DetailPanel>
   );
 }
@@ -244,18 +293,49 @@ export function DeliveryPanel({
 /**
  * Whether the open delivery moved on since its panel first showed it: same lot, a different
  * status or quote status (the buyer withdrew or accepted, or the courier took it). Opening
- * another lot starts again from what that one shows.
+ * another lot starts again from what that one shows. `expect` takes a state the panel itself
+ * caused (a quote it sent) as the new starting point, so its own change is not the buyer's.
  */
-function useChangedWhileOpen(row: DeliveryView | null): boolean {
+function useChangedWhileOpen(row: DeliveryView | null): {
+  changed: boolean;
+  expect: (lotId: string, key: string) => void;
+} {
   const current = row ? { lotId: row.lotId, key: deliveryStateKey(row) } : null;
   // What the panel first showed for the open lot, kept in state (never a ref written while
   // rendering) and reset when another lot opens, React's "adjust state when a prop changes".
   const [seen, setSeen] = useState(current);
+  const expect = (lotId: string, key: string) => setSeen({ lotId, key });
   if (current?.lotId !== seen?.lotId) {
     setSeen(current);
-    return false;
+    return { changed: false, expect };
   }
-  return current !== null && seen !== null && seen.key !== current.key;
+  return { changed: current !== null && seen !== null && seen.key !== current.key, expect };
+}
+
+/**
+ * The panel's footer (PRD-2: the state's primary action last). Part 3 of D9 (#1528, "Can't
+ * deliver", D8) adds its secondary action here, before the primary, for the same two states.
+ */
+function DeliveryPanelFooter({
+  action,
+  onQuote,
+}: {
+  action: "send" | "change";
+  onQuote: () => void;
+}) {
+  return (
+    <>
+      {/* Seam for D8 "Can't deliver" (part 3): its button goes here, before the primary. */}
+      <StaffButton
+        variant="primary"
+        className="max-sm:flex-1"
+        icon={action === "send" ? <Send aria-hidden /> : <PencilLine aria-hidden />}
+        onClick={onQuote}
+      >
+        {action === "send" ? DELIVERIES_COPY.quote.send : DELIVERIES_COPY.quote.change}
+      </StaffButton>
+    </>
+  );
 }
 
 function FulfilmentBadge({ status }: { status: string }) {

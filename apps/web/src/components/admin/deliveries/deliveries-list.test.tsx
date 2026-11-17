@@ -3,6 +3,7 @@ import {
   COLLECTED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
+  QUOTED,
   REFUNDED,
   WAITING_DELIVERIES,
   deliveriesPageFixture,
@@ -20,6 +21,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh, replace: vi.fn() }),
   usePathname: () => "/admin/deliveries",
   useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock("@/lib/actions/admin/admin-deliveries", () => ({
+  sendDeliveryQuoteAction: vi.fn(),
 }));
 
 const LOT_42 = "10700000-0000-4000-8000-000000000042";
@@ -220,6 +225,42 @@ describe("DeliveriesList", () => {
     const menu = within(screen.getByRole("menu"));
     expect(menu.getByRole("menuitem", { name: "Open details" })).toBeInTheDocument();
     expect(menu.queryByRole("menuitem", { name: "Open lot fulfilment" })).toBeNull();
+    expect(menu.queryByRole("menuitem", { name: "Send quote" })).toBeNull();
+  });
+
+  it("puts Send quote first in the row menu (D3); it opens the panel and the quote dialog", async () => {
+    renderList({ canWork: true });
+    const trigger = screen.getAllByRole("button", {
+      name: "Actions for Lot 42 · Harbour at dusk",
+    })[0];
+    fireEvent.keyDown(trigger as HTMLElement, { key: "Enter" });
+    const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
+    expect(items[0]).toHaveAccessibleName("Send quote");
+    fireEvent.click(items[0] as HTMLElement);
+    expect(window.location.search).toBe(`?record=${LOT_42}`);
+    expect(
+      await screen.findByRole("dialog", { name: "Send quote for Lot 42 · Harbour at dusk" }),
+    ).toBeVisible();
+  });
+
+  it("offers Change quote in the row menu once quoted, and nothing once accepted", () => {
+    renderList({
+      page: deliveriesPageFixture({
+        items: [
+          { ...QUOTED, lotId: LOT_42 },
+          { ...BOOKED_UNPAID, lotId: WAITING_DELIVERIES[1]?.lotId as string },
+        ],
+      }),
+    });
+    const [quoted, booked] = screen.getAllByRole("button", { name: /^Actions for / });
+    fireEvent.keyDown(quoted as HTMLElement, { key: "Enter" });
+    expect(within(screen.getByRole("menu")).getAllByRole("menuitem")[0]).toHaveAccessibleName(
+      "Change quote",
+    );
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    fireEvent.keyDown(booked as HTMLElement, { key: "Enter" });
+    const menu = within(screen.getAllByRole("menu").at(-1) as HTMLElement);
+    expect(menu.queryByRole("menuitem", { name: /quote/ })).toBeNull();
   });
 
   it("links Fulfilment to the lot's fulfilment record from the row menu", () => {

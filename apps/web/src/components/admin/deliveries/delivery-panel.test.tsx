@@ -3,14 +3,21 @@ import {
   COLLECTED,
   DELIVERY_FIXTURE_NOW,
   ON_THE_WAY,
+  QUOTED,
   REFUNDED,
   deliveryFixture,
 } from "@/lib/admin/deliveries/deliveries.fixture";
 import type { DeliveryView } from "@/lib/data/http/admin-deliveries.schema";
 import { StaffTooltipProvider } from "@auction/staff-ui";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DeliveryPanel } from "./delivery-panel";
+
+const mocks = vi.hoisted(() => ({ send: vi.fn(), success: vi.fn() }));
+vi.mock("@/lib/actions/admin/admin-deliveries", () => ({
+  sendDeliveryQuoteAction: (...args: unknown[]) => mocks.send(...args),
+}));
+vi.mock("@/lib/ui/notify", () => ({ notify: { success: mocks.success } }));
 
 const now = new Date(DELIVERY_FIXTURE_NOW);
 
@@ -222,5 +229,98 @@ describe("DeliveryPanel beside the list", () => {
     renderPanel();
     expect(document.querySelector("[data-staff-panel-beside]")).toBeNull();
     expect(document.querySelector("[data-lax-motion='scrim']")).not.toBeNull();
+  });
+});
+
+describe("DeliveryPanel quote actions (D5)", () => {
+  function Harness({ row, canWork = true }: { row: DeliveryView; canWork?: boolean }) {
+    return (
+      <StaffTooltipProvider>
+        <DeliveryPanel
+          row={row}
+          canWork={canWork}
+          panelProps={{ open: true, onOpenChange: vi.fn() }}
+          now={now}
+        />
+      </StaffTooltipProvider>
+    );
+  }
+  const panel = () => within(screen.getAllByRole("dialog")[0] as HTMLElement);
+  afterEach(() => {
+    mocks.send.mockReset();
+    mocks.success.mockReset();
+  });
+
+  it("offers Send quote in the footer while the buyer waits for a price", () => {
+    render(<Harness row={deliveryFixture()} />);
+    const footer = document.querySelector("[data-staff-panel-footer]") as HTMLElement;
+    expect(within(footer).getByRole("button", { name: "Send quote" })).toBeVisible();
+  });
+
+  it("offers Change quote once a quote is sent", () => {
+    render(<Harness row={QUOTED} />);
+    const footer = document.querySelector("[data-staff-panel-footer]") as HTMLElement;
+    expect(within(footer).getByRole("button", { name: "Change quote" })).toBeVisible();
+    expect(within(footer).queryByRole("button", { name: "Send quote" })).toBeNull();
+  });
+
+  it("offers neither once the buyer accepted, nor for read-only staff (no footer at all)", () => {
+    const { unmount } = render(<Harness row={BOOKED_UNPAID} />);
+    expect(document.querySelector("[data-staff-panel-footer]")).toBeNull();
+    unmount();
+    render(<Harness row={QUOTED} canWork={false} />);
+    expect(document.querySelector("[data-staff-panel-footer]")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change quote" })).toBeNull();
+  });
+
+  it('opens the dialog from the footer, and toasts "Quote sent for Lot 42" for 5 seconds', async () => {
+    mocks.send.mockResolvedValue({ ok: true, data: { lotId: "x" } });
+    render(<Harness row={deliveryFixture()} />);
+    fireEvent.click(panel().getByRole("button", { name: "Send quote" }));
+    const dialog = within(
+      screen.getByRole("dialog", { name: "Send quote for Lot 42 · Harbour at dusk" }),
+    );
+    fireEvent.change(dialog.getByRole("textbox", { name: /^Price/ }), {
+      target: { value: "180" },
+    });
+    fireEvent.click(dialog.getByRole("button", { name: "Continue" }));
+    const confirm = within(await screen.findByRole("dialog", { name: "Send this quote?" }));
+    await act(async () => {
+      fireEvent.click(confirm.getByRole("button", { name: "Send quote" }));
+    });
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect(mocks.success).toHaveBeenCalledWith("Quote sent for Lot 42 · Harbour at dusk", {
+      duration: 5000,
+    });
+    expect(screen.queryByRole("dialog", { name: "Send this quote?" })).toBeNull();
+  });
+
+  it("does not call its own quote the buyer's change once the panel reads it again", async () => {
+    mocks.send.mockResolvedValue({ ok: true, data: { lotId: "x" } });
+    const { rerender } = render(<Harness row={deliveryFixture()} />);
+    fireEvent.click(panel().getByRole("button", { name: "Send quote" }));
+    fireEvent.change(screen.getByRole("textbox", { name: /^Price/ }), {
+      target: { value: "180" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await act(async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Send quote" }));
+    });
+    // The page read the delivery again: now quoted, by this panel.
+    rerender(<Harness row={QUOTED} />);
+    expect(screen.queryByText(/The buyer changed this request/)).toBeNull();
+    expect(panel().getByRole("button", { name: "Change quote" })).toBeVisible();
+    // A later move by the buyer is still theirs.
+    rerender(
+      <Harness
+        row={deliveryFixture({
+          status: "to_dispatch",
+          quote: { ...QUOTED.quote, status: "accepted" },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("The buyer changed this request while you were looking at it."),
+    ).toBeVisible();
   });
 });
