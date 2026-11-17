@@ -32,6 +32,22 @@ describe("loadShopApiEnv LAX_ART_PUBLIC_URL", () => {
   });
 });
 
+describe("loadShopApiEnv SHOP_EXPRESS_CHECKOUT", () => {
+  it("is off unless set to true, even in production", () => {
+    expect(loadShopApiEnv(productionNodeBase()).SHOP_EXPRESS_CHECKOUT).toBe(false);
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_EXPRESS_CHECKOUT: "false" })).SHOP_EXPRESS_CHECKOUT,
+    ).toBe(false);
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_EXPRESS_CHECKOUT: "true" })).SHOP_EXPRESS_CHECKOUT,
+    ).toBe(true);
+  });
+
+  it("rejects anything but true or false", () => {
+    expect(() => loadShopApiEnv(productionNodeBase({ SHOP_EXPRESS_CHECKOUT: "1" }))).toThrow();
+  });
+});
+
 describe("loadShopApiEnv SHOP_EDITION_ORDER_LIMIT", () => {
   it("defaults to two copies of an edition per order", () => {
     expect(loadShopApiEnv(productionNodeBase()).SHOP_EDITION_ORDER_LIMIT).toBe(2);

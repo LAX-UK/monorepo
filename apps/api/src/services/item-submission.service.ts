@@ -44,6 +44,7 @@ import {
   countQualityGapsForAdminApi,
   countSubmissionsBySellersForAdminApi,
   createDraftForSellerApi,
+  deleteDraftForSellerApi,
   getSubmissionForViewerApi,
   getSubmissionSummaryForSellerApi,
   listSubmissionsForAdminApi,
@@ -280,6 +281,13 @@ export class ItemSubmissionService implements IItemSubmissionService {
     sentByUserId?: string,
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     return submitForReviewForSellerApi(this.deps, legalEntityId, id, sentByUserId);
+  }
+
+  deleteDraftForSellerApi(
+    legalEntityId: string,
+    id: string,
+  ): Promise<Result<{ id: string }, SubmissionError>> {
+    return deleteDraftForSellerApi(this.deps, legalEntityId, id);
   }
 
   withdrawForSellerApi(

@@ -29,6 +29,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: CHANGE_ANY,
     delete_document: CHANGE_ANY,
     withdraw: CHANGE_ANY,
+    delete_draft: CHANGE_ANY,
     message: CHANGE_ANY,
   },
   admin: {
@@ -37,6 +38,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: CHANGE_ANY,
     delete_document: CHANGE_ANY,
     withdraw: CHANGE_ANY,
+    delete_draft: CHANGE_ANY,
     message: CHANGE_ANY,
   },
   consignor: {
@@ -45,6 +47,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: CHANGE_OWN,
     delete_document: CHANGE_OWN,
     withdraw: CHANGE_OWN,
+    delete_draft: CHANGE_OWN,
     message: CHANGE_OWN,
   },
   finance: {
@@ -53,6 +56,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: NONE,
     delete_document: NONE,
     withdraw: NONE,
+    delete_draft: NONE,
     message: NONE,
   },
   viewer: {
@@ -61,6 +65,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: NONE,
     delete_document: NONE,
     withdraw: NONE,
+    delete_draft: NONE,
     message: NONE,
   },
   buyer_agent: {
@@ -69,6 +74,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: NONE,
     delete_document: NONE,
     withdraw: NONE,
+    delete_draft: NONE,
     message: NONE,
   },
 };
@@ -113,6 +119,27 @@ describe("submissionMutationPolicy", () => {
         allowed: true,
       });
     }
+  });
+
+  it("says who may delete a draft (GAP-53: owners, admins and the consignor who made it)", () => {
+    expect(
+      submissionMutationPolicy(
+        { userId: ME, member: { role: "consignor" } },
+        { submittedByUserId: COLLEAGUE },
+        "delete_draft",
+      ),
+    ).toMatchObject({
+      allowed: false,
+      reason: "not_sender",
+      message: "Only the person who started this draft, or an owner or admin, can delete it.",
+    });
+    expect(
+      submissionMutationPolicy(
+        { userId: ME, member: { role: "viewer" } },
+        { submittedByUserId: ME },
+        "delete_draft",
+      ),
+    ).toMatchObject({ allowed: false, message: "Only an owner or admin can delete this draft." });
   });
 
   it("explains every refusal in words", () => {

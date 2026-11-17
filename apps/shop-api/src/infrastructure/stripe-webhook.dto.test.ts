@@ -12,6 +12,65 @@ import {
 } from "./stripe-webhook.dto.js";
 
 describe("stripe webhook DTO", () => {
+  describe("express checkout (Elements-mode) sessions", () => {
+    const ORDER = "11111111-1111-4111-8111-111111111111";
+    const express = (
+      type: string,
+      metadata: Record<string, string>,
+      extra: Record<string, unknown> = {},
+    ) =>
+      ({
+        id: "evt_express",
+        type,
+        created: 1_700_000_000,
+        livemode: false,
+        data: {
+          object: {
+            id: "cs_test_express",
+            ui_mode: "custom",
+            mode: "payment",
+            metadata: { app: "shop", checkout: "express", basketId: "b-1", ...metadata },
+            amount_total: 9_500,
+            currency: "gbp",
+            payment_status: "paid",
+            payment_intent: "pi_express",
+            customer_details: { email: "ada@example.com" },
+            ...extra,
+          },
+        },
+      }) as unknown as Stripe.Event;
+
+    it("settles a confirmed express session through the same path and order as the hosted page", () => {
+      expect(
+        parseCheckoutSessionCompleted(
+          express("checkout.session.completed", { orderId: ORDER, orderReference: "LAX-S-1" }),
+        ),
+      ).toEqual({
+        eventId: "evt_express",
+        paidAt: new Date(1_700_000_000 * 1000),
+        orderId: ORDER,
+        sessionId: "cs_test_express",
+        amountTotalPence: 9_500,
+        customerEmail: "ada@example.com",
+        paymentIntentId: "pi_express",
+        livemode: false,
+      });
+    });
+
+    it("ignores an express session the shopper never confirmed (no order was made)", () => {
+      expect(parseCheckoutSessionCompleted(express("checkout.session.completed", {}))).toBeNull();
+      expect(parseCheckoutSessionExpired(express("checkout.session.expired", {}))).toBeNull();
+    });
+
+    it("expires the order of an express session that ran out after confirm", () => {
+      expect(
+        parseCheckoutSessionExpired(
+          express("checkout.session.expired", { orderId: ORDER }, { status: "expired" }),
+        ),
+      ).toEqual({ eventId: "evt_express", orderId: ORDER, sessionId: "cs_test_express" });
+    });
+  });
+
   it("parses checkout.session.completed", () => {
     const event = {
       id: "evt_1",

@@ -6,6 +6,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import { canonicalizeXeroCallbackUrl } from "@auction/validators";
 import type { Env } from "../../env.js";
+import type { AppLogger } from "../../lib/logger.js";
 import type {
   IXeroAdminApplicationService,
   XeroConnectionHealth,
@@ -18,6 +19,7 @@ const WEBHOOK_ERROR_WINDOW_MS = 24 * 60 * 60 * 1000;
 function disconnectedPayload(oauthConfigured: boolean): XeroStatusPayload {
   return {
     connected: false,
+    reason: null,
     tenantId: null,
     tenantName: null,
     expiresAt: null,
@@ -56,6 +58,8 @@ function deriveHealth(input: {
 }
 
 export class AdminXeroApplicationService implements IXeroAdminApplicationService {
+  private warnedUnreadableTokens = false;
+
   constructor(
     private readonly xeroOAuth: XeroOAuthService | null,
     private readonly xeroRedirectUri: string | undefined,
@@ -64,6 +68,7 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
     private readonly externalRefs: IPaymentExternalRefRepository,
     private readonly users: IUserRepository,
     private readonly env: Pick<Env, "API_PUBLIC_URL" | "XERO_WEBHOOK_KEY">,
+    private readonly log?: Pick<AppLogger, "warn">,
   ) {}
 
   async getStatusPayload(): Promise<XeroStatusPayload> {
@@ -78,7 +83,9 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
       };
     }
 
-    const row = await this.connections.findLatest();
+    // Status only reports state, so it never opens the tokens: a row whose tokens can no longer
+    // be read is shown as not connected, with Connect available to replace it.
+    const row = await this.connections.findLatestSummary();
     if (!row) {
       return {
         ...disconnectedPayload(true),
@@ -86,6 +93,23 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
         webhookConfigured,
       };
     }
+    if (!row.tokensReadable) {
+      if (!this.warnedUnreadableTokens) {
+        this.warnedUnreadableTokens = true;
+        this.log?.warn(
+          { tenantId: row.tenantId },
+          "xero_connection_tokens_unreadable: reconnect required",
+        );
+      }
+      return {
+        ...disconnectedPayload(true),
+        reason: "reconnect_required",
+        webhookUrl,
+        webhookConfigured,
+      };
+    }
+
+    this.warnedUnreadableTokens = false;
 
     const since = new Date(Date.now() - WEBHOOK_ERROR_WINDOW_MS);
     const [recentWebhookErrors, syncErrorCount] = await Promise.all([
@@ -111,6 +135,7 @@ export class AdminXeroApplicationService implements IXeroAdminApplicationService
 
     return {
       connected: true,
+      reason: null,
       tenantId: row.tenantId,
       tenantName: row.tenantName ?? null,
       expiresAt: row.expiresAt.toISOString(),

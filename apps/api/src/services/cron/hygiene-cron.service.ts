@@ -3,6 +3,7 @@ import type { AmlService } from "../aml/aml.service.js";
 import type { IConsignmentAgreementService } from "../consignment-agreement/consignment-agreement.service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
+import type { SubmissionDraftPurgeService } from "../submission/submission-draft-purge.service.js";
 
 export class HygieneCronService {
   constructor(
@@ -13,7 +14,16 @@ export class HygieneCronService {
       IConsignmentAgreementService,
       "sendDueReminders"
     > | null = null,
+    private readonly draftPurge: Pick<
+      SubmissionDraftPurgeService,
+      "purgeDeletedDrafts"
+    > | null = null,
   ) {}
+
+  /** Removes drafts deleted more than 30 days ago, and their photos (GAP-53). */
+  async purgeDeletedSubmissionDrafts() {
+    return this.draftPurge?.purgeDeletedDrafts() ?? { purged: 0, photos: 0, photoFailures: 0 };
+  }
 
   async sendStaleSubmissionDraftReminders(staleDays: number) {
     return this.itemSubmissionAdminApi.sendStaleDraftReminders({ staleDays });

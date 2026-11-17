@@ -6,6 +6,7 @@ import { XeroIntegrationPanel, xeroHealth } from "./xero-integration-panel";
 
 const connected: AdminXeroIntegrationStatus = {
   connected: true,
+  reason: null,
   tenantId: "8f0c2a4e-1b2c-4d5e-9f00-123456789abc",
   tenantName: "London Auction Xchange",
   expiresAt: "2026-10-26T10:30:00.000Z",
@@ -53,6 +54,30 @@ describe("XeroIntegrationPanel", () => {
     );
     expect(screen.getByRole("button", { name: "Connect Xero" })).toBeTruthy();
     expect(screen.queryByText("Tenant ID")).toBeNull();
+  });
+
+  it("explains in one line when the saved connection can no longer be read, and offers Connect", () => {
+    render(
+      <StaffTooltipProvider>
+        <XeroIntegrationPanel
+          status={{
+            ...connected,
+            connected: false,
+            reason: "reconnect_required",
+            health: "disconnected",
+            tenantId: null,
+            tenantName: null,
+          }}
+          oauthStartAction={noop}
+          disconnectAction={noop}
+        />
+      </StaffTooltipProvider>,
+    );
+    expect(
+      screen.getByText("The saved Xero connection can no longer be read. Connect Xero again."),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Connect Xero" })).toBeTruthy();
+    expect(screen.getByText("Not connected")).toBeTruthy();
   });
 
   it("shows the tenant ID as a copyable fact and keeps Disconnect out of the header", () => {

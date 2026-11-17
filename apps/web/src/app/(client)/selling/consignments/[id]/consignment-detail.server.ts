@@ -301,6 +301,8 @@ export async function loadConsignmentDetail(input: {
       connectRequired,
       photos,
       withdrawOwnSubmission,
+      // GAP-53: a draft this person may delete, by the same policy as the API.
+      canDeleteDraft: actions.canDeleteDraft,
       withdrawalView,
     },
   };

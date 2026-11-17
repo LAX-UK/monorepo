@@ -65,6 +65,12 @@ export type ItemSubmissionUpdatePatch = {
   draftReminderSentAt?: Date | null;
 };
 
+/** What deleting a draft found (GAP-53). */
+export type SoftDeleteDraftOutcome = "deleted" | "not_draft" | "not_found";
+
+/** A deleted draft the purge removed, with the photo keys it held. */
+export type PurgedSubmissionDraft = { id: string; images: string[] };
+
 export interface IItemSubmissionRepository {
   findById(id: string): Promise<ItemSubmission | null>;
   /**
@@ -88,5 +94,13 @@ export interface IItemSubmissionRepository {
   countAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
   countAdminForLegalEntityIds(legalEntityIds: readonly string[]): Promise<number>;
   listStaleDraftsWithoutReminder(cutoff: Date, limit: number): Promise<ItemSubmission[]>;
+  /**
+   * Deletes the account's draft (GAP-53): sets `deleted_at`, after which every read leaves it out.
+   * `not_draft` for a submission that was sent; `not_found` for none in the account, or one
+   * already deleted.
+   */
+  softDeleteDraft(id: string, legalEntityId: string, at: Date): Promise<SoftDeleteDraftOutcome>;
+  /** Removes up to `limit` drafts deleted before `deletedBefore`, oldest first, for good. */
+  purgeDeletedDrafts(deletedBefore: Date, limit: number): Promise<PurgedSubmissionDraft[]>;
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
 }

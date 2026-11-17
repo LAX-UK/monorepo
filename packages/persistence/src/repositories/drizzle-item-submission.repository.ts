@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { itemSubmission, submissionCategories } from "@auction/db/schema";
+import { itemSubmission, privateSaleDeal, submissionCategories } from "@auction/db/schema";
 import type { CreateItemSubmissionInput, ItemSubmissionStatus } from "@auction/types";
 import {
   type InferInsertModel,
@@ -10,6 +10,7 @@ import {
   eq,
   ilike,
   inArray,
+  isNull,
   lt,
   sql,
 } from "drizzle-orm";
@@ -17,12 +18,21 @@ import type {
   IItemSubmissionRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
+  PurgedSubmissionDraft,
+  SoftDeleteDraftOutcome,
   SubmissionSenderFilter,
 } from "../interfaces/index.js";
 import { mapItemSubmissionRow } from "../lib/entity-row-mappers.js";
 import { containsPattern } from "../lib/like-pattern.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 import { submissionSenderSql } from "./submission-sender.sql.js";
+
+/**
+ * A submission its client has not deleted (GAP-53). Only drafts are ever deleted; every read of
+ * the account's submissions, and every write, leaves deleted ones out, so a deleted draft reads as
+ * gone until the purge removes it.
+ */
+const notDeleted = () => isNull(itemSubmission.deletedAt);
 
 function qualityGapsSql() {
   return sql`(
@@ -46,7 +56,7 @@ function titleSearchSql(q: string | undefined) {
 }
 
 function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
-  const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
+  const parts = [eq(itemSubmission.legalEntityId, legalEntityId), notDeleted()];
   const sender = submissionSenderSql(f.visibleTo);
   if (sender) parts.push(sender);
   if (f.ids) parts.push(inArray(itemSubmission.id, [...f.ids]));
@@ -59,7 +69,7 @@ function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limi
 }
 
 function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
-  const parts = [];
+  const parts = [notDeleted()];
   if (f.statuses && f.statuses.length > 0) {
     parts.push(inArray(itemSubmission.status, f.statuses));
   } else if (f.status) parts.push(eq(itemSubmission.status, f.status));
@@ -73,7 +83,7 @@ function adminWhere(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   if (title) parts.push(title);
   if (f.qualityGaps) parts.push(qualityGapsSql());
   if (f.assignedToUserId) parts.push(eq(itemSubmission.assignedToUserId, f.assignedToUserId));
-  return parts.length > 0 ? and(...parts) : undefined;
+  return and(...parts);
 }
 
 function adminOrderBy(sort: ListSubmissionsFilter["sort"]) {
@@ -120,7 +130,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const [row] = await this.db
       .select()
       .from(itemSubmission)
-      .where(eq(itemSubmission.id, id))
+      .where(and(eq(itemSubmission.id, id), notDeleted()))
       .limit(1);
     if (!row) return null;
     const categories = await this.categoryIdsBySubmissionIds([row.id]);
@@ -131,7 +141,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const [row] = await this.db
       .select()
       .from(itemSubmission)
-      .where(eq(itemSubmission.id, id))
+      .where(and(eq(itemSubmission.id, id), notDeleted()))
       .for("update")
       .limit(1);
     if (!row) return null;
@@ -235,7 +245,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
       const [updated] = await tx
         .update(itemSubmission)
         .set(rowPatch)
-        .where(eq(itemSubmission.id, id))
+        .where(and(eq(itemSubmission.id, id), notDeleted()))
         .returning();
       if (!updated) throw new Error("item_submission update failed");
       if (categoryIds !== undefined) {
@@ -281,7 +291,13 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const rows = await this.db
       .select({ status: itemSubmission.status, n: count() })
       .from(itemSubmission)
-      .where(and(eq(itemSubmission.legalEntityId, legalEntityId), submissionSenderSql(visibleTo)))
+      .where(
+        and(
+          eq(itemSubmission.legalEntityId, legalEntityId),
+          notDeleted(),
+          submissionSenderSql(visibleTo),
+        ),
+      )
       .groupBy(itemSubmission.status);
     const out = {
       draft: 0,
@@ -300,21 +316,18 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
   }
 
   async listForAdmin(f: ListSubmissionsFilter) {
-    const where = adminWhere(f);
-    const base = this.db
+    const rows = await this.db
       .select()
       .from(itemSubmission)
+      .where(adminWhere(f))
       .orderBy(adminOrderBy(f.sort))
       .limit(f.limit)
       .offset(f.offset);
-    const rows = where ? await base.where(where) : await base;
     return this.withCategoryIds(rows);
   }
 
   async countAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
-    const where = adminWhere(f);
-    const q = this.db.select({ n: count() }).from(itemSubmission);
-    const [row] = where ? await q.where(where) : await q;
+    const [row] = await this.db.select({ n: count() }).from(itemSubmission).where(adminWhere(f));
     return Number(row?.n ?? 0);
   }
 
@@ -323,7 +336,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const [row] = await this.db
       .select({ n: count() })
       .from(itemSubmission)
-      .where(inArray(itemSubmission.legalEntityId, [...legalEntityIds]));
+      .where(and(inArray(itemSubmission.legalEntityId, [...legalEntityIds]), notDeleted()));
     return Number(row?.n ?? 0);
   }
 
@@ -334,6 +347,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
       .where(
         and(
           eq(itemSubmission.status, "draft"),
+          notDeleted(),
           lt(itemSubmission.updatedAt, cutoff),
           sql`${itemSubmission.draftReminderSentAt} IS NULL`,
         ),
@@ -341,6 +355,66 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
       .orderBy(asc(itemSubmission.updatedAt))
       .limit(limit);
     return this.withCategoryIds(rows);
+  }
+
+  async softDeleteDraft(
+    id: string,
+    legalEntityId: string,
+    at: Date,
+  ): Promise<SoftDeleteDraftOutcome> {
+    // One statement decides it, so a draft sent or deleted at the same moment is never deleted.
+    const [deleted] = await this.db
+      .update(itemSubmission)
+      .set({ deletedAt: at, updatedAt: at })
+      .where(
+        and(
+          eq(itemSubmission.id, id),
+          eq(itemSubmission.legalEntityId, legalEntityId),
+          eq(itemSubmission.status, "draft"),
+          notDeleted(),
+        ),
+      )
+      .returning({ id: itemSubmission.id });
+    if (deleted) return "deleted";
+    const [row] = await this.db
+      .select({ id: itemSubmission.id })
+      .from(itemSubmission)
+      .where(
+        and(
+          eq(itemSubmission.id, id),
+          eq(itemSubmission.legalEntityId, legalEntityId),
+          notDeleted(),
+        ),
+      )
+      .limit(1);
+    return row ? "not_draft" : "not_found";
+  }
+
+  async purgeDeletedDrafts(deletedBefore: Date, limit: number): Promise<PurgedSubmissionDraft[]> {
+    // Oldest first, a batch at a time. A draft is never in a private sale, but one that somehow
+    // is stays (its deal restricts the delete) rather than failing the batch.
+    const due = this.db
+      .select({ id: itemSubmission.id })
+      .from(itemSubmission)
+      .where(
+        and(
+          eq(itemSubmission.status, "draft"),
+          lt(itemSubmission.deletedAt, deletedBefore),
+          sql`not exists (select 1 from ${privateSaleDeal} where ${privateSaleDeal.itemSubmissionId} = ${itemSubmission.id})`,
+        ),
+      )
+      .orderBy(asc(itemSubmission.deletedAt))
+      .limit(limit);
+    return this.db
+      .delete(itemSubmission)
+      .where(
+        and(
+          inArray(itemSubmission.id, due),
+          eq(itemSubmission.status, "draft"),
+          lt(itemSubmission.deletedAt, deletedBefore),
+        ),
+      )
+      .returning({ id: itemSubmission.id, images: itemSubmission.images });
   }
 
   async countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>> {

@@ -37,6 +37,12 @@ import type {
 } from "../interfaces/consignment-inbox.reader.js";
 import { containsPattern } from "../lib/like-pattern.js";
 
+/** A thread's submission, unless its client deleted it as a draft (GAP-53). */
+const liveSubmissionJoin = and(
+  eq(itemSubmission.id, consignmentThread.submissionId),
+  isNull(itemSubmission.deletedAt),
+);
+
 const specialistDirectory = alias(bidIdentityDirectory, "inbox_specialist_directory");
 const coveringDirectory = alias(bidIdentityDirectory, "inbox_covering_directory");
 const submitterDirectory = alias(bidIdentityDirectory, "inbox_submitter_directory");
@@ -153,12 +159,12 @@ export class DrizzleConsignmentInboxReader implements IConsignmentInboxReader {
           >`(array_agg(${legalEntity.displayName} order by ${consignmentThread.awaitingSince} asc nulls last) filter (where ${waitingOpen} and ${assigneeId} is null))[1]`,
         })
         .from(consignmentThread)
-        .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
+        .innerJoin(itemSubmission, liveSubmissionJoin)
         .leftJoin(legalEntity, eq(legalEntity.id, itemSubmission.legalEntityId)),
       this.db
         .select({ since: consignmentThread.awaitingSince })
         .from(consignmentThread)
-        .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
+        .innerJoin(itemSubmission, liveSubmissionJoin)
         .where(
           and(
             waitingOpen,
@@ -193,7 +199,7 @@ export class DrizzleConsignmentInboxReader implements IConsignmentInboxReader {
     const rows = await this.db
       .select({ userId: assigneeId, count: sql<number>`count(*)::int` })
       .from(consignmentThread)
-      .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
+      .innerJoin(itemSubmission, liveSubmissionJoin)
       .where(and(isOpen, threadHasMessages, inArray(assigneeId, [...userIds])))
       .groupBy(assigneeId);
     return new Map(rows.flatMap((row) => (row.userId ? [[row.userId, Number(row.count)]] : [])));
@@ -264,7 +270,7 @@ export class DrizzleConsignmentInboxReader implements IConsignmentInboxReader {
         )`.as("unread_from_client"),
       })
       .from(consignmentThread)
-      .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
+      .innerJoin(itemSubmission, liveSubmissionJoin)
       .leftJoin(legalEntity, eq(legalEntity.id, itemSubmission.legalEntityId))
       .leftJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
       .leftJoin(sale, eq(sale.id, lot.saleId))

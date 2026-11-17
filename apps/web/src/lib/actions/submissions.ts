@@ -275,6 +275,27 @@ export async function withdrawSubmissionFromValuesAction(
   });
 }
 
+/**
+ * Deletes a draft that was never sent (GAP-53). The API decides who may (owners, admins and the
+ * consignor who started it) and that it is still a draft; its refusal is returned in its words.
+ */
+export async function deleteSubmissionDraftAction(
+  submissionId: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("deleteSubmissionDraftAction", async () => {
+    const id = submissionId.trim();
+    if (!id) return actionFailure("Missing submission");
+    const { submissions } = getWriteContainer();
+    const r = await submissions.deleteDraft(id);
+    const mapped = mapServiceToActionVoid(r);
+    if (mapped.ok) {
+      revalidatePath("/selling/consignments");
+      revalidatePath(`/selling/consignments/${id}`);
+    }
+    return mapped;
+  });
+}
+
 export async function submitForReviewAction(formData: FormData): Promise<void> {
   return instrumentServerAction(
     "submitForReviewAction",

@@ -44,6 +44,8 @@ export type AdminXeroConnectionHealth = "healthy" | "degraded" | "disconnected";
 
 export type AdminXeroIntegrationStatus = {
   connected: boolean;
+  /** `reconnect_required`: a saved connection exists but its tokens can no longer be read. */
+  reason: "reconnect_required" | null;
   tenantId: string | null;
   tenantName: string | null;
   expiresAt: string | null;

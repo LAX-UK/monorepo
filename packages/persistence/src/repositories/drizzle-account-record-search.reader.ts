@@ -96,6 +96,8 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
       .where(
         and(
           eq(itemSubmission.legalEntityId, criteria.legalEntityId),
+          // A draft its client deleted is gone from the account (GAP-53).
+          isNull(itemSubmission.deletedAt),
           submissionSenderSql({ scope: criteria.scope, userId: criteria.userId }),
           or(
             ilike(itemSubmission.title, contains(terms)),
