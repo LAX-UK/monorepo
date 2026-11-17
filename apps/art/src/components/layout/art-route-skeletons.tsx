@@ -121,3 +121,20 @@ export function ArtAccountSkeleton() {
     </LoadingRegion>
   );
 }
+
+/** Favourites: centred title band, the Saves and Follows tabs, then the list. */
+export function ArtFavouritesSkeleton() {
+  return (
+    <LoadingRegion label="Loading favourites">
+      <div className="flex flex-col items-center gap-3 py-10">
+        <Skeleton className="h-9 w-48" />
+        <Skeleton className="h-4 w-72 max-w-full" />
+      </div>
+      <div className="mb-8 flex justify-center gap-6">
+        <Skeleton className="h-11 w-20" />
+        <Skeleton className="h-11 w-20" />
+      </div>
+      <ArtCardGridSkeleton count={4} />
+    </LoadingRegion>
+  );
+}
