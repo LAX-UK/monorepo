@@ -48,12 +48,17 @@ type Resolve = ConstructorParameters<typeof ArtworkRegisterReviewService>[0]["re
 type Overview = ConstructorParameters<typeof ArtworkRegisterReviewService>[0]["overview"];
 
 async function buildApp(
-  role: ShopStaffRole,
+  role: ShopStaffRole | ShopStaffRole[],
   resolveConflict: Resolve["resolveConflict"] = async () => ({ ok: true, conflict: resolved }),
   listAll: Overview["listAll"] = async () => ({ rows: [], total: 0 }),
+  options: {
+    countConsignors?: Overview["countConsignors"];
+    assignedParties?: string[];
+  } = {},
 ) {
+  const roles = Array.isArray(role) ? role : [role];
   vi.mocked(verifyBearerToken).mockResolvedValue({
-    subject: `${role}-subject`,
+    subject: `${roles.join("+")}-subject`,
     payload: {
       scope: "shop.admin",
       acr: OIDC_ACR_SILVER,
@@ -64,12 +69,17 @@ async function buildApp(
     env: { ...createMinimalShopApiTestDeps().env, SHOP_ADMIN_ENABLED: true },
     staffReader: {
       findActiveByIdentitySubject: async (subject: string) => ({
-        roles: [role],
+        roles,
         identitySubjectId: subject,
       }),
       brokerCanAccessClientParty: async () => false,
     },
   });
+  deps.admin.staffReader = {
+    ...deps.admin.staffReader,
+    brokerCanAccessClientParty: async (_broker, partyId) =>
+      (options.assignedParties ?? []).includes(partyId),
+  };
   deps.admin.artworkRegister = new ArtworkRegisterReviewService({
     catalogueChanges: { changesFor: async () => [] },
     queue: {
@@ -92,6 +102,7 @@ async function buildApp(
         withdrawn: 0,
         sold: 0,
       }),
+      countConsignors: options.countConsignors ?? (async () => ({ none: 2, lax: 1, clients: [] })),
     },
     register: {
       findById: async (id) => (id === REGISTER_ID ? null : null),
@@ -203,7 +214,7 @@ describe("From Zoho queue routes", () => {
       headers: auth,
     });
     expect(sorted.statusCode).toBe(200);
-    expect(listAll).toHaveBeenCalledWith({}, { limit: 25, offset: 25 }, "-zohoPrice");
+    expect(listAll).toHaveBeenCalledWith({}, { limit: 25, offset: 25 }, "-zohoPrice", undefined);
     const unknown = await app.inject({
       method: "GET",
       url: "/admin/v1/artwork-register/all?sort=title",
@@ -211,6 +222,135 @@ describe("From Zoho queue routes", () => {
     });
     expect(unknown.statusCode).toBe(400);
     await app.close();
+  });
+
+  it("filters by consignor and says who consigned each work for people who keep agreements", async () => {
+    const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+    const app = await buildApp("catalogue_editor", undefined, listAll);
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?consignor=lax",
+      headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(listAll).toHaveBeenCalledWith(
+      { consignor: "lax" },
+      { limit: 25, offset: 0 },
+      undefined,
+      { kind: "all" },
+    );
+    expect(response.json().consignors).toEqual([
+      { value: "none", label: "Not set", count: 2 },
+      { value: "lax", label: "LAX owns this work", count: 1 },
+    ]);
+    const unknown = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?consignor=someone",
+      headers: auth,
+    });
+    expect(unknown.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("leaves consignors out for Read-only and refuses them the consignor filter", async () => {
+    const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+    const app = await buildApp("read_only", undefined, listAll);
+    const plain = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all",
+      headers: auth,
+    });
+    expect(plain.statusCode).toBe(200);
+    expect(plain.json()).not.toHaveProperty("consignors");
+    const filtered = await app.inject({
+      method: "GET",
+      url: "/admin/v1/artwork-register/all?consignor=none",
+      headers: auth,
+    });
+    expect(filtered.statusCode).toBe(403);
+    expect(listAll).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  describe("for a broker who also reads the register", () => {
+    // Broker reads consignors through client.read_assigned; Read-only opens the register.
+    const BROKER_AND_READ_ONLY: ShopStaffRole[] = ["broker", "read_only"];
+    const MINE = "22222222-2222-4222-8222-222222222222";
+    const NOT_MINE = "33333333-3333-4333-8333-333333333333";
+    const SUBJECT = "broker+read_only-subject";
+
+    it("lists consignors among the clients assigned to them only", async () => {
+      const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+      const countConsignors = vi.fn<Overview["countConsignors"]>(async () => ({
+        none: 2,
+        lax: 1,
+        clients: [{ partyId: MINE, displayName: "Ivo Marren", count: 1 }],
+      }));
+      const app = await buildApp(BROKER_AND_READ_ONLY, undefined, listAll, {
+        countConsignors,
+        assignedParties: [MINE],
+      });
+      const response = await app.inject({
+        method: "GET",
+        url: "/admin/v1/artwork-register/all",
+        headers: auth,
+      });
+      expect(response.statusCode).toBe(200);
+      const scope = { kind: "assigned", brokerSubjectId: SUBJECT };
+      expect(listAll).toHaveBeenCalledWith({}, { limit: 25, offset: 0 }, undefined, scope);
+      expect(countConsignors).toHaveBeenCalledWith(scope);
+      expect(response.json().consignors).toEqual([
+        { value: "none", label: "Not set", count: 2 },
+        { value: "lax", label: "LAX owns this work", count: 1 },
+        { value: MINE, label: "Ivo Marren", count: 1 },
+      ]);
+      await app.close();
+    });
+
+    it("filters by an assigned client, LAX or none, and refuses any other client", async () => {
+      const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+      const app = await buildApp(BROKER_AND_READ_ONLY, undefined, listAll, {
+        assignedParties: [MINE],
+      });
+      const status = async (consignor: string) =>
+        (
+          await app.inject({
+            method: "GET",
+            url: `/admin/v1/artwork-register/all?consignor=${consignor}`,
+            headers: auth,
+          })
+        ).statusCode;
+      expect(await status(MINE)).toBe(200);
+      expect(await status("lax")).toBe(200);
+      expect(await status("none")).toBe(200);
+      expect(await status(NOT_MINE)).toBe(403);
+      expect(listAll).toHaveBeenCalledTimes(3);
+      expect(listAll).not.toHaveBeenCalledWith(
+        { consignor: NOT_MINE },
+        expect.anything(),
+        undefined,
+        expect.anything(),
+      );
+      await app.close();
+    });
+
+    it("leaves the client scope out for people who keep agreements", async () => {
+      const listAll = vi.fn<Overview["listAll"]>(async () => ({ rows: [], total: 0 }));
+      const app = await buildApp(["catalogue_editor", "broker"], undefined, listAll);
+      const response = await app.inject({
+        method: "GET",
+        url: `/admin/v1/artwork-register/all?consignor=${NOT_MINE}`,
+        headers: auth,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(listAll).toHaveBeenCalledWith(
+        { consignor: NOT_MINE },
+        { limit: 25, offset: 0 },
+        undefined,
+        { kind: "all" },
+      );
+      await app.close();
+    });
   });
 
   it("says there is no artwork when the id is unknown", async () => {

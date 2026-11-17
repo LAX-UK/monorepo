@@ -290,6 +290,8 @@ export {
 export {
   ADMIN_REGISTER_PAGE_SIZE,
   REGISTER_GAP_VALUES,
+  REGISTER_CONSIGNOR_LAX,
+  REGISTER_CONSIGNOR_NONE,
   REGISTER_LOCATION_NONE,
   REGISTER_ALL_SORT_VALUES,
   REGISTER_PLACE_VALUES,
@@ -1401,6 +1403,7 @@ export {
   type GuestExpressCheckoutConfirmed,
 } from "./express-checkout-public.js";
 export {
+  AdminArtworkConsignorAgreementSchema,
   AdminArtworkConsignorSchema,
   AdminArtworkConsignorSetBodySchema,
   AdminConsignorAgreementConflictSchema,
@@ -1422,6 +1425,7 @@ export {
   CONSIGNOR_AGREEMENT_FILE_TYPES,
   ConsignmentPlaceSchema,
   type AdminArtworkConsignor,
+  type AdminArtworkConsignorAgreement,
   type AdminArtworkConsignorSetBody,
   type AdminConsignor,
   type AdminConsignorAgreement,

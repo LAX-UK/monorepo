@@ -64,8 +64,10 @@ describe("staff picker lookups", () => {
     ["broker", 200],
     ["operations", 200],
     ["shop_admin", 200],
+    ["catalogue_editor", 200],
     ["finance", 403],
-    ["catalogue_editor", 403],
+    ["editor", 403],
+    ["read_only", 403],
   ] as const)("people search for %s answers %i", async (role, status) => {
     const { response } = await get(role, "/admin/v1/lookups/parties?q=ada");
     expect(response.statusCode).toBe(status);
@@ -90,6 +92,32 @@ describe("staff picker lookups", () => {
     });
     expect(searchParties).toHaveBeenCalledWith({ q: undefined, limit: 5 });
   });
+
+  it("finds clients by name alone for people who choose a consignor without reading clients", async () => {
+    const searchParties = vi.fn(async () => [
+      { partyId: PARTY_ID, displayName: "Ada Lovelace", kind: "person", email: null },
+    ]);
+    const { response } = await get(
+      "catalogue_editor",
+      "/admin/v1/lookups/parties?q=ada",
+      (deps) => {
+        deps.admin.adminRead.lookups.searchParties = searchParties;
+      },
+    );
+    expect(response.statusCode).toBe(200);
+    expect(searchParties).toHaveBeenCalledWith({ q: "ada", limit: 15, nameOnly: true });
+  });
+
+  it.each(["shop_admin", "operations"] as const)(
+    "keeps the email in the people search for %s",
+    async (role) => {
+      const searchParties = vi.fn(async () => []);
+      await get(role, "/admin/v1/lookups/parties?q=ada", (deps) => {
+        deps.admin.adminRead.lookups.searchParties = searchParties;
+      });
+      expect(searchParties).toHaveBeenCalledWith({ q: "ada", limit: 15 });
+    },
+  );
 
   it("rejects a search longer than the limit", async () => {
     const { response } = await get(

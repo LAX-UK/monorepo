@@ -15,6 +15,7 @@ import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistApplicationRoutes } from "./routes/admin/v1/admin-artist-applications.routes.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
+import { registerAdminArtworkConsignorRoutes } from "./routes/admin/v1/admin-artwork-consignor.routes.js";
 import { registerAdminArtworkRegisterRoutes } from "./routes/admin/v1/admin-artwork-register.routes.js";
 import { registerAdminCatalogueChangeRoutes } from "./routes/admin/v1/admin-catalogue-change.routes.js";
 import { registerAdminConsignorAgreementRoutes } from "./routes/admin/v1/admin-consignor-agreement.routes.js";
@@ -224,7 +225,11 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
-        void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
+        void registerAdminArtworkRegisterRoutes(
+          adminScope,
+          options.deps.admin.artworkRegister,
+          options.deps.admin,
+        );
         void registerAdminSoldAttentionRoutes(adminScope, options.deps.admin.soldAttention, {
           stepUpMaxAuthAgeSeconds: options.deps.admin.stepUpMaxAuthAgeSeconds,
         });
@@ -235,6 +240,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminZohoLinkRoutes(adminScope, options.deps.admin);
         void registerAdminStockLocationRoutes(adminScope, options.deps.admin);
         void registerAdminConsignorAgreementRoutes(adminScope, options.deps.admin);
+        void registerAdminArtworkConsignorRoutes(adminScope, options.deps.admin);
         void registerAdminReleaseAlertRoutes(adminScope, {
           summary: options.deps.admin.releaseAlertSummary,
           sends: options.deps.admin.releaseAlertSends,

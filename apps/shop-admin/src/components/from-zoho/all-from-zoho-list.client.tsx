@@ -9,6 +9,12 @@ import {
 import { useRegisterRowActions } from "@/components/from-zoho/use-register-row-actions.client";
 import { ZohoPriceValue } from "@/components/from-zoho/zoho-price-value";
 import { MoveArtworksDialog } from "@/components/stock-location/move-artworks-dialog.client";
+import {
+  CONSIGNOR_NOT_SET,
+  consignorFilterChip,
+  consignorFilterOptions,
+  consignorName,
+} from "@/server/domain/artwork-consignor.vm";
 import { LOCATION_NOT_RECORDED, locationFilterOptions } from "@/server/domain/stock-location.vm";
 import {
   type ZohoQueueQuery,
@@ -37,7 +43,26 @@ import {
 import { MapPin } from "@auction/staff-ui/icons";
 import { useMemo, useState } from "react";
 
-const HIDDEN_BY_DEFAULT = "zohoPrice";
+/** Optional columns, off until staff turn them on in Display (TBL-12). */
+const HIDDEN_BY_DEFAULT = ["zohoPrice", "consignor"];
+
+/**
+ * Who consigned the work. Only for people who can read consignor agreements: shop-api sends the
+ * consignor with each original for them alone, and leaves it out for a print and for a client
+ * the reader cannot open, which show an empty cell.
+ */
+const CONSIGNOR_COLUMN: DataColumn<AdminRegisterAllItem> = {
+  id: "consignor",
+  header: "Consignor",
+  width: "190px",
+  mobile: "hidden",
+  cell: (row) =>
+    row.consignor === undefined ? null : row.consignor ? (
+      consignorName(row.consignor)
+    ) : (
+      <span className="text-staff-muted">{CONSIGNOR_NOT_SET}</span>
+    ),
+};
 
 const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
   { id: "artwork", header: "Artwork", mobile: "title", cell: artworkCell },
@@ -78,6 +103,7 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
     truncate: false,
     cell: (row) => <ZohoPriceValue zohoPrice={row.zohoPrice} />,
   },
+  CONSIGNOR_COLUMN,
   {
     id: "edited",
     header: "Zoho last edited",
@@ -91,7 +117,8 @@ const COLUMNS: DataColumn<AdminRegisterAllItem>[] = [
 /**
  * Every artwork Zoho has sent, wherever it is now, so staff can find one after it leaves "New from
  * Zoho". Each row says where the artwork is offered and where it physically is; the filters
- * narrow by artist, by that place and by location. An artwork that is not offered anywhere can
+ * narrow by artist, by that place and by location. People who can read consignor agreements also
+ * get an optional Consignor column (hidden by default) and a Consignor filter. An artwork that is not offered anywhere can
  * still be offered from its row's "…" menu. People who can move artworks select rows and use
  * "Move selected" to move a hang or a shipment in one go.
  */
@@ -119,6 +146,13 @@ export function AllFromZohoList({
   const locationOptions = locations ? locationFilterOptions(locations) : [];
   const locationLabel = locationOptions.find((option) => option.value === query.location)?.label;
   const canMove = useStaffCan("artwork_location.move") && locations !== null;
+  // shop-api sends consignors only to people who can read consignor agreements.
+  const consignors = page.consignors;
+  const consignorOptions = consignors ? consignorFilterOptions(consignors) : [];
+  const columns = useMemo(
+    () => (consignors ? COLUMNS : COLUMNS.filter((column) => column.id !== CONSIGNOR_COLUMN.id)),
+    [consignors],
+  );
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [moving, setMoving] = useState<AdminRegisterAllItem[] | null>(null);
 
@@ -151,8 +185,17 @@ export function AllFromZohoList({
             },
           ]
         : []),
+      ...(query.consignor
+        ? [
+            {
+              id: "consignor",
+              label: consignorFilterChip(query.consignor, consignors),
+              onRemove: () => navigate(zohoQueueHref(query, { consignor: null })),
+            },
+          ]
+        : []),
     ],
-    [query, artistName, placeLabel, locationLabel, navigate],
+    [query, artistName, placeLabel, locationLabel, consignors, navigate],
   );
 
   return (
@@ -190,6 +233,18 @@ export function AllFromZohoList({
                     },
                   ]
                 : []),
+              ...(consignorOptions.length > 0
+                ? [
+                    {
+                      kind: "radio" as const,
+                      id: "consignor",
+                      label: "Consignor",
+                      anyLabel: "Any consignor",
+                      options: consignorOptions,
+                      value: query.consignor ?? "",
+                    },
+                  ]
+                : []),
               {
                 kind: "radio",
                 id: "artist",
@@ -208,6 +263,7 @@ export function AllFromZohoList({
                   artist: (values.artist as string) || null,
                   place: (values.place as ZohoQueueQuery["place"] | "") || null,
                   location: (values.location as string) || null,
+                  consignor: (values.consignor as string) || null,
                 }),
               )
             }
@@ -224,11 +280,11 @@ export function AllFromZohoList({
         }}
         noResults={{ noun: "artworks" }}
         table={{
-          columns: COLUMNS,
+          columns,
           data: page.items,
           getRowId: (row) => row.registerId,
           defaultDensity: "comfortable",
-          defaultHiddenColumns: [HIDDEN_BY_DEFAULT],
+          defaultHiddenColumns: HIDDEN_BY_DEFAULT,
           // Sorted by the server across every page; the order is in the URL so Back keeps it.
           sort: zohoAllSortState(query),
           onSortChange: (next) => navigate(zohoAllSortHref(query, next)),

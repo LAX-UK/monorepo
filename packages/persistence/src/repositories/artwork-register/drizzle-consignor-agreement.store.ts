@@ -249,13 +249,19 @@ export class DrizzleConsignorAgreementStore implements IConsignorAgreementStore 
 
       const [latest] = await this.latestLinks(tx, [input.registerId]);
       const current = latest ? toLink(latest) : null;
+      if (
+        input.expectedCurrentId !== undefined &&
+        input.expectedCurrentId !== (current?.id ?? null)
+      )
+        return { ok: false, reason: "stale", current } as const;
       const plan = planConsignorChange({
         current: current?.consignor ?? null,
         next: input.consignor,
         reason: input.reason,
       });
       if (!plan.ok) return plan;
-      if (!plan.changes && current) return { ok: true, changed: false, link: current } as const;
+      if (!plan.changes && current)
+        return { ok: true, changed: false, link: current, previous: current } as const;
 
       if (
         input.consignor.kind === "client" &&
@@ -274,7 +280,7 @@ export class DrizzleConsignorAgreementStore implements IConsignorAgreementStore 
         })
         .returning();
       if (!row) throw new Error("artwork_consignor_link insert returned no row");
-      return { ok: true, changed: true, link: toLink(row) } as const;
+      return { ok: true, changed: true, link: toLink(row), previous: current } as const;
     });
   }
 

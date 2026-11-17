@@ -16,6 +16,7 @@ describe("an audit event", () => {
       "Consignor agreement replaced with a new version",
     );
     expect(auditRecordLabel("consignor_agreement")).toBe("Consignor agreement");
+    expect(auditActionLabel("artwork_consignor.set")).toBe("Artwork consignor set");
     expect(auditActionLabel("something_new_happened")).toBe("Something new happened");
     expect(auditActionLabel("editorial.preview_token.issue")).toBe("Preview link created");
   });

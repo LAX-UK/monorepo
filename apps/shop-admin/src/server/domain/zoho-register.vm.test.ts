@@ -71,6 +71,29 @@ describe("the queue's URL state", () => {
     );
   });
 
+  it("reads the All tab's Consignor filter: a client, LAX or none, and only on that tab", () => {
+    const id = "22222222-2222-4222-8222-222222222222";
+    expect(parseZohoQueueQuery({ tab: "all", consignor: id })).toEqual({
+      tab: "all",
+      consignor: id,
+    });
+    expect(parseZohoQueueQuery({ tab: "all", consignor: "lax" })).toEqual({
+      tab: "all",
+      consignor: "lax",
+    });
+    expect(parseZohoQueueQuery({ tab: "all", consignor: "none" })).toEqual({
+      tab: "all",
+      consignor: "none",
+    });
+    expect(parseZohoQueueQuery({ tab: "all", consignor: "Ivo Marren" })).toEqual({ tab: "all" });
+    expect(parseZohoQueueQuery({ consignor: "lax" })).toEqual({});
+    expect(hasActiveZohoFilters({ tab: "all", consignor: "lax" })).toBe(true);
+    expect(zohoQueueApiQuery({ tab: "all", consignor: id })).toEqual({ consignor: id });
+    expect(zohoQueueHref({ tab: "all", consignor: id, page: "3" }, { consignor: null })).toBe(
+      "/from-zoho?tab=all",
+    );
+  });
+
   it("reads the Sync health tab and its drift list, which only that tab has", () => {
     expect(parseZohoQueueQuery({ tab: "health" })).toEqual({ tab: "health" });
     expect(parseZohoQueueQuery({ tab: "health", drift: "status_mismatch", page: "2" })).toEqual({

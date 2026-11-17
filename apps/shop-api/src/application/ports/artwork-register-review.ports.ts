@@ -68,6 +68,36 @@ export type RegisterOverviewFilter = {
   artistCode?: string;
   place?: AdminRegisterPlace;
   location?: string;
+  /**
+   * Who consigned the work: a client's party id, `lax`, or `none` for no consignor set. Matches
+   * originals only, since a print has no consignor.
+   */
+  consignor?: string;
+};
+
+/**
+ * Who consigned a record, with the client's name. `not_shown`: a print, which has no consignor,
+ * or a client outside the reader's {@link RegisterConsignorScope}.
+ */
+export type RegisterOverviewConsignor =
+  | { kind: "client"; partyId: string; displayName: string }
+  | { kind: "lax" }
+  | { kind: "not_shown" };
+
+/**
+ * Whose consignors a reader sees on the All list, as on the client pages: every client, or only
+ * the clients assigned to one broker.
+ */
+export type RegisterConsignorScope =
+  | { kind: "all" }
+  | { kind: "assigned"; brokerSubjectId: string };
+
+/** How many originals each consignor has, for the Consignor filter. */
+export type RegisterConsignorCounts = {
+  none: number;
+  lax: number;
+  /** Every client consignor in the reader's scope, by name. */
+  clients: { partyId: string; displayName: string; count: number }[];
 };
 
 /**
@@ -82,6 +112,8 @@ export type RegisterOverviewRow = {
   hasLaxArtDraft: boolean;
   /** Where the artwork physically is: its latest move; null when none is recorded. */
   location: LocationRef | null;
+  /** Who consigned the work: its latest consignor link; null when none is set on an original. */
+  consignor: RegisterOverviewConsignor | null;
 };
 
 /**
@@ -91,17 +123,24 @@ export type RegisterOverviewRow = {
 export interface ArtworkRegisterOverview {
   /**
    * Newest Zoho edit first, or in `sort`'s order; ties by id, so pages never overlap. `total`
-   * counts every match, not just this page.
+   * counts every match, not just this page. A client consignor outside `consignorScope` (every
+   * client when absent) reads as `not_shown`.
    */
   listAll(
     filter: RegisterOverviewFilter,
     page: RegisterQueuePage,
     sort?: RegisterOverviewSort,
+    consignorScope?: RegisterConsignorScope,
   ): Promise<{ rows: RegisterOverviewRow[]; total: number }>;
   /** The artists with records, for the artist filter, by name. */
   listArtists(): Promise<{ code: string; name: string; count: number }[]>;
   /** How many records are in each place, for one artist's records when `artistCode` is given. */
   countPlaces(artistCode?: string): Promise<Record<AdminRegisterPlace, number>>;
+  /**
+   * How many originals have no consignor, LAX, and each client in `consignorScope`, for the
+   * Consignor filter.
+   */
+  countConsignors(consignorScope: RegisterConsignorScope): Promise<RegisterConsignorCounts>;
 }
 
 export interface ArtworkRegisterRecords {

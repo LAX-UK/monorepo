@@ -361,6 +361,7 @@ export function createMinimalShopApiTestDeps(
             withdrawn: 0,
             sold: 0,
           }),
+          countConsignors: async () => ({ none: 0, lax: 0, clients: [] }),
         },
         register: { findById: async () => null, listEvents: async () => [] },
         resolver: { resolveConflict: async () => ({ ok: false, reason: "not_found" }) },
@@ -414,6 +415,10 @@ export function createMinimalShopApiTestDeps(
         add: unstubbed("consignorAgreements.add"),
         replace: unstubbed("consignorAgreements.replace"),
         retire: unstubbed("consignorAgreements.retire"),
+      },
+      artworkConsignors: {
+        get: unstubbed("artworkConsignors.get"),
+        set: unstubbed("artworkConsignors.set"),
       },
       guestErasure: new GuestErasureService({
         read: async () => null,

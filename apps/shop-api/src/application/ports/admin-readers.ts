@@ -315,6 +315,11 @@ export interface AdminLookupReader {
     input: AdminLookupInput & {
       /** When set, only clients assigned to this broker subject are returned. */
       brokerSubjectId?: string | undefined;
+      /**
+       * Searches and returns the name only: no email is matched or sent, for people who choose a
+       * consignor without reading clients.
+       */
+      nameOnly?: boolean | undefined;
     },
   ): Promise<AdminPartyLookupItem[]>;
   searchArtworks(input: AdminLookupInput): Promise<AdminArtworkLookupItem[]>;

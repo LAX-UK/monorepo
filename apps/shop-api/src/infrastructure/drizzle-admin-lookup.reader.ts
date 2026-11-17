@@ -48,7 +48,7 @@ export function createDrizzleAdminLookupReader(db: Database): AdminLookupReader 
             pattern
               ? or(
                   sql`${shopParty.displayName} ILIKE ${pattern}`,
-                  sql`${shopUserProfile.email} ILIKE ${pattern}`,
+                  input.nameOnly ? undefined : sql`${shopUserProfile.email} ILIKE ${pattern}`,
                 )
               : undefined,
           ),
@@ -59,7 +59,7 @@ export function createDrizzleAdminLookupReader(db: Database): AdminLookupReader 
         partyId: row.partyId,
         displayName: row.displayName,
         kind: row.kind,
-        email: row.email ?? null,
+        email: input.nameOnly ? null : (row.email ?? null),
       }));
     },
 

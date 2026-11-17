@@ -12,16 +12,21 @@ import {
   type AdminRegisterResolveBody,
   AdminRegisterResolveBodySchema,
   AdminRegisterResolveResultSchema,
+  REGISTER_CONSIGNOR_LAX,
+  REGISTER_CONSIGNOR_NONE,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import type { FastifyInstance } from "fastify";
+import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import type { ArtworkRegisterReviewService } from "../../../application/artwork-register/artwork-register-review.service.js";
+import type { RegisterConsignorScope } from "../../../application/ports/artwork-register-review.ports.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { consignorClientScope, requireClientPartyReadAccess } from "./admin-client-access.js";
 
 const READ_ERRORS = { 403: ShopApiErrorBodySchema, 404: ShopApiErrorBodySchema };
 
@@ -29,10 +34,16 @@ const READ_ERRORS = { 403: ShopApiErrorBodySchema, 404: ShopApiErrorBodySchema }
  * The From Zoho queue in LAX Admin: artworks that came in from Zoho and are not offered yet,
  * conflicts between Zoho and LAX, the latest nightly check and one artwork's record. Reading
  * needs `artwork_register.read`; deciding a conflict needs `artwork_register.review`.
+ *
+ * The All tab's Consignor column and filter follow the client pages' rule (ZI-5): people who keep
+ * consignor agreements, or read every client, see every consignor; a broker sees only the clients
+ * assigned to them, and filtering by any other client is refused with 403, as opening that
+ * client's page is. Without `consignor_agreement.read` there is no consignor data at all.
  */
 export async function registerAdminArtworkRegisterRoutes(
   app: FastifyInstance,
   review: ArtworkRegisterReviewService,
+  deps: Pick<AdminRoutesDeps, "staffReader">,
 ) {
   app.get(
     "/artwork-register/new",
@@ -59,8 +70,27 @@ export async function registerAdminArtworkRegisterRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "artwork_register.read");
-      return review.listAll(request.query as AdminRegisterQueueQuery);
+      const auth = requireShopStaffCapability(request, "artwork_register.read");
+      const query = request.query as AdminRegisterQueueQuery;
+      // Who consigned a work is for people who can read consignor agreements; so is its filter.
+      const scope = consignorClientScope(auth);
+      if (query.consignor) {
+        if (scope === "none") {
+          throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
+        }
+        const party =
+          query.consignor !== REGISTER_CONSIGNOR_LAX && query.consignor !== REGISTER_CONSIGNOR_NONE;
+        if (party && scope === "assigned") {
+          await requireClientPartyReadAccess(request, deps, query.consignor);
+        }
+      }
+      const consignorScope: RegisterConsignorScope | undefined =
+        scope === "all"
+          ? { kind: "all" }
+          : scope === "assigned"
+            ? { kind: "assigned", brokerSubjectId: auth.subject }
+            : undefined;
+      return review.listAll(query, consignorScope ? { consignorScope } : {});
     },
   );
 

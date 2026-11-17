@@ -138,13 +138,40 @@ export const AdminConsignorChangeSchema = Type.Object(
 );
 export type AdminConsignorChange = Static<typeof AdminConsignorChangeSchema>;
 
+/**
+ * A client consignor's agreement as the From Zoho record shows it: where and when it lets LAX
+ * offer their works, enough to say whether it is in force. The terms, the signed file and the note
+ * stay on the client's page.
+ */
+export const AdminArtworkConsignorAgreementSchema = Type.Object(
+  {
+    id: Type.String({ format: "uuid" }),
+    status: Type.Literal("current"),
+    places: Type.Array(ConsignmentPlaceSchema, { minItems: 1, maxItems: 3, uniqueItems: true }),
+    startsOn: Day,
+    /** Null: until retired. */
+    endsOn: NullableDay,
+    createdAt: Type.String({ format: "date-time" }),
+  },
+  { additionalProperties: false },
+);
+export type AdminArtworkConsignorAgreement = Static<typeof AdminArtworkConsignorAgreementSchema>;
+
 /** The Consignor field on a From Zoho record, with its history newest first. */
 export const AdminArtworkConsignorSchema = Type.Object(
   {
     registerId: Type.String({ format: "uuid" }),
     /** Null: no one has said who consigned the work yet. */
     current: Type.Union([AdminConsignorChangeSchema, Type.Null()]),
+    /** Newest first, `current` included; the oldest changes are left out past a limit. */
     history: Type.Array(AdminConsignorChangeSchema),
+    /** True when older changes were left out of `history`. */
+    moreHistory: Type.Boolean(),
+    /**
+     * The client consignor's agreements that are not replaced or retired, so the record can say
+     * whether one is in force today. Empty for LAX, or when no consignor is set.
+     */
+    agreements: Type.Array(AdminArtworkConsignorAgreementSchema),
   },
   { additionalProperties: false },
 );
@@ -160,7 +187,12 @@ export const AdminArtworkConsignorSetBodySchema = Type.Object(
       ),
       Type.Object({ kind: Type.Literal("lax") }, { additionalProperties: false }),
     ]),
-    reason: Type.Optional(Type.Union([Type.String({ maxLength: 2000 }), Type.Null()])),
+    reason: Type.Optional(Type.Union([Type.String({ maxLength: 500 }), Type.Null()])),
+    /**
+     * The change staff were looking at (`current.id`), or null when no consignor was set. When
+     * the consignor has changed since, the write is refused with 409 rather than overwriting it.
+     */
+    expectedCurrentId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
   },
   { additionalProperties: false },
 );
@@ -235,7 +267,10 @@ export const AdminConsignorAgreementPartyParamsSchema = Type.Object({
   partyId: Type.String({ format: "uuid" }),
 });
 
-/** 409 of a replace or retire: a stale version also says the version the agreement is at. */
+/**
+ * 409 of a replace or retire: a stale version also says the version the agreement is at. A
+ * consignor change made meanwhile is a 409 with the id of the change now current.
+ */
 export const AdminConsignorAgreementConflictSchema = Type.Object({
   code: Type.String(),
   message: Type.String(),
