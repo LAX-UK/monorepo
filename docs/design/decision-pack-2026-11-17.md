@@ -11,6 +11,8 @@ staff screens use the staff kit (`@auction/staff-ui`) and are checked against
 designed for light and dark and 375 px. A static review page with option mockups mirrors this
 file: `docs/design/decision-pack-2026-11-17.html`. Names in it are made up.
 
+**Approved 2026-11-17: all five as recommended.** ZI-5 B, LA-4 A, GAP-49 B, GAP-51 A, GAP-53 A ("Sell another like this" and "Delete draft"). Open questions take their defaults: Q1 both places, lax.art not blocking in the first release; Q2 checkbox fallback until 31 January 2027; Q3 consignor set in LAX Admin; Q4 wallets on basket and Details; Q5 collection as a zero-price rate; Q6 square tolerance 5 %; Q7 no photos copied; Q8 the second action is Delete draft.
+
 How to approve: reply "approve as recommended", or name the item and the option (for example
 "GAP-49: B"). Open questions go ahead on their stated default unless answered.
 
