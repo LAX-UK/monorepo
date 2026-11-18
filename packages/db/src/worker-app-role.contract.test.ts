@@ -179,6 +179,21 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("reads stock locations and their moves for the Zoho mirror, and never writes either", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["artwork_location", "artwork_location_move"],
+        ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"],
+      );
+      expectTablePrivileges(rows, (row) => row.privilege === "SELECT");
+      await client.query("select id, name, status from artwork_location limit 1");
+      await client.query(
+        "select register_id, location_id, moved_at from artwork_location_move limit 1",
+      );
+    });
+  });
+
   it("has no privilege on consignor agreements or the consignor of an original", async () => {
     await withWorkerClient(async (client) => {
       for (const table of ["consignor_agreement", "artwork_consignor_link"]) {
