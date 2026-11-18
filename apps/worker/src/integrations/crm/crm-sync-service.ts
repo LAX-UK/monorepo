@@ -239,7 +239,9 @@ export class CrmSyncService {
       case "deal_upsert":
         return this.dealHandler.syncDeal(intent);
       case "deal_stage":
-        return this.dealHandler.updateDealStage(intent.dealEntityId, intent.stage);
+        return this.dealHandler.updateDealStage(intent.dealEntityId, intent.stage, {
+          retryWhileDealMissing: intent.retryWhileDealMissing === true,
+        });
       case "deal_note":
         return this.dealHandler.addDealNote(intent);
       case "purchase_paid":

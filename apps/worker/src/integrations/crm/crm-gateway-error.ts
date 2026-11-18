@@ -37,6 +37,20 @@ export function crmPersonNotLinkedError(): CrmGatewayError {
   });
 }
 
+/**
+ * The deal an event moves is not in the ledger yet (its paid event is still retrying, or has not
+ * been handled). Retryable: the delivery is tried again under the usual retry and dead-letter
+ * policy, so a deal created meanwhile is moved, and one never created dead-letters.
+ */
+export function crmDealNotLinkedError(): CrmGatewayError {
+  return new CrmGatewayError({
+    code: "deal_link_missing",
+    message: "deal_link_missing",
+    status: 409,
+    retryable: true,
+  });
+}
+
 /** Zoho error codes are upper-case words such as `INVALID_DATA`; anything else is not kept. */
 const REFUSAL_CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
 /** Field API names such as `Lead_Source`; a value never matches because it is never sent here. */

@@ -103,4 +103,35 @@ describe.skipIf(!workerUrl)("CRM Shop refund and fulfilment sync (integration)",
       fields: { Stage: "Refunded" },
     });
   });
+
+  it("does not add a note twice when its ledger write failed after Zoho added it", async () => {
+    const gateway = fakeCrmGateway();
+    const sync = service(gateway);
+    const delivered = (id: number) => ({
+      id,
+      eventType: "shop.fulfilment.status_changed",
+      aggregateId: fulfilmentId,
+      schemaVersion: 1,
+      payload: { schemaVersion: 1, fulfilmentId, orderId, status: "delivered" },
+    });
+    const upsertLink = linkRepo.upsertLink.bind(linkRepo);
+    const spy = vi.spyOn(linkRepo, "upsertLink").mockImplementation(async (input) => {
+      if (input.entityType === CRM_ENTITY.note && input.zohoModule === "Notes") {
+        throw new Error("ledger_write_failed");
+      }
+      return upsertLink(input);
+    });
+
+    expect((await sync.syncEvent(delivered(4))).outcome).not.toBe("success");
+    spy.mockRestore();
+    expect(await sync.syncEvent(delivered(5))).toEqual({
+      outcome: "skipped",
+      reason: "deal_note_maybe_added",
+    });
+
+    expect(gateway.createRecord).toHaveBeenCalledTimes(1);
+    expect(
+      await linkRepo.findByEntity(CRM_ENTITY.note, `fulfilment:${fulfilmentId}:delivered`),
+    ).toMatchObject({ zohoModule: "__note_pending__", zohoRecordId: "__none__", subjectId });
+  });
 });

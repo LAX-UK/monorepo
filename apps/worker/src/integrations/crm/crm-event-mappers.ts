@@ -59,7 +59,16 @@ export type CrmMappedIntent =
        */
       purchase?: CrmPurchase;
     }
-  | { kind: "deal_stage"; dealEntityId: string; stage: string }
+  | {
+      kind: "deal_stage";
+      dealEntityId: string;
+      stage: string;
+      /**
+       * Retry, instead of skipping, while the deal is not in the ledger yet: for an event that can
+       * arrive before the one that creates the deal (a Shop refund before the paid order's deal).
+       */
+      retryWhileDealMissing?: true;
+    }
   | {
       kind: "deal_note";
       dealEntityId: string;
@@ -436,6 +445,8 @@ export function mapDomainEventToCrmIntent(
         kind: "deal_stage",
         dealEntityId: shopOrderDealEntityId(p.orderId),
         stage: dealConfig.stage,
+        // The refund can be handled before the paid order's deal exists (its paid event retrying).
+        retryWhileDealMissing: true,
       };
     }
     case "shop.fulfilment.status_changed": {

@@ -104,6 +104,38 @@ describe("CrmSyncService shop.refund.completed", () => {
     expect(gateway.updateById).not.toHaveBeenCalled();
   });
 
+  it("retries a refund that arrives before the paid order's deal exists, then moves the deal", async () => {
+    const { gateway, linkRepo, service } = setup();
+
+    const early = await service.syncEvent(refundCompleted("succeeded"));
+
+    expect(early.outcome).toBe("retry");
+    expect(early).toMatchObject({ error: { code: "deal_link_missing", retryable: true } });
+    expect(gateway.updateById).not.toHaveBeenCalled();
+
+    // The paid event is handled meanwhile and creates the deal; the retried refund now moves it.
+    await seedDeal(linkRepo, "Deals");
+    const retried = await service.syncEvent(refundCompleted("succeeded"));
+
+    expect(retried.outcome).toBe("success");
+    expect(gateway.updateById).toHaveBeenCalledWith({
+      module: "Deals",
+      recordId: "deal-9",
+      fields: { Stage: "Refunded" },
+    });
+  });
+
+  it("still skips a refund whose deal link was erased", async () => {
+    const { gateway, linkRepo, service } = setup();
+    await seedDeal(linkRepo, "Deals");
+    await linkRepo.markErased(CRM_ENTITY.deal, DEAL_ENTITY_ID);
+
+    const result = await service.syncEvent(refundCompleted("succeeded"));
+
+    expect(result).toEqual({ outcome: "skipped", reason: "deal_link_missing" });
+    expect(gateway.updateById).not.toHaveBeenCalled();
+  });
+
   it("skips a refund that failed", async () => {
     const { gateway, linkRepo, service } = setup();
     await seedDeal(linkRepo, "Deals");
@@ -137,6 +169,55 @@ describe("CrmSyncService shop.fulfilment.status_changed", () => {
         Note_Content: `Shop order fulfilment: ${title}`,
         Parent_Id: { id: "deal-9", module: { api_name: "Deals" } },
       },
+    });
+  });
+
+  it("does not add the note twice when the ledger write fails after Zoho added it", async () => {
+    const { gateway, linkRepo, service } = setup();
+    await seedDeal(linkRepo, "Deals");
+    const upsertLink = linkRepo.upsertLink.bind(linkRepo);
+    const spy = vi.spyOn(linkRepo, "upsertLink").mockImplementation(async (input) => {
+      if (input.entityType === CRM_ENTITY.note && input.zohoModule === "Notes") {
+        throw new Error("db_down");
+      }
+      return upsertLink(input);
+    });
+
+    const failed = await service.syncEvent(fulfilmentStatus("delivered"));
+    expect(failed.outcome).not.toBe("success");
+    spy.mockRestore();
+    const retried = await service.syncEvent(fulfilmentStatus("delivered", 21));
+
+    expect(gateway.createRecord).toHaveBeenCalledTimes(1);
+    expect(retried).toEqual({ outcome: "skipped", reason: "deal_note_maybe_added" });
+  });
+
+  it("sends the note again when Zoho refused it the first time", async () => {
+    const { gateway, linkRepo, service } = setup();
+    await seedDeal(linkRepo, "Deals");
+    gateway.createRecord.mockResolvedValueOnce({
+      module: "Notes",
+      recordId: "",
+      action: "insert",
+      status: "error",
+      code: "INVALID_DATA",
+    });
+
+    expect(await service.syncEvent(fulfilmentStatus("delivered"))).toMatchObject({
+      outcome: "fatal",
+      error: { code: "INVALID_DATA" },
+    });
+    const retried = await service.syncEvent(fulfilmentStatus("delivered", 21));
+
+    expect(retried.outcome).toBe("success");
+    expect(gateway.createRecord).toHaveBeenCalledTimes(2);
+    const note = await linkRepo.findByEntity(
+      CRM_ENTITY.note,
+      `fulfilment:${FULFILMENT_ID}:delivered`,
+    );
+    expect(note).toMatchObject({
+      zohoModule: "Notes",
+      zohoRecordId: expect.stringMatching(/^notes-/),
     });
   });
 

@@ -571,6 +571,7 @@ describe("mapDomainEventToCrmIntent", () => {
         kind: "deal_stage",
         dealEntityId: `shop-order:${orderId}`,
         stage: ctx.dealStagePaymentRefunded,
+        retryWhileDealMissing: true,
       });
     });
 
