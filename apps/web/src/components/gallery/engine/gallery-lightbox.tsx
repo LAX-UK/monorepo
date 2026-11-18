@@ -17,23 +17,22 @@ import "yet-another-react-lightbox/plugins/thumbnails.css";
 
 const DEFAULT_PLUGINS = [Zoom, Thumbnails, Counter, Fullscreen, Captions];
 
-const LIGHTBOX_PLACEHOLDER_WRAPPER = "flex size-full items-center justify-center p-8";
-const LIGHTBOX_PLACEHOLDER_SIZE = "h-full w-full max-h-[min(70vh,900px)] max-w-[min(90vw,900px)]";
+/**
+ * The lightbox centres its loading and error content in an absolutely positioned box with no size
+ * of its own, so a filling placeholder would collapse to nothing. This frame gives it the slide's
+ * box (the same caps the image is shown within) for the placeholder to fill.
+ */
+const LIGHTBOX_PLACEHOLDER_FRAME = "relative h-[min(70vh,900px)] w-[min(90vw,900px)]";
 
 const lightboxRender = {
   iconLoading: () => (
-    <div className={LIGHTBOX_PLACEHOLDER_WRAPPER}>
-      <GalleryMediaPlaceholder
-        variant="lightbox"
-        loading
-        fill
-        className={LIGHTBOX_PLACEHOLDER_SIZE}
-      />
+    <div className={LIGHTBOX_PLACEHOLDER_FRAME} data-testid="lightbox-placeholder-frame">
+      <GalleryMediaPlaceholder variant="lightbox" loading fill />
     </div>
   ),
   iconError: () => (
-    <div className={LIGHTBOX_PLACEHOLDER_WRAPPER}>
-      <GalleryMediaPlaceholder variant="lightbox" fill className={LIGHTBOX_PLACEHOLDER_SIZE} />
+    <div className={LIGHTBOX_PLACEHOLDER_FRAME} data-testid="lightbox-placeholder-frame">
+      <GalleryMediaPlaceholder variant="lightbox" fill />
     </div>
   ),
 };
