@@ -5,6 +5,7 @@ import {
   AdminLaxArtOfferResponseSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
+import type { ShopStaffCapability } from "@auction/shop-domain";
 import { type Static, Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -13,6 +14,7 @@ import {
   requireShopAdminSubject,
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
+import { moveAgreementForViewer } from "./move-agreement-viewer.js";
 
 const RegisterParams = Type.Object({ registerId: Type.String({ format: "uuid" }) });
 
@@ -23,6 +25,12 @@ const ERRORS = {
   409: ShopApiErrorBodySchema,
 } as const;
 
+/** What making the lax.art draft needs (`POST .../lax-art-offer`). */
+const LAX_ART_MOVE = [
+  "catalogue.write",
+  "artwork_register.review",
+] as const satisfies readonly ShopStaffCapability[];
+
 /**
  * "Offer on lax.art" for a From Zoho record. Checking needs `artwork_register.read`. Making the
  * draft needs both `catalogue.write` (it creates a lax.art artwork) and `artwork_register.review`
@@ -30,7 +38,7 @@ const ERRORS = {
  */
 export async function registerAdminOfferOnLaxArtRoutes(
   app: FastifyInstance,
-  deps: Pick<AdminRoutesDeps, "offerOnLaxArt">,
+  deps: Pick<AdminRoutesDeps, "offerOnLaxArt" | "staffReader">,
 ) {
   app.get(
     "/artwork-register/:registerId/lax-art-offer",
@@ -44,7 +52,16 @@ export async function registerAdminOfferOnLaxArtRoutes(
     async (request) => {
       requireShopStaffCapability(request, "artwork_register.read");
       const { registerId } = request.params as Static<typeof RegisterParams>;
-      return deps.offerOnLaxArt.assess(registerId);
+      const assessment = await deps.offerOnLaxArt.assess(registerId);
+      return {
+        ...assessment,
+        consignorAgreement: await moveAgreementForViewer(
+          request,
+          deps,
+          assessment.consignorAgreement,
+          LAX_ART_MOVE,
+        ),
+      };
     },
   );
 
@@ -59,8 +76,7 @@ export async function registerAdminOfferOnLaxArtRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
-      requireShopStaffCapability(request, "artwork_register.review");
+      for (const capability of LAX_ART_MOVE) requireShopStaffCapability(request, capability);
       const { registerId } = request.params as Static<typeof RegisterParams>;
       return deps.offerOnLaxArt.offer({
         registerId,

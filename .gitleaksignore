@@ -27,3 +27,4 @@ b8950190020fa80ce31b45ad1763fb47ea467977:packages/auth/src/passkey-names.ts:gene
 1437a3e2c9f99c9c6560e2006b2539947daa503d:apps/shop/src/components/checkout/express-checkout-row.client.test.tsx:generic-api-key:11
 1437a3e2c9f99c9c6560e2006b2539947daa503d:apps/shop/src/lib/shop-runtime-flags.test.ts:generic-api-key:11
 1437a3e2c9f99c9c6560e2006b2539947daa503d:apps/shop/src/lib/shop-runtime-flags.test.ts:generic-api-key:17
+455c2080b6f91641e08441b0141c52a1014d8d9e:apps/shop-api/src/routes/admin/v1/admin-artwork-consignor.routes.test.ts:generic-api-key:20

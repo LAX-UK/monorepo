@@ -11,6 +11,8 @@ import type {
 } from "@auction/shop-contracts";
 import {
   REGISTER_ALL_SORT_VALUES,
+  REGISTER_CONSIGNOR_LAX,
+  REGISTER_CONSIGNOR_NONE,
   REGISTER_GAP_VALUES,
   REGISTER_LOCATION_NONE,
   REGISTER_PLACE_VALUES,
@@ -52,6 +54,11 @@ export type ZohoQueueQuery = {
   place?: AdminRegisterPlace;
   /** All artworks: where the artwork physically is, a location id or `none` (not recorded). */
   location?: string;
+  /**
+   * All artworks, for people who can read consignor agreements: who consigned the work, a
+   * client's party id, `lax` or `none` (not set).
+   */
+  consignor?: string;
   page?: string;
   /** Link lax.art: the part of the report shown (Matched when absent). */
   view?: Exclude<ZohoLinkView, "matched">;
@@ -99,6 +106,12 @@ const LOCATION_FILTER = new RegExp(
   "i",
 );
 
+/** A client's party id, `lax` for works LAX owns, or `none` for no consignor set. */
+const CONSIGNOR_FILTER = new RegExp(
+  `^(?:${REGISTER_CONSIGNOR_LAX}|${REGISTER_CONSIGNOR_NONE}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$`,
+  "i",
+);
+
 export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const tab = oneOf(singleParam(params.tab), [
     "decisions",
@@ -120,6 +133,7 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
   const place = oneOf(singleParam(params.place), REGISTER_PLACE_VALUES);
   const location = singleParam(params.location);
+  const consignor = singleParam(params.consignor);
   const drift = oneOf(singleParam(params.drift), ZOHO_DRIFT_LISTS);
   const page = singleParam(params.page);
   return {
@@ -128,6 +142,7 @@ export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
     ...(missing ? { missing } : {}),
     ...(place ? { place } : {}),
     ...(location && LOCATION_FILTER.test(location) ? { location } : {}),
+    ...(consignor && tab === "all" && CONSIGNOR_FILTER.test(consignor) ? { consignor } : {}),
     ...(view ? { view } : {}),
     ...(q ? { q } : {}),
     ...(matched ? { matched } : {}),
@@ -148,6 +163,7 @@ export function hasActiveZohoFilters(query: ZohoQueueQuery): boolean {
     query.artist ||
       query.place ||
       query.location ||
+      query.consignor ||
       (activeZohoTab(query) === "new" && query.missing),
   );
 }
@@ -170,6 +186,7 @@ export function zohoQueueApiQuery(query: ZohoQueueQuery): Record<string, string>
     missing: query.missing,
     place: query.place,
     location: query.location,
+    consignor: query.consignor,
     // Only the All list is ordered by the server; Link lax.art orders its report itself.
     sort: query.sort === "artist" ? undefined : query.sort,
     page: query.page,

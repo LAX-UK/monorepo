@@ -5,9 +5,11 @@ import {
   AdminArtworkConsignorSchema,
   AdminArtworkConsignorSetBodySchema,
   AdminConsignorAgreementCreateBodySchema,
+  AdminConsignorAgreementFileUploadBodySchema,
   AdminConsignorAgreementListSchema,
   AdminConsignorAgreementReplaceBodySchema,
   AdminConsignorAgreementRetireBodySchema,
+  CONSIGNOR_AGREEMENT_FILE_MAX_BYTES,
 } from "./admin-consignor-agreement.js";
 
 const ID = "11111111-1111-4111-8111-111111111111";
@@ -40,12 +42,20 @@ const terms = {
 
 describe("consignor agreement contract", () => {
   it("accepts a list of agreements", () => {
-    expect(Value.Check(AdminConsignorAgreementListSchema, { items: [agreement] })).toBe(true);
+    expect(
+      Value.Check(AdminConsignorAgreementListSchema, {
+        party: { partyId: PARTY, displayName: "Ivo Marren" },
+        items: [agreement],
+      }),
+    ).toBe(true);
   });
 
   it("knows only the three places and the three statuses", () => {
     const check = (patch: object) =>
-      Value.Check(AdminConsignorAgreementListSchema, { items: [{ ...agreement, ...patch }] });
+      Value.Check(AdminConsignorAgreementListSchema, {
+        party: { partyId: PARTY, displayName: "Ivo Marren" },
+        items: [{ ...agreement, ...patch }],
+      });
     expect(check({ places: ["private_sale"] })).toBe(true);
     expect(check({ places: ["zoho"] })).toBe(false);
     expect(check({ places: [] })).toBe(false);
@@ -99,15 +109,58 @@ describe("artwork consignor contract", () => {
         registerId: ID,
         current: change,
         history: [change],
+        moreHistory: false,
+        agreements: [],
       }),
     ).toBe(true);
     const lax = { ...change, consignor: { kind: "lax" }, changeReason: "Bought outright" };
     expect(
-      Value.Check(AdminArtworkConsignorSchema, { registerId: ID, current: lax, history: [lax] }),
+      Value.Check(AdminArtworkConsignorSchema, {
+        registerId: ID,
+        current: lax,
+        history: [lax],
+        moreHistory: true,
+        agreements: [],
+      }),
     ).toBe(true);
     expect(
-      Value.Check(AdminArtworkConsignorSchema, { registerId: ID, current: null, history: [] }),
+      Value.Check(AdminArtworkConsignorSchema, {
+        registerId: ID,
+        current: null,
+        history: [],
+        moreHistory: false,
+        agreements: [],
+      }),
     ).toBe(true);
+  });
+
+  it("sends only where and when each agreement applies, never its terms, file or note", () => {
+    const agreement = {
+      id: ID,
+      status: "current",
+      places: ["lax_art"],
+      startsOn: "2026-03-03",
+      endsOn: null,
+      createdAt: "2026-03-03T10:00:00.000Z",
+    };
+    const view = (agreements: object[]) => ({
+      registerId: ID,
+      current: change,
+      history: [change],
+      moreHistory: false,
+      agreements,
+    });
+    expect(Value.Check(AdminArtworkConsignorSchema, view([agreement]))).toBe(true);
+    for (const extra of [
+      { lowestPricePence: 100_000 },
+      { commissionBasisPoints: 2500 },
+      { signedFileKey: "consignor-agreements/x.pdf" },
+      { note: "Private" },
+    ]) {
+      expect(Value.Check(AdminArtworkConsignorSchema, view([{ ...agreement, ...extra }]))).toBe(
+        false,
+      );
+    }
   });
 
   it("sets a client by party, or LAX with no party", () => {
@@ -124,11 +177,48 @@ describe("artwork consignor contract", () => {
     ).toBe(true);
     expect(
       Value.Check(AdminArtworkConsignorSetBodySchema, {
+        consignor: { kind: "lax" },
+        reason: "Bought outright",
+        expectedCurrentId: ID,
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(AdminArtworkConsignorSetBodySchema, {
+        consignor: { kind: "lax" },
+        expectedCurrentId: null,
+      }),
+    ).toBe(true);
+    expect(
+      Value.Check(AdminArtworkConsignorSetBodySchema, {
         consignor: { kind: "lax", partyId: PARTY },
       }),
     ).toBe(false);
     expect(Value.Check(AdminArtworkConsignorSetBodySchema, { consignor: { kind: "client" } })).toBe(
       false,
     );
+  });
+
+  it("keeps the reason to 500 characters, as the register does", () => {
+    const body = (reason: string) =>
+      Value.Check(AdminArtworkConsignorSetBodySchema, { consignor: { kind: "lax" }, reason });
+    expect(body("x".repeat(500))).toBe(true);
+    expect(body("x".repeat(501))).toBe(false);
+  });
+});
+
+describe("signed file uploads", () => {
+  it("takes a PDF, JPEG or PNG of up to 20 MB", () => {
+    const body = (patch: object) =>
+      Value.Check(AdminConsignorAgreementFileUploadBodySchema, {
+        contentType: "application/pdf",
+        byteSize: 1024,
+        ...patch,
+      });
+    expect(body({})).toBe(true);
+    expect(body({ contentType: "image/png" })).toBe(true);
+    expect(body({ contentType: "image/gif" })).toBe(false);
+    expect(body({ byteSize: CONSIGNOR_AGREEMENT_FILE_MAX_BYTES })).toBe(true);
+    expect(body({ byteSize: CONSIGNOR_AGREEMENT_FILE_MAX_BYTES + 1 })).toBe(false);
+    expect(body({ byteSize: 0 })).toBe(false);
   });
 });

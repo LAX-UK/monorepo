@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
+import type {
+  ArtworkRegisterEntry,
+  MoveAgreementRecord,
+} from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopArtworkImage, shopParty } from "@auction/db/schema";
 import type { AdminLaxArtListing } from "@auction/shop-contracts";
@@ -105,6 +108,7 @@ export type DraftRegister = {
     actor: string;
     artworkId: string;
     now: Date;
+    consignorAgreement?: MoveAgreementRecord;
   }): Promise<void>;
 };
 
@@ -258,6 +262,9 @@ export function createDrizzleLaxArtDraftWriter(
             actor,
             artworkId,
             now: clock(),
+            ...(command.consignorAgreement
+              ? { consignorAgreement: command.consignorAgreement }
+              : {}),
           });
           await tx.audit.append({
             actorSubjectId: command.actorSubjectId,

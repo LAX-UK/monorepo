@@ -401,3 +401,81 @@ describe("NeedsDecisionList rows", () => {
     expect(row.queryByRole("menuitem", { name: /^Offer/ })).toBeNull();
   });
 });
+
+describe("AllFromZohoList Consignor column and filter", () => {
+  const PARTY = "22222222-2222-4222-8222-222222222222";
+  const CONSIGNORS = [
+    { value: "none", label: "Not set", count: 1 },
+    { value: "lax", label: "LAX owns this work", count: 1 },
+    { value: PARTY, label: "Ivo Marren", count: 1 },
+  ];
+  const rows = [
+    item(1, "not_offered", {
+      consignor: { kind: "client", partyId: PARTY, displayName: "Ivo Marren" },
+    }),
+    item(2, "not_offered", { consignor: { kind: "lax" } }),
+    item(3, "not_offered", { consignor: null }),
+  ];
+  const withConsignors = (items: AdminRegisterAllItem[]) => ({
+    ...page(items),
+    consignors: CONSIGNORS,
+  });
+  const showConsignor = () =>
+    window.localStorage.setItem(
+      "staff.columns.from-zoho-all",
+      JSON.stringify({
+        hidden: ["zohoPrice"],
+        known: ["artwork", "where", "location", "kind", "zohoPrice", "consignor", "edited"],
+      }),
+    );
+
+  it("is hidden until it is chosen from Display", () => {
+    window.localStorage.clear();
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={withConsignors(rows)} />);
+    expect(screen.queryByRole("columnheader", { name: "Consignor" })).not.toBeInTheDocument();
+  });
+
+  it("names the client, LAX or Not set once shown", () => {
+    showConsignor();
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={withConsignors(rows)} />);
+    expect(screen.getByRole("columnheader", { name: "Consignor" })).toBeInTheDocument();
+    expect(rowOf("Work 1").getByText("Ivo Marren")).toBeInTheDocument();
+    expect(rowOf("Work 2").getByText("LAX owns this work")).toBeInTheDocument();
+    expect(rowOf("Work 3").getByText("Not set")).toBeInTheDocument();
+  });
+
+  it("leaves the cell empty for a print, or a client shop-api does not name to this reader", () => {
+    showConsignor();
+    // No `consignor` on the row: shop-api left it out.
+    inShell(
+      <AllFromZohoList
+        query={{ tab: "all" }}
+        page={withConsignors([...rows, item(4, "not_offered")])}
+      />,
+    );
+    expect(rowOf("Work 3").getByText("Not set")).toBeInTheDocument();
+    expect(rowOf("Work 4").queryByText("Not set")).not.toBeInTheDocument();
+    expect(rowOf("Work 4").queryByText("LAX owns this work")).not.toBeInTheDocument();
+  });
+
+  it("is not there at all for people shop-api sends no consignors to", () => {
+    showConsignor();
+    inShell(<AllFromZohoList query={{ tab: "all" }} page={page(rows)} />);
+    expect(screen.queryByRole("columnheader", { name: "Consignor" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Ivo Marren")).not.toBeInTheDocument();
+  });
+
+  it("shows the consignor filter as a removable chip", () => {
+    push.mockClear();
+    inShell(
+      <AllFromZohoList
+        query={{ tab: "all", consignor: PARTY }}
+        page={withConsignors([rows[0] as AdminRegisterAllItem])}
+      />,
+    );
+    const applied = within(screen.getByRole("list", { name: "Applied filters" }));
+    expect(applied.getByText("Consignor: Ivo Marren")).toBeInTheDocument();
+    fireEvent.click(applied.getByRole("button", { name: /Remove/ }));
+    expect(push).toHaveBeenCalledWith("/from-zoho?tab=all", expect.anything());
+  });
+});

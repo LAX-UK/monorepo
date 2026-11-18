@@ -1,12 +1,18 @@
 "use client";
 
+import { MoveAgreementNotice } from "@/components/consignor-agreements/move-agreement-notice";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
+import { lowestPriceWarning, moveAgreementLine } from "@/lib/move-agreement-line";
 import {
+  OFFER_AT_AUCTION_FIELD_IDS,
   type OfferAtAuctionField,
   type OfferAtAuctionForm,
+  type OfferAtAuctionRules,
   emptyOfferAtAuctionForm,
   offerAtAuctionBody,
+  offerAtAuctionErrorSummary,
   saleOptionLabel,
+  startingPricePence,
   validateOfferAtAuctionForm,
 } from "@/lib/offer-at-auction-form";
 import {
@@ -32,6 +38,7 @@ import {
   ChoiceRow,
   EnumSelect,
   Field,
+  FormErrorSummary,
   Notice,
   Skeleton,
   StaffButton,
@@ -71,6 +78,8 @@ export type OfferAtAuctionViewProps = {
   values: OfferAtAuctionForm;
   onValuesChange: (update: (current: OfferAtAuctionForm) => OfferAtAuctionForm) => void;
   errors: Partial<Record<OfferAtAuctionField, string>>;
+  /** Failed submits so far, so the error summary takes focus once per failed submit. */
+  failedSubmits: number;
   saving: boolean;
   /** Why the last attempt failed; the form keeps what was typed so staff can try again. */
   formError: string | null;
@@ -120,6 +129,7 @@ export function OfferAtAuctionDialogView({
   values,
   onValuesChange,
   errors,
+  failedSubmits,
   saving,
   formError,
   done,
@@ -127,6 +137,19 @@ export function OfferAtAuctionDialogView({
   onRetryLoad,
 }: OfferAtAuctionViewProps) {
   const ready = loaded.phase === "ready" ? loaded : null;
+  const agreement = ready?.assessment.consignorAgreement ?? null;
+  const agreementLine = agreement
+    ? moveAgreementLine(agreement, ready?.assessment.registerId ?? null)
+    : null;
+  const agreementBlocks = agreement?.outcome === "blocked";
+  const pricePence = startingPricePence(values.priceText);
+  const belowLowest =
+    agreement?.lowestPricePence != null &&
+    pricePence !== null &&
+    pricePence < agreement.lowestPricePence
+      ? agreement.lowestPricePence
+      : null;
+  const summary = offerAtAuctionErrorSummary(errors);
   const zohoPrice = compareWithZohoPrice(ready?.assessment.zohoPrice ?? null, values.priceText);
   const saleOptions =
     ready?.sales.map((sale) => ({
@@ -161,7 +184,13 @@ export function OfferAtAuctionDialogView({
         </StaffButton>
       ) : null}
       {ready && ready.sales.length > 0 ? (
-        <StaffButton type="submit" form={FORM_ID} variant="primary" loading={saving}>
+        <StaffButton
+          type="submit"
+          form={FORM_ID}
+          variant="primary"
+          loading={saving}
+          disabled={agreementBlocks}
+        >
           {formError ? "Try again" : "Offer at auction"}
         </StaffButton>
       ) : null}
@@ -232,6 +261,11 @@ export function OfferAtAuctionDialogView({
             onSubmit();
           }}
         >
+          <FormErrorSummary
+            errors={summary}
+            title={`There are ${summary.length} problems`}
+            focusKey={failedSubmits}
+          />
           {formError ? <Notice tone="danger" alert title={formError} /> : null}
           {ready.assessment.onLaxArt ? (
             <Notice tone="info" title="This takes the artwork off lax.art">
@@ -249,7 +283,7 @@ export function OfferAtAuctionDialogView({
                 : "Choosing the same sale opens that lot."}
             </Notice>
           ) : null}
-          <Field label="Sale" error={errors.saleId} id="offer-sale">
+          <Field label="Sale" error={errors.saleId} id={OFFER_AT_AUCTION_FIELD_IDS.saleId}>
             <EnumSelect
               value={values.saleId}
               onValueChange={(saleId) => onValuesChange((current) => ({ ...current, saleId }))}
@@ -266,7 +300,7 @@ export function OfferAtAuctionDialogView({
                 : "In pounds. Staff can change it in LAX Bid before the lot is published."
             }
             error={errors.price}
-            id="offer-price"
+            id={OFFER_AT_AUCTION_FIELD_IDS.price}
           >
             <TextInput
               inputMode="decimal"
@@ -287,24 +321,33 @@ export function OfferAtAuctionDialogView({
               changed.
             </Notice>
           ) : null}
-          <ChoiceFieldset legend="Consignor" id="offer-consignor" error={errors.consignorAgreed}>
-            <ChoiceRow
-              htmlFor="offer-consignor-agreed"
-              disabled={saving}
-              control={
-                <StaffCheckbox
-                  id="offer-consignor-agreed"
-                  checked={values.consignorAgreed}
-                  disabled={saving}
-                  onCheckedChange={(checked) =>
-                    onValuesChange((current) => ({ ...current, consignorAgreed: checked === true }))
-                  }
-                />
-              }
-              label="The consignor agreed to sell at auction"
-              description="Your name is recorded with this confirmation."
-            />
-          </ChoiceFieldset>
+          {agreementLine ? <MoveAgreementNotice line={agreementLine} /> : null}
+          {belowLowest !== null && !agreementBlocks ? (
+            <Notice tone="warning" title={lowestPriceWarning(belowLowest)} />
+          ) : null}
+          {agreement?.outcome === "checkbox_fallback" ? (
+            <ChoiceFieldset legend="Consignor" id="offer-consignor" error={errors.consignorAgreed}>
+              <ChoiceRow
+                htmlFor={OFFER_AT_AUCTION_FIELD_IDS.consignorAgreed}
+                disabled={saving}
+                control={
+                  <StaffCheckbox
+                    id={OFFER_AT_AUCTION_FIELD_IDS.consignorAgreed}
+                    checked={values.consignorAgreed}
+                    disabled={saving}
+                    onCheckedChange={(checked) =>
+                      onValuesChange((current) => ({
+                        ...current,
+                        consignorAgreed: checked === true,
+                      }))
+                    }
+                  />
+                }
+                label="The consignor agreed to sell at auction"
+                description="Your name is recorded with this confirmation."
+              />
+            </ChoiceFieldset>
+          ) : null}
         </form>
       ) : null}
     </StaffDialog>
@@ -314,8 +357,10 @@ export function OfferAtAuctionDialogView({
 /**
  * "Offer at auction": makes a draft lot in a LAX Bid sale that has not started, from an original's
  * lax.art page or from its From Zoho record. It checks the original may move (and says why not),
- * lets staff choose the sale and starting price, and needs the consignor's agreement ticked, which
- * is recorded against the person who confirmed it. Staff finish and publish the lot in LAX Bid.
+ * lets staff choose the sale and starting price, and reads the consignor's agreement: covered, the
+ * move goes ahead; not covered, it waits for an agreement. While a work with no consignor set falls
+ * back to the old checkbox, the consignor's agreement is ticked and recorded against the person
+ * who confirmed it. Staff finish and publish the lot in LAX Bid.
  * If the artwork changed while the dialog was open, the refusal is checked again and the dialog
  * shows the new reason.
  */
@@ -336,6 +381,7 @@ export function OfferAtAuctionDialog({
   const [loaded, setLoaded] = useState<OfferAtAuctionLoaded>({ phase: "loading" });
   const [values, setValues] = useState<OfferAtAuctionForm>(emptyOfferAtAuctionForm);
   const [attempted, setAttempted] = useState(false);
+  const [failedSubmits, setFailedSubmits] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
@@ -387,6 +433,7 @@ export function OfferAtAuctionDialog({
     if (next) {
       setValues(emptyOfferAtAuctionForm());
       setAttempted(false);
+      setFailedSubmits(0);
       setFormError(null);
       setDone(null);
       setIdempotencyKey(crypto.randomUUID());
@@ -394,18 +441,33 @@ export function OfferAtAuctionDialog({
     onOpenChange(next);
   }
 
-  /** The artwork may have moved while the dialog was open: if so, show why instead of the form. */
+  const rules: OfferAtAuctionRules = {
+    needsCheckbox:
+      loaded.phase === "ready" &&
+      loaded.assessment.consignorAgreement?.outcome === "checkbox_fallback",
+  };
+
+  /**
+   * The artwork may have moved, or its agreement changed, while the dialog was open: show why
+   * instead of the form, or the agreement as it is now.
+   */
   async function showNewReasonIfBlocked(): Promise<void> {
     const assessment = await getAuctionOfferAssessment(target).catch(() => null);
-    if (assessment?.ok && !assessment.data.eligible) {
+    if (!assessment?.ok) return;
+    if (!assessment.data.eligible) {
       setLoaded({ phase: "blocked", assessment: assessment.data });
+      return;
     }
+    setLoaded((current) =>
+      current.phase === "ready" ? { ...current, assessment: assessment.data } : current,
+    );
   }
 
   async function submit() {
-    const body = offerAtAuctionBody(values);
+    const body = offerAtAuctionBody(values, rules);
     if (!body) {
       setAttempted(true);
+      setFailedSubmits((n) => n + 1);
       return;
     }
     setSaving(true);
@@ -439,7 +501,8 @@ export function OfferAtAuctionDialog({
       loaded={loaded}
       values={values}
       onValuesChange={(update) => setValues(update)}
-      errors={attempted ? validateOfferAtAuctionForm(values) : {}}
+      errors={attempted ? validateOfferAtAuctionForm(values, rules) : {}}
+      failedSubmits={failedSubmits}
       saving={saving}
       formError={formError}
       done={done}

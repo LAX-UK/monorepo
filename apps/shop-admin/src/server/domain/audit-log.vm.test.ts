@@ -12,6 +12,11 @@ describe("an audit event", () => {
     expect(auditActionLabel("mark_payout_paid")).toBe("Payout marked paid");
     expect(auditActionLabel("editorial.story.publish")).toBe("Story published");
     expect(auditActionLabel("help.category.reorder")).toBe("Help category reordered");
+    expect(auditActionLabel("consignor_agreement.replace")).toBe(
+      "Consignor agreement replaced with a new version",
+    );
+    expect(auditRecordLabel("consignor_agreement")).toBe("Consignor agreement");
+    expect(auditActionLabel("artwork_consignor.set")).toBe("Artwork consignor set");
     expect(auditActionLabel("something_new_happened")).toBe("Something new happened");
     expect(auditActionLabel("editorial.preview_token.issue")).toBe("Preview link created");
   });

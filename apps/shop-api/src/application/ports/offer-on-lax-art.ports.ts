@@ -1,4 +1,8 @@
-import type { ArtworkRegisterEntry, LockMessage } from "@auction/artwork-register-contracts";
+import type {
+  ArtworkRegisterEntry,
+  LockMessage,
+  MoveAgreementRecord,
+} from "@auction/artwork-register-contracts";
 import type { AdminLaxArtListing } from "@auction/shop-contracts";
 
 /**
@@ -27,6 +31,8 @@ export type CreateLaxArtDraftCommand = {
   slug: string;
   actorSubjectId: string;
   idempotencyKey: string;
+  /** The consignor agreement the offer read, kept with the draft's history entry. */
+  consignorAgreement?: MoveAgreementRecord;
 };
 
 export type CreatedLaxArtDraft = {

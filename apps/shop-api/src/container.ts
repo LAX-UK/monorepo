@@ -8,6 +8,7 @@ import { SharpCoverImageAnalyser } from "@auction/image-processing";
 import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
+  DrizzleConsignorAgreementStore,
   DrizzleLotNumberReader,
   DrizzleSoldAttentionStore,
   DrizzleStockLocationStore,
@@ -24,16 +25,19 @@ import {
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { MoveAgreementService } from "./application/admin/move-agreement.service.js";
 import { OriginalMoveService } from "./application/admin/original-move.service.js";
 import { ReopenArtListingService } from "./application/admin/reopen-art-listing.service.js";
 import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
+import { createArtworkConsignorService } from "./application/artwork-register/artwork-consignor.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import {
   ArtworkZohoLinkService,
   withZohoLinks,
 } from "./application/artwork-register/artwork-zoho-link.service.js";
 import { CatalogueChangeService } from "./application/artwork-register/catalogue-change.service.js";
+import { createConsignorAgreementService } from "./application/artwork-register/consignor-agreement.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { SoldAttentionReviewService } from "./application/artwork-register/sold-attention-review.service.js";
 import { createStockLocationService } from "./application/artwork-register/stock-location.service.js";
@@ -106,6 +110,7 @@ import type {
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
+import { createConsignorAgreementFiles } from "./infrastructure/consignor-agreement-files.js";
 import { createDrizzleDeliveryQuoteStaffReader } from "./infrastructure/delivery-quote-staff/drizzle-delivery-quote-staff.store.js";
 import {
   createDrizzleDeliveryQuoteOrderReleaser,
@@ -120,10 +125,19 @@ import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle
 import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
 import { createDrizzleArtworkCatalogueRepository } from "./infrastructure/drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkCatalogueWriter } from "./infrastructure/drizzle-artwork-catalogue.writer.js";
+import {
+  createDrizzleArtworkConsignorReads,
+  createDrizzleArtworkConsignorWritesFor,
+} from "./infrastructure/drizzle-artwork-consignor.js";
 import { createDrizzleArtworkImportRepository } from "./infrastructure/drizzle-artwork-import.repository.js";
 import { createDrizzleArtworkInterestRepository } from "./infrastructure/drizzle-artwork-interest.repository.js";
 import { createDrizzleLaxArtCatalogueCopyStore } from "./infrastructure/drizzle-catalogue-copy.js";
 import { createDrizzleCategoryCatalogueRepository } from "./infrastructure/drizzle-category-catalogue.repository.js";
+import {
+  createDrizzleConsignorAgreementReads,
+  createDrizzleConsignorAgreementWritesFor,
+  createDrizzleMoveAgreementReads,
+} from "./infrastructure/drizzle-consignor-agreement.js";
 import { createDrizzleDeletionEligibilityRepository } from "./infrastructure/drizzle-deletion-eligibility.repository.js";
 import { createDrizzleEditionAlertStore } from "./infrastructure/drizzle-edition-alert.store.js";
 import { createDrizzleEditorialLinksRepository } from "./infrastructure/drizzle-editorial-links.repository.js";
@@ -433,6 +447,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const auctionOffers = createHttpAuctionOfferGateway(env);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const stockLocationStoreOn = (session: Database) => new DrizzleStockLocationStore(session);
+  const consignorAgreementStoreOn = (session: Database) =>
+    new DrizzleConsignorAgreementStore(session);
   const catalogueChange = new CatalogueChangeService({
     register: artworkRegisterRepository,
     laxArt: createDrizzleLaxArtCatalogueCopyStore(db, shopUow, {
@@ -564,11 +580,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const zohoSyncHealth = new DrizzleZohoSyncHealthStore(db);
   const originalMoveReader = createDrizzleOriginalMoveReader(db);
   const artworkRegister = new DrizzleArtworkRegisterRepository(db);
+  const moveAgreements = new MoveAgreementService({
+    reads: createDrizzleMoveAgreementReads(db, consignorAgreementStoreOn),
+  });
   const inventoryMoves = new OriginalMoveService({
     originals: originalMoveReader,
     register: artworkRegister,
     history: artworkRegister,
     auction: auctionOffers,
+    agreements: moveAgreements,
     withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
       await artworkCatalogue.setVisibility({
         artworkId,
@@ -819,6 +839,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
             registerFor: (session) => artworkRegisterRepository.withExecutor(session),
             listings: laxArtListings,
           }),
+          agreements: moveAgreements,
         }),
         zohoLink: new ZohoLinkService({
           listings: createDrizzleZohoLinkListingReader(db),
@@ -838,6 +859,18 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           uow: shopUow,
           reads: createDrizzleStockLocationReads(db, stockLocationStoreOn),
           writesFor: createDrizzleStockLocationWritesFor(stockLocationStoreOn),
+          staffNames: createDrizzleStaffNameReader(db),
+        }),
+        consignorAgreements: createConsignorAgreementService({
+          uow: shopUow,
+          reads: createDrizzleConsignorAgreementReads(db, consignorAgreementStoreOn),
+          writesFor: createDrizzleConsignorAgreementWritesFor(consignorAgreementStoreOn),
+          files: shopMediaStorage ? createConsignorAgreementFiles(shopMediaStorage.storage) : null,
+        }),
+        artworkConsignors: createArtworkConsignorService({
+          uow: shopUow,
+          reads: createDrizzleArtworkConsignorReads(db, consignorAgreementStoreOn),
+          writesFor: createDrizzleArtworkConsignorWritesFor(consignorAgreementStoreOn),
           staffNames: createDrizzleStaffNameReader(db),
         }),
         releaseAlertSummary: shopAlerts.summary,

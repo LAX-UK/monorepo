@@ -25,6 +25,8 @@ import {
   type AdminRegisterQueueQuery,
   type AdminRegisterResolveBody,
   type AdminRegisterResolveResult,
+  REGISTER_CONSIGNOR_LAX,
+  REGISTER_CONSIGNOR_NONE,
   REGISTER_PLACE_VALUES,
 } from "@auction/shop-contracts";
 import type {
@@ -34,6 +36,9 @@ import type {
   ConflictResolver,
   ListingRunReader,
   RegisterConflictRecord,
+  RegisterConsignorCounts,
+  RegisterConsignorScope,
+  RegisterOverviewConsignor,
   RegisterOverviewFilter,
   RegisterOverviewRow,
   RegisterQueueFilter,
@@ -110,7 +115,30 @@ function overviewFilterOf(query: AdminRegisterQueueQuery): RegisterOverviewFilte
     ...(query.artist ? { artistCode: query.artist } : {}),
     ...(query.place ? { place: query.place } : {}),
     ...(query.location ? { location: query.location } : {}),
+    ...(query.consignor ? { consignor: query.consignor } : {}),
   };
+}
+
+/** A row's consignor; left out for a print, or a client the reader does not see. */
+function consignorField(
+  consignor: RegisterOverviewConsignor | null,
+): Pick<AdminRegisterAllItem, "consignor"> {
+  return consignor?.kind === "not_shown" ? {} : { consignor };
+}
+
+/** The Consignor filter's choices: no consignor set, LAX, then every client by name. */
+function consignorChoices(
+  counts: RegisterConsignorCounts,
+): NonNullable<AdminRegisterAllList["consignors"]> {
+  return [
+    { value: REGISTER_CONSIGNOR_NONE, label: "Not set", count: counts.none },
+    { value: REGISTER_CONSIGNOR_LAX, label: "LAX owns this work", count: counts.lax },
+    ...counts.clients.map((client) => ({
+      value: client.partyId,
+      label: client.displayName,
+      count: client.count,
+    })),
+  ];
 }
 
 /**
@@ -186,13 +214,23 @@ export class ArtworkRegisterReviewService {
     };
   }
 
-  async listAll(query: AdminRegisterQueueQuery): Promise<AdminRegisterAllList> {
+  /**
+   * The All tab. With `consignorScope` (the reader can read consignor agreements) each original
+   * says who consigned it, and the Consignor filter's choices come with the page, for the clients
+   * in that scope only; without it neither is sent, and the route refuses a consignor filter.
+   */
+  async listAll(
+    query: AdminRegisterQueueQuery,
+    options: { consignorScope?: RegisterConsignorScope } = {},
+  ): Promise<AdminRegisterAllList> {
     const { page, limit, offset } = pageOf(query);
-    const [all, artists, placeCounts, counts] = await Promise.all([
-      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort),
+    const scope = options.consignorScope;
+    const [all, artists, placeCounts, counts, consignorCounts] = await Promise.all([
+      this.deps.overview.listAll(overviewFilterOf(query), { limit, offset }, query.sort, scope),
       this.deps.overview.listArtists(),
       this.deps.overview.countPlaces(query.artist),
       this.counts(),
+      scope ? this.deps.overview.countConsignors(scope) : Promise.resolve(null),
     ]);
     return {
       items: all.rows.map((row) => ({
@@ -200,7 +238,9 @@ export class ArtworkRegisterReviewService {
         whereItIs: placeOf(row),
         location: row.location ? presentLocationRef(row.location) : null,
         zohoPrice: row.entry.zohoPrice ?? null,
+        ...(scope ? consignorField(row.consignor) : {}),
       })),
+      ...(consignorCounts ? { consignors: consignorChoices(consignorCounts) } : {}),
       artists,
       places: REGISTER_PLACE_VALUES.map((value) => ({
         value,

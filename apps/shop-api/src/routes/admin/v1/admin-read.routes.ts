@@ -73,12 +73,16 @@ import { requireClientPartyReadAccess } from "./admin-client-access.js";
 
 const DEFAULT_LOOKUP_LIMIT = 15;
 
-/** Who may search for people: anyone who picks a client, buyer or seller in a form. */
+/**
+ * Who may search for people: anyone who picks a client, buyer or seller in a form, and people
+ * who keep consignor agreements, who pick the client that consigned an artwork.
+ */
 const PARTY_LOOKUP_CAPABILITIES = [
   "sale_authority.write",
   "original_sale.write",
   "third_party_sale.write",
   "stock_hold.write",
+  "consignor_agreement.manage",
 ] as const;
 
 /** Who may search for artworks: sale authority and original sales, and the catalogue itself. */
@@ -383,11 +387,18 @@ export async function registerAdminReadRoutes(
       const query = request.query as AdminLookupQuery;
       // A broker finds only the clients assigned to them, as on the Clients page.
       const scope = clientListScope(auth.capabilities);
+      // Someone here only to choose a consignor, who cannot read clients, finds them by name alone.
+      const nameOnly =
+        scope === "none" &&
+        !PARTY_LOOKUP_CAPABILITIES.some(
+          (capability) => capability !== "consignor_agreement.manage" && staffCan(auth, capability),
+        );
       return {
         items: await deps.adminRead.lookups.searchParties({
           q: query.q,
           limit: lookupLimit(query),
           ...(scope === "assigned" ? { brokerSubjectId: auth.subject } : {}),
+          ...(nameOnly ? { nameOnly: true } : {}),
         }),
       };
     },
