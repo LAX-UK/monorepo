@@ -59,6 +59,7 @@ import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-foll
 import { WEB_PUBLIC_CACHE_PROJECTOR, processWebPublicCache } from "./web-public-cache.js";
 import { createXeroProjector } from "./xero-projector.js";
 import { createZohoArtworkListingProjector } from "./zoho-artwork-listing-projector.js";
+import { createZohoArtworkLocationProjector } from "./zoho-artwork-location-projector.js";
 import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
 import {
   ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
@@ -317,6 +318,7 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
     },
     createZohoArtworkWritebackProjector(),
     createZohoArtworkListingProjector(),
+    createZohoArtworkLocationProjector(),
     createZohoFulfilmentProjector(),
     {
       name: ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,

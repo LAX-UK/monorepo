@@ -54,7 +54,7 @@ describe("Zoho artwork endpoints", () => {
     });
     expect(nameFilterFor("delivery", set("integrations.zoho"))).toEqual({
       mode: "in",
-      names: ["zoho", "zoho_artwork_writeback", "zoho_artwork_listing"],
+      names: ["zoho", "zoho_artwork_writeback", "zoho_artwork_listing", "zoho_artwork_location"],
     });
     expect(nameFilterFor("webhook", set("integrations.zoho"))).toEqual({
       mode: "in",

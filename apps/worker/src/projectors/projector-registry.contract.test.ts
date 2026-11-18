@@ -21,6 +21,7 @@ import { UNSOLD_FOLLOW_UP_PROJECTOR } from "./unsold-follow-up.js";
 import { WEB_PUBLIC_CACHE_PROJECTOR } from "./web-public-cache.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
 import { ZOHO_ARTWORK_LISTING_PROJECTOR } from "./zoho-artwork-listing-projector.js";
+import { ZOHO_ARTWORK_LOCATION_PROJECTOR } from "./zoho-artwork-location-projector.js";
 import { ZOHO_ARTWORK_WRITEBACK_PROJECTOR } from "./zoho-artwork-writeback-projector.js";
 import { ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR } from "./zoho-campaigns-opt-out-lift.js";
 import { ZOHO_FULFILMENT_PROJECTOR } from "./zoho-fulfilment-projector.js";
@@ -53,6 +54,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   ARTWORK_OFFER_LOCK_PROJECTOR,
   ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
   ZOHO_ARTWORK_LISTING_PROJECTOR,
+  ZOHO_ARTWORK_LOCATION_PROJECTOR,
   ZOHO_FULFILMENT_PROJECTOR,
   ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
   COLLECTION_BOOKING_NOTIFY_PROJECTOR,
@@ -175,6 +177,20 @@ describe("createDefaultProjectorRegistry", () => {
       }),
     );
     expect(on).toContain(ZOHO_ARTWORK_LISTING_PROJECTOR);
+  });
+
+  it("runs the stock location on Zoho only while its mode is not off", () => {
+    expect(registry.listEnabledProjectorNames(baseCtx())).not.toContain(
+      ZOHO_ARTWORK_LOCATION_PROJECTOR,
+    );
+    const on = registry.listEnabledProjectorNames(
+      baseCtx({
+        zohoArtworkLocation: {
+          deliver: async () => ({ outcome: "skipped", reason: "x" }),
+        } as never,
+      }),
+    );
+    expect(on).toContain(ZOHO_ARTWORK_LOCATION_PROJECTOR);
   });
 
   it("runs the fulfilment mirror only while its mode is not off", () => {

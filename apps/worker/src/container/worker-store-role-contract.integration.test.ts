@@ -53,6 +53,7 @@ import {
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
   DrizzleZohoListingSourceReader,
+  DrizzleZohoLocationSourceReader,
   DrizzleZohoSyncHealthStore,
 } from "@auction/persistence/repositories";
 import ts from "typescript";
@@ -123,6 +124,7 @@ const STORES: Record<string, Store> = {
   DrizzleZohoListingSourceReader,
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
+  DrizzleZohoLocationSourceReader,
   DrizzleZohoSyncHealthStore,
   DrizzleZohoCampaignsSuppressionRepository,
   DrizzleArtworkRegisterRepository,

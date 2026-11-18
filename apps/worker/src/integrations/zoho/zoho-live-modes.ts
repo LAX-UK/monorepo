@@ -5,13 +5,14 @@ export type ZohoModes = {
   ZOHO_ARTWORK_SYNC_MODE: "off" | "dry_run" | "live";
   ZOHO_ARTWORK_WRITEBACK_MODE: "off" | "dry_run" | "live";
   ZOHO_ARTWORK_LISTING_MODE: "off" | "dry_run" | "live";
+  ZOHO_ARTWORK_LOCATION_MODE: "off" | "dry_run" | "live";
   ZOHO_FULFILMENT_MIRROR_MODE: "off" | "dry_run" | "live";
   ZOHO_QC_READY_MODE: "off" | "dry_run" | "live";
 };
 
 /**
  * Anything that writes to Zoho CRM: the CRM sync in canary/live, or the artwork writeback, the
- * LAX listing or the fulfilment mirror in live.
+ * LAX listing, the stock location or the fulfilment mirror in live.
  */
 export function writesToZohoCrm(env: ZohoModes): boolean {
   return (
@@ -19,6 +20,7 @@ export function writesToZohoCrm(env: ZohoModes): boolean {
     env.ZOHO_CRM_SYNC_MODE === "canary" ||
     env.ZOHO_ARTWORK_WRITEBACK_MODE === "live" ||
     env.ZOHO_ARTWORK_LISTING_MODE === "live" ||
+    env.ZOHO_ARTWORK_LOCATION_MODE === "live" ||
     env.ZOHO_FULFILMENT_MIRROR_MODE === "live"
   );
 }

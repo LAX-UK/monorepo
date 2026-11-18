@@ -714,6 +714,11 @@ export const SHOP_ARTWORK_REGISTER_OFFER_TABLES = ["artwork_register"] as const;
  */
 export const SHOP_ARTWORK_LOCATION_TABLES = ["artwork_location"] as const;
 export const SHOP_ARTWORK_LOCATION_MOVE_TABLES = ["artwork_location_move"] as const;
+/** The worker reads both for the Zoho LAX_Location mirror, and never writes either. */
+export const WORKER_ARTWORK_LOCATION_READ_TABLES = [
+  "artwork_location",
+  "artwork_location_move",
+] as const;
 /**
  * Consignor agreements (0407, ZI-5): LAX Admin adds agreements and their new versions, and marks a
  * current version replaced or retired. It may change only those columns (a trigger also refuses
@@ -813,6 +818,11 @@ export const WORKER_READ_TABLES = [
   "delivery_quote",
   "dispute_case",
   "dispute_case_candidate",
+  /**
+   * The Zoho LAX_Location mirror reads each original's current stock location (0404). Read only:
+   * LAX Admin (shop_app) keeps the list and records the moves.
+   */
+  ...WORKER_ARTWORK_LOCATION_READ_TABLES,
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

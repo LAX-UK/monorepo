@@ -1482,11 +1482,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "none",
     piiClassification: "operational",
   },
-  /** No consumer yet: the Zoho LAX_Location mirror subscribes in a later change. */
+  /** Mirrored to Zoho Products `LAX_Location` (docs/design/stock-location.md section 5). */
   "artwork_register.location_changed": {
     schema: artworkRegisterLocationChangedPayloadSchemaV1,
     producers: ["packages/db"],
-    consumers: [],
+    consumers: ["zoho_artwork_location"],
     idempotencyPolicy: "none",
     piiClassification: "operational",
   },
