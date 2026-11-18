@@ -1,7 +1,10 @@
 import type {
   BudgetDecision,
   CallBudget,
+  Clock,
   LogLevel,
+  RateWindow,
+  RefreshLock,
   StoredZohoTokens,
   ZohoLogger,
   ZohoMetrics,
@@ -121,5 +124,56 @@ export class FixedBudget implements CallBudget {
     if (this.used >= this.limit) return { allowed: false, used: this.used, limit: this.limit };
     this.used += 1;
     return { allowed: true, used: this.used, limit: this.limit };
+  }
+}
+
+/**
+ * A rate window several clients in one test share, standing in for the shared store of several
+ * processes. `fail` makes it reject, as a store that is down does.
+ */
+export class SharedRateWindow implements RateWindow {
+  private readonly sent = new Map<string, number[]>();
+  fail = false;
+
+  constructor(private readonly clock: Clock) {}
+
+  async take(organizationId: string, limit: number, windowMs: number): Promise<number> {
+    if (this.fail) throw new Error("rate window down");
+    const now = this.clock.now();
+    const sent = (this.sent.get(organizationId) ?? []).filter((at) => now - at < windowMs);
+    this.sent.set(organizationId, sent);
+    if (sent.length < limit) {
+      sent.push(now);
+      return 0;
+    }
+    return (sent[0] as number) + windowMs - now;
+  }
+}
+
+/** A refresh lock several clients in one test share. `fail` makes it refuse, as a store that is down does. */
+export class SharedRefreshLock implements RefreshLock {
+  private readonly tails = new Map<string, Promise<void>>();
+  fail = false;
+  /** How many times the lock was taken. */
+  taken = 0;
+
+  async withLock<T>(organizationId: string, work: () => Promise<T>): Promise<T> {
+    if (this.fail) throw new Error("lock down");
+    const previous = this.tails.get(organizationId) ?? Promise.resolve();
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.tails.set(
+      organizationId,
+      previous.then(() => held),
+    );
+    await previous;
+    this.taken += 1;
+    try {
+      return await work();
+    } finally {
+      release();
+    }
   }
 }
