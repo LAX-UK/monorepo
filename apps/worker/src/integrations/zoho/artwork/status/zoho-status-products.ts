@@ -13,6 +13,8 @@ export type ZohoStatusState = {
   status: string | null;
   /** When the Product last changed in Zoho; null when Zoho did not say. */
   modifiedAt: Date | null;
+  /** The Zoho user id that last changed the Product; null or absent when Zoho did not say. */
+  modifiedBy?: string | null;
 };
 
 /** Reads and sets the Zoho Products Status. The sync depends on this, not on Zoho. */
@@ -40,6 +42,12 @@ function text(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+/** A Zoho user field reads as `{ id, name }`; only the id is kept. */
+function userId(value: unknown): string | null {
+  if (value && typeof value === "object" && "id" in value) return text(value.id);
+  return text(value);
+}
+
 function time(value: unknown): Date | null {
   const raw = text(value);
   if (!raw) return null;
@@ -62,7 +70,11 @@ export class CrmZohoStatusProducts implements ZohoStatusProducts {
       for (const row of page.rows) {
         const id = text(row.id);
         if (!id) continue;
-        states.set(id, { status: text(row.Status), modifiedAt: time(row.Modified_Time) });
+        states.set(id, {
+          status: text(row.Status),
+          modifiedAt: time(row.Modified_Time),
+          modifiedBy: userId(row.Modified_By),
+        });
       }
     }
     return states;

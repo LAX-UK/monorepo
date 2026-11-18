@@ -181,6 +181,12 @@ export type RecordCatalogueStatusConflictInput = {
   laxStatus: string;
   /** When the Zoho Product was last modified, as read with the Status. */
   zohoModifiedAt: Date;
+  /**
+   * `zoho_automation` when the Status was set as Zoho's integration user (a workflow or blueprint
+   * reacting to LAX's write), not by staff. Kept on the history event so it reads as such;
+   * absent for a change by anyone else.
+   */
+  cause?: "zoho_automation";
   now: Date;
 };
 

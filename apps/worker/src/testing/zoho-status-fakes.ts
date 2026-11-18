@@ -72,6 +72,7 @@ export function fakeWorld(initial: Partial<FakeWorld> & { zohoStatus?: string | 
     written: initial.written ?? null,
     conflict: initial.conflict ?? null,
   };
+  let writes = 0;
   const products: ZohoStatusProducts & {
     read: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
@@ -79,8 +80,12 @@ export function fakeWorld(initial: Partial<FakeWorld> & { zohoStatus?: string | 
     read: vi.fn(async (ids: readonly string[]) =>
       world.zoho && ids.includes(PRODUCT_ID) ? new Map([[PRODUCT_ID, world.zoho]]) : new Map(),
     ),
+    // As Zoho does, an update moves Modified_Time (a second per write here).
     write: vi.fn(async (_id: string, status: string) => {
-      if (world.zoho) world.zoho = { ...world.zoho, status };
+      writes += 1;
+      if (world.zoho) {
+        world.zoho = { ...world.zoho, status, modifiedAt: new Date(NOW.getTime() + writes * 1000) };
+      }
     }),
   };
   const register = {
@@ -122,6 +127,8 @@ export function fakeWorld(initial: Partial<FakeWorld> & { zohoStatus?: string | 
     withLock: vi.fn(async (_ids: readonly string[], fn: () => Promise<never>) => fn()),
   };
   const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+  /** The Zoho user LAX's token acts as; not known unless a test says. */
+  const integrationUserId = vi.fn(async (): Promise<string | null> => null);
   const sync = (mode: ZohoStatusSyncMode = "live", now: () => Date = () => NOW) =>
     new ZohoStatusSync({
       mode,
@@ -130,7 +137,8 @@ export function fakeWorld(initial: Partial<FakeWorld> & { zohoStatus?: string | 
       products,
       lock: lock as never,
       log: log as never,
+      integrationUserId,
       now,
     });
-  return { world, products, register, sources, lock, log, sync };
+  return { world, products, register, sources, lock, log, integrationUserId, sync };
 }

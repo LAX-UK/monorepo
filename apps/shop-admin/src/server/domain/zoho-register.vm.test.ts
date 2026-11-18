@@ -401,6 +401,26 @@ describe("buildRegisterTimeline", () => {
     });
   });
 
+  it("says Zoho automation, not staff, changed the Status when it was the integration user", () => {
+    const [automation, staff] = buildRegisterTimeline([
+      event({
+        type: "conflict_recorded",
+        payload: { field: "catalogueStatus", zohoValue: "Reserved", cause: "zoho_automation" },
+      }),
+      event({
+        type: "conflict_recorded",
+        payload: { field: "catalogueStatus", zohoValue: "Sold" },
+      }),
+    ]);
+    expect(automation).toMatchObject({
+      title: "Zoho automation changed the Zoho Status; LAX kept its own until someone decides",
+      tone: "warning",
+    });
+    expect(staff?.title).toBe(
+      "Zoho changed the Zoho Status; LAX kept its own until someone decides",
+    );
+  });
+
   it("never falls back to a bare Changed", () => {
     const [first] = buildRegisterTimeline([event({ type: "created", payload: {} })]);
     expect(first?.title).not.toBe("Changed");

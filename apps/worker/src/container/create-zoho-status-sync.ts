@@ -9,6 +9,7 @@ import type { WorkerEnv } from "../env.js";
 import { CrmZohoStatusProducts } from "../integrations/zoho/artwork/status/zoho-status-products.js";
 import { ZohoStatusSync } from "../integrations/zoho/artwork/status/zoho-status-sync.js";
 import { createZohoCrmGatewayWithCoql } from "../integrations/zoho/create-zoho-crm-gateway.js";
+import { zohoCrmIntegrationUserId } from "../integrations/zoho/zoho-crm-current-user.js";
 
 /**
  * Builds the compare-and-set of the Zoho Status, in the writeback's mode. With the writeback off
@@ -31,5 +32,10 @@ export function createZohoStatusSync(deps: {
     products: new CrmZohoStatusProducts(stack, stack),
     lock: new DrizzleZohoListingLock(db),
     log,
+    // Asked only when a check after a write finds a change, then kept for the process.
+    integrationUserId: () =>
+      zohoCrmIntegrationUserId(env, (reason) =>
+        log.warn({ reason }, "zoho_integration_user_lookup_failed"),
+      ),
   });
 }
