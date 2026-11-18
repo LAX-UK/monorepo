@@ -54,6 +54,22 @@ function rowsFromExecuteResult(result: unknown): ClaimedRow[] {
   return [];
 }
 
+/** Skipped deliveries of one consumer and some event types (aliases `d2` and `e`), by reason if given. */
+function skippedFilter(input: {
+  consumer: string;
+  eventTypes: readonly string[];
+  reason?: string;
+}) {
+  const eventTypeList = sql.join(
+    input.eventTypes.map((eventType) => sql`${eventType}`),
+    sql`, `,
+  );
+  return sql`d2.consumer = ${input.consumer}
+          AND d2.status = 'skipped'
+          AND e.event_type IN (${eventTypeList})
+          ${input.reason === undefined ? sql`` : sql`AND d2.last_error = ${input.reason}`}`;
+}
+
 export class DrizzleDomainEventDeliveryRepository implements IDomainEventDeliveryRepository {
   constructor(private readonly db: Database) {}
 
@@ -168,14 +184,11 @@ export class DrizzleDomainEventDeliveryRepository implements IDomainEventDeliver
     consumer: string;
     eventTypes: readonly string[];
     limit: number;
+    reason?: string;
     now?: Date;
   }): Promise<number> {
     if (input.eventTypes.length === 0) return 0;
     const now = input.now ?? new Date();
-    const eventTypeList = sql.join(
-      input.eventTypes.map((eventType) => sql`${eventType}`),
-      sql`, `,
-    );
     const rows = await this.db.execute(sql`
       UPDATE domain_event_delivery d
       SET status = 'pending', next_retry_at = NULL, lease_expires_at = NULL,
@@ -184,15 +197,29 @@ export class DrizzleDomainEventDeliveryRepository implements IDomainEventDeliver
         SELECT d2.id
         FROM domain_event_delivery d2
         INNER JOIN domain_events e ON e.id = d2.event_id
-        WHERE d2.consumer = ${input.consumer}
-          AND d2.status = 'skipped'
-          AND e.event_type IN (${eventTypeList})
+        WHERE ${skippedFilter(input)}
         ORDER BY d2.id
         LIMIT ${input.limit}
       )
       RETURNING d.id
     `);
     return rowsFromExecuteResult(rows).length;
+  }
+
+  async countSkippedForEventTypes(input: {
+    consumer: string;
+    eventTypes: readonly string[];
+    reason?: string;
+  }): Promise<number> {
+    if (input.eventTypes.length === 0) return 0;
+    const result = await this.db.execute(sql`
+      SELECT COUNT(*)::int AS skipped
+      FROM domain_event_delivery d2
+      INNER JOIN domain_events e ON e.id = d2.event_id
+      WHERE ${skippedFilter(input)}
+    `);
+    const [row] = rowsFromExecuteResult(result) as unknown as { skipped: number }[];
+    return Number(row?.skipped ?? 0);
   }
 
   async scheduleRetry(input: {
