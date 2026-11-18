@@ -17,6 +17,7 @@ import {
   makePayment,
   recordingSink,
 } from "./deal-fixtures.test-util.js";
+import { DealInvoiceService } from "./deal-invoice.service.js";
 import { PrivateSaleDealQueryService } from "./deal-query.service.js";
 import type { DealStaffViewer } from "./deal-staff-permissions.js";
 import { DealTransitionService } from "./deal-transition.service.js";
@@ -59,6 +60,8 @@ type Setup = {
   hasPayoutLine?: boolean;
   artwork?: { id: string; title: string; stockCode: string };
   artworkHistory?: object[];
+  /** Whether a finance system issues deal invoices; it does unless a test says otherwise. */
+  invoicing?: boolean;
 };
 
 const TX_SENTINEL = { sentinel: true } as never;
@@ -124,10 +127,15 @@ function setup(options: Setup = {}) {
       async (_input: object) => ({ ok: true, refundedMinor: 1, remainingMinor: 0 }) as never,
     ),
   };
+  const invoicing = new DealInvoiceService({
+    transitions,
+    finance: { recordInvoiceReference: async () => undefined },
+    issuer:
+      options.invoicing === false ? null : { issue: async () => ({ externalReference: "INV-1" }) },
+  });
   const invoices = {
-    issue: vi.fn((input: { dealId: string; actorUserId: string }) =>
-      transitions.transition(input.dealId, "issue_invoice", { actorUserId: input.actorUserId }),
-    ),
+    issue: vi.fn((input: Parameters<DealInvoiceService["issue"]>[0]) => invoicing.issue(input)),
+    blockers: () => invoicing.blockers(),
   };
   const queryDeps = {
     deals: deals as never,
@@ -148,6 +156,7 @@ function setup(options: Setup = {}) {
     payments,
     payouts: { hasPayoutLine: async () => options.hasPayoutLine ?? false },
     transitions,
+    invoices,
     clearance: clearancePort,
     policy,
     enquiries: { findById: async () => null },
@@ -635,6 +644,34 @@ describe("PrivateSaleDealDeskService act", () => {
     expect(result.ok).toBe(true);
     expect(currentDeal().stage).toBe("invoiced");
     expect(currentDeal().invoicedByUserId).toBe("u-finance");
+  });
+
+  it("refuses to invoice, and says why, while no finance system issues deal invoices", async () => {
+    const { desk, currentDeal, applyStageChange } = setup({
+      deal: stageDeal("cleared", { vatTreatment: "margin_scheme", agreedByUserId: "u-other" }),
+      invoicing: false,
+    });
+    const record = await desk.detail(FINANCE, "PS-0001");
+    expect(record?.actions.find((a) => a.action === "issue_invoice")?.blockers).toEqual([
+      {
+        code: "invoice_issuer_not_configured",
+        message: "Invoicing for private sales has not been set up yet.",
+      },
+    ]);
+
+    const result = await desk.act(FINANCE, "PS-0001", "issue_invoice", {});
+    expect(result).toEqual({
+      ok: false,
+      error: "blocked",
+      blockers: [
+        {
+          code: "invoice_issuer_not_configured",
+          message: "Invoicing for private sales has not been set up yet.",
+        },
+      ],
+    });
+    expect(applyStageChange).not.toHaveBeenCalled();
+    expect(currentDeal().stage).toBe("cleared");
   });
 
   it("does not cancel, or end a checkout, without a reason", async () => {
