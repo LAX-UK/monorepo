@@ -55,3 +55,31 @@ Verification (Postgres 16 on 55432, migrated):
 - Persistence `artwork-register.integration.test.ts`: 56 passed.
 - Shop-admin `zoho-register.vm.test.ts`: 50 passed.
 - `tsc --noEmit` is clean for worker, persistence and shop-admin, and `biome check` is clean on the touched files.
+
+## Final recheck
+
+Rechecked PR head `2c7f3767` (fix `66673d3f`, then main `7dfd2356` merged in). The PR branch was not changed.
+
+All five findings are fixed, and each has a test:
+
+1. **A stale read no longer raises a conflict.** `checkAfterWrite` raises a conflict only when `modifiedSince(before, after)` holds, where `before` is the re-read the write was sent on. A read that shows the pre-write state, or has no `Modified_Time`, logs `zoho_status_write_unverified` at info level, and the next pass decides. Test: "raises nothing when the read after the write still shows the state before it (a stale read)".
+2. **`Modified_Time` movement is the evidence.** It must be strictly later than `before.modifiedAt`. If a staff edit lands in the same second as the re-read, it is left as unverified rather than lost: `recordCatalogueStatusWritten` has already set last-written to `wanted`, so the next pass raises the conflict. Test: "raises the conflict when Modified_Time moved past the write's re-read (staff)".
+3. **Integration-user automation is labelled separately and never reverted.** When `Modified_By` equals the cached `GET /crm/v8/users?type=CurrentUser` id, the change is still raised on the same conflict path, with `cause: "zoho_automation"`. It is logged as `zoho_status_changed_by_automation`, stored on the `conflict_recorded` event, and LAX Admin shows "Zoho automation changed…". No second write is sent. If the user lookup fails or the user is unknown, the change is treated as a staff edit. Tests: the automation case, "asks for the integration user only when a change is found", "takes the change to be staff's when the integration user is not known", "restores nothing", `zoho-crm-current-user.test.ts`, the persistence test that stores the cause, and the shop-admin wording test.
+4. **The extra Zoho reads are documented.** `docs/integrations/zoho.md` covers the check after the write, the evidence rule, and "Calls and API credits per Status write" (3 COQL reads and 1 update, plus the go-live catch-up warning). It also covers the optional `ZohoCRM.users.READ` scope.
+5. **The PR description is corrected.** As stated in Fixes after review.
+
+No new defects found. Two minor observations, neither blocking:
+- The user lookup is a direct `fetch` without a timeout, outside the shared limiter. That matches the existing org check and token refresh. It runs at most once per process, or once per 15 minutes after a failure, and only when a change is found.
+- `modifiedSince` treats a missing pre-write `Modified_Time` as "moved". That is a safe default, because the status must also differ from `wanted`.
+
+Runs at `2c7f3767`, on a throwaway Postgres 16 at 55432 with `db:migrate` and `db:roles`, all with `--maxWorkers=2`:
+
+| Suite | Result |
+| --- | --- |
+| worker `src/integrations/zoho src/projectors src/container` | 99 files passed, 4 skipped; 777 tests passed |
+| persistence `artwork-register.integration.test.ts` | 56 passed |
+| persistence `src/repositories/artwork-register` (11 files, `--no-file-parallelism`) | 140 passed, 1 skipped |
+| shop-admin `zoho-register.vm.test.ts` | 50 passed |
+| `tsc --noEmit` for worker, persistence and shop-admin | clean |
+
+Without `--no-file-parallelism`, the artwork-register directory fails, because two files share one database and their rows collide (`duplicate_stock_code`, and FK errors during cleanup). Each file passes on its own, and the whole directory passes when the files run one at a time. This comes from how I ran the tests, not from the PR.
