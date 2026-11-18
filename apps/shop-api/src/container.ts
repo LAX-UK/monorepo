@@ -829,6 +829,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
             order: env.ZOHO_FULFILMENT_MIRROR_MODE ?? null,
             artwork: env.ZOHO_ARTWORK_WRITEBACK_MODE ?? null,
           },
+          artworkListingMode: env.ZOHO_ARTWORK_LISTING_MODE ?? null,
         }),
         catalogueChange,
         offerOnLaxArt: new OfferOnLaxArtService({

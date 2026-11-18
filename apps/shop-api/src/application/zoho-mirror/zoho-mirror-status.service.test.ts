@@ -23,7 +23,11 @@ const sent: MirrorDelivery = {
 
 function service(
   deliveries: Record<string, MirrorDelivery[]>,
-  options: { paid?: Record<string, boolean>; modes?: ZohoMirrorStatusDeps["modes"] } = {},
+  options: {
+    paid?: Record<string, boolean>;
+    modes?: ZohoMirrorStatusDeps["modes"];
+    artworkListingMode?: ZohoMirrorStatusDeps["artworkListingMode"];
+  } = {},
 ) {
   const read = vi.fn<ZohoMirrorLedgerReader["read"]>(async (_entity, ids) => ({
     consumer: "zoho_fulfilment",
@@ -39,6 +43,7 @@ function service(
     ledger: { read },
     orders: { paidOf },
     modes: options.modes ?? { order: null, artwork: null },
+    artworkListingMode: options.artworkListingMode ?? null,
   });
   return { read, paidOf, service: mirror };
 }
@@ -96,5 +101,22 @@ describe("ZohoMirrorStatusService", () => {
       mode: "dry_run",
     });
     expect(paidOf).not.toHaveBeenCalled();
+  });
+
+  it("reads an artwork's listing deliveries against the listing's mode, not the write-back's", async () => {
+    const { service: mirror } = service(
+      {
+        r: [
+          {
+            ...sent,
+            consumer: "zoho_artwork_listing",
+            eventType: "shop.artwork.updated",
+            status: "dead_lettered",
+          },
+        ],
+      },
+      { modes: { order: null, artwork: "off" }, artworkListingMode: "live" },
+    );
+    expect(await mirror.status("artwork", "r")).toMatchObject({ state: "failed", mode: "live" });
   });
 });

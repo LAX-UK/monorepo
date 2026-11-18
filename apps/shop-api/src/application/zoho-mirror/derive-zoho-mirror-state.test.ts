@@ -274,6 +274,58 @@ describe("deriveZohoMirrorState", () => {
       ).toMatchObject({ state: "dry_run", mode: "dry_run" });
     });
 
+    describe("with the writeback off and the listing live, the listing's deliveries report the listing's mode", () => {
+      const writebackOffListingLive = { mode: "off", listingMode: "live", paid: null } as const;
+
+      it("reports a dead-lettered listing as failed in live, not off", () => {
+        expect(
+          deriveZohoMirrorState(
+            "artwork",
+            [delivery("dead_lettered", { ...LISTING, lastError: "PRODUCT_NOT_FOUND" })],
+            writebackOffListingLive,
+          ),
+        ).toMatchObject({ state: "failed", mode: "live", error: "PRODUCT_NOT_FOUND" });
+      });
+
+      it("reports an unfinished listing as pending in live, not mirroring off", () => {
+        const retrying = delivery("retryable", { ...LAX_ART_LISTING, nextRetryAt: at(50) });
+        expect(deriveZohoMirrorState("artwork", [retrying], writebackOffListingLive)).toMatchObject(
+          {
+            state: "pending",
+            notApplicableReason: null,
+            mode: "live",
+            nextRetryAt: at(50).toISOString(),
+          },
+        );
+      });
+
+      it("still reads a Status writeback delivery against the writeback's mode", () => {
+        expect(
+          deriveZohoMirrorState(
+            "artwork",
+            [delivery("pending", { ...STATUS, consumer: "zoho_artwork_writeback" })],
+            writebackOffListingLive,
+          ),
+        ).toMatchObject({ state: "not_applicable", notApplicableReason: "mirroring_off" });
+        expect(
+          deriveZohoMirrorState(
+            "artwork",
+            [skipped(ARTWORK_WRITEBACK_SKIP.statusConflictRaised, STATUS)],
+            writebackOffListingLive,
+          ),
+        ).toMatchObject({ state: "failed", mode: "off" });
+      });
+
+      it("leaves the listing's mode unknown when shop-api is not told it", () => {
+        expect(
+          deriveZohoMirrorState("artwork", [delivery("dead_lettered", LISTING)], {
+            mode: "off",
+            paid: null,
+          }),
+        ).toMatchObject({ state: "failed", mode: null });
+      });
+    });
+
     it("keeps the Status writeback's Zoho reference, not the listing's count of Products", () => {
       expect(
         deriveZohoMirrorState("artwork", [

@@ -20,6 +20,11 @@ export type DerivedZohoMirror = Omit<AdminZohoMirrorStatus, "entity" | "id" | "c
 export type ZohoMirrorContext = {
   /** The mode shop-api is configured with for this record's mirror; null when it is not told. */
   mode: ZohoMirrorMode | null;
+  /**
+   * For an artwork: the LAX listing's mode (`ZOHO_ARTWORK_LISTING_MODE`), used for the listing's
+   * own deliveries in place of `mode` (the writeback's). Null or absent when it is not told.
+   */
+  listingMode?: ZohoMirrorMode | null;
   /** For an order: whether it is paid; null when not known (or not an order). */
   paid: boolean | null;
 };
@@ -172,6 +177,16 @@ function notApplicable(
   };
 }
 
+/** The mode configured for the consumer that made a delivery: the listing's for its own deliveries. */
+function configuredModeOf(
+  delivery: MirrorDelivery,
+  context: ZohoMirrorContext,
+): ZohoMirrorMode | null {
+  return delivery.consumer === ZOHO_ARTWORK_LISTING_CONSUMER
+    ? (context.listingMode ?? null)
+    : context.mode;
+}
+
 /** The newest failure that no later good delivery of the same part has put right, if any. */
 function standingFailure(
   deliveries: readonly MirrorDelivery[],
@@ -212,7 +227,7 @@ export function deriveZohoMirrorState(
       ...BLANK,
       state: "failed",
       notApplicableReason: null,
-      mode: context.mode,
+      mode: configuredModeOf(failed, context),
       lastAttemptAt: iso(failed.updatedAt),
       attempts: failed.attempts,
       error: failed.status === "dead_lettered" ? failed.lastError : null,
@@ -229,12 +244,14 @@ export function deriveZohoMirrorState(
     return notApplicable("not_sent_yet", context.mode);
   }
 
-  // Off, nothing more will be sent: only a record already in Zoho still reads as mirrored.
-  if (context.mode === "off" && newestOutcome !== "good") {
+  // Off, nothing more will be sent: only a record already in Zoho still reads as mirrored. The mode
+  // is the one of the consumer that made the newest delivery (an artwork's listing has its own).
+  const configured = configuredModeOf(newest, context);
+  if (configured === "off" && newestOutcome !== "good") {
     return notApplicable("mirroring_off", "off", newest);
   }
 
-  const mode = modeProvedBy(newestOutcome) ?? context.mode;
+  const mode = modeProvedBy(newestOutcome) ?? configured;
   switch (newestOutcome) {
     case "good": {
       const reference = [...deliveries]

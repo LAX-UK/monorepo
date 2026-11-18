@@ -12,6 +12,11 @@ export type ZohoMirrorStatusDeps = {
   orders: OrderPaymentStateReader;
   /** The worker's mirror modes, as shop-api is configured with them; null when it is not told. */
   modes: Record<ZohoMirrorEntity, ZohoMirrorMode | null>;
+  /**
+   * The worker's LAX listing mode (`ZOHO_ARTWORK_LISTING_MODE`), for an artwork's listing
+   * deliveries; null or absent when it is not told.
+   */
+  artworkListingMode?: ZohoMirrorMode | null;
 };
 
 /**
@@ -35,6 +40,7 @@ export class ZohoMirrorStatusService {
       consumer,
       ...deriveZohoMirrorState(entity, deliveries.get(id) ?? [], {
         mode,
+        listingMode: entity === "artwork" ? (this.deps.artworkListingMode ?? null) : null,
         paid: paid.get(id) ?? null,
       }),
     }));

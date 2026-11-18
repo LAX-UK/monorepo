@@ -376,6 +376,7 @@ describe("loadShopApiEnv Zoho mirror modes", () => {
     const env = loadShopApiEnv(productionNodeBase());
     expect(env.ZOHO_FULFILMENT_MIRROR_MODE).toBeUndefined();
     expect(env.ZOHO_ARTWORK_WRITEBACK_MODE).toBeUndefined();
+    expect(env.ZOHO_ARTWORK_LISTING_MODE).toBeUndefined();
   });
 
   it("reads the worker's modes and refuses any other value", () => {
@@ -383,10 +384,12 @@ describe("loadShopApiEnv Zoho mirror modes", () => {
       productionNodeBase({
         ZOHO_FULFILMENT_MIRROR_MODE: "off",
         ZOHO_ARTWORK_WRITEBACK_MODE: "live",
+        ZOHO_ARTWORK_LISTING_MODE: "dry_run",
       }),
     );
     expect(env.ZOHO_FULFILMENT_MIRROR_MODE).toBe("off");
     expect(env.ZOHO_ARTWORK_WRITEBACK_MODE).toBe("live");
+    expect(env.ZOHO_ARTWORK_LISTING_MODE).toBe("dry_run");
     expect(() =>
       loadShopApiEnv(productionNodeBase({ ZOHO_FULFILMENT_MIRROR_MODE: "on" })),
     ).toThrow();
