@@ -80,6 +80,29 @@ export interface CallBudget {
   consume(organizationId: string): Promise<BudgetDecision>;
 }
 
+/**
+ * The per-organisation request window, shared by every process that calls one Books organisation
+ * (Zoho's limit is per organisation, not per caller). Without one each client keeps its own window.
+ */
+export interface RateWindow {
+  /**
+   * Take one request slot if fewer than `limit` were taken in the last `windowMs`. Resolves 0 when
+   * taken, otherwise how many milliseconds until one may free. An implementation that cannot tell
+   * must reject (the client then backs off and sends nothing).
+   */
+  take(organizationId: string, limit: number, windowMs: number): Promise<number>;
+}
+
+/**
+ * A lock per organisation held around "load the stored tokens, refresh if needed, save", shared by
+ * every process, so one refresh is made however many processes need a token at once. The process
+ * that waited reads the stored token the first one saved and sends nothing.
+ */
+export interface RefreshLock {
+  /** Runs `work` while holding the organisation's lock. Rejects, without running it, when the lock cannot be taken. */
+  withLock<T>(organizationId: string, work: () => Promise<T>): Promise<T>;
+}
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface ZohoLogger {

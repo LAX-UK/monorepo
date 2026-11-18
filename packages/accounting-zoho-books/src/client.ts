@@ -20,6 +20,8 @@ import {
   type CallBudget,
   type Clock,
   METRIC,
+  type RateWindow,
+  type RefreshLock,
   type TransportRequest,
   type ZohoLogger,
   type ZohoMetrics,
@@ -74,7 +76,12 @@ export interface ZohoBooksClientDeps {
   readonly transport: ZohoTransport;
   readonly tokenStore: ZohoTokenStore;
   readonly clock?: Clock;
+  /** Required in production, shared by every process (see the README); the default counts this process only. */
   readonly budget?: CallBudget;
+  /** The rate window shared by every process; the default is this process's own. */
+  readonly rateWindow?: RateWindow;
+  /** The refresh lock shared by every process; the default is single-flight in this process only. */
+  readonly refreshLock?: RefreshLock;
   readonly logger?: ZohoLogger;
   readonly metrics?: ZohoMetrics;
   /** Uniform in [0, 1): the source of backoff jitter. */
@@ -122,7 +129,7 @@ export class ZohoBooksClient {
     this.logger = redactingLogger(deps.logger ?? noopLogger);
     this.metrics = deps.metrics ?? noopMetrics;
     this.random = deps.random ?? Math.random;
-    this.gate = new RequestGate(this.clock, config);
+    this.gate = new RequestGate(this.clock, config, deps.rateWindow);
     // Throws `key_missing` / `key_invalid` here, at construction: no key, no client.
     const sealer = ZohoBooksTokenSealer.fromKey(config.tokenDekKey);
     this.tokens = new ZohoTokenManager({
@@ -133,6 +140,7 @@ export class ZohoBooksClient {
       clock: this.clock,
       logger: this.logger,
       metrics: this.metrics,
+      ...(deps.refreshLock ? { refreshLock: deps.refreshLock } : {}),
     });
   }
 

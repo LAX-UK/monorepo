@@ -1,5 +1,5 @@
 import { ZohoRateLimitedError } from "./errors.js";
-import type { Clock } from "./ports.js";
+import type { Clock, RateWindow } from "./ports.js";
 
 export interface GateOptions {
   readonly ratePerMinute: number;
@@ -19,6 +19,8 @@ class OrgGate {
   constructor(
     private readonly clock: Clock,
     private readonly options: GateOptions,
+    private readonly organizationId: string,
+    private readonly shared: RateWindow | undefined,
   ) {}
 
   async acquire(): Promise<() => void> {
@@ -70,6 +72,7 @@ class OrgGate {
   /** Slots are handed out one at a time in arrival order. */
   private takeRateSlot(deadline: number): Promise<void> {
     const run = async (): Promise<void> => {
+      if (this.shared) return this.takeSharedRateSlot(this.shared, deadline);
       for (;;) {
         const now = this.clock.now();
         while (this.sent.length > 0 && now - (this.sent[0] as number) >= WINDOW_MS)
@@ -89,22 +92,44 @@ class OrgGate {
     this.rateTail = result.catch(() => undefined);
     return result;
   }
+
+  /** The window every process shares. When it cannot be read nothing is sent (fail closed). */
+  private async takeSharedRateSlot(shared: RateWindow, deadline: number): Promise<void> {
+    for (;;) {
+      let wait: number;
+      try {
+        wait = await shared.take(this.organizationId, this.options.ratePerMinute, WINDOW_MS);
+      } catch {
+        throw new ZohoRateLimitedError({ code: "rate_window_unavailable", source: "local" });
+      }
+      if (wait <= 0) return;
+      if (this.clock.now() + wait > deadline) {
+        throw new ZohoRateLimitedError({ code: "queue_timeout", source: "local" });
+      }
+      await this.clock.sleep(wait);
+    }
+  }
 }
 
-/** Rate limit (100 requests a minute) and concurrency cap (5) for each organisation separately. */
+/**
+ * Rate limit (100 requests a minute) and concurrency cap (5) for each organisation separately. The
+ * rate window is this process's own unless a shared `RateWindow` is given; the concurrency cap is
+ * always per process.
+ */
 export class RequestGate {
   private readonly gates = new Map<string, OrgGate>();
 
   constructor(
     private readonly clock: Clock,
     private readonly options: GateOptions,
+    private readonly rateWindow?: RateWindow,
   ) {}
 
   /** Resolves with a `release` to call when the request has finished. Rejects if the wait is too long. */
   acquire(organizationId: string): Promise<() => void> {
     let gate = this.gates.get(organizationId);
     if (!gate) {
-      gate = new OrgGate(this.clock, this.options);
+      gate = new OrgGate(this.clock, this.options, organizationId, this.rateWindow);
       this.gates.set(organizationId, gate);
     }
     return gate.acquire();
