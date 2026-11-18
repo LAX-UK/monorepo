@@ -44,3 +44,22 @@ Checked every use of `ZOHO_CRM_SYNC_MODE` in the repository. Only the worker rea
 2. **One failure is shown on every record a lax.art listing ties to.** `packages/persistence/src/repositories/zoho-mirror/drizzle-zoho-mirror-ledger.reader.ts:118-122` fans a listing delivery out to each record drafted into it. A dead letter caused by one record shows `failed` on the others too. This is the honest reading of a shared delivery; noted only.
 3. **The read uses today's offer link.** `drizzle-zoho-mirror-ledger.reader.ts:132-142`. Once an artwork's `offer_ref_id` moves off a lax.art listing it was not drafted into, earlier listing deliveries for that listing, including a standing failure, drop out of its badge. Failed jobs still has them. This is an edge case and a nit.
 4. **Nit:** a stray double blank line after the "Canary is live" paragraph (`docs/integrations/zoho.md:56-57`).
+
+## Fixes after review
+
+Fixed on `fix/zoho-audit-canary-badge-prints` in `1c3228e2` (after merging `main`).
+
+- **Finding 1 (fixed).** An artwork's LAX listing deliveries now report the listing's own mode.
+  - `apps/shop-api/src/application/zoho-mirror/derive-zoho-mirror-state.ts:27`: `ZohoMirrorContext.listingMode`.
+  - `derive-zoho-mirror-state.ts:181`: `configuredModeOf` picks the listing's mode for a `zoho_artwork_listing` delivery and the writeback's otherwise.
+  - `derive-zoho-mirror-state.ts:230`: the failed state uses the failed delivery's mode.
+  - `derive-zoho-mirror-state.ts:249`: the "mirroring off" check and the fallback mode use the newest delivery's consumer's mode.
+  - `apps/shop-api/src/application/zoho-mirror/zoho-mirror-status.service.ts:19,43`: `artworkListingMode` dep, passed for artworks only.
+  - `apps/shop-api/src/env.ts:148`: optional `ZOHO_ARTWORK_LISTING_MODE` on shop-api; `apps/shop-api/src/container.ts:832` wires it. Unset, a listing delivery's mode is `null` (unknown), never the writeback's.
+  - Tests: `derive-zoho-mirror-state.test.ts:277` (writeback off + listing live: dead-lettered listing is `failed` in `live`; unfinished listing is `pending` in `live`, not "mirroring off"; a writeback delivery still reads the writeback's mode; listing mode unknown when not told). `zoho-mirror-status.service.test.ts` (listing mode passed through), `env.test.ts` (new variable).
+  - Docs: `docs/integrations/zoho.md:355,367`, `.env.example:648`.
+- **Finding 4 (fixed).** Double blank line removed after "Canary is live" (`docs/integrations/zoho.md:53-56`).
+- **Findings 2 and 3:** left as documented, no change.
+- **Infra:** for the badge to use it, shop-api's task definition needs `ZOHO_ARTWORK_LISTING_MODE` set to the worker's value. Unset is safe (mode reads unknown).
+
+Suites (throwaway Postgres 16 on :55432, migrated + `db:roles`, `--maxWorkers=2`): `packages/persistence zoho-mirror-ledger.integration` 10/10; `apps/shop-api zoho-mirror` + `env.test.ts` 6 files, 125 tests; `apps/worker src/integrations/zoho` 58 files passed (2 skipped as before), 537 tests. `tsc --noEmit` (shop-api) clean; `biome check` clean.
