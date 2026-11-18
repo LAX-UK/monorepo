@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Review of PR #1566: Partial credit notes, allocate VAT per line as Zoho Books computes it
 
@@ -224,3 +224,54 @@ All with `--maxWorkers=2`, against a throwaway Postgres 16 on 55432 after `db:mi
 | `apps/worker` `src/finance/accounting` (DB) | 25 files, 348 passed; `tsc --noEmit` clean |
 | `apps/api` accounting suites | 4 files, 143 passed; `tsc --noEmit` clean |
 | `biome check` on the changed files | clean |
+
+## Final recheck
+
+Rechecked PR head `fee03fc6` (the fix, on top of the `main` merge `be427ba3`). The PR branch was not changed.
+
+**B1 is fixed. The VAT rule is decided per credit note.**
+- A new note always carries `creditVatRule: "books"`. A note without the marker is `cumulative` (`creditVatRuleOf`).
+- `replayPriorCredits` replays every line of a prior note with that note's one rule. `creditedEntry` takes a single rule, and the old books-then-cumulative loop is gone.
+- An unknown marker is refused, both in the domain and in the persistence payload reader.
+
+**Legacy notes replay exactly as on `main`.** I checked this independently, without relying on the PR's own tests, which build "legacy" notes with the PR's `cumulative` builder. I compiled `accounting-domain` from `main` (`7dfd2356`) and from the PR. I built legacy credit chains with **main's** `buildCreditNoteFor`, using random 1–4-line invoices with every treatment, goods and delivery lines, a reused `"Print"` description, and both named and fill credits. For each chain I then compared:
+- `creditedOnInvoiceLines` from main and from the PR, after every note: **0 differences in 46,489 replays** (4 seeds × 5,000 runs).
+- The PR's builder with `creditVatRule: "cumulative"` against main's builder, for the same inputs: **byte-identical in every case**, with no marker. So a parked legacy note rebuilt on release (`bid-refunds.ts`, `accounting-queue.service.ts`) is exactly what `main` stored.
+- New `books` notes stacked on those legacy chains, with partials and then the rest of every line: **0 refused**. Credit totals equal the invoice's net, VAT and gross exactly, and every line ends fully credited. Every new partial line carries `vatInsideGross`. About 0.2% of finishing lines differ from Books, all of them finishing a line that legacy partials left with a remainder no whole-pence split can carry. The adapter refuses these lines to staff. This fails safe and is documented.
+
+**New notes use the Books rule only.** The cumulative rule is never split, and it is used only when a caller passes a stored note's rule. The test "a new credit note is never matched under the legacy rule" checks that neither rule falls back to the other.
+
+**The review's 37p/33p regression test passes.** `document.test.ts`: "a legacy named credit of 33p on line 2 replays on line 2, and line 1 can then be credited in full". The replay gives `[0, 33]`, then line 1 is credited in full for 44p with 7p VAT, then `[44, 33]`. My main-built check reproduces `[0, 33]` from main's own note.
+
+**Integer pence.** Every line amount and total in the runs above is a safe integer, and the new arithmetic is integer or BigInt.
+
+**Migration.** There is none. The marker lives in the existing `accounting_document.payload` JSON, so no `_journal.json` entry is needed. The PR touches no `packages/db` or migration files. Existing rows read back unmarked, which means cumulative, so the default is safe. The persistence integration test round-trips both the marked and the unmarked note and refuses `"cumulative"`.
+
+**Xero and dry run are unchanged.** No Xero or dry-run files are in the diff, and the Zoho adapter change is comment only. Worker `xero` suites: 3 files, 8 passed. Zoho Books `dry-run.test.ts` passes within the package run below.
+
+**The non-blocking findings are handled.**
+- N3 docstring: updated.
+- N4 line cap: when the split lines would exceed `MAX_LINES`, the note drops the splits, and refuses with `too_many_lines` if it is still too long. Tested.
+- N5 tests: multi-line, mixed-treatment mapper property test added.
+- N1 and N2 remain documented assumptions or trade-offs, as agreed.
+
+I also checked that the marker does not cause `reference_in_use` or `document_changed` on replay:
+- The registry compares payloads with deep equality. A re-projected refund event reads its own note among the prior credits, so it does not rebuild the same note.
+- The Shop history import queues no credit notes.
+- A parked note is rebuilt with its stored rule. The worker test `bid-refunds-books.integration.test.ts` covers this.
+
+No new defects found.
+
+Runs at `fee03fc6`, on a throwaway Postgres 16 at 55432 with `db:migrate` and `db:roles`, all with `--maxWorkers=2`:
+
+| Suite | Result |
+| --- | --- |
+| `@auction/accounting-domain` | 21 files, 424 passed; `tsc` clean |
+| `@auction/accounting-zoho-books` | 16 files, 352 passed; `tsc --noEmit` clean |
+| `@auction/finance-runtime` | 35 files, 259 passed; `tsc --noEmit` clean |
+| `@auction/persistence` `src/repositories/accounting src/lib` (DB) | 23 files passed, 1 skipped; 234 tests passed, 10 skipped. `accounting-credit-notes.integration` ran 11 tests. `tsc --noEmit` clean |
+| `apps/worker` `src/finance/accounting` (DB, including `bid-refunds-books.integration`, 31 tests) | 25 files, 348 passed; `tsc --noEmit` clean |
+| `apps/worker` Xero suites | 3 files, 8 passed |
+| `apps/api` accounting-named suites | 4 files, 25 passed; `tsc --noEmit` clean |
+
+The persistence file that was skipped is `anonymise-enquiries.api-app.integration.test.ts`. It needs an api-app DB role and is unrelated to this PR.
