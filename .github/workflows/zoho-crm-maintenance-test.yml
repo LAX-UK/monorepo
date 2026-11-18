@@ -4,10 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: backfill-dry-run, backfill, replay-skipped, or delivery-status
+        description: backfill-dry-run, backfill, replay-skipped, delivery-status, catch-up-preview, or catch-up
         required: true
         type: choice
-        options: [backfill-dry-run, backfill, replay-skipped, delivery-status]
+        options:
+          [backfill-dry-run, backfill, replay-skipped, delivery-status, catch-up-preview, catch-up]
+      consumer:
+        description: Zoho write-back to catch up after going live (catch-up actions only)
+        required: false
+        type: choice
+        default: zoho_artwork_writeback
+        options: [zoho_artwork_writeback, zoho_artwork_listing, zoho_fulfilment]
 
 permissions:
   contents: read
@@ -37,6 +44,11 @@ jobs:
       ZOHO_CRM_DEAL_STAGE_SHOP_PAID: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
       ZOHO_CRM_LEAD_CONVERSION_ENABLED: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
       CRON_INTERNAL_SECRET: ${{ secrets.CRON_INTERNAL_SECRET }}
+      # The write-back modes, as the deployed test worker gets them; the catch-up refuses unless the
+      # chosen write-back is live here.
+      ZOHO_ARTWORK_WRITEBACK_MODE: ${{ vars.ZOHO_ARTWORK_WRITEBACK_MODE || 'off' }}
+      ZOHO_ARTWORK_LISTING_MODE: ${{ vars.ZOHO_ARTWORK_LISTING_MODE || 'dry_run' }}
+      ZOHO_FULFILMENT_MIRROR_MODE: ${{ vars.ZOHO_FULFILMENT_MIRROR_MODE || 'off' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -102,3 +114,19 @@ jobs:
         env:
           NODE_ENV: production
         run: pnpm exec tsx src/scripts/crm-delivery-status.ts
+      # Puts back what a Zoho write-back skipped during its dry run, once it is live. Preview only
+      # counts. Idempotent; see "Switching a write-back to live" in docs/integrations/zoho.md.
+      - name: Zoho write-back catch-up after going live (preview)
+        if: inputs.action == 'catch-up-preview'
+        working-directory: apps/worker
+        env:
+          NODE_ENV: production
+          CONSUMER: ${{ inputs.consumer }}
+        run: pnpm exec tsx src/scripts/zoho-catch-up-after-live.ts --consumer "$CONSUMER" --dry-run
+      - name: Zoho write-back catch-up after going live
+        if: inputs.action == 'catch-up'
+        working-directory: apps/worker
+        env:
+          NODE_ENV: production
+          CONSUMER: ${{ inputs.consumer }}
+        run: pnpm exec tsx src/scripts/zoho-catch-up-after-live.ts --consumer "$CONSUMER"

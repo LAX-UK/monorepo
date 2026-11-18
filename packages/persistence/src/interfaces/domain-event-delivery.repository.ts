@@ -44,11 +44,22 @@ export interface IDomainEventDeliveryRepository {
     providerReference?: string | null;
     now?: Date;
   }): Promise<void>;
+  /**
+   * Puts skipped deliveries of these event types back to pending, oldest first, at most `limit`.
+   * With `reason`, only those skipped for that reason (the skip reason is kept in `last_error`).
+   */
   replaySkippedForEventTypes(input: {
     consumer: string;
     eventTypes: readonly string[];
     limit: number;
+    reason?: string;
     now?: Date;
+  }): Promise<number>;
+  /** How many deliveries `replaySkippedForEventTypes` with the same filter would put back. */
+  countSkippedForEventTypes(input: {
+    consumer: string;
+    eventTypes: readonly string[];
+    reason?: string;
   }): Promise<number>;
   scheduleRetry(input: {
     deliveryId: number;

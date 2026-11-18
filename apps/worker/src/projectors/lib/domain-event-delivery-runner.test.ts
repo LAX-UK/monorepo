@@ -35,6 +35,7 @@ function mockRepo(): IDomainEventDeliveryRepository {
     markSucceeded: vi.fn().mockResolvedValue(undefined),
     markSkipped: vi.fn().mockResolvedValue(undefined),
     replaySkippedForEventTypes: vi.fn().mockResolvedValue(0),
+    countSkippedForEventTypes: vi.fn().mockResolvedValue(0),
     scheduleRetry: vi.fn().mockResolvedValue(undefined),
     deadLetter: vi.fn().mockResolvedValue(undefined),
     ensurePending: vi.fn().mockResolvedValue(undefined),
