@@ -7,7 +7,7 @@ import {
   inState,
 } from "../../../../testing/zoho-status-fakes.js";
 import { CrmGatewayError } from "../../../crm/crm-gateway-error.js";
-import { reportOf } from "./zoho-status-sync.js";
+import { ZOHO_AUTOMATION_CHANGED_STATUS, reportOf } from "./zoho-status-sync.js";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -465,6 +465,7 @@ describe("ZohoStatusSync: a sale made in the gallery is Zoho's", () => {
 
 describe("ZohoStatusSync: checks the Product again after writing", () => {
   const STAFF = "5000000000000099001";
+  const INTEGRATION_USER = "5000000000000011001";
 
   /** A staff edit Zoho applies in the same moment as LAX's update: LAX's write, then staff's. */
   function staffRacesTheWrite(staffStatus: string) {
@@ -560,5 +561,122 @@ describe("ZohoStatusSync: checks the Product again after writing", () => {
     const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
     await w.sync("dry_run").sync([REGISTER_ID]);
     expect(w.products.read).toHaveBeenCalledTimes(1);
+  });
+  describe("Modified_Time is the evidence of a change", () => {
+    const BEFORE = new Date("2026-11-03T11:00:00Z");
+
+    /** Zoho shows Withdrawn, which LAX last wrote, so LAX sends In Auction over it. */
+    function withdrawnLaxWrote() {
+      const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+      w.world.written = "Withdrawn";
+      w.world.zoho = { status: "Withdrawn", modifiedAt: BEFORE, modifiedBy: STAFF };
+      return w;
+    }
+
+    it("raises nothing when the read after the write still shows the state before it (a stale read)", async () => {
+      const w = withdrawnLaxWrote();
+      const before = w.world.zoho;
+      const read = w.products.read.getMockImplementation();
+      let reads = 0;
+      // The third read (the check) is answered from before the update: same Status, same Modified_Time.
+      w.products.read.mockImplementation(async (ids: readonly string[]) => {
+        reads += 1;
+        return reads === 3 ? new Map([[PRODUCT_ID, before]]) : read?.(ids);
+      });
+      const [outcome] = await w.sync().sync([REGISTER_ID]);
+      expect(outcome).toMatchObject({ kind: "written", status: "In Auction" });
+      expect(w.register.recordCatalogueStatusConflict).not.toHaveBeenCalled();
+      expect(w.world.conflict).toBeNull();
+      expect(w.log.info).toHaveBeenCalledWith(
+        expect.objectContaining({ zohoStatus: "Withdrawn", wanted: "In Auction" }),
+        "zoho_status_write_unverified",
+      );
+      expect(w.log.warn).not.toHaveBeenCalled();
+      // The next pass reads Zoho afresh and finds what LAX sent.
+      const [next] = await w.sync().sync([REGISTER_ID]);
+      expect(next).toMatchObject({ kind: "in_sync" });
+    });
+
+    it("raises the conflict when Modified_Time moved past the write's re-read (staff)", async () => {
+      const w = withdrawnLaxWrote();
+      w.products.write.mockImplementationOnce(async () => {
+        w.world.zoho = {
+          status: "Reserved",
+          modifiedAt: new Date("2026-11-03T11:00:02Z"),
+          modifiedBy: STAFF,
+        };
+      });
+      w.integrationUserId.mockResolvedValue(INTEGRATION_USER);
+      const [outcome] = await w.sync().sync([REGISTER_ID]);
+      expect(outcome).toMatchObject({
+        kind: "conflict",
+        zohoStatus: "Reserved",
+        wanted: "In Auction",
+        changedDuringWrite: true,
+        changedBy: STAFF,
+        cause: "staff",
+      });
+      expect(w.register.recordCatalogueStatusConflict).toHaveBeenCalledWith(
+        expect.not.objectContaining({ cause: expect.anything() }),
+      );
+      expect(w.log.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ changedBy: STAFF }),
+        "zoho_status_changed_during_write",
+      );
+    });
+
+    it("raises a change made as the integration user as Zoho automation, never reverting it", async () => {
+      const w = withdrawnLaxWrote();
+      w.products.write.mockImplementationOnce(async () => {
+        w.world.zoho = {
+          status: "Reserved",
+          modifiedAt: new Date("2026-11-03T11:00:02Z"),
+          modifiedBy: INTEGRATION_USER,
+        };
+      });
+      w.integrationUserId.mockResolvedValue(INTEGRATION_USER);
+      const [outcome] = await w.sync().sync([REGISTER_ID]);
+      expect(outcome).toMatchObject({
+        kind: "conflict",
+        zohoStatus: "Reserved",
+        wanted: "In Auction",
+        changedDuringWrite: true,
+        changedBy: INTEGRATION_USER,
+        cause: "zoho_automation",
+      });
+      expect(w.register.recordCatalogueStatusConflict).toHaveBeenCalledWith(
+        expect.objectContaining({
+          zohoStatus: "Reserved",
+          laxStatus: "In Auction",
+          cause: "zoho_automation",
+        }),
+      );
+      expect(w.log.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ label: ZOHO_AUTOMATION_CHANGED_STATUS }),
+        "zoho_status_changed_by_automation",
+      );
+      expect(w.products.write).toHaveBeenCalledTimes(1);
+      expect(w.world.zoho?.status).toBe("Reserved");
+    });
+
+    it("asks for the integration user only when a change is found", async () => {
+      const w = withdrawnLaxWrote();
+      await w.sync().sync([REGISTER_ID]);
+      expect(w.integrationUserId).not.toHaveBeenCalled();
+    });
+
+    it("takes the change to be staff's when the integration user is not known", async () => {
+      const w = withdrawnLaxWrote();
+      w.products.write.mockImplementationOnce(async () => {
+        w.world.zoho = {
+          status: "Reserved",
+          modifiedAt: new Date("2026-11-03T11:00:02Z"),
+          modifiedBy: INTEGRATION_USER,
+        };
+      });
+      w.integrationUserId.mockRejectedValue(new Error("down"));
+      const [outcome] = await w.sync().sync([REGISTER_ID]);
+      expect(outcome).toMatchObject({ kind: "conflict", cause: "staff" });
+    });
   });
 });

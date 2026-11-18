@@ -979,6 +979,29 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       });
     });
 
+    it("keeps on the history event that Zoho automation, not staff, changed the Status", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusConflict({
+        registerId: entry.id,
+        zohoStatus: "Reserved",
+        laxStatus: "In Auction",
+        zohoModifiedAt: T1,
+        cause: "zoho_automation",
+        now: T1,
+      });
+      const events = await repo.listEvents(entry.id, 10);
+      expect(events.at(-1)).toMatchObject({
+        type: "conflict_recorded",
+        payload: {
+          field: "catalogueStatus",
+          zohoValue: "Reserved",
+          laxValue: "In Auction",
+          cause: "zoho_automation",
+        },
+      });
+      expect(await repo.listOpenConflicts(10)).toHaveLength(1);
+    });
+
     it("closes a conflict because Zoho matched LAX without recording the Status as written", async () => {
       const entry = await created();
       await repo.recordCatalogueStatusConflict({
