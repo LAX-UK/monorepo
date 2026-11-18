@@ -136,3 +136,91 @@ and role grants applied):
 | `@auction/persistence` `src/repositories/accounting` (integration, DB) | 4 files, 87 tests passed |
 | `apps/worker` `src/finance/accounting` (incl. `bid-refunds-books.integration.test.ts`, 30 tests on DB) | 25 files, 347 tests passed |
 | `biome check` on both packages | clean |
+
+## Fixes after review
+
+Fixed in `fee03fc6` on `fix/partial-credit-books-vat`, after `be427ba3` merged `main` (`7dfd2356`) into
+the branch. Line numbers are at `fee03fc6`.
+
+### B1. The VAT rule is now decided per credit note (fixed)
+
+- `packages/accounting-domain/src/document.ts:188`: `CreditNote.creditVatRule?: "books"`. Every new note
+  carries it. It is stored in the `accounting_document.payload` JSON, so no migration is needed. A note
+  without it was stored before this change, so it was made with the cumulative rule.
+- `document.ts:200`, `:203`: the `CreditVatRule` type, and `creditVatRuleOf(note)`, which returns
+  `books` when the marker is present and `cumulative` otherwise.
+- `document.ts:768` (`creditedEntry`): matches under one given rule only. The loop that tried `books`
+  and then `cumulative` on each entry is removed.
+- `document.ts:828` (`replayPriorCredits`): every line of a prior note is replayed with that note's own
+  rule. A legacy note replays with the cumulative rule only, which is exactly `main`'s replay. A new
+  note replays with `books` only. An unknown rule is refused.
+- `document.ts:688` (`creditLines`): the cumulative rule is never split. New notes are built with
+  `books` only.
+- `document.ts:894`: `buildCreditNoteFor` takes an optional `creditVatRule`, used only to rebuild a
+  stored note exactly as it was made. With `cumulative` the builder is `main`'s builder, and the note
+  carries no marker.
+- `packages/persistence/src/lib/accounting-document-payload.ts:160`: the payload reader accepts only
+  an absent marker or `"books"`, and only on a credit note.
+- `packages/accounting-domain/src/projection/bid-refunds.ts:166,252,393,467` and
+  `packages/finance-runtime/src/books/accounting-queue.service.ts:431,449`: releasing a parked Bid
+  credit note now rebuilds it with the stored note's own rule. Without this, every legacy parked note
+  would have come back as `document_changed`.
+
+Tests:
+- `packages/accounting-domain/src/document.test.ts:877`: the review's case. Two standard-rated
+  `"Print"` lines, 37p and 33p net. A legacy named credit of 33p on line 2 (`Credit: Print`, 33p gross,
+  6p VAT, as `main` makes it) replays as `[0, 33]`. A full credit of line 1 (44p, 7p VAT) then
+  succeeds, and the replay gives `[44, 33]`.
+- `document.test.ts:901`: a new note is never matched under the legacy rule. A 3p credit of 21p+4p
+  carries 1p VAT. Without its marker it does not replay, and a legacy 0p line marked `books` does not
+  replay either.
+- `document.test.ts:940`: a property test, 400 runs. Legacy named chains on two same-description lines
+  replay as they were made, and the rest of each line can then be credited in full, with exact VAT.
+- `packages/persistence/src/repositories/accounting/accounting-credit-notes.integration.test.ts:234`:
+  the marker round-trips, a legacy note is read back unmarked, and `"cumulative"` is refused as
+  `bad_document`.
+- `apps/worker/src/finance/accounting/bid-refunds-books.integration.test.ts:770`: a parked
+  buyer-default note with the marker removed is rebuilt on release, and it reaches the database (the
+  0385 `42501`), not `document_changed`. I checked that this test fails with the `finance-runtime`
+  change reverted.
+
+### Non-blocking findings
+
+1. **The Books rounding rule (left for the accountant).** No code change. The note in
+   `packages/accounting-zoho-books/README.md:123` now says it needs the accountant or the Books test
+   organisation. It also says that the headline case is an exact half, which banker's rounding would
+   give as 0p, and that a wrong assumption fails safe. The PR body says the same.
+2. **Half-up drift over many partials (accepted).** This is documented in the README (`:119` area). No
+   code change.
+3. **Stale docstring (fixed).** `document.ts:862`: the `buildCreditNoteFor` doc now describes the
+   per-note rule, the `books` allocation, splitting and the line cap. The mapper comment is updated at
+   `packages/accounting-zoho-books/src/adapter/mappers/credit-note.ts:35`, and the persistence
+   `readLines` doc is updated too.
+4. **No cap on credit-note lines (fixed).** At `document.ts:925`, if the splits would take a note past
+   `MAX_LINES`, the note is rebuilt without them (`creditNoteLines`, `:957`). Without splits a note has
+   at most one line per invoice line. The unsplit lines replay under `books` and the adapter refuses
+   any that differ from Books. A note that is still too long is refused with `too_many_lines`. This
+   is tested at `document.test.ts:989`: a 1,000-line invoice whose rest would need 1,001 lines.
+5. **Test gaps (fixed).** `packages/accounting-zoho-books/src/adapter/mappers/credit-note.test.ts:168`
+   adds 1,500 random runs on 2–4-line invoices with every treatment, goods and delivery, and reused
+   descriptions. Each run is two partials then the rest. Every line matches `booksLineVat`, except a
+   rest that no whole-pence split can carry. The totals equal the invoice exactly. The
+   legacy-replay test with two lines sharing a description is covered under B1 above.
+
+### Unchanged
+
+The Xero path is untouched, and dry-run behaviour is unchanged (the adapter change is comment only).
+
+### Test runs at `fee03fc6`
+
+All with `--maxWorkers=2`, against a throwaway Postgres 16 on 55432 after `db:migrate` and `db:roles`:
+
+| Suite | Result |
+| --- | --- |
+| `@auction/accounting-domain` | 21 files, 424 passed; `tsc` clean |
+| `@auction/accounting-zoho-books` | 16 files, 352 passed; `tsc --noEmit` clean |
+| `@auction/finance-runtime` | 35 files, 259 passed; `tsc --noEmit` clean |
+| `@auction/persistence` `src/repositories/accounting` (DB) | 4 files, 88 passed; `tsc --noEmit` clean |
+| `apps/worker` `src/finance/accounting` (DB) | 25 files, 348 passed; `tsc --noEmit` clean |
+| `apps/api` accounting suites | 4 files, 143 passed; `tsc --noEmit` clean |
+| `biome check` on the changed files | clean |
