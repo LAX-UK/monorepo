@@ -9,6 +9,7 @@ import {
   lineNetPence,
   totalsOf,
   vatForLine,
+  vatInsideGross,
 } from "./money.js";
 import { forAll, int, pick } from "./testing/generate.js";
 
@@ -96,6 +97,32 @@ describe("vatForLine", () => {
       const exactTimes10000 = net * bps;
       expect(Math.abs(v * 10000 - exactTimes10000)).toBeLessThanOrEqual(5000);
       if (exactTimes10000 % 10000 === 5000) expect(v * 10000).toBe(exactTimes10000 + 5000);
+    });
+  });
+});
+
+describe("vatInsideGross", () => {
+  it("is the VAT inside a gross, rounded half-up per line as Books does", () => {
+    expect([0, 1, 2, 3, 4, 6, 9, 22, 25, 120].map((g) => vatInsideGross(g, "standard"))).toEqual([
+      0, 0, 0, 1, 1, 1, 2, 4, 4, 20,
+    ]);
+  });
+  it("is 0 for anything but standard rated", () => {
+    for (const t of VAT_TREATMENTS.filter((t) => t !== "standard")) {
+      expect(vatInsideGross(12_000, t)).toBe(0);
+    }
+  });
+  it("agrees with half-up of gross x 20/120 on large amounts, past 2^53 products", () => {
+    forAll(200, (rng) => {
+      const g = int(rng, 1, MAX_LINE_NET_PENCE);
+      // round_half_up(g * 2000 / 12000) = floor((2 * g * 2000 + 12000) / 24000)
+      expect(vatInsideGross(g, "standard")).toBe(Number((BigInt(g) * 4000n + 12000n) / 24000n));
+    });
+  });
+  it("a whole tax-exclusive line's VAT is what Books works out from its gross", () => {
+    forAll(200, (rng) => {
+      const net = int(rng, 0, 10_000_000);
+      expect(vatInsideGross(net + vat(net, "standard"), "standard")).toBe(vat(net, "standard"));
     });
   });
 });

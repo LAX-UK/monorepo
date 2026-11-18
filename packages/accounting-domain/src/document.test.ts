@@ -11,12 +11,20 @@ import {
   buildCreditNoteFor,
   buildInvoice,
   buildPayment,
+  creditedOnInvoiceLines,
   expectedTotals,
   laxReference,
   legalEntityFor,
   parseLaxReference,
 } from "./document.js";
-import { type LineInput, lineAmounts, lineGrossPence } from "./money.js";
+import {
+  type LineInput,
+  buildInclusiveLine,
+  lineAmounts,
+  lineGrossPence,
+  totalsOf,
+  vatInsideGross,
+} from "./money.js";
 import { forAll, int, pick } from "./testing/generate.js";
 
 const lineInput = (over: Partial<LineInput> = {}): LineInput => ({
@@ -551,8 +559,10 @@ describe("credit notes are bounded by the original invoice", () => {
         if (!r.ok) return;
         const line = r.value.lines[0];
         expect(r.value.totals.grossPence).toBe(g);
-        const exact = (g * inv.value.totals.vatPence) / total;
-        expect(Math.abs((line?.vatPence ?? 0) - exact)).toBeLessThanOrEqual(0.5);
+        // A partial credit carries the VAT Books works out for its gross; a full one, the line's.
+        const expected = g === total ? inv.value.totals.vatPence : vatInsideGross(g, "standard");
+        expect(r.value.lines).toHaveLength(1);
+        expect(line?.vatPence).toBe(expected);
       }
     });
   });
@@ -754,5 +764,61 @@ describe("partial credits on one line (F1, F2, F4)", () => {
         refusal: { code: "bad_invoice" },
       });
     }
+  });
+  // Books works the VAT of a tax-inclusive line out on its own: round_half_up(gross / 6) at 20%.
+  const books = (l: { readonly unitNetPence: number; readonly vatPence: number }) =>
+    vatInsideGross(l.unitNetPence + l.vatPence, "standard");
+  const shape = (note: CreditNote) =>
+    note.lines.map((l) => ({ gross: lineGrossPence(l), vat: l.vatPence }));
+
+  it("a partial credit carries the VAT Books works out for it (3p of a 25p line: 1p, not 0p)", () => {
+    const [first] = run(invoiceOf(21), [3]);
+    expect(first && shape(first)).toEqual([{ gross: 3, vat: 1 }]);
+  });
+  it("the credit that finishes a line is split so each part is Books' VAT and the line is exact", () => {
+    // 21p + 4p VAT. After 3p (1p VAT), 22p is left carrying 3p; Books would take 4p on one 22p
+    // line, so it is sent as 2p (0p) + 20p (3p).
+    const notes = run(invoiceOf(21), [3, 22]);
+    expect(notes[1] && shape(notes[1])).toEqual([
+      { gross: 2, vat: 0 },
+      { gross: 20, vat: 3 },
+    ]);
+    for (const n of notes) for (const l of n.lines) expect(l.vatPence).toBe(books(l));
+    expect(sums(notes)).toEqual({ vat: 4, net: 21, gross: 25 });
+    expect(creditedOnInvoiceLines(invoiceOf(21), notes)).toEqual({ ok: true, value: [25] });
+  });
+  it("a split credit replays, so a later credit on the same invoice still builds", () => {
+    const inv = invoiceOf(1000, 2);
+    const notes = run(inv, [7, 1000, 1393]);
+    expect(sums(notes)).toEqual({ vat: 400, net: 2000, gross: 2400 });
+    for (const n of notes) for (const l of n.lines) expect(l.vatPence).toBe(books(l));
+  });
+  it("a rest no whole-pence line can carry stays one line (the adapter refuses it for staff)", () => {
+    // 8p + 2p VAT. 8p credited carries 1p, leaving 2p gross with 1p VAT; Books takes 0p on any
+    // line of 2p or less, so no split exists. The line keeps the invoice's VAT exact.
+    const notes = run(invoiceOf(8), [8, 2]);
+    expect(notes[1] && shape(notes[1])).toEqual([{ gross: 2, vat: 1 }]);
+    expect(sums(notes)).toEqual({ vat: 2, net: 8, gross: 10 });
+  });
+  it("a credit note stored under the earlier cumulative VAT rule still replays", () => {
+    const inv = invoiceOf(21);
+    const [made] = run(inv, [3]);
+    if (!made) throw new Error("fixture");
+    // The earlier rule gave 3p of the 25p line round(4 x 3 / 25) = 0p VAT.
+    const legacyLine = buildInclusiveLine({
+      description: "Credit: Print",
+      treatment: "standard",
+      role: "goods",
+      grossPence: 3,
+      vatPence: 0,
+    });
+    if (!legacyLine.ok) throw new Error("fixture");
+    const legacy: CreditNote = {
+      ...made,
+      lines: [legacyLine.value],
+      totals: totalsOf([legacyLine.value]),
+    };
+    const rest = credit(inv, [legacy], 22, "cn-rest");
+    expect(rest.ok && shape(rest.value)).toEqual([{ gross: 22, vat: 4 }]);
   });
 });

@@ -107,11 +107,15 @@ organisation is modelled as registered only so the VAT paths have an organisatio
   the domain builders still produce standard-rated lines for Shop. Every such document is refused by the adapter
   (`zoho_books_mapping_vat_on_unregistered_entity`) and held for staff. Which treatment Shop lines should use is a
   domain decision, not something the adapter changes.
-- **Partial credits whose VAT Books rounds differently.** The domain allocates credit VAT cumulatively; Books
-  rounds each tax-inclusive line on its own. About 1 partial credit in 9 differs by 1p, and those are refused
-  (`zoho_books_mapping_vat_differs_from_books`). Options: confirm in the test organisation whether Books accepts a
-  line-level tax amount (then send ours), or align the domain's allocation with Books' rule, or accept these going
-  to staff.
+- **Partial credits whose VAT Books rounds differently.** The domain now gives each partial credit line the VAT
+  Books works out for it (`vatInsideGross`: half-up of gross x rate / (1 + rate), per line), and splits the credit
+  that finishes a line into a few lines when Books' rounding of the parts would not add up to the VAT left
+  (`creditLines` in `accounting-domain/src/document.ts`). Every partial credit, and every rest after up to two
+  partials, matches Books to the penny (`adapter/mappers/credit-note.test.ts`). What is left is refused
+  (`zoho_books_mapping_vat_differs_from_books`) and goes to staff: a rest of a few pence whose VAT no whole-pence
+  line can carry (60 of 53,880 one-partial-then-rest runs on lines up to £3), or a rest after many partial
+  refunds of one line, whose roundings can drift by 2p or more. Still to confirm: that Books rounds tax-inclusive
+  lines half-up per line, as `booksLineVat` assumes.
 
 - **Seller and artist payouts (PR 12).** Which VAT treatment a bill line for what a seller or artist is owed
   carries, whether LAX's commission (and the VAT a signed agreement charges on it) stays netted inside the sale

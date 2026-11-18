@@ -7,6 +7,7 @@ import {
   type LineRole,
   MAX_LINES,
   type Pence,
+  STANDARD_VAT_RATE_BPS,
   type Totals,
   buildInclusiveLine,
   buildLine,
@@ -14,6 +15,7 @@ import {
   isPence,
   lineGrossPence,
   totalsOf,
+  vatInsideGross,
 } from "./money.js";
 import { type PaidBuckets, type RefundSplit, planRefund } from "./refund.js";
 import { type Result, ok, refuse } from "./result.js";
@@ -577,17 +579,57 @@ function ledgerFor(invoice: Invoice): Record<LineRole, LineLedger[]> {
   return out;
 }
 
-/** The credit line for `take` gross on a ledger entry: VAT allocated cumulatively, never over the line's. */
-function nextCredit(entry: LineLedger, take: Pence): Result<Line, "bad_line" | "bad_invoice"> {
-  const vat =
-    cumulativeVat(entry.line.vatPence, entry.gross, entry.creditedGross + take) - entry.creditedVat;
-  if (vat < 0) return refuse("bad_invoice", "VAT already credited on a line is too high");
+/**
+ * How the VAT inside a partial credit line is chosen. `books` is the rule credits are made with;
+ * `cumulative` is the rule credit notes were made with before it, kept only so that stored credit
+ * notes still replay (see `creditedEntry`). A new credit is never made with it.
+ */
+type CreditVatRule = "books" | "cumulative";
+const CREDIT_VAT_RULES: readonly CreditVatRule[] = ["books", "cumulative"];
+
+/**
+ * The VAT inside `take` gross credited on a ledger entry, or null when no VAT fits.
+ *
+ * `books` (the rule): Books cannot be handed the VAT of a tax-inclusive line; it works it out per
+ * line as `round_half_up(gross * rate / (1 + rate))` (`vatInsideGross`). A partial credit carries
+ * exactly that, so the line, and so the credit note's total (the sum of its lines), is what Books
+ * computes, to the penny. Two bounds keep the line whole however it is split: the VAT credited
+ * never passes the line's VAT, and what is left of the line's VAT always fits in what is left of
+ * its gross (a value outside is clamped to the nearest bound: the adapter then sees it differs from
+ * Books and refuses it for staff, never sends it). The credit that finishes a line takes exactly
+ * the VAT left, so a fully credited line credits exactly its VAT.
+ *
+ * `cumulative` (before): `cumulativeVat` of the gross credited so far, less what earlier credits
+ * took. About one partial credit in nine came out a penny away from Books.
+ */
+function creditVat(entry: LineLedger, take: Pence, rule: CreditVatRule): Pence | null {
+  const after = entry.creditedGross + take;
+  if (rule === "cumulative") {
+    const vat = cumulativeVat(entry.line.vatPence, entry.gross, after) - entry.creditedVat;
+    return vat < 0 ? null : Math.min(vat, take);
+  }
+  const left = entry.line.vatPence - entry.creditedVat;
+  if (after >= entry.gross) return left < 0 ? null : left;
+  const low = Math.max(0, left - (entry.gross - after));
+  const high = Math.min(take, left);
+  if (low > high) return null;
+  return Math.min(high, Math.max(low, vatInsideGross(take, entry.line.treatment)));
+}
+
+/** The credit line for `take` gross on a ledger entry: VAT by `creditVat`, never over the line's. */
+function nextCredit(
+  entry: LineLedger,
+  take: Pence,
+  rule: CreditVatRule = "books",
+): Result<Line, "bad_line" | "bad_invoice"> {
+  const vat = creditVat(entry, take, rule);
+  if (vat === null) return refuse("bad_invoice", "VAT already credited on a line is too high");
   const credit = buildInclusiveLine({
     description: `Credit: ${entry.line.description}`,
     treatment: entry.line.treatment,
     role: entry.line.role,
     grossPence: take,
-    vatPence: Math.min(vat, take),
+    vatPence: vat,
   });
   if (!credit.ok) return refuse("bad_line", credit.refusal.message);
   return credit;
@@ -596,6 +638,92 @@ function nextCredit(entry: LineLedger, take: Pence): Result<Line, "bad_line" | "
 function record(entry: LineLedger, credit: Line): void {
   entry.creditedGross += lineGrossPence(credit);
   entry.creditedVat += credit.vatPence;
+}
+
+/** Most equal parts a finishing credit is split off into, before the part that finishes the line. */
+const MAX_SPLIT_PARTS = 3;
+
+/**
+ * The credit lines for `take` gross on `entry` (one of `entries`, its role's ledger). Usually one
+ * line (`nextCredit`). A credit that finishes a line must carry exactly the VAT left on it, and
+ * Books rounds that line on its own, so the two can be a penny or so apart (Books' rounding of
+ * the parts of a line need not add up to its rounding of the whole). Then the credit is split, on
+ * the same invoice line, into `parts` equal partial credits of `size` gross and one line for the
+ * rest that finishes it, chosen so that Books' VAT on every one of them (`vatInsideGross`) adds up
+ * to exactly the VAT left: every line, and so the credit note's total, is what Books computes, and
+ * the invoice line is still credited exactly its VAT.
+ *
+ * The split is deterministic: the fewest parts (up to `MAX_SPLIT_PARTS`), then the smallest size.
+ * Books' rounding repeats every `period` pence of gross, so no size above one period is tried. The
+ * parts are ordinary partial credits (`nextCredit`, unclamped) and the last line finishes the line,
+ * so a replay rebuilds every one; a split is only used when the replay puts each part back on
+ * this very line. When no split works (a rest of a few pence, or VAT that drifted further), the
+ * single line is kept: it differs from Books, and the adapter refuses it for staff, never sends it.
+ */
+function creditLines(
+  entries: readonly LineLedger[],
+  entry: LineLedger,
+  take: Pence,
+): Result<Line[], "bad_line" | "bad_invoice"> {
+  const single = nextCredit(entry, take);
+  if (!single.ok) return single;
+  const vat = single.value.vatPence;
+  const treatment = entry.line.treatment;
+  const finishes = entry.creditedGross + take >= entry.gross;
+  if (!finishes || vat === vatInsideGross(take, treatment)) return ok([single.value]);
+  const rate = BigInt(STANDARD_VAT_RATE_BPS);
+  const whole = 10_000n + rate;
+  const period = Number(whole / gcd(rate, whole));
+  for (let parts = 1; parts <= MAX_SPLIT_PARTS; parts++) {
+    for (let size = 1; size <= period && parts * size < take; size++) {
+      const rest = take - parts * size;
+      if (parts * vatInsideGross(size, treatment) + vatInsideGross(rest, treatment) !== vat) {
+        continue;
+      }
+      const split = replayedSplit(entries, entry, [...Array(parts).fill(size), rest]);
+      if (split) return ok(split);
+    }
+  }
+  return ok([single.value]);
+}
+
+/**
+ * The credit lines for `takes` on `entry`, one after another, when each rebuilds to VAT exactly as
+ * Books works it out and the replay (`creditedEntry`) would put each back on `entry`; else null.
+ * Works on copies: the ledger is not changed.
+ */
+function replayedSplit(
+  entries: readonly LineLedger[],
+  entry: LineLedger,
+  takes: readonly Pence[],
+): Line[] | null {
+  let current = entry;
+  let ledger = entries;
+  const lines: Line[] = [];
+  for (const take of takes) {
+    const credit = nextCredit(current, take);
+    if (
+      !credit.ok ||
+      credit.value.vatPence !== vatInsideGross(take, current.line.treatment) ||
+      creditedEntry(ledger, credit.value) !== current
+    ) {
+      return null;
+    }
+    lines.push(credit.value);
+    const next: LineLedger = {
+      ...current,
+      creditedGross: current.creditedGross + take,
+      creditedVat: current.creditedVat + credit.value.vatPence,
+    };
+    const was = current;
+    ledger = ledger.map((e) => (e === was ? next : e));
+    current = next;
+  }
+  return lines;
+}
+
+function gcd(a: bigint, b: bigint): bigint {
+  return b === 0n ? a : gcd(b, a % b);
 }
 
 /** Two credit lines are the same document line: what the books are sent. */
@@ -621,8 +749,10 @@ function creditedEntry(entries: readonly LineLedger[], line: Line): LineLedger |
   if (take < 1) return null;
   for (const entry of entries) {
     if (take > entry.gross - entry.creditedGross) continue;
-    const rebuilt = nextCredit(entry, take);
-    if (rebuilt.ok && sameCreditLine(rebuilt.value, line)) return entry;
+    for (const rule of CREDIT_VAT_RULES) {
+      const rebuilt = nextCredit(entry, take, rule);
+      if (rebuilt.ok && sameCreditLine(rebuilt.value, line)) return entry;
+    }
   }
   return null;
 }
@@ -791,11 +921,13 @@ export function buildCreditNoteFor(
       const entry = (entries as LineLedger[]).find((e) => e.creditedGross < e.gross);
       if (!entry) return refuse("exceeds_invoice", "the credit exceeds what is left on its lines");
       const take = Math.min(remaining, entry.gross - entry.creditedGross);
-      const credit = nextCredit(entry, take);
+      const credit = creditLines(ledger[first.role], entry, take);
       if (!credit.ok) return credit;
-      lines.push(credit.value);
-      // Recorded where the replay will find it (this line, or one it cannot be told from).
-      record(creditedEntry(ledger[first.role], credit.value) ?? entry, credit.value);
+      for (const line of credit.value) {
+        lines.push(line);
+        // Recorded where the replay will find it (this line, or one it cannot be told from).
+        record(creditedEntry(ledger[first.role], line) ?? entry, line);
+      }
       remaining -= take;
     }
   }
@@ -810,10 +942,12 @@ export function buildCreditNoteFor(
       if (remaining === 0) break;
       const take = Math.min(remaining, entry.gross - entry.creditedGross);
       if (take === 0) continue;
-      const credit = nextCredit(entry, take);
+      const credit = creditLines(ledger[role], entry, take);
       if (!credit.ok) return credit;
-      lines.push(credit.value);
-      record(entry, credit.value);
+      for (const line of credit.value) {
+        lines.push(line);
+        record(entry, line);
+      }
       remaining -= take;
     }
   }
