@@ -47,6 +47,7 @@ async function buildApp(role: ShopStaffRole) {
         id === ORDER
           ? [
               {
+                consumer: "zoho_fulfilment",
                 eventId: 1,
                 eventType: "shop.order.paid",
                 status: "succeeded" as const,

@@ -1,4 +1,5 @@
 import type { IZohoListingSourceReader } from "@auction/persistence/interfaces";
+import { ARTWORK_LISTING_SKIP } from "@auction/types";
 import { crmErrorOutcome } from "../../../crm/classify-crm-error.js";
 import { CrmGatewayError } from "../../../crm/crm-gateway-error.js";
 import type { CrmSyncResult } from "../../../crm/crm-sync-result.js";
@@ -25,8 +26,10 @@ export class ZohoListingWriteback {
   async deliver(event: ListingTriggerEvent & { id?: number }): Promise<CrmSyncResult> {
     try {
       const ids = await registerIdsFor(event, this.deps.sources);
-      if (ids === null) return { outcome: "skipped", reason: "event_type_not_handled" };
-      if (ids.length === 0) return { outcome: "skipped", reason: "no_register_entry" };
+      if (ids === null)
+        return { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.eventTypeNotHandled };
+      if (ids.length === 0)
+        return { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.noRegisterEntry };
       return this.outcome(await this.deps.sync.sync(ids));
     } catch (err) {
       const { retryable, error } = crmErrorOutcome(err);
@@ -49,13 +52,17 @@ export class ZohoListingWriteback {
     }
     if (report.changed > 0) {
       return this.deps.mode === "dry_run"
-        ? { outcome: "skipped", reason: "dry_run" }
+        ? { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.dryRun }
         : { outcome: "success", providerReference: `Products:${report.changed}` };
     }
-    if (report.checked === 0) return { outcome: "skipped", reason: "not_an_original" };
+    if (report.checked === 0)
+      return { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.notAnOriginal };
     return {
       outcome: "skipped",
-      reason: report.stale > 0 ? "newer_listing_in_zoho" : "listing_already_in_sync",
+      reason:
+        report.stale > 0
+          ? ARTWORK_LISTING_SKIP.newerListingInZoho
+          : ARTWORK_LISTING_SKIP.listingAlreadyInSync,
     };
   }
 }

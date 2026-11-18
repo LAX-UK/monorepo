@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 const SOURCES = [
   "./fulfilment/order-mirror.ts",
   "./artwork/zoho-artwork-writeback-service.ts",
+  "./artwork/listing/zoho-listing-writeback.ts",
   "../../projectors/zoho-fulfilment-projector.ts",
   "../../projectors/zoho-artwork-writeback-projector.ts",
 ];
@@ -18,6 +19,6 @@ describe("Zoho mirror skip reasons and consumers", () => {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");
     expect(source).toContain('from "@auction/types"');
     expect(source).not.toMatch(/reason:\s*"/);
-    expect(source).not.toMatch(/"zoho_(fulfilment|artwork_writeback)"/);
+    expect(source).not.toMatch(/"zoho_(fulfilment|artwork_writeback|artwork_listing)"/);
   });
 });

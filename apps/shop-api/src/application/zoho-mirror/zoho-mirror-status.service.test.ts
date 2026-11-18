@@ -10,6 +10,7 @@ import {
 } from "./zoho-mirror-status.service.js";
 
 const sent: MirrorDelivery = {
+  consumer: "zoho_fulfilment",
   eventId: 1,
   eventType: "shop.order.paid",
   status: "succeeded",

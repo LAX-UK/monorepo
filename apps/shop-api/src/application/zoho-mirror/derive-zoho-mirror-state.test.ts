@@ -1,4 +1,9 @@
-import { ARTWORK_WRITEBACK_SKIP, ORDER_MIRROR_SKIP } from "@auction/types";
+import {
+  ARTWORK_LISTING_SKIP,
+  ARTWORK_WRITEBACK_SKIP,
+  ORDER_MIRROR_SKIP,
+  ZOHO_ARTWORK_LISTING_CONSUMER,
+} from "@auction/types";
 import { describe, expect, it } from "vitest";
 import type { MirrorDelivery } from "../ports/zoho-mirror.ports.js";
 import { deriveZohoMirrorState, namedSkipReasons } from "./derive-zoho-mirror-state.js";
@@ -11,6 +16,7 @@ function delivery(
   extra: Partial<MirrorDelivery> = {},
 ): MirrorDelivery {
   return {
+    consumer: "zoho_fulfilment",
     eventId: nextEvent++,
     eventType: "shop.order.paid",
     status,
@@ -28,6 +34,12 @@ const DISPATCHED = { eventType: "shop.fulfilment.status_changed" };
 const SWAPPED = { eventType: "shop.print.swapped" };
 const STATUS = { eventType: "artwork_register.offer_changed" };
 const STOCK_CODE = { eventType: "artwork_register.stock_code_assigned" };
+/** The LAX listing's delivery of the same register event the Status writeback hears. */
+const LISTING = { consumer: ZOHO_ARTWORK_LISTING_CONSUMER, eventType: STATUS.eventType };
+const LAX_ART_LISTING = {
+  consumer: ZOHO_ARTWORK_LISTING_CONSUMER,
+  eventType: "shop.artwork.updated",
+};
 
 describe("deriveZohoMirrorState", () => {
   it("is not applicable, and says nothing was sent, when the ledger has no delivery", () => {
@@ -201,6 +213,81 @@ describe("deriveZohoMirrorState", () => {
     });
   });
 
+  describe("an artwork reads its LAX listing's outcome too", () => {
+    it("is failed when the listing dead-lettered after the Status was sent", () => {
+      const dead = delivery("dead_lettered", { ...LISTING, lastError: "PRODUCT_NOT_FOUND" });
+      expect(
+        deriveZohoMirrorState("artwork", [
+          delivery("succeeded", { ...STATUS, providerReference: "Products:1" }),
+          dead,
+        ]),
+      ).toMatchObject({ state: "failed", error: "PRODUCT_NOT_FOUND" });
+    });
+
+    it("keeps a failed listing failed after a later Status write, until the listing is put right", () => {
+      const later = [
+        delivery("dead_lettered", LAX_ART_LISTING),
+        delivery("succeeded", STATUS),
+        delivery("succeeded", STOCK_CODE),
+      ];
+      expect(deriveZohoMirrorState("artwork", later).state).toBe("failed");
+      expect(
+        deriveZohoMirrorState("artwork", [
+          ...later,
+          skipped(ARTWORK_LISTING_SKIP.listingAlreadyInSync, LISTING),
+        ]).state,
+      ).toBe("mirrored");
+    });
+
+    it("keeps a failed Status failed after a later good listing write", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [
+          skipped(ARTWORK_WRITEBACK_SKIP.statusConflictRaised, STATUS),
+          delivery("succeeded", LISTING),
+        ]).state,
+      ).toBe("failed");
+    });
+
+    it("is pending while the listing's newest delivery is still retrying", () => {
+      const retrying = delivery("retryable", { ...LISTING, nextRetryAt: at(50) });
+      expect(
+        deriveZohoMirrorState("artwork", [delivery("succeeded", STATUS), retrying]),
+      ).toMatchObject({ state: "pending", nextRetryAt: at(50).toISOString() });
+    });
+
+    it.each([ARTWORK_LISTING_SKIP.listingAlreadyInSync, ARTWORK_LISTING_SKIP.newerListingInZoho])(
+      "is mirrored, live, when the listing skipped %s",
+      (reason) => {
+        expect(deriveZohoMirrorState("artwork", [skipped(reason, LISTING)])).toMatchObject({
+          state: "mirrored",
+          mode: "live",
+        });
+      },
+    );
+
+    it("is a dry run when the listing's newest delivery was one", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [
+          delivery("succeeded", STATUS),
+          skipped(ARTWORK_LISTING_SKIP.dryRun, LISTING),
+        ]),
+      ).toMatchObject({ state: "dry_run", mode: "dry_run" });
+    });
+
+    it("keeps the Status writeback's Zoho reference, not the listing's count of Products", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [
+          delivery("succeeded", {
+            ...STATUS,
+            consumer: "zoho_artwork_writeback",
+            providerReference: "6400000000123",
+          }),
+          delivery("succeeded", { ...LISTING, providerReference: "Products:1" }),
+        ]),
+      ).toMatchObject({ state: "mirrored", providerReference: "6400000000123" });
+    });
+  });
+
   it("counts an artwork whose Zoho Status conflicts with LAX as failed", () => {
     expect(
       deriveZohoMirrorState("artwork", [
@@ -282,7 +369,10 @@ describe("deriveZohoMirrorState", () => {
   it("gives a meaning only to skip reasons the worker emits, from the shared constants", () => {
     const emitted = {
       order: Object.values(ORDER_MIRROR_SKIP) as string[],
-      artwork: Object.values(ARTWORK_WRITEBACK_SKIP) as string[],
+      artwork: [
+        ...Object.values(ARTWORK_WRITEBACK_SKIP),
+        ...Object.values(ARTWORK_LISTING_SKIP),
+      ] as string[],
     };
     for (const entity of ["order", "artwork"] as const) {
       const named = namedSkipReasons(entity);

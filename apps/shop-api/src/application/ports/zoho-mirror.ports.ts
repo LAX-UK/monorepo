@@ -2,6 +2,8 @@ import type { ZohoMirrorEntity } from "@auction/shop-contracts";
 
 /** One consumer's delivery of one event for a record, as the delivery ledger holds it. */
 export type MirrorDelivery = {
+  /** The consumer that made it: the record's mirror, or for an artwork also its LAX listing. */
+  consumer: string;
   eventId: number;
   /** The event's type: which of the record's writes this delivery made. */
   eventType: string;
@@ -16,7 +18,7 @@ export type MirrorDelivery = {
 
 export type MirrorLedger = {
   consumer: string;
-  /** Every asked-for id, with its deliveries oldest event first. */
+  /** Every asked-for id, with its deliveries oldest event first (an artwork's listing included). */
   deliveries: Map<string, MirrorDelivery[]>;
 };
 

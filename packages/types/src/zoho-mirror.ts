@@ -16,6 +16,13 @@ export const ZOHO_MIRROR_CONSUMER = {
   artwork: "zoho_artwork_writeback",
 } as const satisfies Record<ZohoMirrorRecord, DomainEventConsumer>;
 
+/**
+ * The LAX listing on the artwork's Zoho Product (`ZOHO_ARTWORK_LISTING_MODE`), a second consumer
+ * that writes to the same record. The artwork's "Mirrored to Zoho" read takes its outcome too.
+ */
+export const ZOHO_ARTWORK_LISTING_CONSUMER =
+  "zoho_artwork_listing" as const satisfies DomainEventConsumer;
+
 /** How a mirror runs: `off` does nothing, `dry_run` writes nothing to Zoho, `live` writes. */
 export const ZOHO_MIRROR_MODES = ["off", "dry_run", "live"] as const;
 export type ZohoMirrorMode = (typeof ZOHO_MIRROR_MODES)[number];
@@ -91,3 +98,27 @@ export const ARTWORK_WRITEBACK_SKIP = {
 } as const;
 export type ArtworkWritebackSkipReason =
   (typeof ARTWORK_WRITEBACK_SKIP)[keyof typeof ARTWORK_WRITEBACK_SKIP];
+
+/**
+ * The listing consumer's events that LAX Admin can tie to one artwork from the register alone: the
+ * one raised on the register entry, and those raised on the lax.art listing it is offered through
+ * or was drafted into. Lot and sale events are fanned out to artworks through LAX Bid's tables,
+ * which LAX Shop does not read, so the read leaves them to Failed jobs and the nightly Last check.
+ */
+export const ARTWORK_LISTING_EVENT = {
+  onRegister: ["artwork_register.offer_changed"],
+  onLaxArtListing: ["shop.artwork.created", "shop.artwork.updated"],
+} as const;
+
+/** Why the listing consumer skipped an event; left in `last_error` of the skipped delivery. */
+export const ARTWORK_LISTING_SKIP = {
+  eventTypeNotHandled: "event_type_not_handled",
+  noRegisterEntry: "no_register_entry",
+  notAnOriginal: "not_an_original",
+  dryRun: "dry_run",
+  listingAlreadyInSync: "listing_already_in_sync",
+  /** Zoho already shows a listing newer than the facts read; nothing was written. */
+  newerListingInZoho: "newer_listing_in_zoho",
+} as const;
+export type ArtworkListingSkipReason =
+  (typeof ARTWORK_LISTING_SKIP)[keyof typeof ARTWORK_LISTING_SKIP];

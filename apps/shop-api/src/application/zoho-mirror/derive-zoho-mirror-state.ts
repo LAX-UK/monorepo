@@ -4,9 +4,11 @@ import type {
   ZohoMirrorNotApplicableReason,
 } from "@auction/shop-contracts";
 import {
+  ARTWORK_LISTING_SKIP,
   ARTWORK_WRITEBACK_SKIP,
   ORDER_EVENTS_THAT_SET_PRINTS,
   ORDER_MIRROR_SKIP,
+  ZOHO_ARTWORK_LISTING_CONSUMER,
   type ZohoMirrorMode,
 } from "@auction/types";
 import type { MirrorDelivery } from "../ports/zoho-mirror.ports.js";
@@ -45,6 +47,8 @@ type LedgerReading = {
   partOf(delivery: MirrorDelivery): string;
   /** Whether a good delivery of one part shows a failure of another is now put right. */
   settles(goodPart: string, failedPart: string): boolean;
+  /** Whether a delivery's provider reference names the Zoho record (not, say, a count). */
+  namesRecord(delivery: MirrorDelivery): boolean;
 };
 
 /**
@@ -55,6 +59,8 @@ type LedgerReading = {
  */
 const PRINTS = "prints";
 const WHOLE_ORDER = "order";
+/** An artwork's LAX listing fields, written by the listing consumer. */
+const LISTING = "listing";
 
 const READING: Record<ZohoMirrorEntity, LedgerReading> = {
   order: {
@@ -70,21 +76,28 @@ const READING: Record<ZohoMirrorEntity, LedgerReading> = {
         ? PRINTS
         : WHOLE_ORDER,
     settles: (goodPart, failedPart) => goodPart === PRINTS || failedPart === WHOLE_ORDER,
+    namesRecord: () => true,
   },
-  // Each write-back event writes its own field (the Status, the stock code): one is put right only
-  // by a later good delivery of the same kind of event.
+  // Each write-back event writes its own field (the Status, the stock code), and the LAX listing
+  // writes its own fields on the same Product: one is put right only by a later good delivery of
+  // the same part. Both consumers' deliveries are read; the listing's skip reasons are its own.
   artwork: {
     inSync: [
       ARTWORK_WRITEBACK_SKIP.statusAlreadyInSync,
       ARTWORK_WRITEBACK_SKIP.stockCodeAlreadyInSync,
+      ARTWORK_LISTING_SKIP.listingAlreadyInSync,
+      ARTWORK_LISTING_SKIP.newerListingInZoho,
     ],
-    dryRun: [ARTWORK_WRITEBACK_SKIP.dryRun],
+    dryRun: [ARTWORK_WRITEBACK_SKIP.dryRun, ARTWORK_LISTING_SKIP.dryRun],
     failed: [ARTWORK_WRITEBACK_SKIP.statusConflictRaised],
     off: [ARTWORK_WRITEBACK_SKIP.writebackOff],
     notPaid: [],
     notInRegister: [ARTWORK_WRITEBACK_SKIP.registerEntryMissing],
-    partOf: (delivery) => delivery.eventType,
+    partOf: (delivery) =>
+      delivery.consumer === ZOHO_ARTWORK_LISTING_CONSUMER ? LISTING : delivery.eventType,
     settles: (goodPart, failedPart) => goodPart === failedPart,
+    // The listing's reference is how many Products it wrote, not a record.
+    namesRecord: (delivery) => delivery.consumer !== ZOHO_ARTWORK_LISTING_CONSUMER,
   },
 };
 
@@ -226,7 +239,12 @@ export function deriveZohoMirrorState(
     case "good": {
       const reference = [...deliveries]
         .reverse()
-        .find((delivery) => delivery.status === "succeeded" && delivery.providerReference);
+        .find(
+          (delivery) =>
+            delivery.status === "succeeded" &&
+            delivery.providerReference &&
+            reading.namesRecord(delivery),
+        );
       return {
         ...BLANK,
         state: "mirrored",
