@@ -9,6 +9,13 @@ export {
   type AccountingQueueDeps,
 } from "./books/accounting-queue.service.js";
 export { createBooksDocumentLinks } from "./books/books-document-links.js";
+export {
+  RedisCallBudget,
+  RedisRateWindow,
+  RedisRefreshLock,
+  type RedisRefreshLockOptions,
+  redisZohoBooksLimits,
+} from "./books/redis-zoho-books-limits.js";
 export type {
   AccountingQueueRequest,
   AccountingTryAgainRequest,
