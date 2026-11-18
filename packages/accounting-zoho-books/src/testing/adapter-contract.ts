@@ -732,13 +732,50 @@ export function runAccountingContract(
 
       it("refuses, and sends nothing for, a credit whose VAT Books would work out a penny differently", async () => {
         const s = await withContact(BID);
-        // 21p + 4p VAT; crediting 3p of the 25p gross carries 0p VAT by the domain's cumulative
-        // allocation, but Books would take 3 x 20/120 = 0.5p, rounded to 1p.
-        const inv = invoice(BID, "cn-penny", [{ ...GOODS, unitNetPence: 21 }]);
+        // 8p + 2p VAT. Crediting 8p carries 1p VAT (what Books works out for 8p), so the 2p rest
+        // must carry the last 1p; Books takes 0p VAT on any line of 2p or less, so no allocation
+        // of it into lines can match Books.
+        const inv = invoice(BID, "cn-penny", [{ ...GOODS, unitNetPence: 8 }]);
         issuedOf(await s.settle(s.ports.invoices.issueInvoice(inv)));
+        const buckets = {
+          paidGoodsPence: 10,
+          paidDeliveryPence: 0,
+          refundedGoodsPence: 0,
+          refundedDeliveryPence: 0,
+        };
+        const first = must(
+          buildCreditNoteFor(inv, {
+            sourceId: "cn-penny-1",
+            issuedOn: "2026-11-13",
+            buckets,
+            request: { goodsPence: 8, deliveryPence: 0 },
+            priorCredits: [],
+          }),
+        );
         const note = must(
           buildCreditNoteFor(inv, {
             sourceId: "cn-penny",
+            issuedOn: "2026-11-13",
+            buckets: { ...buckets, refundedGoodsPence: 8 },
+            request: { goodsPence: 2, deliveryPence: 0 },
+            priorCredits: [first],
+          }),
+        );
+        expect(note.totals).toEqual({ netPence: 1, vatPence: 1, grossPence: 2 });
+        expect(await s.settle(s.ports.creditNotes.issueCreditNote(note))).toEqual({
+          status: "rejected",
+          reason: R.vatDiffersFromBooks,
+        });
+        await notIssued(s, note);
+      });
+
+      it("issues a partial credit whose VAT the domain works out as Books does (3p of 25p: 1p)", async () => {
+        const s = await withContact(BID);
+        const inv = invoice(BID, "cn-third", [{ ...GOODS, unitNetPence: 21 }]);
+        issuedOf(await s.settle(s.ports.invoices.issueInvoice(inv)));
+        const note = must(
+          buildCreditNoteFor(inv, {
+            sourceId: "cn-third",
             issuedOn: "2026-11-13",
             buckets: {
               paidGoodsPence: 25,
@@ -750,12 +787,9 @@ export function runAccountingContract(
             priorCredits: [],
           }),
         );
-        expect(note.totals).toEqual({ netPence: 3, vatPence: 0, grossPence: 3 });
-        expect(await s.settle(s.ports.creditNotes.issueCreditNote(note))).toEqual({
-          status: "rejected",
-          reason: R.vatDiffersFromBooks,
-        });
-        await notIssued(s, note);
+        expect(note.totals).toEqual({ netPence: 2, vatPence: 1, grossPence: 3 });
+        const out = issuedOf(await s.settle(s.ports.creditNotes.issueCreditNote(note)));
+        expect(compareWithProviderTotals(note.totals, out.totals)).toEqual({ matches: true });
       });
 
       it("a credit note a penny off on read-back is reported as it is, never adjusted", async () => {

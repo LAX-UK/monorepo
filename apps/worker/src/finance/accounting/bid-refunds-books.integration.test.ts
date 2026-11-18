@@ -766,6 +766,29 @@ describe.skipIf(!HAS_DB)(
         await refunder("test_org", books).tick();
         expect(books.creditNoteRefundOf("bid", noteRef)).toBeNull();
       });
+
+      it("a parked credit note stored before the Books VAT rule (no marker) is rebuilt with its own cumulative rule on release, not remade", async () => {
+        const books = new InMemoryAccounting();
+        const { event, raised } = await defaulted(books, true);
+        expect(await projection().project(event)).toMatchObject({ created: 1, parked: 1 });
+        const noteRef = ref("credit_note", `dft-${raised.invoice.id}`);
+        const note = await rowOf(noteRef, "test_org");
+        expect((note.payload as unknown as CreditNote).creditVatRule).toBe("books");
+        // As a note stored before the marker existed: the same lines, no `creditVatRule`.
+        await owner.execute(sql`
+          update accounting_document set payload = payload - 'creditVatRule' where id = ${note.id}`);
+        const legacy = await rowOf(noteRef, "test_org");
+        expect((legacy.payload as unknown as CreditNote).creditVatRule).toBeUndefined();
+        // Rebuilt under the cumulative rule it is the stored note exactly (not `document_changed`):
+        // the release reaches the database, which still refuses api_app (0385) as above.
+        const refused = await staff("credit_note")
+          .release({ documentId: note.id, actorUserId: "staff-1" })
+          .then(
+            (out) => out,
+            (error: { cause?: { code?: string } }) => error.cause?.code,
+          );
+        expect(refused).toBe("42501");
+      });
     });
 
     it("flow 10: unassigned Pay several refunds are listed for a person, and make no document", async () => {

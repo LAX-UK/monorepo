@@ -231,6 +231,39 @@ describe.skipIf(!HAS_DB)("accounting credit notes (integration)", { timeout: 60_
     expect(notes[0]?.reference).toBe(first.reference);
   });
 
+  it("a credit note's VAT rule is stored with it: a new note keeps `books`, a legacy note stays unmarked", async () => {
+    const { contact, invoice } = invoiceWithContact();
+    await register(contact);
+    await register(invoice);
+    const fresh = credit(invoice, 1_000);
+    expect(fresh.creditVatRule).toBe("books");
+    await register(fresh);
+    // A note stored before the rule existed has no marker: it is read back without one, so the
+    // domain replays it with the cumulative rule.
+    const { creditVatRule: _books, ...legacy } = credit(invoice, 2_000, [fresh]);
+    await register(legacy as CreditNote);
+    const notes = must(
+      await repos.creditNotes.creditNotesFor("bid", invoice.reference, {
+        provider: "books",
+        mode: "dry_run",
+      }),
+    );
+    expect(notes.map((n) => [n.reference, n.creditVatRule])).toEqual([
+      [fresh.reference, "books"],
+      [legacy.reference, undefined],
+    ]);
+    // Only the books rule is ever named; anything else is refused, never stored.
+    const odd = {
+      ...credit(invoice, 500, [fresh, legacy as CreditNote]),
+      creditVatRule: "cumulative",
+    };
+    const out = await repos.registry.register({
+      document: odd as unknown as CreditNote,
+      sourceEventRef: `evt-${newId()}`,
+    });
+    expect(out).toMatchObject({ ok: false, refusal: { code: "bad_document" } });
+  });
+
   it("a cancelled credit note frees its amount; a credit note's refund must be from Stripe clearing", async () => {
     const { contact, invoice } = invoiceWithContact();
     await register(contact);
