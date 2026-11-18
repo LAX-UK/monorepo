@@ -41,6 +41,33 @@ describe("GalleryLightbox", () => {
     lightboxMock.mockClear();
   });
 
+  it.each(["iconLoading", "iconError"] as const)(
+    "gives the %s placeholder a sized frame to fill (the lightbox's own box has no size)",
+    (slot) => {
+      render(
+        <GalleryLightbox
+          images={images}
+          index={0}
+          open
+          onIndexChange={() => {}}
+          onClose={() => {}}
+        />,
+      );
+      const props = lightboxMock.mock.calls[0]?.[0] as {
+        render: Record<typeof slot, () => React.ReactElement>;
+      };
+      const { getByTestId } = render(props.render[slot]());
+
+      const frame = getByTestId("lightbox-placeholder-frame");
+      expect(frame.className).toContain("relative");
+      expect(frame.className).toContain("h-[min(70vh,900px)]");
+      expect(frame.className).toContain("w-[min(90vw,900px)]");
+      const placeholder = frame.firstElementChild as HTMLElement;
+      expect(placeholder.className).toContain("absolute");
+      expect(placeholder.className).toContain("inset-0");
+    },
+  );
+
   it("passes custom render handlers for loading and error placeholders", () => {
     render(
       <GalleryLightbox
