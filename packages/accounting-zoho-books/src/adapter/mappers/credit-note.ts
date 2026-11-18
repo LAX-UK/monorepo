@@ -31,8 +31,10 @@ export type CreditNoteConfig = Pick<
  * Credit note -> Books credit note. Every line is tax inclusive: the gross is sent as the rate
  * with the tax id of the line's treatment. Books cannot be handed the VAT inside that gross, so a
  * line is only sent when the VAT Books will work out from it is exactly the VAT LAX stated (the
- * domain allocates partial-credit VAT with Books' own per-line rounding, so this holds except for
- * the rare rest no split of whole pence can carry); otherwise it is refused for staff. The invoice it credits goes in the query (see the gateway), not the body.
+ * domain allocates a new note's partial-credit VAT with Books' own per-line rounding, its
+ * `creditVatRule`, so this holds except for the rare rest no split of whole pence can carry; a note
+ * stored under the earlier cumulative rule can still differ by a penny); otherwise it is refused
+ * for staff. The invoice it credits goes in the query (see the gateway), not the body.
  */
 export function creditNoteBody(
   creditNote: CreditNote,

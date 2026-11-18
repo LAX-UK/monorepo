@@ -179,6 +179,29 @@ export interface CreditNote extends Base<"credit_note"> {
    * cancelled after a buyer default), which stays on the invoice it credits.
    */
   readonly refund?: CreditNoteRefundSource;
+  /**
+   * The rule the VAT of this note's partial credit lines was allocated by (`CreditVatRule`), fixed
+   * for the whole note when it is made and stored with it. `books` on every note made now. Absent
+   * on a note made before the rule existed: those were all made with `cumulative`, and are only
+   * ever replayed with it, so a stored note is always rebuilt exactly as it was made.
+   */
+  readonly creditVatRule?: "books";
+}
+
+/**
+ * How the VAT inside a partial credit line is allocated, decided per credit note (never per line):
+ * - `books`, the rule every new credit note is made with: each partial credit carries the VAT
+ *   Books works out for the line on its own (`vatInsideGross`), and the credit that finishes an
+ *   invoice line takes exactly the VAT left on it, split if needed so each part matches Books.
+ * - `cumulative`, the rule credit notes were made with before: the cumulative share of the
+ *   invoice line's VAT for the gross credited so far, less what earlier credits took. Kept only to
+ *   replay (and, when a parked one is released, rebuild) the notes stored with it.
+ */
+export type CreditVatRule = "books" | "cumulative";
+
+/** The rule a credit note's VAT was allocated by: what it says, else `cumulative` (made before). */
+export function creditVatRuleOf(note: CreditNote): CreditVatRule {
+  return note.creditVatRule === "books" ? "books" : "cumulative";
 }
 
 /** Where the money a credit note gives back was paid from, and on which London day. */
@@ -580,14 +603,6 @@ function ledgerFor(invoice: Invoice): Record<LineRole, LineLedger[]> {
 }
 
 /**
- * How the VAT inside a partial credit line is chosen. `books` is the rule credits are made with;
- * `cumulative` is the rule credit notes were made with before it, kept only so that stored credit
- * notes still replay (see `creditedEntry`). A new credit is never made with it.
- */
-type CreditVatRule = "books" | "cumulative";
-const CREDIT_VAT_RULES: readonly CreditVatRule[] = ["books", "cumulative"];
-
-/**
  * The VAT inside `take` gross credited on a ledger entry, or null when no VAT fits.
  *
  * `books` (the rule): Books cannot be handed the VAT of a tax-inclusive line; it works it out per
@@ -620,7 +635,7 @@ function creditVat(entry: LineLedger, take: Pence, rule: CreditVatRule): Pence |
 function nextCredit(
   entry: LineLedger,
   take: Pence,
-  rule: CreditVatRule = "books",
+  rule: CreditVatRule,
 ): Result<Line, "bad_line" | "bad_invoice"> {
   const vat = creditVat(entry, take, rule);
   if (vat === null) return refuse("bad_invoice", "VAT already credited on a line is too high");
@@ -664,9 +679,13 @@ function creditLines(
   entries: readonly LineLedger[],
   entry: LineLedger,
   take: Pence,
+  rule: CreditVatRule,
+  split: boolean,
 ): Result<Line[], "bad_line" | "bad_invoice"> {
-  const single = nextCredit(entry, take);
+  const single = nextCredit(entry, take, rule);
   if (!single.ok) return single;
+  // A note made with the cumulative rule (rebuilt only to reproduce a stored one) is never split.
+  if (rule !== "books" || !split) return ok([single.value]);
   const vat = single.value.vatPence;
   const treatment = entry.line.treatment;
   const finishes = entry.creditedGross + take >= entry.gross;
@@ -701,11 +720,11 @@ function replayedSplit(
   let ledger = entries;
   const lines: Line[] = [];
   for (const take of takes) {
-    const credit = nextCredit(current, take);
+    const credit = nextCredit(current, take, "books");
     if (
       !credit.ok ||
       credit.value.vatPence !== vatInsideGross(take, current.line.treatment) ||
-      creditedEntry(ledger, credit.value) !== current
+      creditedEntry(ledger, credit.value, "books") !== current
     ) {
       return null;
     }
@@ -738,21 +757,25 @@ function sameCreditLine(a: Line, b: Line): boolean {
 
 /**
  * The invoice line a credit line credits: the first of its role, in invoice order, with room for
- * it, that rebuilds to exactly that credit line. A credit made line by line in order (filling) is
+ * it, that rebuilds to exactly that credit line under `rule`, the rule of the note the line is on
+ * (one rule per note, never tried line by line: a note stored under `cumulative` could otherwise
+ * be replayed onto an earlier line that only matches under `books`, and the other way round). A credit made line by line in order (filling) is
  * always on the first with room; one made for a named line (`line`) is on that line unless an
  * earlier line with room would rebuild to the very same credit line, and then it is recorded on
  * that earlier one, since the two cannot be told apart in the books. The builder and the replay
  * use this one rule, so a credit is always replayed onto the line it was recorded on.
  */
-function creditedEntry(entries: readonly LineLedger[], line: Line): LineLedger | null {
+function creditedEntry(
+  entries: readonly LineLedger[],
+  line: Line,
+  rule: CreditVatRule,
+): LineLedger | null {
   const take = lineGrossPence(line);
   if (take < 1) return null;
   for (const entry of entries) {
     if (take > entry.gross - entry.creditedGross) continue;
-    for (const rule of CREDIT_VAT_RULES) {
-      const rebuilt = nextCredit(entry, take, rule);
-      if (rebuilt.ok && sameCreditLine(rebuilt.value, line)) return entry;
-    }
+    const rebuilt = nextCredit(entry, take, rule);
+    if (rebuilt.ok && sameCreditLine(rebuilt.value, line)) return entry;
   }
   return null;
 }
@@ -798,13 +821,18 @@ function replayPriorCredits(
     if (typeof prior !== "object" || !Array.isArray(prior.lines) || prior.lines.length === 0) {
       return bad("a prior credit note has no lines");
     }
+    if (prior.creditVatRule !== undefined && prior.creditVatRule !== "books") {
+      return bad("a prior credit note names an unknown VAT rule");
+    }
+    // Every line of a note is replayed with the note's one rule.
+    const rule = creditVatRuleOf(prior);
     for (const line of prior.lines as readonly Line[]) {
       const entries = ledger[line.role];
       if (!entries) return bad("a prior credit line has no role");
       if (line.basis !== "tax_inclusive" || line.quantity !== 1) {
         return bad("a prior credit note does not match the invoice");
       }
-      const entry = creditedEntry(entries, line);
+      const entry = creditedEntry(entries, line, rule);
       if (!entry) return bad("a prior credit note does not match the invoice");
       record(entry, line);
     }
@@ -831,10 +859,15 @@ function missingPriorCredit(role: LineRole): Result<never, DocumentCode> {
  * states except cancelled and failed), in creation order: if they cover less than `buckets` says
  * was refunded, the call is refused, since a missing one would let its VAT be credited twice.
  * Prior credits are replayed onto the invoice's lines in order and rebuilt; one that
- * does not reproduce exactly is refused. A credit line is tax-inclusive (`amountsAre`): its VAT is
- * the cumulative share of the line's VAT for the gross credited so far, less what earlier credits
- * took, so however a line is split its credits never total more VAT or gross than the invoice line
- * charged, and the credit that finishes a line takes exactly the rest. The invoice is rebuilt
+ * does not reproduce exactly is refused. A credit line is tax-inclusive (`amountsAre`). Its VAT is
+ * allocated by the note's `CreditVatRule`, stored on the note (`creditVatRule`): `books` for every
+ * new note, so a partial credit carries the VAT Books works out for the line on its own
+ * (`vatInsideGross`, kept within bounds by `creditVat`), and the credit that finishes an invoice
+ * line takes exactly the VAT left on it, split into a few parts on that same line when Books'
+ * rounding of the whole rest would differ (`creditLines`). However a line is split its credits
+ * never total more VAT or gross than the invoice line charged. A note that would have more than
+ * `MAX_LINES` lines with those splits is made without them instead (the unsplit lines that differ
+ * from Books are then refused by the adapter for staff, as before). The invoice is rebuilt
  * through the same constructors as a new one, so a forged or hand-edited Invoice is refused
  * (`bad_invoice`).
  */
@@ -854,6 +887,11 @@ export function buildCreditNoteFor(
      * Given: the request must be all of their role and fit in what is left on them.
      */
     lines?: readonly number[];
+    /**
+     * Only to rebuild a stored note exactly as it was made (a parked note being released): the
+     * rule that note names (`creditVatRuleOf`). Absent: `books`, the rule every new note uses.
+     */
+    creditVatRule?: CreditVatRule;
   },
 ): Result<CreditNote, DocumentCode> {
   const checked = checkInvoice(invoice);
@@ -880,6 +918,53 @@ export function buildCreditNoteFor(
   if (plan.value.goodsPence + plan.value.deliveryPence === 0) {
     return refuse("zero_total", "a credit note cannot total zero");
   }
+  const rule: CreditVatRule = input.creditVatRule ?? "books";
+  if (rule !== "books" && rule !== "cumulative") {
+    return refuse("bad_invoice", "unknown credit VAT rule");
+  }
+  let lines = creditNoteLines(invoice, input, plan.value, rule, true);
+  if (lines.ok && lines.value.length > MAX_LINES) {
+    // Splits only ever add lines: without them a note has at most one line per invoice line.
+    lines = creditNoteLines(invoice, input, plan.value, rule, false);
+  }
+  if (!lines.ok) return lines;
+  if (lines.value.length > MAX_LINES) {
+    return refuse("too_many_lines", `at most ${MAX_LINES} lines`);
+  }
+  return ok({
+    ...b.value,
+    amountsAre: "tax_inclusive",
+    contactReference: invoice.contactReference,
+    invoiceReference: invoice.reference,
+    currency: CURRENCY,
+    issuedOn: input.issuedOn,
+    lines: lines.value,
+    totals: totalsOf(lines.value),
+    ...(input.refund
+      ? { refund: { account: input.refund.account, refundedOn: input.refund.refundedOn } }
+      : {}),
+    // A note made with the cumulative rule (only ever to reproduce a stored one) is exactly what
+    // was stored before the rule existed, so it carries no marker.
+    ...(rule === "books" ? { creditVatRule: "books" as const } : {}),
+  });
+}
+
+/**
+ * The lines of the credit note `buildCreditNoteFor` makes, after replaying `priorCredits`, with
+ * every partial credit's VAT by `rule`; `split` allows a finishing credit to be split
+ * (`creditLines`).
+ */
+function creditNoteLines(
+  invoice: Invoice,
+  input: {
+    readonly buckets: PaidBuckets;
+    readonly priorCredits: readonly CreditNote[];
+    readonly lines?: readonly number[];
+  },
+  plan: { readonly goodsPence: Pence; readonly deliveryPence: Pence },
+  rule: CreditVatRule,
+  split: boolean,
+): Result<Line[], DocumentCode> {
   const replayed = replayPriorCredits(invoice, input.priorCredits);
   if (!replayed.ok) return replayed;
   const ledger = replayed.value;
@@ -910,8 +995,8 @@ export function buildCreditNoteFor(
     ) {
       return refuse("bad_line", "the credited lines are not lines of one role on the invoice");
     }
-    const amount = plan.value[first.role === "goods" ? "goodsPence" : "deliveryPence"];
-    const other = plan.value[first.role === "goods" ? "deliveryPence" : "goodsPence"];
+    const amount = plan[first.role === "goods" ? "goodsPence" : "deliveryPence"];
+    const other = plan[first.role === "goods" ? "deliveryPence" : "goodsPence"];
     const room = (entries as LineLedger[]).reduce((sum, e) => sum + e.gross - e.creditedGross, 0);
     if (other !== 0 || amount > room) {
       return refuse("exceeds_invoice", "the credit exceeds what is left on its lines");
@@ -921,18 +1006,18 @@ export function buildCreditNoteFor(
       const entry = (entries as LineLedger[]).find((e) => e.creditedGross < e.gross);
       if (!entry) return refuse("exceeds_invoice", "the credit exceeds what is left on its lines");
       const take = Math.min(remaining, entry.gross - entry.creditedGross);
-      const credit = creditLines(ledger[first.role], entry, take);
+      const credit = creditLines(ledger[first.role], entry, take, rule, split);
       if (!credit.ok) return credit;
       for (const line of credit.value) {
         lines.push(line);
         // Recorded where the replay will find it (this line, or one it cannot be told from).
-        record(creditedEntry(ledger[first.role], line) ?? entry, line);
+        record(creditedEntry(ledger[first.role], line, rule) ?? entry, line);
       }
       remaining -= take;
     }
   }
   for (const role of input.lines === undefined ? LINE_ROLES : []) {
-    const amount = plan.value[role === "goods" ? "goodsPence" : "deliveryPence"];
+    const amount = plan[role === "goods" ? "goodsPence" : "deliveryPence"];
     const left = ledger[role].reduce((sum, e) => sum + e.gross - e.creditedGross, 0);
     if (amount > left) {
       return refuse("exceeds_invoice", `${role} credit exceeds what is left on the invoice`);
@@ -942,7 +1027,7 @@ export function buildCreditNoteFor(
       if (remaining === 0) break;
       const take = Math.min(remaining, entry.gross - entry.creditedGross);
       if (take === 0) continue;
-      const credit = creditLines(ledger[role], entry, take);
+      const credit = creditLines(ledger[role], entry, take, rule, split);
       if (!credit.ok) return credit;
       for (const line of credit.value) {
         lines.push(line);
@@ -951,19 +1036,7 @@ export function buildCreditNoteFor(
       remaining -= take;
     }
   }
-  return ok({
-    ...b.value,
-    amountsAre: "tax_inclusive",
-    contactReference: invoice.contactReference,
-    invoiceReference: invoice.reference,
-    currency: CURRENCY,
-    issuedOn: input.issuedOn,
-    lines,
-    totals: totalsOf(lines),
-    ...(input.refund
-      ? { refund: { account: input.refund.account, refundedOn: input.refund.refundedOn } }
-      : {}),
-  });
+  return ok(lines);
 }
 
 /** A payment with allocations to one or more invoices; the allocations can never exceed the payment. */

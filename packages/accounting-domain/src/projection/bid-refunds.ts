@@ -1,6 +1,7 @@
 import {
   type AccountingDocument,
   type CreditNote,
+  type CreditVatRule,
   type Invoice,
   buildCreditNoteFor,
   laxReference,
@@ -160,6 +161,11 @@ export interface BidDeliveryRefundFacts {
    * person instead. Without it, a total below the credit is refused.
    */
   readonly priorStandings?: readonly CreditStanding[];
+  /**
+   * Only when a parked credit note is rebuilt to be released: the VAT rule that stored note was
+   * made with (`creditVatRuleOf`), so it is rebuilt exactly as it was made. Absent: `books`.
+   */
+  readonly creditVatRule?: CreditVatRule;
 }
 
 /**
@@ -243,6 +249,7 @@ function projectDeliveryRefund(
       },
       request: { goodsPence: 0, deliveryPence: target - credited },
       priorCredits,
+      ...(facts.creditVatRule ? { creditVatRule: facts.creditVatRule } : {}),
       refund: {
         account: "stripe_clearing",
         refundedOn: facts.refundedOn < facts.settledOn ? facts.settledOn : facts.refundedOn,
@@ -381,6 +388,11 @@ export interface BidBuyerDefaultFacts {
   readonly inBooks: DefaultedInvoiceInBooks;
   /** Credit notes already registered for the invoice in the same books (not cancelled), oldest first. */
   readonly priorCredits: readonly CreditNote[];
+  /**
+   * Only when a parked credit note is rebuilt to be released: the VAT rule that stored note was
+   * made with (`creditVatRuleOf`), so it is rebuilt exactly as it was made. Absent: `books`.
+   */
+  readonly creditVatRule?: CreditVatRule;
 }
 
 const DEFAULT_CREDIT_PREFIX = "dft-";
@@ -452,6 +464,7 @@ function projectDefault(
     },
     request: { goodsPence, deliveryPence },
     priorCredits: facts.priorCredits,
+    ...(facts.creditVatRule ? { creditVatRule: facts.creditVatRule } : {}),
   });
   if (!credit.ok) return credit;
   const parked: ParkedDocument[] =

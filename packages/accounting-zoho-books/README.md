@@ -114,8 +114,17 @@ organisation is modelled as registered only so the VAT paths have an organisatio
   partials, matches Books to the penny (`adapter/mappers/credit-note.test.ts`). What is left is refused
   (`zoho_books_mapping_vat_differs_from_books`) and goes to staff: a rest of a few pence whose VAT no whole-pence
   line can carry (60 of 53,880 one-partial-then-rest runs on lines up to £3), or a rest after many partial
-  refunds of one line, whose roundings can drift by 2p or more. Still to confirm: that Books rounds tax-inclusive
-  lines half-up per line, as `booksLineVat` assumes.
+  refunds of one line, whose roundings can drift by 2p or more (half-up rounds every gross of 3p mod 6p up, so
+  many small partials can use up a line's VAT early; the totals stay exact and the rest goes to staff).
+  The rule is decided per credit note and stored with it (`creditVatRule: "books"` in the payload). A note
+  stored before it has no marker and is only ever replayed, or rebuilt on release, with the earlier cumulative
+  rule, exactly as it was made; the two rules are never mixed within one note or tried one after the other.
+  A note that the splits would take past 1,000 lines is made without them instead.
+  **Needs the accountant / the Books test organisation:** that Books rounds tax-inclusive lines half-up per line,
+  as `booksLineVat` assumes. The headline case (3p of a 25p line gives 1p VAT) is an exact half: under banker's
+  rounding Books would give 0p. No Zoho documentation found states the rule. A wrong assumption fails safe (the
+  adapter's own check and the read-back totals refuse the note for staff; wrong VAT is never posted), but it
+  must be confirmed before Books goes live.
 
 - **Seller and artist payouts (PR 12).** Which VAT treatment a bill line for what a seller or artist is owed
   carries, whether LAX's commission (and the VAT a signed agreement charges on it) stays netted inside the sale

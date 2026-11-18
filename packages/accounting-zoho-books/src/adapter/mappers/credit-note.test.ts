@@ -2,6 +2,7 @@ import {
   type CreditNote,
   type Invoice,
   type LineInput,
+  VAT_TREATMENTS,
   buildCreditNoteFor,
   buildInvoice,
   laxReference,
@@ -160,6 +161,90 @@ describe("partial credit notes: every line's VAT is what Books works out", () =>
       const notes = creditInTurn(invoice, takes);
       expect(differing(notes.slice(0, -1))).toEqual([]);
       expect(notes.reduce((sum, n) => sum + n.totals.vatPence, 0)).toBe(invoice.totals.vatPence);
+    }
+  });
+});
+
+describe("partial credit notes on invoices of several lines and treatments (review N5)", () => {
+  /** 2 to 4 lines, goods and delivery, every treatment, descriptions reused on purpose. */
+  function mixedInvoice(random: (max: number) => number, run: number): Invoice {
+    if (!BUYER.ok) throw new Error(BUYER.refusal.message);
+    const count = 2 + random(3);
+    const lines: LineInput[] = Array.from({ length: count }, (_, i) => ({
+      description: random(2) === 0 ? "Print" : `Print ${i}`,
+      quantity: 1,
+      unitNetPence: 1 + random(i === 0 ? 300 : 50_000),
+      treatment: VAT_TREATMENTS[random(VAT_TREATMENTS.length)] as LineInput["treatment"],
+      role: random(4) === 0 ? "delivery" : "goods",
+    }));
+    const built = buildInvoice({
+      product: "bid",
+      sourceId: `mixed-${run}`,
+      contactReference: BUYER.value,
+      issuedOn: "2026-11-12",
+      dueOn: "2026-11-26",
+      lines,
+    });
+    if (!built.ok) throw new Error(built.refusal.message);
+    return built.value;
+  }
+
+  it("two partial credits then the rest: every line is what Books works out, the totals exactly the invoice's", () => {
+    const random = prng(1566);
+    for (let run = 0; run < 1_500; run++) {
+      const invoice = mixedInvoice(random, run);
+      const role = (r: "goods" | "delivery") =>
+        invoice.lines
+          .filter((l) => l.role === r)
+          .reduce((sum, l) => sum + l.unitNetPence * l.quantity + l.vatPence, 0);
+      const paid = { goods: role("goods"), delivery: role("delivery") };
+      const notes: CreditNote[] = [];
+      const refunded = { goods: 0, delivery: 0 };
+      for (let step = 0; step < 3; step++) {
+        const last = step === 2;
+        const take = (r: "goods" | "delivery") => {
+          const left = paid[r] - refunded[r];
+          return last || left === 0 ? left : 1 + random(left);
+        };
+        const request = { goodsPence: take("goods"), deliveryPence: take("delivery") };
+        if (request.goodsPence + request.deliveryPence === 0) continue;
+        const built = buildCreditNoteFor(invoice, {
+          sourceId: `cn-${run}-${step}`,
+          issuedOn: "2026-11-13",
+          buckets: {
+            paidGoodsPence: paid.goods,
+            paidDeliveryPence: paid.delivery,
+            refundedGoodsPence: refunded.goods,
+            refundedDeliveryPence: refunded.delivery,
+          },
+          request,
+          priorCredits: notes,
+        });
+        if (!built.ok) throw new Error(`run ${run}: ${built.refusal.message}`);
+        expect(built.value.creditVatRule).toBe("books");
+        notes.push(built.value);
+        refunded.goods += request.goodsPence;
+        refunded.delivery += request.deliveryPence;
+      }
+      // Lines that carry no VAT never differ; a standard line differs only where no whole-pence
+      // split of its rest can carry the VAT left (checked exhaustively above), so none here.
+      for (const note of notes) {
+        for (const line of note.lines) {
+          if (line.treatment !== "standard") expect(line.vatPence).toBe(0);
+        }
+      }
+      const diffs = differing(notes).filter((d) => {
+        const m = /: (\d+)p gross, VAT ours (\d+)p/.exec(d);
+        return !m || representable(Number(m[1]), Number(m[2]));
+      });
+      expect(diffs).toEqual([]);
+      const sum = (k: "netPence" | "vatPence" | "grossPence") =>
+        notes.reduce((n, c) => n + c.totals[k], 0);
+      expect([sum("netPence"), sum("vatPence"), sum("grossPence")]).toEqual([
+        invoice.totals.netPence,
+        invoice.totals.vatPence,
+        invoice.totals.grossPence,
+      ]);
     }
   });
 });

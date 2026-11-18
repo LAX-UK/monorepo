@@ -11,6 +11,7 @@ import {
   buildCreditNoteFor,
   buildInvoice,
   buildPayment,
+  creditVatRuleOf,
   creditedOnInvoiceLines,
   expectedTotals,
   laxReference,
@@ -19,6 +20,7 @@ import {
 } from "./document.js";
 import {
   type LineInput,
+  MAX_LINES,
   buildInclusiveLine,
   lineAmounts,
   lineGrossPence,
@@ -813,12 +815,218 @@ describe("partial credits on one line (F1, F2, F4)", () => {
       vatPence: 0,
     });
     if (!legacyLine.ok) throw new Error("fixture");
+    // Stored before the rule marker existed: no `creditVatRule`, so it replays as cumulative.
+    const { creditVatRule: _books, ...before } = made;
     const legacy: CreditNote = {
-      ...made,
+      ...before,
       lines: [legacyLine.value],
       totals: totalsOf([legacyLine.value]),
     };
     const rest = credit(inv, [legacy], 22, "cn-rest");
     expect(rest.ok && shape(rest.value)).toEqual([{ gross: 22, vat: 4 }]);
+  });
+});
+
+describe("the credit VAT rule is decided per credit note (review B1)", () => {
+  // Two standard-rated goods lines with the same description: 37p net (44p gross, 7p VAT) and
+  // 33p net (40p gross, 7p VAT).
+  const twoPrints = (): Invoice => {
+    const r = buildInvoice({
+      ...common,
+      contactReference: contact,
+      issuedOn: "2026-01-01",
+      dueOn: "2026-01-31",
+      lines: [lineInput({ unitNetPence: 37 }), lineInput({ unitNetPence: 33 })],
+    });
+    if (!r.ok) throw new Error("fixture");
+    return r.value;
+  };
+  const named = (
+    invoice: Invoice,
+    prior: CreditNote[],
+    line: number,
+    gross: number,
+    id: string,
+    creditVatRule?: "books" | "cumulative",
+  ) =>
+    buildCreditNoteFor(invoice, {
+      sourceId: id,
+      issuedOn: "2026-02-01",
+      buckets: {
+        paidGoodsPence: invoice.totals.grossPence,
+        paidDeliveryPence: 0,
+        refundedGoodsPence: prior.reduce((n, c) => n + c.totals.grossPence, 0),
+        refundedDeliveryPence: 0,
+      },
+      request: { goodsPence: gross, deliveryPence: 0 },
+      priorCredits: prior,
+      lines: [line],
+      ...(creditVatRule ? { creditVatRule } : {}),
+    });
+
+  it("a new credit note carries the books rule; one without a marker is cumulative", () => {
+    const inv = twoPrints();
+    const made = named(inv, [], 1, 33, "cn-new");
+    if (!made.ok) throw new Error(made.refusal.message);
+    expect(made.value.creditVatRule).toBe("books");
+    expect(creditVatRuleOf(made.value)).toBe("books");
+    const { creditVatRule: _books, ...legacy } = made.value;
+    expect(creditVatRuleOf(legacy)).toBe("cumulative");
+  });
+
+  it("a legacy named credit of 33p on line 2 replays on line 2, and line 1 can then be credited in full", () => {
+    const inv = twoPrints();
+    // Exactly what main made: a credit for line 2 of 33p, VAT round(7 x 33 / 40) = 6p. Under the
+    // cumulative rule line 1 gives round(7 x 33 / 44) = 5p, so main recorded it on line 2. Under
+    // the books rule line 1 would give round_half_up(33 / 6) = 6p and wrongly match line 1.
+    const legacy = named(inv, [], 1, 33, "cn-legacy", "cumulative");
+    if (!legacy.ok) throw new Error(legacy.refusal.message);
+    expect(legacy.value.creditVatRule).toBeUndefined();
+    expect(legacy.value.lines.map((l) => [l.description, lineGrossPence(l), l.vatPence])).toEqual([
+      ["Credit: Print", 33, 6],
+    ]);
+    expect(vatInsideGross(33, "standard")).toBe(6);
+
+    const credited = creditedOnInvoiceLines(inv, [legacy.value]);
+    expect(credited.ok && credited.value).toEqual([0, 33]);
+
+    const full = named(inv, [legacy.value], 0, 44, "cn-line1");
+    if (!full.ok) throw new Error(full.refusal.message);
+    expect(full.value.creditVatRule).toBe("books");
+    expect(full.value.totals).toEqual({ netPence: 37, vatPence: 7, grossPence: 44 });
+    const after = creditedOnInvoiceLines(inv, [legacy.value, full.value]);
+    expect(after.ok && after.value).toEqual([44, 33]);
+  });
+
+  it("a new credit note is never matched under the legacy rule", () => {
+    // 21p net + 4p VAT; 3p credited. Books: round_half_up(3 / 6) = 1p VAT. The cumulative rule
+    // gives round(4 x 3 / 25) = 0p, so the line only rebuilds under books.
+    const r = buildInvoice({
+      ...common,
+      contactReference: contact,
+      issuedOn: "2026-01-01",
+      dueOn: "2026-01-31",
+      lines: [lineInput({ unitNetPence: 21 })],
+    });
+    if (!r.ok) throw new Error("fixture");
+    const made = named(r.value, [], 0, 3, "cn-new");
+    if (!made.ok) throw new Error(made.refusal.message);
+    expect(made.value.lines.map((l) => l.vatPence)).toEqual([1]);
+    const replayed = creditedOnInvoiceLines(r.value, [made.value]);
+    expect(replayed.ok && replayed.value).toEqual([3]);
+    // The same lines read as a legacy (cumulative) note do not reproduce: the replay does not fall
+    // back to the other rule.
+    const { creditVatRule: _books, ...asLegacy } = made.value;
+    const legacy = creditedOnInvoiceLines(r.value, [asLegacy]);
+    expect(legacy.ok).toBe(false);
+    // And a legacy note's line never replays under books: 3p with 0p VAT under books is refused.
+    const legacyMade = named(r.value, [], 0, 3, "cn-old", "cumulative");
+    if (!legacyMade.ok) throw new Error(legacyMade.refusal.message);
+    expect(legacyMade.value.lines.map((l) => l.vatPence)).toEqual([0]);
+    const forged = creditedOnInvoiceLines(r.value, [
+      { ...legacyMade.value, creditVatRule: "books" },
+    ]);
+    expect(forged.ok).toBe(false);
+  });
+
+  it("a prior note naming an unknown rule is refused", () => {
+    const inv = twoPrints();
+    const made = named(inv, [], 1, 33, "cn-new");
+    if (!made.ok) throw new Error(made.refusal.message);
+    const odd = { ...made.value, creditVatRule: "other" } as unknown as CreditNote;
+    expect(creditedOnInvoiceLines(inv, [odd]).ok).toBe(false);
+  });
+
+  it("property: legacy named chains on same-description lines replay exactly as they were made", () => {
+    forAll(400, (rng) => {
+      {
+        const nets = [int(rng, 1, 400), int(rng, 1, 400)];
+        const steps = Array.from({ length: int(rng, 1, 4) }, () => ({
+          line: int(rng, 0, 1),
+          gross: int(rng, 1, 200),
+        }));
+        const r = buildInvoice({
+          ...common,
+          contactReference: contact,
+          issuedOn: "2026-01-01",
+          dueOn: "2026-01-31",
+          lines: nets.map((n) => lineInput({ unitNetPence: n })),
+        });
+        if (!r.ok) throw new Error("fixture");
+        const inv = r.value;
+        const notes: CreditNote[] = [];
+        const room = inv.lines.map((l) => lineGrossPence(l));
+        steps.forEach((step, i) => {
+          const before = creditedOnInvoiceLines(inv, notes);
+          if (!before.ok) throw new Error(before.refusal.message);
+          const left = (room[step.line] as number) - (before.value[step.line] as number);
+          const gross = Math.min(step.gross, left);
+          if (gross < 1) return;
+          const made = named(inv, notes, step.line, gross, `cn${i}`, "cumulative");
+          if (!made.ok) throw new Error(made.refusal.message);
+          notes.push(made.value);
+        });
+        // Every legacy note still replays, and the rest of every line can be credited in full.
+        const credited = creditedOnInvoiceLines(inv, notes);
+        if (!credited.ok) throw new Error(credited.refusal.message);
+        inv.lines.forEach((_, index) => {
+          const left = (room[index] as number) - (credited.value[index] as number);
+          if (left < 1) return;
+          const prior = [...notes];
+          const rest = named(inv, prior, index, left, `rest${index}`);
+          if (!rest.ok) throw new Error(`line ${index}: ${rest.refusal.message}`);
+          notes.push(rest.value);
+        });
+        const all = creditedOnInvoiceLines(inv, notes);
+        expect(all.ok && all.value).toEqual(room);
+        const vat = notes.reduce((n, c) => n + c.totals.vatPence, 0);
+        expect(vat).toBe(inv.totals.vatPence);
+      }
+    });
+  });
+});
+
+describe("a credit note's lines are capped (review N4)", () => {
+  it("drops the Books splits rather than go past MAX_LINES", () => {
+    const r = buildInvoice({
+      ...common,
+      contactReference: contact,
+      issuedOn: "2026-01-01",
+      dueOn: "2026-01-31",
+      lines: Array.from({ length: MAX_LINES }, () => lineInput({ unitNetPence: 21 })),
+    });
+    if (!r.ok) throw new Error("fixture");
+    const inv = r.value;
+    const total = inv.totals.grossPence;
+    const buckets = (refunded: number) => ({
+      paidGoodsPence: total,
+      paidDeliveryPence: 0,
+      refundedGoodsPence: refunded,
+      refundedDeliveryPence: 0,
+    });
+    const first = buildCreditNoteFor(inv, {
+      sourceId: "cn-3p",
+      issuedOn: "2026-02-01",
+      buckets: buckets(0),
+      request: { goodsPence: 3, deliveryPence: 0 },
+      priorCredits: [],
+    });
+    if (!first.ok) throw new Error(first.refusal.message);
+    // The rest of line 1 is 22p with 3p VAT left; Books gives 22p 4p, so it would be split (2p +
+    // 20p), and with the 999 whole lines the note would have 1,001 lines.
+    const rest = buildCreditNoteFor(inv, {
+      sourceId: "cn-rest",
+      issuedOn: "2026-02-01",
+      buckets: buckets(3),
+      request: { goodsPence: total - 3, deliveryPence: 0 },
+      priorCredits: [first.value],
+    });
+    if (!rest.ok) throw new Error(rest.refusal.message);
+    expect(rest.value.lines).toHaveLength(MAX_LINES);
+    const head = rest.value.lines[0] as (typeof rest.value.lines)[number];
+    expect([lineGrossPence(head), head.vatPence]).toEqual([22, 3]);
+    expect(rest.value.totals.vatPence + first.value.totals.vatPence).toBe(inv.totals.vatPence);
+    const all = creditedOnInvoiceLines(inv, [first.value, rest.value]);
+    expect(all.ok && all.value.every((g) => g === 25)).toBe(true);
   });
 });
