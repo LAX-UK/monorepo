@@ -289,6 +289,8 @@ const PROBES: Probes = {
     markSkipped: () => r.markSkipped({ deliveryId: 0, reason: "probe" }),
     replaySkippedForEventTypes: () =>
       r.replaySkippedForEventTypes({ consumer: "probe", eventTypes: ["probe"], limit: 1 }),
+    countSkippedForEventTypes: () =>
+      r.countSkippedForEventTypes({ consumer: "probe", eventTypes: ["probe"], reason: "probe" }),
     scheduleRetry: () => r.scheduleRetry({ deliveryId: 0, nextRetryAt: now, lastError: "probe" }),
     oldestPendingAt: () => r.oldestPendingAt({ consumer: "probe" }),
     deadLetter: () => r.deadLetter({ deliveryId: 0, lastError: "probe" }),

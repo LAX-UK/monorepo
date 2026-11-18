@@ -1,4 +1,4 @@
-import { type DealInvoiceIssuer, computeDealMoney } from "@auction/domain";
+import { type DealBlocker, type DealInvoiceIssuer, computeDealMoney } from "@auction/domain";
 import type { IPrivateSaleDealFinanceStore } from "@auction/persistence/interfaces";
 import type { DealTransitionOutcome, DealTransitionService } from "./deal-transition.service.js";
 
@@ -6,8 +6,8 @@ export type DealInvoiceDeps = {
   transitions: Pick<DealTransitionService, "transition">;
   finance: Pick<IPrivateSaleDealFinanceStore, "recordInvoiceReference">;
   /**
-   * The finance system that issues invoices. `null` until one is connected: the deal is then
-   * invoiced with no reference, and one can be attached later.
+   * The finance system that issues invoices. `null` until one is connected, and then no deal can
+   * be invoiced: a deal never reaches invoiced without a system that raises its invoice.
    */
   issuer: DealInvoiceIssuer | null;
 };
@@ -19,11 +19,19 @@ export type DealInvoiceDeps = {
 export class DealInvoiceService {
   constructor(private readonly deps: DealInvoiceDeps) {}
 
+  /** What keeps every deal from being invoiced, whatever its own state. */
+  blockers(): DealBlocker[] {
+    return this.deps.issuer ? [] : [{ code: "invoice_issuer_not_configured" }];
+  }
+
   async issue(input: {
     dealId: string;
     actorUserId: string;
     expectedVersion?: number;
   }): Promise<DealTransitionOutcome> {
+    const blockers = this.blockers();
+    if (blockers.length > 0) return { kind: "blocked", blockers };
+
     const outcome = await this.deps.transitions.transition(input.dealId, "issue_invoice", {
       actorUserId: input.actorUserId,
       ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
