@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
+    "test:e2e:express-checkout": "playwright test -c playwright.express-checkout.config.ts",
     "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test --grep @a11y"
   },
   "dependencies": {

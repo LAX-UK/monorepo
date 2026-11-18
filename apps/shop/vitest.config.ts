@@ -24,7 +24,7 @@ export default defineConfig({
       ["**/silent-sign-in-notice.test.tsx", "jsdom"],
     ],
     setupFiles: ["./src/test/setup.ts"],
-    exclude: ["**/node_modules/**", "**/e2e/**"],
+    exclude: ["**/node_modules/**", "**/e2e/**", "**/e2e-express-checkout/**"],
     server: {
       deps: {
         inline: [/@auction\/(ui|marketing-ui)/],

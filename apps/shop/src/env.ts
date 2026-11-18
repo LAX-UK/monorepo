@@ -31,6 +31,11 @@ const shopEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  /**
+   * Stripe publishable key for the wallet row (public by design; the same Stripe account as
+   * shop-api's secret key). Without a valid `pk_` key the row stays hidden even with the flag on.
+   */
+  SHOP_STRIPE_PUBLISHABLE_KEY: z.string().min(1).optional(),
 });
 
 export type ShopEnv = z.infer<typeof shopEnvSchema>;
@@ -55,6 +60,7 @@ export function loadShopEnv(
     SHOP_COLLECTION_READY_WORKING_DAYS:
       source.SHOP_COLLECTION_READY_WORKING_DAYS?.trim() || undefined,
     SHOP_EXPRESS_CHECKOUT: source.SHOP_EXPRESS_CHECKOUT?.trim() || undefined,
+    SHOP_STRIPE_PUBLISHABLE_KEY: source.SHOP_STRIPE_PUBLISHABLE_KEY?.trim() || undefined,
   });
   const isNextProductionBuild = source.NEXT_PHASE === "phase-production-build";
   const hasBidPublicUrl = Boolean(parsed.LAX_BID_PUBLIC_URL ?? parsed.WEB_ORIGIN);

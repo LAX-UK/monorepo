@@ -33,6 +33,9 @@ paths = [
   '''(^|/)node_modules/''',
 ]
 regexes = [
+  # Made-up Stripe publishable keys in the Shop's express checkout tests and browser gate.
+  # Publishable keys are public by design, and these were never issued by Stripe.
+  '''pk_test_(abc123|expressCheckoutGate)''',
   # Documented all-zeros-through-f placeholder for the 32-byte token sealing key.
   # Shared by .env.example, the shop-identity dev fallback, and its test fixtures;
   # production reads SHOP_IDENTITY_TOKEN_ENCRYPTION_KEY and refuses to boot without it.

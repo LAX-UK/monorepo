@@ -1431,3 +1431,78 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   gap: var(--shop-space-3);
   margin-top: var(--shop-space-6);
 }
+
+/*
+ * GAP-49 express checkout: the wallet row (Apple Pay, Google Pay, Link). Basket: "Or pay with"
+ * under "Checkout". Details: "Express checkout" first, "Or continue below" before the form. The
+ * buttons keep Stripe's and the wallets' own styles; the row only reserves their height.
+ */
+.shop-express__slot:empty {
+  display: none;
+}
+
+.shop-express {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+  min-width: 0;
+}
+
+.shop-express--details {
+  gap: var(--shop-space-4);
+}
+
+.shop-express__label {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  text-align: center;
+  color: var(--color-on-surface-variant);
+}
+
+/* Contained so the wallet frames can never widen the summary or form column (375 px). */
+.shop-express__buttons {
+  contain: inline-size;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The buttons' height (48px) is held while Stripe.js loads, so nothing below moves. */
+.shop-express__buttons--reserved {
+  min-height: 3rem;
+}
+
+.shop-express__buttons--reserved[aria-busy="true"] {
+  border-radius: var(--radius-control);
+  background: var(--color-surface-container-low);
+}
+
+.shop-express__notice {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-express__notice--error {
+  color: var(--color-on-surface);
+}
+
+.shop-express__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--shop-space-3);
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-express__divider::before,
+.shop-express__divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--color-border-hairline);
+}

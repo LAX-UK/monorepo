@@ -32,4 +32,11 @@ describe("loadShopEnv", () => {
     expect(() => loadShopEnv({ SHOP_EXPRESS_CHECKOUT: "1" })).toThrow();
     expect(() => loadShopEnv({ SHOP_EXPRESS_CHECKOUT: "TRUE" })).toThrow();
   });
+
+  it("keeps the Stripe publishable key optional", () => {
+    expect(loadShopEnv({}).SHOP_STRIPE_PUBLISHABLE_KEY).toBeUndefined();
+    expect(
+      loadShopEnv({ SHOP_STRIPE_PUBLISHABLE_KEY: " pk_test_abc123 " }).SHOP_STRIPE_PUBLISHABLE_KEY,
+    ).toBe("pk_test_abc123");
+  });
 });

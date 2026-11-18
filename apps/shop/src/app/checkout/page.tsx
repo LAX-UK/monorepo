@@ -23,6 +23,7 @@ import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication
 import { fetchShopBasket, fetchShopSavedAddresses } from "@/lib/shop-commerce.server";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
+import { shopExpressCheckoutPublishableKey } from "@/lib/shop-runtime-flags";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
@@ -177,6 +178,15 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
     times: loadCheckoutDeliveryTimes(),
   });
   const showTermsNotice = canShowCheckoutTerms(loadLinkableShopPolicies());
+  // GAP-49: the wallet row at the top of Details, for guests and signed-in shoppers alike.
+  const expressKey = shopExpressCheckoutPublishableKey();
+  const expressCheckout = expressKey
+    ? {
+        publishableKey: expressKey,
+        audience: viewer.kind === "guest" ? ("guest" as const) : ("account" as const),
+        basketId: basket.basketId,
+      }
+    : null;
 
   if (viewer.kind === "guest") {
     return (
@@ -190,6 +200,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
             basket={basket}
             deliveryOptions={deliveryOptions}
             showTermsNotice={showTermsNotice}
+            expressCheckout={expressCheckout}
           />
         </ShopCommercePageShell>
       </MarketingDetailShell>
@@ -211,6 +222,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           savedAddresses={savedAddresses}
           manageAddressesHref={laxAccountUrl(LAX_ACCOUNT_PATHS.addresses)}
           showTermsNotice={showTermsNotice}
+          expressCheckout={expressCheckout}
           {...(viewer.kind === "authenticated" && viewer.email
             ? {
                 customerEmail: viewer.email,

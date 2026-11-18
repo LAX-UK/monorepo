@@ -6,6 +6,10 @@ import {
   CheckoutOrderSummary,
   CheckoutSummaryDisclosure,
 } from "@/components/checkout/checkout-order-summary";
+import {
+  type ExpressCheckoutConfig,
+  ExpressCheckoutRow,
+} from "@/components/checkout/express-checkout-row.client";
 import { ShopCommerceButton, shopButtonClassName } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
@@ -24,6 +28,8 @@ type Props = {
   basket: BasketView;
   deliveryOptions: readonly CheckoutDeliveryOptionVm[];
   showTermsNotice: boolean;
+  /** GAP-49 wallet row; null while express checkout is off. */
+  expressCheckout?: ExpressCheckoutConfig | null;
 };
 
 type Step =
@@ -43,7 +49,12 @@ function signInHref(email?: string): string {
  * payment as a guest; an email that already has a LAX account signs in instead, keeping the
  * basket. Nothing here asks for a password.
  */
-export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Props) {
+export function GuestCheckout({
+  basket,
+  deliveryOptions,
+  showTermsNotice,
+  expressCheckout = null,
+}: Props) {
   const [step, setStep] = useState<Step>({ kind: "email" });
   const [email, setEmail] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(false);
@@ -58,6 +69,7 @@ export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Prop
         savedAddresses={[]}
         manageAddressesHref={null}
         showTermsNotice={showTermsNotice}
+        expressCheckout={expressCheckout}
         guest={{
           email: step.email,
           marketingConsent: step.marketingConsent,
@@ -72,6 +84,13 @@ export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Prop
     <div className="shop-checkout__layout">
       <CheckoutSummaryDisclosure basket={basket} fulfilment="uk_insured_delivery" />
       <div className="shop-checkout__form">
+        {/* The wallet sheet gives the email, so a guest can pay before typing one. */}
+        <ExpressCheckoutRow
+          config={expressCheckout}
+          placement="details"
+          hidden={step.kind === "known"}
+          marketingConsent={marketingConsent}
+        />
         {step.kind === "known" ? (
           <KnownAccount
             email={step.email}
