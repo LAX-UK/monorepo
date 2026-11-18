@@ -72,6 +72,11 @@ describe("Bid BFF proxy route", () => {
   it.each([
     ["saleroom status", ["sales", "sale-1", "saleroom", "status"]],
     ["sale lots", ["sales", "sale-1", "lots"]],
+    ["one lot", ["lots", "lot-1"]],
+    ["lot bids", ["lots", "lot-1", "bids"]],
+    ["lot bid history", ["lots", "lot-1", "bid-history"]],
+    ["lot watch count", ["lots", "lot-1", "watch-count"]],
+    ["lot documents", ["lots", "lot-1", "documents"]],
   ])("serves %s to a signed-out visitor without a session", async (_name, path) => {
     mocks.resourceToken.mockRejectedValueOnce(new mocks.BidBffSessionRequiredError());
 
@@ -85,9 +90,12 @@ describe("Bid BFF proxy route", () => {
     expect(new Headers(init.headers).has("authorization")).toBe(false);
   });
 
-  it("still requires a session for other sale reads", async () => {
+  it.each([
+    ["sale bidders", ["sales", "sale-1", "bidders"]],
+    ["a lot's registration", ["lots", "lot-1", "registration"]],
+    ["the lot list", ["lots"]],
+  ])("still requires a session for %s", async (_name, path) => {
     mocks.resourceToken.mockRejectedValueOnce(new mocks.BidBffSessionRequiredError());
-    const path = ["sales", "sale-1", "bidders"];
 
     const response = await GET(new NextRequest(`https://lax.bid/api/bff/${path.join("/")}`), {
       params: Promise.resolve({ path }),

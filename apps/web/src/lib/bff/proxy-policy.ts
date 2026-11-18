@@ -39,13 +39,22 @@ export function scopesForProxyMethod(method: string): "bid.read" | "bid.write" {
   return UNSAFE_PROXY_METHODS.has(method.toUpperCase()) ? "bid.write" : "bid.read";
 }
 
+/** Reads under one lot that the API serves with optional auth (`apps/api/src/routes/lots/detail.routes.ts`). */
+const PUBLIC_LOT_READS = new Set(["bids", "bid-history", "watch-count", "documents"]);
+
 /**
- * Read-only sale endpoints the API serves to anonymous visitors (saleroom status, lot page of a
- * sale). A visitor without a signed-in session gets them unauthenticated instead of a 401.
+ * Read-only sale and lot endpoints the API serves to anonymous visitors (saleroom status, a sale's
+ * lots, one lot and its bids, bid history, watch count and documents). A visitor without a
+ * signed-in session gets them unauthenticated instead of a 401.
  */
 export function isPublicSaleReadPath(method: string, segments: readonly string[]): boolean {
   if (method.toUpperCase() !== "GET" && method.toUpperCase() !== "HEAD") return false;
-  if (segments[0] !== "sales" || !segments[1]) return false;
+  if (!segments[1]) return false;
+  if (segments[0] === "lots") {
+    if (segments.length === 2) return true;
+    return segments.length === 3 && PUBLIC_LOT_READS.has(segments[2] ?? "");
+  }
+  if (segments[0] !== "sales") return false;
   if (segments.length === 3 && segments[2] === "lots") return true;
   return segments.length === 4 && segments[2] === "saleroom" && segments[3] === "status";
 }
