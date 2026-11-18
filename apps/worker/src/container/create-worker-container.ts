@@ -106,6 +106,7 @@ import { createFailedJobsWatch } from "./create-failed-jobs-watch.js";
 import { createReofferClock } from "./create-reoffer-clock.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 import { createZohoArtworkListing } from "./create-zoho-artwork-listing.js";
+import { createZohoArtworkLocation } from "./create-zoho-artwork-location.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
@@ -395,6 +396,7 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
+  const zohoArtworkLocation = createZohoArtworkLocation({ env, db, log });
   const zohoFulfilment = createZohoFulfilmentMirror({ env, db, log });
   const zohoQcReady = createZohoQcReady({ env, log });
   const accounting = createAccountingRuntime({
@@ -468,6 +470,13 @@ export function createWorkerContainer(): WorkerContainer {
       ? {
           runZohoListingNightlyCheck: async () => {
             await zohoArtworkListing.reconcile.run();
+          },
+        }
+      : {}),
+    ...(zohoArtworkLocation
+      ? {
+          runZohoLocationNightlyCheck: async () => {
+            await zohoArtworkLocation.reconcile.run();
           },
         }
       : {}),
@@ -697,6 +706,7 @@ export function createWorkerContainer(): WorkerContainer {
       crmSyncService,
       ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
       ...(zohoArtworkListing ? { zohoArtworkListing: zohoArtworkListing.writeback } : {}),
+      ...(zohoArtworkLocation ? { zohoArtworkLocation: zohoArtworkLocation.writeback } : {}),
       ...(zohoFulfilment ? { zohoFulfilment } : {}),
       ...(accounting ? { accounting } : {}),
       artworkOfferLock: new BidOfferLockRecorder(

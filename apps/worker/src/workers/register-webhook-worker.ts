@@ -33,6 +33,11 @@ import {
   ZOHO_STATUS_NIGHTLY_JOB_NAME,
   ZOHO_STATUS_NIGHTLY_PATTERN,
 } from "../jobs/zoho-listing-reconcile.job.js";
+import {
+  ZOHO_LOCATION_NIGHTLY_JOB_NAME,
+  ZOHO_LOCATION_NIGHTLY_PATTERN,
+  ZOHO_LOCATION_NIGHTLY_TIME_ZONE,
+} from "../jobs/zoho-location-reconcile.job.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
@@ -50,6 +55,8 @@ export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   runZohoListingNightlyCheck?: () => Promise<void>;
   /** Set when the Zoho Status writeback is on and the listing is off; schedules the Status check. */
   runZohoStatusNightlyCheck?: () => Promise<void>;
+  /** Set when the stock location on Zoho is on; schedules its nightly drift check. */
+  runZohoLocationNightlyCheck?: () => Promise<void>;
   /** Finds artworks the register places in a Bid sale whose lot is not live; runs nightly. */
   runRegisterLotIntegrityCheck?: () => Promise<void>;
   /** Set when the Zoho Campaigns suppression sync is on; schedules its daily pass here. */
@@ -65,6 +72,7 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     runZohoArtworkNightlyCheck,
     runZohoListingNightlyCheck,
     runZohoStatusNightlyCheck,
+    runZohoLocationNightlyCheck,
     runRegisterLotIntegrityCheck,
     runZohoCampaignsSuppressionSync,
     sentryMonitorSlugs,
@@ -122,6 +130,14 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       if (job.name === ZOHO_STATUS_NIGHTLY_JOB_NAME) {
         if (!runZohoStatusNightlyCheck) throw new Error("zoho status nightly check not configured");
         await runZohoStatusNightlyCheck();
+        await heartbeat("webhook-events");
+        return;
+      }
+
+      if (job.name === ZOHO_LOCATION_NIGHTLY_JOB_NAME) {
+        if (!runZohoLocationNightlyCheck)
+          throw new Error("zoho location nightly check not configured");
+        await runZohoLocationNightlyCheck();
         await heartbeat("webhook-events");
         return;
       }
@@ -217,6 +233,29 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       {
         jobId: ZOHO_STATUS_NIGHTLY_JOB_NAME,
         repeat: { pattern: ZOHO_STATUS_NIGHTLY_PATTERN, tz: ZOHO_LISTING_NIGHTLY_TIME_ZONE },
+        removeOnComplete: 30,
+      },
+    );
+  }
+
+  if (!runZohoLocationNightlyCheck) {
+    // A repeatable outlives the setting that created it, so clear it when the check is not configured.
+    void webhookQueue
+      .removeRepeatable(ZOHO_LOCATION_NIGHTLY_JOB_NAME, {
+        pattern: ZOHO_LOCATION_NIGHTLY_PATTERN,
+        tz: ZOHO_LOCATION_NIGHTLY_TIME_ZONE,
+        jobId: ZOHO_LOCATION_NIGHTLY_JOB_NAME,
+      })
+      .catch((error: unknown) =>
+        log.warn({ error }, "zoho location nightly repeatable not removed"),
+      );
+  } else {
+    void webhookQueue.add(
+      ZOHO_LOCATION_NIGHTLY_JOB_NAME,
+      { eventKey: ZOHO_LOCATION_NIGHTLY_JOB_NAME },
+      {
+        jobId: ZOHO_LOCATION_NIGHTLY_JOB_NAME,
+        repeat: { pattern: ZOHO_LOCATION_NIGHTLY_PATTERN, tz: ZOHO_LOCATION_NIGHTLY_TIME_ZONE },
         removeOnComplete: 30,
       },
     );
