@@ -37,3 +37,24 @@ Head reviewed: `38cb08f0` (base `122b816a`). Independent review; the PR branch w
 ## Infra / env
 
 None needed. The types are enabled by listing them in `ZOHO_CRM_ENABLED_EVENT_TYPES` when an owner decides to.
+
+## Fixes after review
+
+Fixed on `fix/crm-shop-refund-fulfilment` in `8456e56f` (after merging `main`).
+
+- **Finding 1 (fixed).** `shop.refund.completed` now retries while the order's deal link is missing, instead of skipping for good.
+  - `apps/worker/src/integrations/crm/crm-event-mappers.ts:70,449`: the `deal_stage` intent gains `retryWhileDealMissing`, set only for `shop.refund.completed` (Bid's `payment.refunded` is unchanged).
+  - `apps/worker/src/integrations/crm/crm-sync-service.ts:243` passes it on.
+  - `apps/worker/src/integrations/crm/handlers/crm-deal-sync-handler.ts:141-145`: with no deal link, returns `retry` with `crmDealNotLinkedError()` (`crm-gateway-error.ts:45`, code `deal_link_missing`, retryable), so the existing retry and dead-letter policy bounds it. An erased link and a held deal are still skipped.
+  - Tests: `crm-shop-order-sync.test.ts:107` (refund before the paid deal exists retries, then succeeds once the deal link is there), `:128` (erased link still skipped); `crm-event-mappers.test.ts:574`.
+- **Finding 3 (fixed).** The note write is idempotent across a failed ledger write.
+  - `crm-deal-sync-handler.ts:19`: `CRM_NOTE_PENDING_MODULE` (`__note_pending__`, record id `__none__`, so never "real" and never sent to Zoho by erasure).
+  - `crm-deal-sync-handler.ts:228`: the ledger row is written pending before `createRecord`; `:240,244` set it back to "not added" when the call throws or Zoho refuses, so the retry sends again; the real link replaces it after success.
+  - `crm-deal-sync-handler.ts:215-216`: a row left pending (note sent, then the ledger write failed) is not sent again: skipped `deal_note_maybe_added`. At most once, never twice. Remaining edge: a `createRecord` that times out after Zoho created the note resets the marker and can still duplicate, as before.
+  - Tests: `crm-shop-order-sync.test.ts:175` (`upsertLink` fails after `createRecord`: one note across the retry), `:195` (a refused note is sent again); `crm-shop-order-sync.integration.test.ts:107` (same against the real `crm_record_link` as `worker_app`).
+- **Finding 4 (fixed).** `docs/integrations/zoho.md:105`: `shop.refund.reversed` is not routed yet.
+- **Finding 2 (doc only).** `docs/integrations/zoho.md:97`: "Known gap" line for refunds on held deals; behaviour unchanged.
+- `docs/integrations/zoho.md:97-98` also describe the refund retry and the pending note row.
+- **Finding 5:** unchanged (owner decision).
+
+Suites (throwaway Postgres 16 on :55432, migrated + `db:roles`, `--maxWorkers=2`): `apps/worker src/integrations/crm src/projectors` 54 files passed, 348 tests; the one failure, `crm-deal-naming-reader.integration.test.ts`, is the same pre-existing failure on `main`. `crm-shop-order-sync` unit + integration (as `worker_app`): 17/17. `packages/types src/domain-event-catalog`: 29/29. `tsc --noEmit` (worker) clean; `biome check` clean.
