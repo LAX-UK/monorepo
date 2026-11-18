@@ -483,6 +483,9 @@ describe("blocker messages", () => {
     expect(describeDealBlocker({ code: "vat_treatment_not_chosen" })).toBe(
       "Finance has not chosen the VAT treatment yet.",
     );
+    expect(describeDealBlocker({ code: "invoice_issuer_not_configured" })).toBe(
+      "Invoicing for private sales has not been set up yet.",
+    );
   });
 });
 

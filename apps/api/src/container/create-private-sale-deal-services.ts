@@ -221,6 +221,7 @@ export function createPrivateSaleDealServices(
     payments,
     payouts,
     transitions,
+    invoices,
     clearance,
     policy,
     enquiries,
