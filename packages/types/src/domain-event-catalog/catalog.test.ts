@@ -250,7 +250,11 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     ] as const;
     for (const [type, payload] of fresh) {
       const entry = DOMAIN_EVENT_REGISTRY[type];
-      expect(entry.consumers).toEqual(["zoho_fulfilment"]);
+      expect(entry.consumers).toEqual(
+        type === "shop.fulfilment.status_changed"
+          ? ["zoho_fulfilment", "zoho"]
+          : ["zoho_fulfilment"],
+      );
       expect(entry.producers).toEqual(["shop-api"]);
       expect(entry.idempotencyPolicy).toBe("aggregate_event_unique");
       expect(entry.piiClassification).toBe("none");
@@ -384,9 +388,9 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     ).not.toContain("total");
   });
 
-  it("routes a Shop refund that went through to the accounting consumer; ids only", () => {
+  it("routes a Shop refund that went through to the accounting and CRM consumers; ids only", () => {
     const entry = DOMAIN_EVENT_REGISTRY["shop.refund.completed"];
-    expect(entry.consumers).toEqual(["accounting"]);
+    expect(entry.consumers).toEqual(["accounting", "zoho"]);
     expect(entry.producers).toEqual(["shop-api"]);
     const parsed = parseDomainEventPayload("shop.refund.completed", 1, {
       schemaVersion: 1,

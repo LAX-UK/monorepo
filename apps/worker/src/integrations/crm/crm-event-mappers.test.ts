@@ -550,4 +550,96 @@ describe("mapDomainEventToCrmIntent", () => {
       ).not.toContain("@");
     });
   });
+
+  describe("Shop refund and fulfilment", () => {
+    const orderId = "11111111-1111-4111-8111-111111111111";
+    const fulfilmentId = "22222222-2222-4222-8222-222222222222";
+    const refundId = "33333333-3333-4333-8333-333333333333";
+
+    it("maps a succeeded shop.refund.completed to the refunded stage on the order deal", () => {
+      const intent = mapDomainEventToCrmIntent(
+        {
+          id: 1,
+          eventType: "shop.refund.completed",
+          aggregateId: refundId,
+          schemaVersion: 1,
+          payload: { schemaVersion: 1, refundId, orderId, status: "succeeded" },
+        },
+        ctx,
+      );
+      expect(intent).toEqual({
+        kind: "deal_stage",
+        dealEntityId: `shop-order:${orderId}`,
+        stage: ctx.dealStagePaymentRefunded,
+      });
+    });
+
+    it("skips a Shop refund when the refunded stage is not configured", () => {
+      const intent = mapDomainEventToCrmIntent(
+        {
+          id: 1,
+          eventType: "shop.refund.completed",
+          aggregateId: refundId,
+          schemaVersion: 1,
+          payload: { schemaVersion: 1, refundId, orderId, status: "succeeded" },
+        },
+        { ...ctx, dealStagePaymentRefunded: "" },
+      );
+      expect(intent).toEqual({ kind: "skip", reason: "deal_pipeline_or_stage_not_configured" });
+    });
+
+    it("skips an invalid Shop refund payload", () => {
+      const intent = mapDomainEventToCrmIntent(
+        {
+          id: 1,
+          eventType: "shop.refund.completed",
+          aggregateId: refundId,
+          schemaVersion: 1,
+          payload: { schemaVersion: 1, refundId, orderId: "not-a-uuid", status: "succeeded" },
+        },
+        ctx,
+      );
+      expect(intent).toEqual({ kind: "skip", reason: "invalid_payload" });
+    });
+
+    it("maps a dispatched fulfilment to a note on the order deal, without personal data", () => {
+      const intent = mapDomainEventToCrmIntent(
+        {
+          id: 1,
+          eventType: "shop.fulfilment.status_changed",
+          aggregateId: fulfilmentId,
+          schemaVersion: 1,
+          payload: { schemaVersion: 1, fulfilmentId, orderId, status: "in_transit" },
+        },
+        ctx,
+      );
+      expect(intent).toEqual({
+        kind: "deal_note",
+        dealEntityId: `shop-order:${orderId}`,
+        noteRecordId: `fulfilment:${fulfilmentId}:in_transit`,
+        title: "Shop order dispatched",
+        content: "Shop order fulfilment: Dispatched",
+      });
+    });
+
+    it.each([
+      "pending_production",
+      "in_production",
+      "awaiting_dispatch",
+      "in_storage",
+      "cancelled",
+    ])("skips the %s fulfilment status", (status) => {
+      const intent = mapDomainEventToCrmIntent(
+        {
+          id: 1,
+          eventType: "shop.fulfilment.status_changed",
+          aggregateId: fulfilmentId,
+          schemaVersion: 1,
+          payload: { schemaVersion: 1, fulfilmentId, orderId, status },
+        },
+        ctx,
+      );
+      expect(intent).toEqual({ kind: "skip", reason: "fulfilment_status_not_milestone" });
+    });
+  });
 });

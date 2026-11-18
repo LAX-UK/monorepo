@@ -240,6 +240,8 @@ export class CrmSyncService {
         return this.dealHandler.syncDeal(intent);
       case "deal_stage":
         return this.dealHandler.updateDealStage(intent.dealEntityId, intent.stage);
+      case "deal_note":
+        return this.dealHandler.addDealNote(intent);
       case "purchase_paid":
         return this.dealHandler.markPurchasePaid(intent);
       case "shop_artwork_product_upsert":

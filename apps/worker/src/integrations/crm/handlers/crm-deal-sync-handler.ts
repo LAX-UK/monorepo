@@ -163,6 +163,68 @@ export class CrmDealSyncHandler {
   }
 
   /**
+   * Adds a note to a deal in Zoho, once: the ledger records the note, so a replay adds nothing. A
+   * held deal has no Zoho record to note, as for a stage change.
+   */
+  async addDealNote(
+    intent: Extract<CrmMappedIntent, { kind: "deal_note" }>,
+  ): Promise<CrmSyncResult> {
+    const link = await this.deps.linkRepo.findByEntity(CRM_ENTITY.deal, intent.dealEntityId);
+    if (!link || link.erasedAt) {
+      return { outcome: "skipped", reason: "deal_link_missing" };
+    }
+    if (!isRealZohoLink(link.zohoModule, link.zohoRecordId)) {
+      return { outcome: "skipped", reason: "deal_held_until_contact" };
+    }
+    if (link.subjectId) {
+      const blocked = await this.guardSubjectForDeal(link.subjectId);
+      if (blocked) return blocked;
+    }
+    const recorded = await this.deps.linkRepo.findByEntity(CRM_ENTITY.note, intent.noteRecordId);
+    if (recorded && !recorded.erasedAt) {
+      return {
+        outcome: "success",
+        providerReference: formatProviderReference({
+          module: "Notes",
+          recordId: recorded.zohoRecordId,
+          action: "insert",
+        }),
+      };
+    }
+    const note = await this.deps.gateway.createRecord({
+      module: "Notes",
+      fields: {
+        Note_Title: intent.title,
+        Note_Content: intent.content,
+        Parent_Id: { id: link.zohoRecordId, module: { api_name: "Deals" } },
+      },
+    });
+    if (note.status === "error") {
+      throw new CrmGatewayError({
+        code: note.code ?? "ERROR",
+        message: note.message ?? "deal_note_failed",
+        status: 400,
+        retryable: false,
+      });
+    }
+    await this.deps.linkRepo.upsertLink({
+      entityType: CRM_ENTITY.note,
+      entityId: intent.noteRecordId,
+      zohoModule: "Notes",
+      zohoRecordId: note.recordId,
+      ...(link.subjectId ? { subjectId: link.subjectId } : {}),
+    });
+    return {
+      outcome: "success",
+      providerReference: formatProviderReference({
+        module: "Notes",
+        recordId: note.recordId,
+        action: "insert",
+      }),
+    };
+  }
+
+  /**
    * Creates the Zoho Deals of every purchase held for a subject, on the subject's Contact. Safe to
    * repeat: a deal is keyed by `LAX_Deal_Key`, and its ledger row turns into a real link.
    */

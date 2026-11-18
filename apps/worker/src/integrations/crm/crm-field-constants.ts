@@ -86,6 +86,11 @@ export function paidCustomerRecordId(dealEntityId: string): string {
   return `paid-customer:${dealEntityId}`;
 }
 
+/** Ledger id of the note a Shop fulfilment milestone adds to its order's deal. */
+export function fulfilmentMilestoneNoteRecordId(fulfilmentId: string, status: string): string {
+  return `fulfilment:${fulfilmentId}:${status}`;
+}
+
 export function lotWonDealKey(lotId: string): string {
   return `lot-won:${lotId}`;
 }
