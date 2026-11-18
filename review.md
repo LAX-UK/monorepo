@@ -39,3 +39,13 @@ Head reviewed: `064b30da` (base `122b816a`). Independent review; the PR branch w
 - Worker: **`ZOHO_ARTWORK_LOCATION_MODE`** (`off` | `dry_run` | `live`, default `off`) in the auction-infra worker task definition. It is not set today, so the feature is off, which is safe.
 - Test workflows: like #1562, which did this for the fulfilment mirror, a `TF_VAR_zoho_artwork_location_mode: ${{ vars.ZOHO_ARTWORK_LOCATION_MODE || 'dry_run' }}` line in `.github/workflows/terraform-test-up.yml`, `terraform-apply-test.yml` and `terraform-apply-test-dispatch.yml` (next to `TF_VAR_zoho_artwork_listing_mode`, lines 193/160/129). Add it after the infra variable exists.
 - With `live`: `ZOHO_CRM_EXPECTED_ORG_TYPE` (already required by the other live writers).
+
+## Fixes after review
+
+Fixed on `feat/zoho-artwork-location-writeback` in `1c06a58a` (after merging `main`). Docs only; no code or migration.
+
+- **Finding 2 (fixed by rewording).** `docs/design/stock-location.md:44-46` now says a value edited in Zoho is overwritten on the next change or by the nightly drift check, which logs `zoho_location_reconcile_finished`, and that it is not shown in Sync health. A sync-health row was not added: the only existing run table, `zoho_listing_sync_run`, has no kind column and is read as the listing's Last check, so writing location runs into it would mix the two passes; a separate table needs a migration. `docs/integrations/zoho.md:273` says the same for the nightly pass.
+- **Finding 3 (left, needs a migration).** `zoho_sync_health` has one column per mode (`listing_mode`, `artwork_sync_mode`); recording `ZOHO_ARTWORK_LOCATION_MODE` needs a new column. Stated in `docs/integrations/zoho.md:273`; follow-up.
+- **Finding 1 (no code change).** `docs/integrations/zoho.md:279` now notes that each Products writer (location, listing, Status writeback, CRM) builds its own `ZohoCrmGatewayLimiter` and paces separately, so their combined rate is not capped by one limiter.
+
+Suites (throwaway Postgres 16 on :55432, migrated + `db:roles`, `--maxWorkers=2`): `packages/persistence zoho-location-source.integration` 3/3; `apps/worker src/integrations/zoho src/projectors` 99 files passed (2 skipped as before), 761 tests. `tsc --noEmit` (worker) clean; biome does not process the Markdown files changed.
