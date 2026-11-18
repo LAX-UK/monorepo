@@ -30,8 +30,18 @@ export type StatusOutcome = Subject &
   (
     | { kind: "written"; status: string }
     | { kind: "in_sync" }
-    /** Zoho shows `zohoStatus`, which LAX did not write; LAX would set `wanted`. */
-    | { kind: "conflict"; zohoStatus: string; wanted: string }
+    /**
+     * Zoho shows `zohoStatus`, which LAX did not write; LAX would set `wanted`. With
+     * `changedDuringWrite`, LAX did send `wanted` but the check after the write found that someone
+     * else (`changedBy`, a Zoho user id when Zoho said) had set `zohoStatus`; nothing is restored.
+     */
+    | {
+        kind: "conflict";
+        zohoStatus: string;
+        wanted: string;
+        changedDuringWrite?: true;
+        changedBy?: string | null;
+      }
     /** Zoho changed after the facts were read, or between the read and the write: left for the next run. */
     | { kind: "stale" }
     | {
@@ -139,8 +149,10 @@ const NO_LEDGER: CatalogueStatusLedger = { written: null, conflictOpen: false };
  * next compare knows it. Sending twice sends once, and a Product Zoho changed after the facts were
  * read is left for the next pass, so an older picture never goes over a newer one. Just before a
  * write the Product is read again and its Status and Modified_Time must match the read the decision
- * was made on; if not, nothing is sent. Zoho cannot make the write itself conditional, so a change
- * in the few milliseconds between that read and the write remains (docs/integrations/zoho.md).
+ * was made on; if not, nothing is sent. Zoho cannot make the write itself conditional, so after the
+ * write the Product is read once more: a Status someone else set in the meantime is left in place
+ * and raised as the same conflict (`checkAfterWrite`). A change Zoho applied before LAX's update
+ * arrived leaves no trace in what Zoho returns and remains (docs/integrations/zoho.md).
  */
 export class ZohoStatusSync {
   private readonly now: () => Date;
@@ -270,11 +282,15 @@ export class ZohoStatusSync {
       }
 
       if (live && decision.kind === "write") {
+        // Recorded even when the check below finds a staff edit: LAX did send it, and the next
+        // compare must not mistake an older LAX value staff set back for one LAX may replace.
         await this.deps.register.recordCatalogueStatusWritten({
           registerId: entry.id,
           status: wanted,
           now: this.now(),
         });
+        const raced = await this.checkAfterWrite(entry, wanted);
+        if (raced) return { ...who, ...raced };
       } else if (live && ledger.conflictOpen) {
         // Zoho already shows what LAX wants, but LAX did not send it, so it is not "last written":
         // it may be staff's Sold or Reserved. Only the open conflict is closed.
@@ -291,7 +307,55 @@ export class ZohoStatusSync {
       return { ...who, kind: "failed", code: error.code, retryable };
     }
   }
+
+  /**
+   * Reads the Product once more after LAX's write. Under the artwork's lock only LAX writes the
+   * Status, so a different value now is someone else's edit that landed with or after the write. It
+   * is never written over: where compare-and-set would not replace it (the same rule as before a
+   * write) it is raised as the conflict staff already see. A failed read changes nothing here; the
+   * next pass compares again.
+   */
+  private async checkAfterWrite(
+    entry: ArtworkRegisterEntry,
+    wanted: string,
+  ): Promise<ChangedDuringWrite | null> {
+    let after: ZohoStatusState | undefined;
+    try {
+      after = (await this.deps.products.read([entry.zohoProductId])).get(entry.zohoProductId);
+    } catch (err) {
+      this.deps.log.warn(
+        { registerId: entry.id, code: crmErrorOutcome(err).error.code },
+        "zoho_status_write_check_failed",
+      );
+      return null;
+    }
+    if (!after) return null;
+    const decision = decideStatusWrite({ wanted, zohoStatus: after.status, lastWritten: wanted });
+    if (decision.kind !== "conflict") return null;
+    const changedBy = after.modifiedBy ?? null;
+    await this.deps.register.recordCatalogueStatusConflict({
+      registerId: entry.id,
+      zohoStatus: decision.zohoStatus,
+      laxStatus: wanted,
+      zohoModifiedAt: after.modifiedAt ?? this.now(),
+      now: this.now(),
+    });
+    this.deps.log.warn(
+      { registerId: entry.id, zohoStatus: decision.zohoStatus, wanted, changedBy },
+      "zoho_status_changed_during_write",
+    );
+    return {
+      kind: "conflict",
+      zohoStatus: decision.zohoStatus,
+      wanted,
+      changedDuringWrite: true,
+      changedBy,
+    };
+  }
 }
+
+/** A conflict found by the check after a write, before the record it is about is added. */
+type ChangedDuringWrite = Omit<Extract<StatusOutcome, { kind: "conflict" }>, keyof Subject>;
 
 /** The same Status, last changed at the same moment: nothing happened to the Product in between. */
 function sameState(a: ZohoStatusState, b: ZohoStatusState): boolean {

@@ -306,7 +306,8 @@ describe("ZohoStatusSync: compare-and-set re-reads the Product just before writi
     const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
     w.world.zoho = before;
     expect((await w.sync().sync([REGISTER_ID]))[0]?.kind).toBe("written");
-    expect(w.products.read).toHaveBeenCalledTimes(2);
+    // The decision's read, the one just before the write, and the check after it.
+    expect(w.products.read).toHaveBeenCalledTimes(3);
     expect(w.products.write).toHaveBeenCalledTimes(1);
   });
 
@@ -459,5 +460,105 @@ describe("ZohoStatusSync: a sale made in the gallery is Zoho's", () => {
     const [outcome] = await w.sync().sync([REGISTER_ID]);
     expect(outcome?.kind).toBe("in_sync");
     expect(w.products.write).not.toHaveBeenCalled();
+  });
+});
+
+describe("ZohoStatusSync: checks the Product again after writing", () => {
+  const STAFF = "5000000000000099001";
+
+  /** A staff edit Zoho applies in the same moment as LAX's update: LAX's write, then staff's. */
+  function staffRacesTheWrite(staffStatus: string) {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    w.products.write.mockImplementationOnce(async () => {
+      w.world.zoho = {
+        status: staffStatus,
+        modifiedAt: new Date("2026-11-03T12:00:01Z"),
+        modifiedBy: STAFF,
+      };
+    });
+    return w;
+  }
+
+  it("raises the conflict, with both values, when staff changed the Status in the write's window", async () => {
+    const w = staffRacesTheWrite("Sold");
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome).toMatchObject({
+      kind: "conflict",
+      zohoStatus: "Sold",
+      wanted: "In Auction",
+      changedDuringWrite: true,
+      changedBy: STAFF,
+    });
+    expect(w.register.recordCatalogueStatusConflict).toHaveBeenCalledWith(
+      expect.objectContaining({
+        registerId: REGISTER_ID,
+        zohoStatus: "Sold",
+        laxStatus: "In Auction",
+      }),
+    );
+    expect(w.world.conflict).toEqual({ zohoStatus: "Sold", laxStatus: "In Auction" });
+    expect(reportOf(outcome ? [outcome] : [])).toMatchObject({ conflicts: 1, written: 0 });
+  });
+
+  it("restores nothing: staff's Status stays and LAX sends once", async () => {
+    const w = staffRacesTheWrite("Reserved");
+    await w.sync().sync([REGISTER_ID]);
+    expect(w.products.write).toHaveBeenCalledTimes(1);
+    expect(w.world.zoho?.status).toBe("Reserved");
+  });
+
+  it("records what it sent, so a staff value equal to an older write is not overwritten next pass", async () => {
+    const w = staffRacesTheWrite("Reserved");
+    w.world.written = "Reserved";
+    w.world.zoho = { status: "Reserved", modifiedAt: null };
+    w.world.source = { entry: inState("sold"), lastMove: null };
+    await w.sync().sync([REGISTER_ID]);
+    expect(w.world.written).toBe("Sold");
+    const [next] = await w.sync().sync([REGISTER_ID]);
+    expect(next).toMatchObject({ kind: "conflict", zohoStatus: "Reserved", wanted: "Sold" });
+    expect(w.products.write).toHaveBeenCalledTimes(1);
+  });
+
+  it("is written, with no conflict, when the Product still shows what LAX sent", async () => {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome).toMatchObject({ kind: "written", status: "In Auction" });
+    expect(outcome).not.toHaveProperty("changedDuringWrite");
+    expect(w.register.recordCatalogueStatusConflict).not.toHaveBeenCalled();
+  });
+
+  it("raises no conflict for a Status compare-and-set would replace anyway (Available)", async () => {
+    const w = staffRacesTheWrite("Available");
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome).toMatchObject({ kind: "written", status: "In Auction" });
+    expect(w.register.recordCatalogueStatusConflict).not.toHaveBeenCalled();
+    expect(w.products.write).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the write when the check after it cannot read Zoho", async () => {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    let reads = 0;
+    const read = w.products.read.getMockImplementation();
+    w.products.read.mockImplementation(async (ids: readonly string[]) => {
+      reads += 1;
+      if (reads === 3)
+        throw new CrmGatewayError({
+          code: "TOO_MANY_REQUESTS",
+          message: "slow",
+          status: 429,
+          retryable: true,
+        });
+      return read?.(ids);
+    });
+    const [outcome] = await w.sync().sync([REGISTER_ID]);
+    expect(outcome).toMatchObject({ kind: "written", status: "In Auction" });
+    expect(w.world.written).toBe("In Auction");
+    expect(w.log.warn).toHaveBeenCalledWith(expect.anything(), "zoho_status_write_check_failed");
+  });
+
+  it("does not check after writing in a dry run", async () => {
+    const w = fakeWorld({ source: { entry: inState("bid_sale"), lastMove: null } });
+    await w.sync("dry_run").sync([REGISTER_ID]);
+    expect(w.products.read).toHaveBeenCalledTimes(1);
   });
 });

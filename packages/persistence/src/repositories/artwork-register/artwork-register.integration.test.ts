@@ -949,6 +949,36 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       );
     });
 
+    it("keeps a Status LAX sent as written and opens the conflict when staff changed it during the write", async () => {
+      const entry = await created();
+      // The sequence ZohoStatusSync runs when the check after a write finds staff's value.
+      await repo.recordCatalogueStatusWritten({
+        registerId: entry.id,
+        status: "In Auction",
+        now: T1,
+      });
+      await repo.recordCatalogueStatusConflict({
+        registerId: entry.id,
+        zohoStatus: "Sold",
+        laxStatus: "In Auction",
+        zohoModifiedAt: T1,
+        now: T1,
+      });
+      const open = await repo.listOpenConflicts(10);
+      expect(open).toHaveLength(1);
+      expect(open[0]).toMatchObject({
+        registerId: entry.id,
+        field: "catalogueStatus",
+        zohoValue: "Sold",
+        laxValue: "In Auction",
+        status: "open",
+      });
+      expect((await repo.findCatalogueStatusLedgers([entry.id])).get(entry.id)).toEqual({
+        written: "In Auction",
+        conflictOpen: true,
+      });
+    });
+
     it("closes a conflict because Zoho matched LAX without recording the Status as written", async () => {
       const entry = await created();
       await repo.recordCatalogueStatusConflict({
