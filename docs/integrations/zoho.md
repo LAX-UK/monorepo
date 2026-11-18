@@ -249,13 +249,13 @@ The **nightly pass** (03:00 London, after the listing check in the same job) wal
 
 | Variable | App | Purpose |
 |----------|-----|---------|
-| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho (the nightly Status check below does read Zoho in a dry run, and writes nothing); its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` (replay them from the delivery ledger or re-save the artwork). `live` writes and needs the three OAuth values. |
+| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho (the nightly Status check below does read Zoho in a dry run, and writes nothing); its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` until they are caught up (see [Switching a write-back to live](#switching-a-write-back-to-live-without-losing-changes)). `live` writes and needs the three OAuth values. |
 
 **Extra OAuth scope** for the refresh token: `ZohoCRM.modules.products.UPDATE`. Generate a new refresh token after adding it. A missing scope shows as failed deliveries.
 
 **Wrong-org guard.** With `ZOHO_ARTWORK_WRITEBACK_MODE=live` the worker refuses to start unless `ZOHO_CRM_EXPECTED_ORG_TYPE` (`sandbox` or `production`) is set, and at startup it reads the connected Zoho org and refuses to start if it does not match. This is the same check the CRM sync uses in canary and live; `dry_run` and `off` skip it.
 
-Roll out: sandbox org with `dry_run`; then `live` in the sandbox and check one Product; then production.
+Roll out: sandbox org with `dry_run`; then `live` in the sandbox, [catch up](#switching-a-write-back-to-live-without-losing-changes) and check one Product; then production.
 
 ## LAX listing on Zoho Products (outbound)
 
@@ -284,7 +284,7 @@ Picklist values, in order: Not offered, Draft on lax.art, On lax.art, Draft lot 
 | `INVENTORY_MACHINE_CLIENT_ID`, `INVENTORY_MACHINE_CLIENT_SECRET` | worker | The inventory machine pair LAX Shop holds. |
 | `LAX_ART_PUBLIC_URL`, `LAX_ADMIN_PUBLIC_URL` | worker | For the link. LAX Bid's comes from `WEB_ORIGIN`. |
 
-Everything is required once the mode is not `off`; `live` also turns on the wrong-org guard. Roll out: sandbox `dry_run`, review Last check; sandbox `live`, check a few Products; production `dry_run`; production `live` with the owner's go.
+Everything is required once the mode is not `off`; `live` also turns on the wrong-org guard. Roll out: sandbox `dry_run`, review Last check; sandbox `live`, [catch up](#switching-a-write-back-to-live-without-losing-changes), check a few Products; production `dry_run`; production `live` with the owner's go, then catch up.
 
 ## Print orders to Zoho (outbound)
 
@@ -334,6 +334,27 @@ Also mark `Print_SKUs.SKU` unique (the mirror finds SKUs by it and upserts on it
 | `ZOHO_FULFILMENT_DISPATCH_PRINTS_FIELD` | worker | API name of the prints field above. Default `LAX_Prints`. |
 
 Roll out: add the fields in the sandbox; sandbox `dry_run` and read the logged writes for a few orders, including a refunded and a framed one; sandbox `live` (the org check refuses anything but `ZOHO_CRM_EXPECTED_ORG_TYPE`); production fields, `dry_run`, then `live` with the owner's go.
+
+## Switching a write-back to live without losing changes
+
+A Zoho write-back in `dry_run` handles each event, logs what it would send and marks the delivery **skipped** (`dry_run`). A skipped delivery is never picked up again, so switching to `live` does not on its own send what changed during the dry run. This covers the artwork writeback (Status and stock code, `zoho_artwork_writeback`), the LAX listing (`zoho_artwork_listing`) and the fulfilment mirror (print groups and orders, `zoho_fulfilment`). The nightly listing and Status passes repair the listing and the Status (the Status only while `ZOHO_ARTWORK_LISTING_MODE` is not `off`). Nothing repairs the stock code, print groups or orders. LAX Admin's "Mirrored to Zoho" badge also keeps showing `dry_run` until those deliveries are handled live.
+
+The catch-up puts back to pending exactly the deliveries one write-back skipped as `dry_run`. The live worker then sends them through its usual drain: one at a time, through the shared Zoho rate limit, circuit breaker, retries and dead-letter ledger. Each write-back reads LAX and Zoho when it handles an event and writes only what differs. An old event therefore sends the state that is true now, once, and running the catch-up again changes nothing.
+
+```bash
+pnpm --filter @auction/worker zoho:catch-up-after-live --consumer <zoho_artwork_writeback|zoho_artwork_listing|zoho_fulfilment> [--dry-run] [--limit N]
+```
+
+On test, run it with the **Zoho CRM maintenance (test)** workflow: action `catch-up-preview` or `catch-up`, plus the `consumer`. The workflow reads the modes from the GitHub `test` environment variables (`ZOHO_ARTWORK_WRITEBACK_MODE`, `ZOHO_ARTWORK_LISTING_MODE`, `ZOHO_FULFILMENT_MIRROR_MODE`), so set the chosen one to `live` there first.
+
+Steps, one write-back at a time:
+
+1. While still in `dry_run`, preview: `--dry-run` (workflow `catch-up-preview`). It prints `{"consumer", "mode", "apply": false, "dryRunSkipped", "requeued": 0, "remaining"}` and changes nothing. `dryRunSkipped` is how many deliveries will be sent.
+2. Switch that write-back's mode variable to `live`. This turns on the wrong-org guard, so `ZOHO_CRM_EXPECTED_ORG_TYPE` must match. Deploy and wait for the worker to restart in `live`. It refuses to start if the org does not match.
+3. Run the catch-up without `--dry-run` (workflow `catch-up`). It refuses unless the variable it reads says `live`. In `dry_run` the worker would skip the deliveries again. In `off` it would mark them `writeback_off`, which loses the `dry_run` mark the catch-up looks for. For a large backlog, use `--limit` (for example 500) and run it again until `remaining` is 0. The put-back deliveries queue ahead of newer events for that write-back.
+4. Watch the queue drain: Sync health (writes waiting, dead-lettered) and Failed jobs. Spot-check a few records in Zoho. Run the preview again: `dryRunSkipped` should be 0.
+
+Run the catch-up only after the worker is really `live`. If the worker is still in `dry_run`, it re-skips the deliveries as `dry_run`, and running again once it is live picks them up. Only deliveries skipped as `dry_run` are touched: other skips (already in sync, not paid, a raised Status conflict) and other consumers stay as they are. No mode is changed by the task.
 
 ## Mirror status per record (LAX Admin read)
 
@@ -438,6 +459,7 @@ Roll out: sandbox `dry_run`, read the logged summary (`read`, `due`, `skipped`, 
 pnpm --filter @auction/worker backfill:crm-users [--dry-run]
 pnpm --filter @auction/worker reconcile:crm-links
 pnpm --filter @auction/worker replay:crm-skipped
+pnpm --filter @auction/worker zoho:catch-up-after-live --consumer <consumer> [--dry-run] [--limit N]
 ```
 
 See [async-delivery-phase-two.md](../runbooks/async-delivery-phase-two.md) for rollout and dead-letter handling.

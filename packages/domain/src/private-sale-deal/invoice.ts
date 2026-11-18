@@ -17,8 +17,7 @@ export type DealInvoiceReference = { externalReference: string };
 /**
  * Raises the invoice for a deal in the finance system that owns invoices. This system never
  * numbers or renders an invoice itself: it records the reference the finance system returns.
- * Until an implementation is configured there is none, and the deal is invoiced without a
- * reference that can be added later.
+ * Until an implementation is configured there is none, and no deal can be invoiced.
  */
 export interface DealInvoiceIssuer {
   issue(request: DealInvoiceRequest): Promise<DealInvoiceReference | null>;

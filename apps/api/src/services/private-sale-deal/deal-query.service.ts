@@ -48,6 +48,7 @@ import {
   termIsOpen,
   toBlocker,
 } from "./deal-desk-support.js";
+import type { DealInvoiceService } from "./deal-invoice.service.js";
 import type { DealLockLinks } from "./deal-lock-links.js";
 import type { DealSettlementFollowUpPresenter } from "./deal-settlement-follow-up.presenter.js";
 import {
@@ -70,6 +71,8 @@ export type DealQueryDeps = {
   payments: Pick<IPrivateSaleDealPaymentReader, "listForDeal">;
   payouts: Pick<IPrivateSaleDealPayoutStore, "hasPayoutLine">;
   transitions: Pick<DealTransitionService, "blockers">;
+  /** Whether a finance system can raise the invoice; without one no deal is invoiced. */
+  invoices: Pick<DealInvoiceService, "blockers">;
   clearance: DealClearancePort;
   policy: PrivateSalePolicy;
   enquiries: Pick<IMarketingEnquiryRepository, "findById">;
@@ -382,7 +385,8 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
       ...(command === "cancel" ? { cancelReason: "pending", refundRecorded } : {}),
       ...(command === "release" ? { releaseNote: "pending" } : {}),
     });
-    return redactBlockers(viewer, (blockers ?? []).map(toBlocker));
+    const invoicing = action === "issue_invoice" ? this.deps.invoices.blockers() : [];
+    return redactBlockers(viewer, [...invoicing, ...(blockers ?? [])].map(toBlocker));
   }
 }
 

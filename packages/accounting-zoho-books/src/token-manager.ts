@@ -11,6 +11,7 @@ import { parseJson, sendWithTimeout } from "./http.js";
 import {
   type Clock,
   METRIC,
+  type RefreshLock,
   type StoredZohoTokens,
   type ZohoLogger,
   type ZohoMetrics,
@@ -36,6 +37,8 @@ export interface TokenManagerDeps {
   readonly clock: Clock;
   readonly logger: ZohoLogger;
   readonly metrics: ZohoMetrics;
+  /** Shared across processes; without one, refreshes are single-flight in this process only. */
+  readonly refreshLock?: RefreshLock;
 }
 
 interface CachedToken {
@@ -47,8 +50,9 @@ interface CachedToken {
  * Gives out access tokens, refreshing them when needed. Refreshes are single-flight per organisation:
  * however many calls ask at once, one request goes to Zoho and all of them share its answer (Zoho
  * limits how many tokens one refresh token may mint). Plaintext tokens live only in this
- * process's memory; the store only ever sees sealed values. Single-flight is per process; sharing a
- * refresh across processes is the store's job (see the README: the runtime must add a shared lock).
+ * process's memory; the store only ever sees sealed values. With a `refreshLock` the whole of "load,
+ * refresh, save" runs under a lock shared by every process: the one that waited reads the token the
+ * first one saved and sends nothing. A lock that cannot be taken fails the call; nothing is sent.
  *
  * A refresh that ends in a timeout, a connection failure or a 5xx is never repeated inside the call:
  * Zoho may already have acted on it (a rotated refresh token would be lost with the answer). The call
@@ -92,6 +96,24 @@ export class ZohoTokenManager {
   }
 
   private async obtain(organizationId: string, rejected: string | undefined): Promise<CachedToken> {
+    const lock = this.deps.refreshLock;
+    if (!lock) return this.loadOrRefresh(organizationId, rejected);
+    let ran = false;
+    try {
+      return await lock.withLock(organizationId, () => {
+        ran = true;
+        return this.loadOrRefresh(organizationId, rejected);
+      });
+    } catch (error) {
+      if (ran) throw error;
+      throw new ZohoAuthError({ code: "refresh_lock_unavailable" });
+    }
+  }
+
+  private async loadOrRefresh(
+    organizationId: string,
+    rejected: string | undefined,
+  ): Promise<CachedToken> {
     const { store, sealer } = this.deps;
     let stored: StoredZohoTokens | null;
     try {

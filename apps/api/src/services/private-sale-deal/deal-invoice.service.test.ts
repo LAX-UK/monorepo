@@ -26,12 +26,23 @@ function setup(over: { issue?: ReturnType<typeof vi.fn> | null; blocked?: boolea
 }
 
 describe("DealInvoiceService", () => {
-  it("invoices the deal with no reference while no finance system issues invoices", async () => {
+  it("refuses to invoice while no finance system issues invoices, leaving the deal where it is", async () => {
     const { service, transition, recordInvoiceReference } = setup({ issue: null });
     const outcome = await service.issue({ dealId: "deal-1", actorUserId: "u-fin" });
-    expect(outcome.kind).toBe("ok");
-    expect(transition).toHaveBeenCalledWith("deal-1", "issue_invoice", { actorUserId: "u-fin" });
+    expect(outcome).toEqual({
+      kind: "blocked",
+      blockers: [{ code: "invoice_issuer_not_configured" }],
+    });
+    expect(service.blockers()).toEqual([{ code: "invoice_issuer_not_configured" }]);
+    expect(transition).not.toHaveBeenCalled();
     expect(recordInvoiceReference).not.toHaveBeenCalled();
+  });
+
+  it("has nothing in the way once a finance system issues invoices", async () => {
+    const { service, transition } = setup();
+    expect(service.blockers()).toEqual([]);
+    await service.issue({ dealId: "deal-1", actorUserId: "u-fin" });
+    expect(transition).toHaveBeenCalledWith("deal-1", "issue_invoice", { actorUserId: "u-fin" });
   });
 
   it("records the reference the finance system returns", async () => {

@@ -30,6 +30,10 @@ with its reason. Nothing is ever guessed.
 | `PRIVATE_SALE_COLLECTION_DUE_DAYS` | Nothing; 14 days is suggested until the owner decides (sets the collection deadline when the deal is paid) |
 | `PRIVATE_SALE_BUYER_FEE_BPS` | Nothing; there is no buyer's fee by default |
 
+**Issue the invoice** also stays blocked ("Invoicing for private sales has not been set up yet.")
+until a finance system that issues deal invoices is connected. Which system that is remains an open
+owner and accountant decision (PS-6). A deal never moves to Invoiced without one.
+
 Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMOUNT`), AML threshold
 £10,000, parties anonymous to each other.
 

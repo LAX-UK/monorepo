@@ -81,6 +81,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
       markSucceeded: vi.fn(),
       markSkipped: vi.fn(),
       replaySkippedForEventTypes: vi.fn(),
+      countSkippedForEventTypes: vi.fn(),
       scheduleRetry: vi.fn(),
       deadLetter: vi.fn(),
       replay: vi.fn(),
