@@ -184,6 +184,12 @@ export const envSchema = z
     CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
     /** Optional ClamAV REST endpoint for SoF document malware scanning. */
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /**
+     * The CRM sync. `off` does nothing; `dry_run` logs each allowlisted event and sends nothing;
+     * `canary` and `live` are the same mode under two names: both send allowlisted events to Zoho,
+     * run the held-deal release sweep, run the org check and need a sandbox org outside production.
+     * A canary rollout is `live` with a short `ZOHO_CRM_ENABLED_EVENT_TYPES`, not a different mode.
+     */
     ZOHO_CRM_SYNC_MODE: z.enum(["off", "dry_run", "canary", "live"]).default("off"),
     /**
      * Artworks coming in from Zoho Products. `off` does nothing; `dry_run` reads Zoho and records
@@ -552,7 +558,7 @@ export const envSchema = z
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: issue.message, path: [issue.name] });
     }
     // Outside production (APP_ENV unset counts) the worker only acts on a Zoho CRM sandbox org;
-    // the org check then confirms it at start.
+    // the org check then confirms it at start. A CRM sync in `canary` counts exactly as `live`.
     if (zohoCrmNeedsSandboxOrg(e) && e.ZOHO_CRM_EXPECTED_ORG_TYPE !== "sandbox") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

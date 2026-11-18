@@ -50,12 +50,17 @@ After changing vars, re-run **Terraform test up** (with image contracts) or **Te
 
 ## Worker env (CRM)
 
+### Canary is live
+
+`ZOHO_CRM_SYNC_MODE=canary` does exactly what `live` does; nothing in the worker tells them apart. In both, the CRM sync sends allowlisted events to Zoho over HTTP (`resolveZohoDeliveryMode` in `zoho-crm-config.ts`; the projector only branches on `off`, `disabled_type` and `dry_run`), the held-deal release sweep runs (`zoho-projector.ts`), the startup org check runs and, outside production, `ZOHO_CRM_EXPECTED_ORG_TYPE` must be `sandbox` (`writesToZohoCrm` in `zoho-live-modes.ts`), and `backfill:crm-users` writes. The only difference is the word in the logs and env. What makes a rollout a canary is the allowlist, `ZOHO_CRM_ENABLED_EVENT_TYPES`, which narrows `live` in the same way: a "canary" is `live` (or `canary`) with a short allowlist. The artwork, listing, fulfilment and QC modes have no `canary`.
+
+
 | Variable | Purpose |
 |----------|---------|
 | `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` / `ZOHO_REFRESH_TOKEN` | OAuth |
 | `ZOHO_CRM_API_HOST` | CRM API base (sandbox in test) |
 | `ZOHO_CRM_EXPECTED_ORG_TYPE` | `sandbox` or `production` — startup org check (`canary`/`live` only) |
-| `ZOHO_CRM_SYNC_MODE` | `off` \| `dry_run` \| `canary` \| `live` |
+| `ZOHO_CRM_SYNC_MODE` | `off` \| `dry_run` \| `canary` \| `live`. `canary` and `live` behave the same in every way (see [Canary is live](#canary-is-live)) |
 | `ZOHO_CRM_ENABLED_EVENT_TYPES` | Comma-separated allowlist (**required** whenever `ZOHO_CRM_SYNC_MODE` is not `off`; worker env validation fails if empty) |
 | `ZOHO_CRM_UPSERT_TRIGGER` | JSON array; default `[]` suppresses workflows |
 | `ZOHO_CRM_AUCTION_PIPELINE` | Deal pipeline name (required before deal events write) |
@@ -266,7 +271,15 @@ Everything is required once the mode is not `off`; `live` also turns on the wron
 
 ## Print orders to Zoho (outbound)
 
-Staff fulfil print orders in LAX Admin (pick, confirm, allocate the edition number, frame, dispatch). Each step is mirrored to Zoho CRM, one way, so Zoho is complete for reporting. Zoho stays master for Print Product Groups and Print SKUs; LAX Shop uses the same SKU, `LAX-PRT-{group}-{SIZE}-{PAPER}-{FRAME}-{ALLOC}` (`buildPrintSku` in `@auction/artwork-register-contracts`). It runs in the `zoho_fulfilment` consumer with the print group mirror and under the same `ZOHO_FULFILMENT_MIRROR_MODE`.
+Staff fulfil print orders in LAX Admin (pick, confirm, allocate the edition number, frame, dispatch). Each step is mirrored to Zoho CRM, one way, so Zoho is complete for reporting. It runs in the `zoho_fulfilment` consumer with the print group mirror and under the same `ZOHO_FULFILMENT_MIRROR_MODE`.
+
+**Where print groups and SKUs come from today.** LAX makes them, from LAX Shop's prints listings; nothing reads them back from Zoho.
+
+- *Print Product Groups.* The print group mirror (`print-group-mirror.ts`) creates or updates the group's `Print_Products` record, keyed on `Print_Group_ID` (the original's stock code as `LAX-PRT-…`), with `Total_Edition_Quantity`, `Collector_Allocation`, `Artist_Allocation`, `LAX_Allocation`, `Edition_Type` and `Linked_Original_Artwork` from the main-run listing (`plan-print-group.ts`). It creates or updates the group's one `Edition_Ledgers` record (`LAX_Mirror_Key`, `Linked_Print_Product_Group`, `Total_Edition`), and then issues the group's `LAX-PRT` row in the artwork register, keyed to the `Print_Products` record id. When one of those fields in Zoho differs from LAX, LAX overwrites it on the next event; fields LAX does not fill, and fields for which LAX has no value, are left as Zoho holds them.
+- *Print SKUs.* The order mirror creates or updates `Print_SKUs` records (table below), keyed on `SKU`, which LAX builds from the listing and the print sold: `LAX-PRT-{group}-{SIZE}-{PAPER}-{FRAME}-{ALLOC}` (`buildPrintSku` in `@auction/artwork-register-contracts`). LAX Shop uses the same SKU.
+- *The other way.* No LAX code reads `Print_Products`, `Edition_Ledgers` or `Print_SKUs` into LAX, except to find the record to update. The inbound artwork sync reads `Products` only, and the Status writeback leaves a print group alone (`print_group_not_a_product`).
+
+**Owner decision pending: which system is master for prints.** An earlier version of this page said Zoho stays master for Print Product Groups and Print SKUs. The code above does not work that way: LAX creates both and keeps LAX's fields in line. Until the owner decides, this section describes the code as it is, and the behaviour is unchanged.
 
 **When it runs.** On `shop.order.paid`, `shop.edition.sold`, `shop.edition.released`, `shop.print.pack_confirmed`, `shop.print.swapped`, `shop.framing.status_changed` (a framing task moving in LAX Admin), `shop.fulfilment.status_changed` and `shop.fulfilment.dispatched`. The order is taken from the payload's `orderId` (these events are raised on the order, a line or the fulfilment). Each event runs the same pass over the order as LAX and Zoho hold it then, and writes only what differs: a repeated, late or out-of-order event writes nothing stale, and a status is only ever moved forward, so a step staff took in Zoho is never pulled back. A status Zoho holds that LAX does not rank (one staff added to the picklist, such as a QC step) is left as it is and logged (`order mirror leaves a status it does not rank; add it to the rank table`), since LAX cannot tell whether moving it would be forward or back. Unpaid orders and prints of an original outside the register are skipped.
 

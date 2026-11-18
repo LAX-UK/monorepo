@@ -11,7 +11,8 @@ export type ZohoModes = {
 
 /**
  * Anything that writes to Zoho CRM: the CRM sync in canary/live, or the artwork writeback, the
- * LAX listing or the fulfilment mirror in live.
+ * LAX listing or the fulfilment mirror in live. The CRM sync's `canary` is `live` under another
+ * name: it writes the same, and a canary rollout is made by narrowing ZOHO_CRM_ENABLED_EVENT_TYPES.
  */
 export function writesToZohoCrm(env: ZohoModes): boolean {
   return (
