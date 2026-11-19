@@ -102,4 +102,18 @@ describe.skipIf(!url)("DrizzleZohoListingLock (Postgres)", { timeout: 30_000 }, 
     ]);
     expect(next).toBe("acquired");
   });
+
+  it("survives the server dropping the held connection while fn runs", async () => {
+    const id = crypto.randomUUID();
+    const result = await lock.withLock([id], async () => {
+      const pid = (await holders(id))[0]?.pid ?? 0;
+      await db.execute(sql`SELECT pg_terminate_backend(${pid}::int)`);
+      // Give the dropped socket time to emit its 'error' while we still hold the client.
+      await waitFor(async () => (await holders(id)).length === 0);
+      return "done";
+    });
+    expect(result).toBe("done");
+    expect(await holders(id)).toEqual([]);
+    expect(await lock.withLock([id], async () => "again")).toBe("again");
+  });
 });

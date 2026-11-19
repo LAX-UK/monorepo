@@ -66,8 +66,14 @@ export async function getZohoCrmAccessToken(env: WorkerEnv): Promise<string | nu
   return refresh;
 }
 
+/** Every Zoho caller in the process waits on one refresh, so a hung request must not stall them for long. */
+const TOKEN_REFRESH_TIMEOUT_MS = 15_000;
+
 async function refreshAccessToken(url: URL, now: number): Promise<string> {
-  const res = await fetch(url, { method: "POST" });
+  const res = await fetch(url, {
+    method: "POST",
+    signal: AbortSignal.timeout(TOKEN_REFRESH_TIMEOUT_MS),
+  });
   const text = await res.text();
   if (!res.ok) {
     throw new ZohoCrmAuthError(

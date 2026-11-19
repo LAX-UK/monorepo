@@ -301,6 +301,8 @@ export class DrizzleZohoListingSourceReader
 type LockClient = {
   query(text: string, params?: unknown[]): Promise<unknown>;
   release(destroy?: boolean): void;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  off(event: "error", listener: (error: Error) => void): unknown;
 };
 type LockPool = { connect(): Promise<LockClient> };
 
@@ -328,6 +330,13 @@ export class DrizzleZohoListingLock implements IZohoListingLock {
     const held: string[] = [];
     // A connection that failed mid-lock (or mid-unlock) is not reused: dropping it ends the session.
     let destroy = false;
+    // pg-pool drops its idle 'error' listener on checkout. Without one of our own, a server that
+    // drops this connection while `fn` runs emits an unhandled 'error' that can crash the process.
+    // The session (and its locks) is gone anyway, so just mark the connection for destruction.
+    const onError = () => {
+      destroy = true;
+    };
+    client.on("error", onError);
     try {
       for (const key of keys) {
         try {
@@ -348,6 +357,7 @@ export class DrizzleZohoListingLock implements IZohoListingLock {
           break;
         }
       }
+      client.off("error", onError);
       client.release(destroy);
     }
   }

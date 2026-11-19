@@ -67,4 +67,26 @@ describe("getZohoCrmAccessToken single-flight", () => {
     );
     expect(await getZohoCrmAccessToken(ENV)).toBe("next");
   });
+
+  it("gives up on a hung refresh after a timeout, so callers are not stalled", async () => {
+    const fetchMock = vi.fn(
+      (_url: URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("The operation timed out.", "TimeoutError")),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const failed = vi.fn();
+    setZohoTokenRefreshObserver({ refreshed: vi.fn(), failed });
+
+    const pending = getZohoCrmAccessToken(ENV);
+    const init = fetchMock.mock.calls[0]?.[1];
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
+    // Fire the timeout's abort directly rather than waiting 15 s.
+    (init?.signal as AbortSignal).dispatchEvent(new Event("abort"));
+    await expect(pending).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(failed).toHaveBeenCalledWith("zoho_token_refresh_unreachable");
+  });
 });
