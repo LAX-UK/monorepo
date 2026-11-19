@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { crmRecordLink } from "@auction/db/schema";
 import { and, asc, eq, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import type {
+  ClaimCrmRecordLinkInput,
   CrmRecordLinkRow,
   ICrmRecordLinkRepository,
   MergeCrmSubjectLinksResult,
@@ -73,6 +74,46 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
           updatedAt: now,
         },
       });
+  }
+
+  async claimLink(input: ClaimCrmRecordLinkInput): Promise<boolean> {
+    const now = input.now ?? new Date();
+    const claim = {
+      zohoModule: input.zohoModule,
+      zohoRecordId: input.zohoRecordId,
+      ...(input.subjectId !== undefined ? { subjectId: input.subjectId } : {}),
+      heldPayload: input.heldPayload ?? null,
+      updatedAt: now,
+    };
+    const inserted = await this.db
+      .insert(crmRecordLink)
+      .values({
+        ...claim,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        erasedAt: null,
+        createdAt: now,
+      })
+      .onConflictDoNothing({ target: [crmRecordLink.entityType, crmRecordLink.entityId] })
+      .returning({ entityId: crmRecordLink.entityId });
+    if (inserted.length > 0) return true;
+    const taken = await this.db
+      .update(crmRecordLink)
+      .set(claim)
+      .where(
+        and(
+          eq(crmRecordLink.entityType, input.entityType),
+          eq(crmRecordLink.entityId, input.entityId),
+          eq(crmRecordLink.zohoModule, input.from.zohoModule),
+          eq(crmRecordLink.zohoRecordId, input.from.zohoRecordId),
+          isNull(crmRecordLink.erasedAt),
+          ...(input.from.updatedBefore
+            ? [lt(crmRecordLink.updatedAt, input.from.updatedBefore)]
+            : []),
+        ),
+      )
+      .returning({ entityId: crmRecordLink.entityId });
+    return taken.length > 0;
   }
 
   async mergeSubjectLinks(input: {

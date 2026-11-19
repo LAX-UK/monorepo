@@ -8,6 +8,7 @@ import type {
   CrmCreateInput,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
+  CrmFindNotesInput,
   CrmGateway,
   CrmGatewayMetrics,
   CrmLeadSummary,
@@ -68,6 +69,10 @@ export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery, CrmBatch
 
   async queryCoql(selectQuery: string): Promise<CrmCoqlPage> {
     return this.guard(() => this.inner.queryCoql(selectQuery));
+  }
+
+  async findNoteIds(input: CrmFindNotesInput): Promise<string[]> {
+    return this.guard(() => this.inner.findNoteIds(input));
   }
 
   async createRecord(input: CrmCreateInput): Promise<CrmRecordResult> {

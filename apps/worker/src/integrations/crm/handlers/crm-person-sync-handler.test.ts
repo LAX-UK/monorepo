@@ -8,6 +8,7 @@ function linkRepo(overrides: Partial<ICrmRecordLinkRepository> = {}): ICrmRecord
   return {
     findByEntity: vi.fn().mockResolvedValue(null),
     upsertLink: vi.fn().mockResolvedValue(undefined),
+    claimLink: vi.fn().mockResolvedValue(true),
     mergeSubjectLinks: vi.fn(),
     markErased: vi.fn(),
     tombstone: vi.fn(),
@@ -37,6 +38,7 @@ function gateway(overrides: Partial<CrmGateway> = {}): CrmGateway {
     updateById: vi.fn(),
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
+    findNoteIds: vi.fn().mockResolvedValue([]),
     executeCoql: vi.fn(),
     createRecord: vi.fn(),
     findLead: vi.fn(),

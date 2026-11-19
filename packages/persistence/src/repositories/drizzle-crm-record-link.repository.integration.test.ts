@@ -229,4 +229,47 @@ describe.skipIf(!HAS_DB)("DrizzleCrmRecordLinkRepository (integration)", () => {
     const rows = await repo.listActiveLinksBySubject(subjectId, ["note", "task"]);
     expect(rows.map((r) => r.zohoModule).sort()).toEqual(["Notes", "Tasks"]);
   });
+
+  it("claims a link for one writer: inserts it, or takes over only the state it names", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const repo = new DrizzleCrmRecordLinkRepository(db);
+    const entityId = `note-claim-${randomUUID()}`;
+    const pending = {
+      entityType: "note",
+      entityId,
+      zohoModule: "__note_pending__",
+      zohoRecordId: "__none__",
+      heldPayload: { dealRecordId: "deal-1", title: "Shop order delivered" },
+    };
+    const refused = { zohoModule: "Notes", zohoRecordId: "__none__" };
+
+    const claims = await Promise.all([
+      repo.claimLink({ ...pending, from: refused }),
+      repo.claimLink({ ...pending, from: refused }),
+    ]);
+    expect(claims.sort()).toEqual([false, true]);
+    expect(await repo.findByEntity("note", entityId)).toMatchObject({
+      zohoModule: "__note_pending__",
+      heldPayload: { title: "Shop order delivered" },
+    });
+
+    // A pending claim is taken over only once it is older than the cut-off.
+    const claimedAt = (await repo.findByEntity("note", entityId))?.updatedAt ?? new Date();
+    const pendingSince = (updatedBefore: Date) => ({
+      zohoModule: "__note_pending__",
+      zohoRecordId: "__none__",
+      updatedBefore,
+    });
+    expect(await repo.claimLink({ ...pending, from: pendingSince(claimedAt) })).toBe(false);
+    expect(
+      await repo.claimLink({
+        ...pending,
+        from: pendingSince(new Date(claimedAt.getTime() + 1)),
+      }),
+    ).toBe(true);
+
+    await repo.upsertLink({ ...pending, ...refused });
+    expect(await repo.claimLink({ ...pending, from: refused })).toBe(true);
+  });
 });

@@ -157,4 +157,53 @@ describe("ZohoCrmGateway", () => {
     const result = await gateway.createRecord({ module: "Notes", fields: { Note_Content: "x" } });
     expect(result).toMatchObject({ module: "Notes", recordId: "note-1", status: "success" });
   });
+
+  it("finds the notes on a record by title, across pages", async () => {
+    const fetchMock = vi.mocked(fetch);
+    const page = (data: unknown[], more: boolean) =>
+      ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: async () => JSON.stringify({ data, info: { more_records: more } }),
+      }) as Response;
+    fetchMock
+      .mockResolvedValueOnce(
+        page(
+          [
+            { id: "n1", Note_Title: "Shop order delivered" },
+            { id: "n2", Note_Title: "Shop order dispatched" },
+          ],
+          true,
+        ),
+      )
+      .mockResolvedValueOnce(page([{ id: "n3", Note_Title: "Shop order delivered" }], false));
+
+    const gateway = new ZohoCrmGateway(env(), { apiHost: "https://www.zohoapis.eu/", trigger: [] });
+    const ids = await gateway.findNoteIds({
+      parentModule: "Deals",
+      parentId: "deal-1",
+      title: "Shop order delivered",
+    });
+
+    expect(ids).toEqual(["n1", "n3"]);
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(urls[0]).toContain("/crm/v8/Deals/deal-1/Notes?fields=Note_Title&per_page=200&page=1");
+    expect(urls[1]).toContain("page=2");
+  });
+
+  it("finds no notes on a record that has none", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      status: 204,
+      headers: new Headers(),
+      text: async () => "",
+    } as Response);
+
+    const gateway = new ZohoCrmGateway(env(), { apiHost: "https://www.zohoapis.eu/", trigger: [] });
+
+    expect(
+      await gateway.findNoteIds({ parentModule: "Deals", parentId: "deal-1", title: "x" }),
+    ).toEqual([]);
+  });
 });

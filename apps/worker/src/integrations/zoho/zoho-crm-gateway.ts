@@ -8,6 +8,7 @@ import type {
   CrmCreateInput,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
+  CrmFindNotesInput,
   CrmGateway,
   CrmGatewayMetrics,
   CrmLeadSummary,
@@ -216,6 +217,33 @@ export class ZohoCrmGateway implements CrmGateway, CrmCoqlQuery, CrmBatchUpdate 
     return (parsed.data ?? [])
       .map((row) => row.id)
       .filter((id): id is string => typeof id === "string" && id.length > 0);
+  }
+
+  async findNoteIds(input: CrmFindNotesInput): Promise<string[]> {
+    const ids: string[] = [];
+    for (let page = 1; ; page += 1) {
+      const res = await this.request(
+        "GET",
+        `/crm/v8/${input.parentModule}/${encodeURIComponent(input.parentId)}/Notes?fields=Note_Title&per_page=200&page=${page}`,
+      );
+      if (res.status === 204) return ids;
+      this.throwOnHttpError(res);
+      let parsed: {
+        data?: Array<{ id?: string; Note_Title?: string | null }>;
+        info?: { more_records?: boolean };
+      };
+      try {
+        parsed = JSON.parse(res.text) as typeof parsed;
+      } catch {
+        throw new ZohoCrmHttpError(502, "zoho_notes_invalid_json");
+      }
+      for (const note of parsed.data ?? []) {
+        if (typeof note.id === "string" && note.id && note.Note_Title === input.title) {
+          ids.push(note.id);
+        }
+      }
+      if (parsed.info?.more_records !== true) return ids;
+    }
   }
 
   async createRecord(input: CrmCreateInput): Promise<CrmRecordResult> {
