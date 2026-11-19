@@ -88,3 +88,47 @@ Pushed to `fix/crm-audit-refunds` (head `0a495afb`, with current main `b3e9f9ce`
 - `tsc --noEmit`: worker, shop-api and persistence are all clean.
 - `biome check .`: clean (3 warnings that are already on main, none in changed files).
 - `pnpm lint:deps`: passes.
+
+## Final recheck
+
+Rechecked head `0a495afb` (`fix/crm-audit-refunds`). It has current `origin/main` `b3e9f9ce` merged in, plus the fix commits `681da135`, `3d4658cc` and `0a495afb`. The PR branch was not changed. Pairwise trial merges with #1570 and with #1571 are clean.
+
+**Verdict: SHIP.**
+
+### Import cycle: removed, not allowlisted (confirmed)
+
+- `zoho-crm-allowlist-rules.ts` imports only `@auction/types`.
+- `env.ts:12` imports the rules from it, and `zoho-crm-config.ts` re-exports them.
+- `scripts/circular-deps-allowlist.json` and `scripts/ci/circular-deps-allowlist.baseline.json` are byte-identical to `origin/main`.
+- `pnpm lint:deps` passes: `check-circular-deps: ok (46 allowlisted cycles)`, freeze `ok (47/47 cycles)`, undeclared-imports tests ok. On GitHub, `static-checks` and `ci-result` are `success` on `0a495afb`.
+
+### Waiting retries do not use up attempts, and are bounded (confirmed)
+
+- `crmDealNotLinkedError` and `crmNoteInFlightError` now carry `waiting: true`, `retryAfterMs` 60 s and `maxWaitMs` 24 h. The runner (`domain-event-delivery-runner.ts:90-123`) passes the delivery's `createdAt`. A wait is never dead-lettered for attempts and is scheduled with `undoAttemptIncrement`, so it costs no attempt.
+- `isWaitingDeliveryError` returns false once `now - createdAt >= maxWaitMs`. From then on each retry counts, and the delivery dead-letters (replayable) within the usual 12 attempts. The wait is bounded.
+- Accounting waiting errors set no `maxWaitMs`, so they are unchanged.
+- One thing to know, not blocking: the bound is measured from `createdAt`, which a replay does not reset. A replayed delivery older than 24 h that hits a wait therefore counts attempts at once. It is still bounded and still replayable.
+- The runner tests (`domain-event-delivery-runner.test.ts:296`) and the handler tests (`crm-shop-order-sync.test.ts:187`, `:322`) pass.
+
+### `erasedAt` cannot be cleared by the note paths (confirmed)
+
+- With `keepErased`, the Drizzle upsert adds `setWhere: erased_at IS NULL`, so an erased row is left exactly as it is; a new row still inserts. The in-memory double mirrors this.
+- Both writes that finish a note send, `refused()` (`crm-deal-sync-handler.ts:281`) and `recordNote` (`:321`), pass it.
+- `claimLink`'s takeover already requires `erased_at IS NULL`, so an erased note row cannot be claimed and re-sent.
+- The tests at `crm-shop-order-sync.test.ts:272` and `drizzle-crm-record-link.repository.integration.test.ts:233` pass.
+- **Follow-up, not blocking and existing before this PR:** the other `upsertLink` writers still clear `erasedAt` (deal create and update at `crm-deal-sync-handler.ts:159/391/443`, person sync, paid buyer, lead conversion, `backfill-crm-users`). An erasure that lands while one of those sends is in flight can still be undone in the ledger, which is the same race class observation 6 named. Passing `keepErased: true` on the post-send writes would close it.
+
+### Canary allowlist unchanged (confirmed)
+
+`git diff origin/main..0a495afb` touches no `.github/`, terraform or infra file. In `env.ts` the only change is the import and the issue loop. `ZOHO_CRM_ENABLED_EVENT_TYPES` and its defaults are untouched.
+
+### Runs (Postgres 16 on :55432 and Redis, every role URL set, `vitest run --maxWorkers=2`)
+
+| Check | Result |
+|---|---|
+| @auction/worker | 2930 passed, 3 skipped. 1 file fails at suite level: `crm-deal-naming-reader.integration.test.ts`, the `shop_order_line_target_xor` fixture failure. It fails the same way on the #1570 and #1571 trees, is untouched, and predates this PR. The worker role contract passes, and so does GitHub `worker-role-contract`. |
+| @auction/persistence | 1162 passed, 8 skipped (185 files) |
+| Targeted: runner, crm-shop-order-sync, zoho-crm-config, env tests | 75 of 75 pass |
+| `tsc --noEmit` (worker, persistence) | clean |
+| `pnpm lint:deps` | passes |
+| GitHub checks on `0a495afb` | all success (`ci-result` success) |
