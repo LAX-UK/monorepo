@@ -30,7 +30,8 @@ const MIN_INTERVAL_MS = 100;
 
 export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery, CrmBatchUpdate {
   private state: LimiterState = { consecutiveTransientFailures: 0, circuitOpenUntilMs: 0 };
-  private lastCallMs = 0;
+  /** Earliest time the next call may start. Reserved before any await, so overlapping callers queue 100 ms apart. */
+  private nextSlotMs = 0;
 
   constructor(private readonly inner: CrmGateway & CrmCoqlQuery & CrmBatchUpdate) {}
 
@@ -86,8 +87,7 @@ export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery, CrmBatch
     return this.guard(() => this.inner.purgeFromRecycleBin(recordId));
   }
 
-  private async guard<T>(fn: () => Promise<T>): Promise<T> {
-    const now = Date.now();
+  private throwIfCircuitOpen(now: number): void {
     if (now < this.state.circuitOpenUntilMs) {
       const retryAfterMs = this.state.circuitOpenUntilMs - now;
       throw Object.assign(new Error("zoho_crm_circuit_open"), {
@@ -96,11 +96,20 @@ export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery, CrmBatch
         retryAfterMs,
       });
     }
-    const waitMs = this.lastCallMs + MIN_INTERVAL_MS - now;
-    if (waitMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+
+  private async guard<T>(fn: () => Promise<T>): Promise<T> {
+    const now = Date.now();
+    this.throwIfCircuitOpen(now);
+    // Reserve this caller's slot synchronously, before any await, so callers
+    // arriving in the same window each get their own slot 100 ms apart.
+    const slot = Math.max(now, this.nextSlotMs);
+    this.nextSlotMs = slot + MIN_INTERVAL_MS;
+    if (slot > now) {
+      await new Promise((resolve) => setTimeout(resolve, slot - now));
+      // The circuit may have opened while this caller waited for its slot.
+      this.throwIfCircuitOpen(Date.now());
     }
-    this.lastCallMs = Date.now();
     try {
       const result = await fn();
       this.state.consecutiveTransientFailures = 0;
