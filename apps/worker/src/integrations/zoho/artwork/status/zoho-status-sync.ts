@@ -11,6 +11,7 @@ import type {
   IZohoStatusSourceReader,
   RegisterStatusSource,
 } from "@auction/persistence/interfaces";
+import { ARTWORK_WRITEBACK_SKIP } from "@auction/types";
 import type { Logger } from "pino";
 import { crmErrorOutcome } from "../../../crm/classify-crm-error.js";
 import { decideStatusWrite } from "./decide-status-write.js";
@@ -49,11 +50,11 @@ export type StatusOutcome = Subject &
     | { kind: "stale" }
     | {
         kind: "skipped";
-        reason:
-          | "register_entry_missing"
-          | "print_group_not_a_product"
+        reason: (typeof ARTWORK_WRITEBACK_SKIP)[
+          | "registerEntryMissing"
+          | "printGroupNotAProduct"
           /** A gallery sale is Zoho's: LAX never writes Sold back over a Status staff changed. */
-          | "gallery_sale_owned_by_zoho";
+          | "gallerySaleOwnedByZoho"];
       }
     | { kind: "failed"; code: string; retryable: boolean }
   );
@@ -199,13 +200,17 @@ export class ZohoStatusSync {
         stockCode: "",
         zohoProductId: "",
         kind: "skipped" as const,
-        reason: "register_entry_missing" as const,
+        reason: ARTWORK_WRITEBACK_SKIP.registerEntryMissing,
       }));
 
     const products = sources.filter(({ entry }) => zohoModuleOf(entry) === "Products");
     for (const { entry } of sources) {
       if (zohoModuleOf(entry) === "Print_Products") {
-        outcomes.push({ ...subject(entry), kind: "skipped", reason: "print_group_not_a_product" });
+        outcomes.push({
+          ...subject(entry),
+          kind: "skipped",
+          reason: ARTWORK_WRITEBACK_SKIP.printGroupNotAProduct,
+        });
       }
     }
     if (products.length === 0) return outcomes;
@@ -248,7 +253,7 @@ export class ZohoStatusSync {
         { registerId: entry.id, zohoStatus: state.status },
         "zoho_status_gallery_sale_left_to_zoho",
       );
-      return { ...who, kind: "skipped", reason: "gallery_sale_owned_by_zoho" };
+      return { ...who, kind: "skipped", reason: ARTWORK_WRITEBACK_SKIP.gallerySaleOwnedByZoho };
     }
     const decision = decideStatusWrite({
       wanted,
