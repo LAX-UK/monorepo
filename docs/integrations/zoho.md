@@ -41,8 +41,19 @@ Set these **variables** (not secrets) on the monorepo test environment; Terrafor
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED` | empty | e.g. `Paid` |
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED` | empty | e.g. `Refunded` |
 | `ZOHO_CRM_DEAL_STAGE_SHOP_PAID` | empty | e.g. `Paid` |
-| `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` | `false` | `shop.artwork.created` → Products |
 | `ZOHO_CRM_LEAD_STATUS_NEW` | `New (Unassigned)` | Lead Status a new website lead starts with; must exist in the org's Lead Status picklist (the sandbox has `New`) |
+
+`SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` is not in this table because no monorepo workflow passes it; see the list below.
+
+**Set in the infra repo, not by these workflows.** The monorepo Terraform workflows do not pass the variables below as `TF_VAR_*`, so the worker and shop-api get them only if the private infra repo sets them on the app spec; otherwise the app's own default applies. This document does not record the values infra sets; check the infra repo before relying on one.
+
+| Variable | App | Default when unset | Notes |
+|----------|-----|--------------------|-------|
+| `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` | worker | `false` | `shop.artwork.created` → Products is skipped while `false` |
+| `SHOP_ZOHO_FINANCIALS_ENABLED` | worker | `false` | Order financials on `shop.order.paid` |
+| `ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE` | worker | `off` | See [Campaigns suppression](#campaigns-suppression-inbound) |
+| `ZOHO_CRM_EXPECTED_ORG_TYPE` | worker | unset | Must be `sandbox` on test before any Zoho mode there goes `canary`/`live`; without it the worker refuses to start |
+| `ZOHO_ARTWORK_WRITEBACK_MODE`, `ZOHO_ARTWORK_LISTING_MODE`, `ZOHO_FULFILMENT_MIRROR_MODE` | shop-api | unset | shop-api's copies, used only to word the [mirror status](#mirror-status-per-record-lax-admin-read); unset, the badge says only what the delivery ledger shows. The workflows pass these modes to the worker only; set them to the worker's values |
 
 After changing vars, re-run **Terraform test up** (with image contracts) or **Terraform apply test** so the worker spec updates.
 
