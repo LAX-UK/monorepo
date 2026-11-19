@@ -278,7 +278,7 @@ The **nightly pass** (03:00 London, after the listing check in the same job) wal
 
 | Variable | App | Purpose |
 |----------|-----|---------|
-| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho (the nightly Status check below does read Zoho in a dry run, and writes nothing); its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` until they are caught up (see [Switching a write-back to live](#switching-a-write-back-to-live-without-losing-changes)). `live` writes and needs the three OAuth values. |
+| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho (the nightly Status check below does read Zoho in a dry run, and writes nothing); its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` until they are caught up (see [Switching a write-back to live](#switching-a-write-back-to-live-without-losing-changes)). `live` writes. Anything but `off` needs the three OAuth values (the worker refuses to start without them), because the dry run reads Zoho too. |
 
 **Extra OAuth scope** for the refresh token: `ZohoCRM.modules.products.UPDATE`. Generate a new refresh token after adding it. A missing scope shows as failed deliveries. `ZohoCRM.users.READ` is optional: without it a Status change Zoho automation makes during a write is labelled as a staff edit (see Check after the write).
 

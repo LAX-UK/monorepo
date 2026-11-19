@@ -597,13 +597,14 @@ export const envSchema = z
       });
     }
     if (
-      e.ZOHO_ARTWORK_WRITEBACK_MODE === "live" &&
+      // dry_run reads Zoho too (the nightly Status pass), so it needs the OAuth trio like live.
+      e.ZOHO_ARTWORK_WRITEBACK_MODE !== "off" &&
       (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_WRITEBACK_MODE is live",
+          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_WRITEBACK_MODE is not off",
         path: ["ZOHO_ARTWORK_WRITEBACK_MODE"],
       });
     }
