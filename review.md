@@ -169,3 +169,31 @@ Rechecked head `1937641c` (`fix/zoho-runtime-audit`), which includes the fix com
 | @auction/worker | 2905 passed, 1 failed, 8 skipped. The failure is the role contract above. 3 more files failed in `beforeAll`: 2 with `tuple concurrently updated` from `applyApplicationRoleGrants` racing across parallel files, which pass when re-run alone; and `crm-deal-naming-reader.integration.test.ts` with `shop_order_line_target_xor`, which fails the same way on #1571's tree (it predates both PRs, is untouched, and is not a CI gate here) |
 | `tsc --noEmit` (worker, persistence) | clean |
 | `pnpm lint:deps` | passes |
+
+## Fixes after final recheck
+
+Fixed on `fix/zoho-runtime-audit` in `f0aaec44` (after merging `origin/main` at `b3e9f9ce` in `f2274fc2`).
+
+### The lock takes its pool explicitly
+
+- `packages/persistence/src/repositories/artwork-register/drizzle-zoho-listing.ts:314`: new `zohoListingLockPool(db)` returns the root database's pg pool and throws `zohoListingLockPool: the database has no pg pool ($client); pass the root database, not a transaction` when there is none.
+- `drizzle-zoho-listing.ts:339`: `DrizzleZohoListingLock` now takes `pool: ZohoListingLockPool` in its constructor and throws a clear error at construction when it has no `connect()`. `withLock` checks out from `this.pool` (`:349`). It no longer reads `$client` off a `Database`, so it can never be silently built on a transaction.
+- Wired in the three factories: `apps/worker/src/container/create-zoho-artwork-listing.ts:61`, `create-zoho-artwork-location.ts:40`, `create-zoho-status-sync.ts:34`. `zohoListingLockPool` and `zohoListingLockKey` are exported from `artwork-register/index.ts`.
+- `drizzle-zoho-listing-lock.integration.test.ts:42`: two tests that need no database: the helper refuses an object with no pool, and the constructor refuses one with no `connect()`. The Postgres tests and `zoho-listing.integration.test.ts` build the lock with `zohoListingLockPool(db)`.
+
+### Role contract
+
+- `worker-store-role-contract.integration.test.ts`: the lock is removed from `STORES` and its `ARGUMENTS` entry, because it is never built on a transaction.
+- `:500-501`: the container scan treats a call on the database (`zohoListingLockPool(db)`) as the database, so the factories' lock is still found. It is listed in `COVERED_ELSEWHERE` (`:176`), with the reason.
+- `:610`: a hand probe. As `worker_app`, `withLock` takes the advisory lock (`pg_locks` shows it granted while `fn` runs) and frees it afterwards.
+
+### Runs (Postgres 16 on :55432, migrated, probes seeded, `db:roles`, `DATABASE_URL_WORKER` set, `--maxWorkers=2`)
+
+| Check | Result |
+|---|---|
+| `worker-role-contract` job's file list (CI step) | 15 files, 616 passed, `not proven (0 of 321)` and `(0 of 151)` |
+| @auction/persistence | 1162 passed, 11 skipped, 1 failed. The failure is `consignor-agreement.integration.test.ts` "lets one of two replaces of the same version win" (`not_current` vs `stale`), a race under parallel load. It passes alone (12 passed) and the PR does not touch it. |
+| @auction/worker | 2911 passed, 3 skipped, 1 file failed: `crm-deal-naming-reader.integration.test.ts` `shop_order_line_target_xor` in setup. This is pre-existing and was noted in the final recheck. |
+| `tsc --noEmit` (worker, persistence) | clean |
+| biome (changed files) | clean |
+| `pnpm lint:deps` | passes |
