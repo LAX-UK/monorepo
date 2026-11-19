@@ -269,6 +269,7 @@ robots) can be found; rollback is repointing `www.thelax.art` at the legacy orig
 - Moving to `lax.art` is a separate project after at least three stable months: host-level
   301s preserving path, Search Console **Change of Address**, `ART_PRODUCTION_HOSTS`,
   `LAX_ART_PUBLIC_URL`, OIDC URIs and the Cloudflare rules all change together.
+  The redirects and steps are in [thelax-art-seo-migration.md](./thelax-art-seo-migration.md).
 
 ## Owner inputs still needed
 

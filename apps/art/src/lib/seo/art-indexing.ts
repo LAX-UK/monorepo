@@ -1,5 +1,8 @@
-/** Only the launch host is indexable; staging, preview and platform default domains are not. */
-export const ART_PRODUCTION_HOSTS: ReadonlySet<string> = new Set(["www.thelax.art"]);
+/**
+ * Only the launch host and lax.art (where thelax.art moves, see thelax-art-redirects.ts) are
+ * indexable; staging, preview and platform default domains are not.
+ */
+export const ART_PRODUCTION_HOSTS: ReadonlySet<string> = new Set(["www.thelax.art", "lax.art"]);
 
 export const X_ROBOTS_TAG_NOINDEX = "noindex, nofollow, noarchive";
 

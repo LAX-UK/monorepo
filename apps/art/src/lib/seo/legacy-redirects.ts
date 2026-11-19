@@ -5,7 +5,7 @@ export type LegacyRedirectResolution =
   | { kind: "miss"; path: string };
 
 /** Campaign attribution survives the hop; legacy CMS params (`?word=`, `?page=`) do not. */
-const PRESERVED_QUERY_PARAM = /^(utm_[a-z_]+|gclid)$/;
+export const PRESERVED_QUERY_PARAM = /^(utm_[a-z_]+|gclid)$/;
 /** The old CMS served resized copies from `/uds/<dir>/thumb/` and `/thumb1/`. */
 const LEGACY_THUMB_SEGMENT = /\/thumb1?\//;
 
