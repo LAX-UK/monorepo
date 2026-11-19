@@ -1,31 +1,19 @@
 import type { WorkerEnv } from "../../env.js";
+import { isZohoEventTypeEnabled } from "./zoho-crm-allowlist-rules.js";
+
+// The allowlist rules live in a module with no env import, so env.ts can run them at start-up
+// without a circular import; they are re-exported here for the existing callers.
+export {
+  hasZohoPersonSyncEnabled,
+  isZohoEventTypeEnabled,
+  parseZohoEnabledEventTypes,
+  ZOHO_CRM_ALWAYS_ON_WHEN_PERSON_SYNC_EVENT_TYPES,
+  ZOHO_CRM_DEAL_EVENT_TYPES,
+  ZOHO_CRM_PERSON_EVENT_TYPES,
+  zohoCrmAllowlistIssues,
+} from "./zoho-crm-allowlist-rules.js";
 
 export type ZohoCrmSyncMode = WorkerEnv["ZOHO_CRM_SYNC_MODE"];
-
-/** When any identity person event is allowlisted, GDPR lifecycle events must still run. */
-export const ZOHO_CRM_ALWAYS_ON_WHEN_PERSON_SYNC_EVENT_TYPES = [
-  "user.deletion_requested",
-  "user.deletion_cancelled",
-  "user.identity_merged",
-  "user.identity_deleted",
-] as const;
-
-/**
- * An erasure always runs where the records it removes were synced: a guest lead's erasure is on
- * whenever guest leads are sent to the CRM, whatever the allowlist says. Enquiries create leads
- * too, so an account purge and a guest erasure also run whenever enquiries are sent.
- */
-const ERASURE_FOLLOWS_SYNC: Readonly<Record<string, readonly string[]>> = {
-  "shop.guest_lead.erased": ["shop.guest_lead.recorded", "marketing_enquiry.received"],
-  "user.identity_deleted": ["marketing_enquiry.received"],
-};
-
-export const ZOHO_CRM_PERSON_EVENT_TYPES = [
-  "user.registered",
-  "user.email_verified",
-  "user.profile_updated",
-  ...ZOHO_CRM_ALWAYS_ON_WHEN_PERSON_SYNC_EVENT_TYPES,
-] as const;
 
 export function parseZohoCrmTrigger(raw: string | undefined): unknown[] {
   if (!raw || raw.trim() === "") return [];
@@ -39,15 +27,6 @@ export function parseZohoCrmTrigger(raw: string | undefined): unknown[] {
 
 export type ZohoDeliveryMode = "off" | "dry_run" | "canary" | "live" | "disabled_type";
 
-export function hasZohoPersonSyncEnabled(env: WorkerEnv): boolean {
-  const enabled = parseZohoEnabledEventTypes(env.ZOHO_CRM_ENABLED_EVENT_TYPES);
-  return (
-    enabled.has("user.registered") ||
-    enabled.has("user.email_verified") ||
-    enabled.has("user.profile_updated")
-  );
-}
-
 export function resolveZohoDeliveryMode(env: WorkerEnv, eventType: string): ZohoDeliveryMode {
   if (env.ZOHO_CRM_SYNC_MODE === "off") return "off";
   if (!isZohoEventTypeEnabled(env, eventType)) return "disabled_type";
@@ -56,29 +35,4 @@ export function resolveZohoDeliveryMode(env: WorkerEnv, eventType: string): Zoho
     return env.ZOHO_CRM_SYNC_MODE;
   }
   return "off";
-}
-
-export function parseZohoEnabledEventTypes(raw: string | undefined): Set<string> {
-  if (!raw || raw.trim() === "") return new Set();
-  return new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0),
-  );
-}
-
-export function isZohoEventTypeEnabled(env: WorkerEnv, eventType: string): boolean {
-  const enabled = parseZohoEnabledEventTypes(env.ZOHO_CRM_ENABLED_EVENT_TYPES);
-  if (enabled.size === 0) return false;
-  if (enabled.has(eventType)) return true;
-  const sentBy = ERASURE_FOLLOWS_SYNC[eventType];
-  if (sentBy?.some((syncedType) => enabled.has(syncedType))) return true;
-  if (
-    hasZohoPersonSyncEnabled(env) &&
-    (ZOHO_CRM_ALWAYS_ON_WHEN_PERSON_SYNC_EVENT_TYPES as readonly string[]).includes(eventType)
-  ) {
-    return true;
-  }
-  return false;
 }

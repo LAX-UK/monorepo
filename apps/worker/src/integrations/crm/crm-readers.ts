@@ -1,16 +1,40 @@
 import type { Database } from "@auction/db";
 import {
+  domainEvent,
+  domainEventDelivery,
   marketingAttribution,
   marketingEnquiry,
   payment,
   privateSaleEnquiryDetail,
+  shopOrder,
+  shopRefund,
 } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { CRM_FIELD } from "./crm-field-constants.js";
 import type { CrmFieldValue } from "./crm-gateway.js";
 
 export interface CrmPaymentLotReader {
   findLotIdForPayment(paymentId: string): Promise<string | null>;
+}
+
+/** A Shop refund and its order's refund state, in pence, as the order's status is worked out. */
+export type CrmShopRefundRecord = {
+  amountPence: number;
+  /** Every succeeded refund on the order, this one included. */
+  refundedTotalPence: number;
+  orderTotalPence: number;
+};
+
+export interface CrmShopRefundReader {
+  findById(refundId: string): Promise<CrmShopRefundRecord | null>;
+}
+
+/** The event that creates a deal, such as `shop.order.paid` for a Shop order's. */
+export type CrmDealSource = { aggregateType: string; aggregateId: string; eventType: string };
+
+export interface CrmDealSourceReader {
+  /** True while the CRM delivery of the event is still to run: pending, processing or retrying. */
+  isDeliveryInFlight(source: CrmDealSource): Promise<boolean>;
 }
 
 export interface CrmAttributionReader {
@@ -125,6 +149,58 @@ export function createDrizzleCrmAttributionReader(db: Database): CrmAttributionR
         fields[CRM_FIELD.landingPageUrl] = landingPageForCrm(touch.landing_page.trim());
       }
       return Object.keys(fields).length > 0 ? fields : null;
+    },
+  };
+}
+
+export function createDrizzleCrmShopRefundReader(db: Database): CrmShopRefundReader {
+  return {
+    async findById(refundId: string): Promise<CrmShopRefundRecord | null> {
+      const [refund] = await db
+        .select({
+          orderId: shopRefund.orderId,
+          amountPence: shopRefund.amountPence,
+          orderTotalPence: shopOrder.totalPence,
+        })
+        .from(shopRefund)
+        .innerJoin(shopOrder, eq(shopOrder.id, shopRefund.orderId))
+        .where(eq(shopRefund.id, refundId))
+        .limit(1);
+      if (!refund) return null;
+      // The same sum the Shop marks the order refunded from.
+      const [refunded] = await db
+        .select({ pence: sql<number>`coalesce(sum(${shopRefund.amountPence}), 0)::int` })
+        .from(shopRefund)
+        .where(and(eq(shopRefund.orderId, refund.orderId), eq(shopRefund.status, "succeeded")));
+      return {
+        amountPence: refund.amountPence,
+        refundedTotalPence: refunded?.pence ?? 0,
+        orderTotalPence: refund.orderTotalPence,
+      };
+    },
+  };
+}
+
+const CRM_CONSUMER = "zoho";
+
+export function createDrizzleCrmDealSourceReader(db: Database): CrmDealSourceReader {
+  return {
+    async isDeliveryInFlight(source: CrmDealSource): Promise<boolean> {
+      const [row] = await db
+        .select({ id: domainEventDelivery.id })
+        .from(domainEventDelivery)
+        .innerJoin(domainEvent, eq(domainEvent.id, domainEventDelivery.eventId))
+        .where(
+          and(
+            eq(domainEventDelivery.consumer, CRM_CONSUMER),
+            eq(domainEvent.aggregateType, source.aggregateType),
+            eq(domainEvent.aggregateId, source.aggregateId),
+            eq(domainEvent.eventType, source.eventType),
+            inArray(domainEventDelivery.status, ["pending", "processing", "retryable"]),
+          ),
+        )
+        .limit(1);
+      return row !== undefined;
     },
   };
 }

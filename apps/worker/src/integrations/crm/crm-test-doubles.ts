@@ -1,4 +1,5 @@
 import type {
+  ClaimCrmRecordLinkInput,
   CrmRecordLinkRow,
   ICrmRecordLinkRepository,
   UpsertCrmRecordLinkInput,
@@ -24,6 +25,7 @@ export class InMemoryCrmLinkRepo implements ICrmRecordLinkRepository {
   async upsertLink(input: UpsertCrmRecordLinkInput): Promise<void> {
     const now = input.now ?? new Date();
     const existing = this.rows.get(this.key(input.entityType, input.entityId));
+    if (input.keepErased && existing?.erasedAt) return;
     this.rows.set(this.key(input.entityType, input.entityId), {
       entityType: input.entityType,
       entityId: input.entityId,
@@ -37,6 +39,20 @@ export class InMemoryCrmLinkRepo implements ICrmRecordLinkRepository {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     });
+  }
+
+  async claimLink(input: ClaimCrmRecordLinkInput): Promise<boolean> {
+    const existing = this.rows.get(this.key(input.entityType, input.entityId));
+    const claimable =
+      !existing ||
+      (!existing.erasedAt &&
+        existing.zohoModule === input.from.zohoModule &&
+        existing.zohoRecordId === input.from.zohoRecordId &&
+        (!input.from.updatedBefore || existing.updatedAt < input.from.updatedBefore));
+    if (!claimable) return false;
+    const { from: _from, keepErased: _keepErased, ...link } = input;
+    await this.upsertLink(link);
+    return true;
   }
 
   async mergeSubjectLinks(): Promise<Record<string, never>> {
@@ -220,6 +236,7 @@ export function fakeCrmGateway(overrides: Partial<CrmGateway> = {}): FakeCrmGate
     })),
     findByEmail: vi.fn(async () => null),
     findDealIdsByContact: vi.fn(async () => []),
+    findNoteIds: vi.fn(async () => []),
     executeCoql: vi.fn(async () => []),
     createRecord: vi.fn(async (input: { module: string }) => ({
       module: input.module,

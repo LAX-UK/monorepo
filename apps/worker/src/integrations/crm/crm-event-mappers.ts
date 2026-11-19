@@ -13,6 +13,7 @@ import {
   lotWonDealKey,
   shopOrderDealEntityId,
   shopOrderDealKey,
+  shopRefundNoteRecordId,
 } from "./crm-field-constants.js";
 import type { CrmFieldValue } from "./crm-gateway.js";
 import {
@@ -25,7 +26,7 @@ import {
 } from "./crm-lead-fields.js";
 import type { CrmEnquiryType } from "./crm-lead-fields.js";
 import { splitDisplayName } from "./crm-name-fields.js";
-import type { CrmEnquiryRecord } from "./crm-readers.js";
+import type { CrmDealSource, CrmEnquiryRecord, CrmShopRefundRecord } from "./crm-readers.js";
 import type { CrmShopEnquiryRecord } from "./crm-shop-enquiry-reader.js";
 
 export type DomainEventRowForCrm = {
@@ -64,18 +65,21 @@ export type CrmMappedIntent =
       dealEntityId: string;
       stage: string;
       /**
-       * Retry, instead of skipping, while the deal is not in the ledger yet: for an event that can
-       * arrive before the one that creates the deal (a Shop refund before the paid order's deal).
+       * The event that creates the deal, for an event that can arrive before it (a Shop refund
+       * before the paid order's deal): retried while that event's delivery is still to run.
        */
-      retryWhileDealMissing?: true;
+      dealCreatedBy?: CrmDealSource;
     }
   | {
       kind: "deal_note";
       dealEntityId: string;
       /** Ledger id of the note, so a replay never adds it twice. */
       noteRecordId: string;
+      /** Unique on the deal: a note whose send was cut off is found again by its title. */
       title: string;
       content: string;
+      /** As for `deal_stage`. */
+      dealCreatedBy?: CrmDealSource;
     }
   | {
       kind: "purchase_paid";
@@ -123,11 +127,17 @@ export type CrmMapperResolved = {
   enquiry?: CrmEnquiryRecord | null;
   /** The signed-in sender and the work a Shop original enquiry is about; null when gone. */
   shopEnquiry?: CrmShopEnquiryRecord | null;
+  /** The refund a `shop.refund.completed` event refers to; null when it no longer exists. */
+  shopRefund?: CrmShopRefundRecord | null;
   /** The client and work a deal is named after (lot won, Shop order). */
   dealNaming?: CrmDealNamingFacts;
   /** When the event is processed; names the month of a deal whose event carries no timestamp. */
   now?: Date;
 };
+
+function formatPounds(pence: number): string {
+  return `£${(pence / 100).toFixed(2)}`;
+}
 
 function requireDealConfig(
   ctx: CrmMapperContext,
@@ -435,19 +445,33 @@ export function mapDomainEventToCrmIntent(
       };
     }
     case "shop.refund.completed": {
-      // A Shop refund moves the order's deal to the refunded stage, as a Bid refund moves the lot's.
+      // A full refund moves the order's deal to the refunded stage, as a Bid refund moves the
+      // lot's. A partial one adds a note with the amount and leaves the stage and Amount alone.
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };
-      const p = payload as { orderId: string; status: "succeeded" | "failed" };
+      const p = payload as { refundId: string; orderId: string; status: "succeeded" | "failed" };
       if (p.status !== "succeeded") return { kind: "skip", reason: "refund_not_succeeded" };
+      const refund = resolved.shopRefund;
+      if (!refund) return { kind: "skip", reason: "shop_refund_missing" };
+      const dealEntityId = shopOrderDealEntityId(p.orderId);
+      // The refund can be handled before the paid order's deal exists (its paid event retrying).
+      const dealCreatedBy: CrmDealSource = {
+        aggregateType: "shop_order",
+        aggregateId: p.orderId,
+        eventType: "shop.order.paid",
+      };
+      if (refund.refundedTotalPence < refund.orderTotalPence) {
+        return {
+          kind: "deal_note",
+          dealEntityId,
+          noteRecordId: shopRefundNoteRecordId(p.refundId),
+          title: `Shop order partly refunded (refund ${p.refundId.slice(0, 8)})`,
+          content: `Refunded ${formatPounds(refund.amountPence)}: ${formatPounds(refund.refundedTotalPence)} of ${formatPounds(refund.orderTotalPence)} refunded in total.`,
+          dealCreatedBy,
+        };
+      }
       const dealConfig = requireDealConfig(ctx, ctx.dealStagePaymentRefunded);
       if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
-      return {
-        kind: "deal_stage",
-        dealEntityId: shopOrderDealEntityId(p.orderId),
-        stage: dealConfig.stage,
-        // The refund can be handled before the paid order's deal exists (its paid event retrying).
-        retryWhileDealMissing: true,
-      };
+      return { kind: "deal_stage", dealEntityId, stage: dealConfig.stage, dealCreatedBy };
     }
     case "shop.fulfilment.status_changed": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };

@@ -556,35 +556,74 @@ describe("mapDomainEventToCrmIntent", () => {
     const fulfilmentId = "22222222-2222-4222-8222-222222222222";
     const refundId = "33333333-3333-4333-8333-333333333333";
 
-    it("maps a succeeded shop.refund.completed to the refunded stage on the order deal", () => {
-      const intent = mapDomainEventToCrmIntent(
-        {
-          id: 1,
-          eventType: "shop.refund.completed",
-          aggregateId: refundId,
-          schemaVersion: 1,
-          payload: { schemaVersion: 1, refundId, orderId, status: "succeeded" },
-        },
-        ctx,
-      );
+    const refundEvent = (status: "succeeded" | "failed" = "succeeded") => ({
+      id: 1,
+      eventType: "shop.refund.completed",
+      aggregateId: refundId,
+      schemaVersion: 1,
+      payload: { schemaVersion: 1, refundId, orderId, status },
+    });
+    const paidOrder = {
+      aggregateType: "shop_order",
+      aggregateId: orderId,
+      eventType: "shop.order.paid",
+    };
+    const fullRefund = {
+      amountPence: 200_000,
+      refundedTotalPence: 200_000,
+      orderTotalPence: 200_000,
+    };
+
+    it("maps a full Shop refund to the refunded stage on the order deal", () => {
+      const intent = mapDomainEventToCrmIntent(refundEvent(), ctx, { shopRefund: fullRefund });
       expect(intent).toEqual({
         kind: "deal_stage",
         dealEntityId: `shop-order:${orderId}`,
         stage: ctx.dealStagePaymentRefunded,
-        retryWhileDealMissing: true,
+        dealCreatedBy: paidOrder,
       });
     });
 
-    it("skips a Shop refund when the refunded stage is not configured", () => {
+    it("treats the refund that completes earlier partial ones as full", () => {
+      const intent = mapDomainEventToCrmIntent(refundEvent(), ctx, {
+        shopRefund: { amountPence: 150_000, refundedTotalPence: 200_000, orderTotalPence: 200_000 },
+      });
+      expect(intent).toMatchObject({ kind: "deal_stage", stage: ctx.dealStagePaymentRefunded });
+    });
+
+    it("maps a partial Shop refund to a note with the amount, leaving the stage alone", () => {
+      const intent = mapDomainEventToCrmIntent(refundEvent(), ctx, {
+        shopRefund: { amountPence: 500, refundedTotalPence: 500, orderTotalPence: 200_000 },
+      });
+      expect(intent).toEqual({
+        kind: "deal_note",
+        dealEntityId: `shop-order:${orderId}`,
+        noteRecordId: `shop-refund:${refundId}`,
+        title: "Shop order partly refunded (refund 33333333)",
+        content: "Refunded £5.00: £5.00 of £2000.00 refunded in total.",
+        dealCreatedBy: paidOrder,
+      });
+    });
+
+    it("adds the partial refund note even when the refunded stage is not configured", () => {
       const intent = mapDomainEventToCrmIntent(
-        {
-          id: 1,
-          eventType: "shop.refund.completed",
-          aggregateId: refundId,
-          schemaVersion: 1,
-          payload: { schemaVersion: 1, refundId, orderId, status: "succeeded" },
-        },
+        refundEvent(),
         { ...ctx, dealStagePaymentRefunded: "" },
+        { shopRefund: { amountPence: 500, refundedTotalPence: 500, orderTotalPence: 200_000 } },
+      );
+      expect(intent.kind).toBe("deal_note");
+    });
+
+    it("skips a Shop refund that no longer exists", () => {
+      const intent = mapDomainEventToCrmIntent(refundEvent(), ctx, { shopRefund: null });
+      expect(intent).toEqual({ kind: "skip", reason: "shop_refund_missing" });
+    });
+
+    it("skips a full Shop refund when the refunded stage is not configured", () => {
+      const intent = mapDomainEventToCrmIntent(
+        refundEvent(),
+        { ...ctx, dealStagePaymentRefunded: "" },
+        { shopRefund: fullRefund },
       );
       expect(intent).toEqual({ kind: "skip", reason: "deal_pipeline_or_stage_not_configured" });
     });

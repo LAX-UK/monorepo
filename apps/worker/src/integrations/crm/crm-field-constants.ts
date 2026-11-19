@@ -91,6 +91,11 @@ export function fulfilmentMilestoneNoteRecordId(fulfilmentId: string, status: st
   return `fulfilment:${fulfilmentId}:${status}`;
 }
 
+/** Ledger id of the note a partial Shop refund adds to its order's deal. */
+export function shopRefundNoteRecordId(refundId: string): string {
+  return `shop-refund:${refundId}`;
+}
+
 export function lotWonDealKey(lotId: string): string {
   return `lot-won:${lotId}`;
 }

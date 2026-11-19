@@ -5,6 +5,12 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import { AccountingProjectionNotYetError } from "../../finance/accounting/accounting-projection.service.js";
 import {
+  CRM_WAITING_MAX_MS,
+  crmDealNotLinkedError,
+  crmNoteInFlightError,
+} from "../../integrations/crm/crm-gateway-error.js";
+import { CRM_NOTE_PENDING_GRACE_MS } from "../../integrations/crm/handlers/crm-deal-sync-handler.js";
+import {
   claimAndRunDomainEventDeliveriesWithBudget,
   runDomainEventDelivery,
 } from "./domain-event-delivery-runner.js";
@@ -240,6 +246,126 @@ describe("runDomainEventDelivery: waiting for an accounting document to settle (
     expect(repo.deadLetter).toHaveBeenCalled();
     expect(repo.scheduleRetry).not.toHaveBeenCalled();
   });
+});
+
+/**
+ * Runs one delivery through the runner again and again, as the claim loop would: each claim adds an
+ * attempt, a retry may undo it, and the clock moves to the scheduled retry. Stops at success or
+ * dead letter, or when `until` is passed.
+ */
+async function simulateDelivery(input: {
+  createdAt: Date;
+  /** The delivery's outcome at a time. */
+  outcomeAt: (now: Date) => "wait_note" | "wait_deal" | "ok";
+  until: Date;
+  maxAttempts?: number;
+}): Promise<{ end: "succeeded" | "dead_lettered" | "still_retrying"; at: Date; tries: number }> {
+  let attempts = 0;
+  let now = input.createdAt;
+  let tries = 0;
+  while (now < input.until) {
+    attempts += 1; // the claim
+    tries += 1;
+    const repo = mockRepo();
+    const outcome = input.outcomeAt(now);
+    await runDomainEventDelivery({
+      delivery: deliveryRow({ attempts, createdAt: input.createdAt }),
+      repo,
+      leaseMs: 30_000,
+      maxAttempts: input.maxAttempts ?? 12,
+      deliver: async () => {
+        if (outcome === "ok") return { ok: true };
+        throw outcome === "wait_note" ? crmNoteInFlightError() : crmDealNotLinkedError();
+      },
+      now,
+    });
+    if (vi.mocked(repo.markSucceeded).mock.calls.length > 0) {
+      return { end: "succeeded", at: now, tries };
+    }
+    if (vi.mocked(repo.deadLetter).mock.calls.length > 0) {
+      return { end: "dead_lettered", at: now, tries };
+    }
+    const retry = vi.mocked(repo.scheduleRetry).mock.calls[0]?.[0];
+    if (!retry) throw new Error("neither retried, succeeded nor dead-lettered");
+    if (retry.undoAttemptIncrement) attempts = Math.max(0, attempts - 1);
+    now = retry.nextRetryAt;
+  }
+  return { end: "still_retrying", at: now, tries };
+}
+
+describe("runDomainEventDelivery: CRM waits use up no attempts (PR #1573 review, observations 1 and 2)", () => {
+  const createdAt = new Date("2026-01-01T00:00:00Z");
+  const msAfterCreation = (ms: number) => new Date(createdAt.getTime() + ms);
+
+  it("a note in flight at the attempt cap is retried a minute later, not dead-lettered", async () => {
+    const repo = mockRepo();
+    await runDomainEventDelivery({
+      delivery: deliveryRow({ attempts: 12, createdAt }),
+      repo,
+      leaseMs: 30_000,
+      maxAttempts: 12,
+      deliver: async () => {
+        throw crmNoteInFlightError();
+      },
+      now: msAfterCreation(60_000),
+    });
+    expect(repo.deadLetter).not.toHaveBeenCalled();
+    const call = vi.mocked(repo.scheduleRetry).mock.calls[0]?.[0];
+    expect(call).toMatchObject({ undoAttemptIncrement: true, lastError: "deal_note_in_flight" });
+    expect(
+      (call?.nextRetryAt.getTime() ?? 0) - msAfterCreation(60_000).getTime(),
+    ).toBeGreaterThanOrEqual(60_000);
+  });
+
+  it("a note in flight waits out the whole grace period, then is sent, never dead-lettered", async () => {
+    // The claimant's send timed out and Zoho did not create the note: the claim is taken over
+    // once the grace period has run out (before the fix, ~14% dead-lettered first).
+    const result = await simulateDelivery({
+      createdAt,
+      outcomeAt: (now) =>
+        now.getTime() - createdAt.getTime() < CRM_NOTE_PENDING_GRACE_MS ? "wait_note" : "ok",
+      until: msAfterCreation(CRM_WAITING_MAX_MS),
+    });
+    expect(result.end).toBe("succeeded");
+    expect(result.at.getTime() - createdAt.getTime()).toBeGreaterThanOrEqual(
+      CRM_NOTE_PENDING_GRACE_MS,
+    );
+    // About one look a minute, not a tight loop against Zoho.
+    expect(result.tries).toBeLessThanOrEqual(CRM_NOTE_PENDING_GRACE_MS / 60_000 + 2);
+  });
+
+  it("a refund waiting for its deal is not dead-lettered while the paid delivery is still retryable", async () => {
+    // A six-hour Zoho outage: the paid delivery's circuit-open retries use up no attempts, and now
+    // neither do the refund's; the refund moves the deal once the paid event has created it.
+    const outage = 6 * 60 * 60_000;
+    const result = await simulateDelivery({
+      createdAt,
+      outcomeAt: (now) => (now.getTime() - createdAt.getTime() < outage ? "wait_deal" : "ok"),
+      until: msAfterCreation(CRM_WAITING_MAX_MS),
+    });
+    expect(result.end).toBe("succeeded");
+    expect(result.at.getTime() - createdAt.getTime()).toBeGreaterThanOrEqual(outage);
+  });
+
+  it.each([
+    ["deal_note_in_flight", "wait_note"],
+    ["deal_link_missing", "wait_deal"],
+  ] as const)(
+    "a %s wait still ends: past the waiting cap it uses up attempts and dead-letters",
+    async (_code, wait) => {
+      const result = await simulateDelivery({
+        createdAt,
+        outcomeAt: () => wait,
+        until: msAfterCreation(CRM_WAITING_MAX_MS + 7 * 24 * 60 * 60_000),
+      });
+      expect(result.end).toBe("dead_lettered");
+      expect(result.at.getTime() - createdAt.getTime()).toBeGreaterThanOrEqual(CRM_WAITING_MAX_MS);
+      // At most the usual 12 attempts after the cap, each at most 15 minutes apart.
+      expect(result.at.getTime() - createdAt.getTime()).toBeLessThan(
+        CRM_WAITING_MAX_MS + 12 * 15 * 60_000 + 60_000,
+      );
+    },
+  );
 });
 
 describe("claimAndRunDomainEventDeliveriesWithBudget", () => {

@@ -103,14 +103,25 @@ export function isCircuitOpenDeliveryError(err: unknown): boolean {
  * An error that says the event waits on something settling elsewhere (an accounting document
  * being sent, its outcome not known yet), not that delivering it failed: tried again after its
  * `retryAfterMs`, without using up one of the delivery's attempts, so the wait never dead-letters it.
+ *
+ * An error may bound its wait with `maxWaitMs`: once the delivery is older than that (`delivery`
+ * created at `createdAt`), it is no longer a wait, and each retry uses up an attempt again.
  */
-export function isWaitingDeliveryError(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    (err as { waiting?: unknown }).waiting === true &&
-    isRetryableDeliveryError(err)
-  );
+export function isWaitingDeliveryError(
+  err: unknown,
+  delivery?: { createdAt: Date; now: Date },
+): boolean {
+  if (
+    typeof err !== "object" ||
+    err === null ||
+    (err as { waiting?: unknown }).waiting !== true ||
+    !isRetryableDeliveryError(err)
+  ) {
+    return false;
+  }
+  const maxWaitMs = (err as { maxWaitMs?: unknown }).maxWaitMs;
+  if (typeof maxWaitMs !== "number" || !delivery) return true;
+  return delivery.now.getTime() - delivery.createdAt.getTime() < maxWaitMs;
 }
 
 /** Exponential backoff with full jitter (AWS-style). */

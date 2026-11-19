@@ -22,6 +22,7 @@ async function setup(findLead: ReturnType<typeof vi.fn>) {
     gateway,
     linkRepo,
     personHandler: new CrmPersonSyncHandler({ gateway, linkRepo }),
+    dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     paidBuyerHandler: new CrmPaidBuyerHandler({ gateway, linkRepo }),
   });
   vi.useFakeTimers({ toFake: ["Date"] });

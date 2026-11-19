@@ -239,3 +239,37 @@ describe("worker on a test stack", () => {
     ).toEqual([]);
   });
 });
+
+describe("worker ZOHO_CRM_ENABLED_EVENT_TYPES", () => {
+  const allowlistIssues = (env: Record<string, unknown>): string[] => {
+    const result = envSchema.safeParse({
+      DATABASE_URL: "postgres://localhost/test",
+      ZOHO_CRM_SYNC_MODE: "dry_run",
+      ...env,
+    });
+    if (result.success) return [];
+    return result.error.issues
+      .filter((issue) => issue.path[0] === "ZOHO_CRM_ENABLED_EVENT_TYPES")
+      .map((issue) => issue.message);
+  };
+
+  it("refuses to start with an unknown type, a deal type without its stage, or no erasure", () => {
+    expect(allowlistIssues({ ZOHO_CRM_ENABLED_EVENT_TYPES: "user.registerd" })).toHaveLength(1);
+    expect(
+      allowlistIssues({
+        ZOHO_CRM_ENABLED_EVENT_TYPES: "user.registered,shop.order.paid",
+        ZOHO_CRM_AUCTION_PIPELINE: "Auction",
+      }),
+    ).toEqual(["ZOHO_CRM_DEAL_STAGE_SHOP_PAID required when shop.order.paid is enabled"]);
+    expect(
+      allowlistIssues({ ZOHO_CRM_ENABLED_EVENT_TYPES: "shop.fulfilment.status_changed" }),
+    ).toHaveLength(1);
+  });
+
+  it("starts with a valid allowlist, and checks nothing while the sync is off", () => {
+    expect(allowlistIssues({ ZOHO_CRM_ENABLED_EVENT_TYPES: "user.registered" })).toEqual([]);
+    expect(
+      allowlistIssues({ ZOHO_CRM_SYNC_MODE: "off", ZOHO_CRM_ENABLED_EVENT_TYPES: "nonsense" }),
+    ).toEqual([]);
+  });
+});

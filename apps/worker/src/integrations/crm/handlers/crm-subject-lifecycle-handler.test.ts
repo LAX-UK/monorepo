@@ -41,6 +41,7 @@ describe("CrmSubjectLifecycleHandler", () => {
       markRecyclePurged: vi.fn(),
       mergeSubjectLinks: vi.fn(),
       upsertLink: vi.fn(),
+      claimLink: vi.fn().mockResolvedValue(true),
       markErased: vi.fn(),
       setDeletionRequested: vi.fn(),
       clearDeletionRequested: vi.fn(),
@@ -62,6 +63,7 @@ describe("CrmSubjectLifecycleHandler", () => {
       }),
       purgeFromRecycleBin: vi.fn(),
       findDealIdsByContact: vi.fn().mockResolvedValue([]),
+      findNoteIds: vi.fn().mockResolvedValue([]),
       upsert: vi.fn(),
       upsertMany: vi.fn(),
       updateById: vi.fn(),
@@ -120,6 +122,7 @@ describe("CrmSubjectLifecycleHandler", () => {
       purgeFromRecycleBin: vi.fn().mockResolvedValue(undefined),
       // A deal made in the CRM itself, found through the contact.
       findDealIdsByContact: vi.fn().mockResolvedValue(["z-deal-2"]),
+      findNoteIds: vi.fn().mockResolvedValue([]),
     };
     const handler = new CrmSubjectLifecycleHandler({
       gateway: gateway as unknown as CrmGateway,
@@ -148,6 +151,7 @@ describe("CrmSubjectLifecycleHandler", () => {
         updateById: vi.fn(),
         findByEmail: vi.fn(),
         findDealIdsByContact: vi.fn(),
+        findNoteIds: vi.fn().mockResolvedValue([]),
         executeCoql: vi.fn(),
         createRecord: vi.fn(),
         findLead: vi.fn(),
@@ -159,6 +163,7 @@ describe("CrmSubjectLifecycleHandler", () => {
         setDeletionRequested,
         findByEntity: vi.fn(),
         upsertLink: vi.fn(),
+        claimLink: vi.fn().mockResolvedValue(true),
         mergeSubjectLinks: vi.fn(),
         markErased: vi.fn(),
         tombstone: vi.fn(),
@@ -216,6 +221,7 @@ describe("CrmSubjectLifecycleHandler", () => {
         deleteRecord: vi.fn().mockResolvedValue(options.deleteResult ?? { status: "deleted" }),
         purgeFromRecycleBin: vi.fn().mockResolvedValue(undefined),
         findDealIdsByContact: vi.fn().mockResolvedValue([]),
+        findNoteIds: vi.fn().mockResolvedValue([]),
       };
       const handler = new CrmSubjectLifecycleHandler({
         gateway: gateway as unknown as CrmGateway,

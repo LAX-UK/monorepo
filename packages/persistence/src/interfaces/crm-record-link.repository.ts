@@ -23,6 +23,19 @@ export type UpsertCrmRecordLinkInput = {
   subjectId?: string | null;
   heldPayload?: Record<string, unknown> | null;
   now?: Date;
+  /**
+   * Leave an erased row as it is (no update, `erasedAt` kept) instead of overwriting it and
+   * clearing `erasedAt`. For a write that finishes a send started before an erasure may have run.
+   */
+  keepErased?: boolean;
+};
+
+/**
+ * A link claimed by one writer: inserted when there is no row, or taken over from a row that is not
+ * erased and still holds `from` (last written before `from.updatedBefore`, when given).
+ */
+export type ClaimCrmRecordLinkInput = UpsertCrmRecordLinkInput & {
+  from: { zohoModule: string; zohoRecordId: string; updatedBefore?: Date };
 };
 
 export type MergeCrmSubjectLinksResult = {
@@ -33,6 +46,8 @@ export type MergeCrmSubjectLinksResult = {
 export interface ICrmRecordLinkRepository {
   findByEntity(entityType: string, entityId: string): Promise<CrmRecordLinkRow | null>;
   upsertLink(input: UpsertCrmRecordLinkInput): Promise<void>;
+  /** True when this call claimed the link; false when another writer holds it. */
+  claimLink(input: ClaimCrmRecordLinkInput): Promise<boolean>;
   mergeSubjectLinks(input: {
     canonicalSubjectId: string;
     retiredSubjectId: string;

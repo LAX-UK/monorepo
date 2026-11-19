@@ -1039,6 +1039,7 @@ export type {
 } from "./domain-event-delivery.repository.js";
 
 export type {
+  ClaimCrmRecordLinkInput,
   CrmRecordLinkRow,
   ICrmRecordLinkRepository,
   UpsertCrmRecordLinkInput,

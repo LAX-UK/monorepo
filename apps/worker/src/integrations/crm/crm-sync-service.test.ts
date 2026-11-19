@@ -34,6 +34,7 @@ function baseGateway(): CrmGateway {
     }),
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
+    findNoteIds: vi.fn().mockResolvedValue([]),
     executeCoql: vi.fn(),
     createRecord: vi.fn(),
     findLead: vi.fn(),
@@ -59,6 +60,7 @@ function baseLinkRepo(): ICrmRecordLinkRepository {
       updatedAt: new Date(),
     }),
     upsertLink: vi.fn(),
+    claimLink: vi.fn().mockResolvedValue(true),
     mergeSubjectLinks: vi.fn(),
     markErased: vi.fn(),
     tombstone: vi.fn(),
@@ -102,6 +104,8 @@ describe("CrmSyncService payment.refunded", () => {
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: noDealNaming,
       shopEnquiryReader: { find: vi.fn() },
+      shopRefundReader: { findById: vi.fn() },
+      dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     });
 
     const result = await service.syncEvent({
@@ -143,6 +147,8 @@ describe("CrmSyncService payment.refunded", () => {
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: noDealNaming,
       shopEnquiryReader: { find: vi.fn() },
+      shopRefundReader: { findById: vi.fn() },
+      dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     });
 
     const result = await service.syncEvent({
