@@ -244,3 +244,25 @@ Rechecked head `f0aaec44` (`fix/zoho-runtime-audit`), which adds the fix `f0aaec
 
 - Passed: `ci-result`, `worker-role-contract`, `auth-role-contract`, `static-checks`, `test`, `build`, every api/web/shop-api vitest shard, and the docker images.
 - The PR is open and mergeable.
+
+## Merge with main
+
+Merged `origin/main` (`f693df66`, after #1571 and #1573) into `fix/zoho-runtime-audit` as `96c3dfd3`. Merge commit, no rebase or force push.
+
+**Conflicts resolved**
+- `docs/integrations/zoho.md`: one conflict, in **Calls and API credits per Status write**. I kept #1570's sentence that the check after the write goes through the worker's one shared limiter (with the link to **Pacing** under Stock location), and added #1571's sentence that a retryable write error (a timeout or a reset) costs one more read to see whether the write landed. Every other section merged on its own: the runtime, limiter and variables sections from #1570, the artwork write-back and badge sections from #1571, and the CRM sections from #1573.
+
+**Auto-merged files I checked**
+- `apps/worker/src/env.ts` keeps both rules: the OAuth trio is still required when `ZOHO_ARTWORK_WRITEBACK_MODE` is not `off` (#1570), and `zohoCrmAllowlistIssues` from `zoho-crm-allowlist-rules.ts` still runs under `ZOHO_CRM_ENABLED_EVENT_TYPES` (#1573).
+- `zoho-crm-gateway-limiter.ts` still reserves each caller's slot before it waits and checks the circuit again after the wait (#1570). It also has the new `findNoteIds` method from #1573, which goes through `guard`. The limiter test's fake has `findNoteIds` too.
+- `zoho-listing.integration.test.ts`: the fake `read` returns `modifiedAt: null` (#1571), on top of #1570's explicit lock pool. All 8 tests pass.
+
+**Results** (Postgres 16 on 55432, migrated and with `db:roles` applied; `DATABASE_URL_WORKER` and `MIGRATION_TEST_DATABASE_URL` set; `--maxWorkers=2`)
+
+| Check | Result |
+|---|---|
+| typecheck (worker, persistence, db, shop-api, types, with their dependencies) | clean |
+| `biome check .` | clean (3 warnings, the same as before) |
+| `pnpm lint:deps` | passes |
+| @auction/persistence | 185 files passed, 1 skipped; 1168 tests passed, 11 skipped |
+| @auction/worker | 298 files passed, 1 failed, 1 skipped; 2949 tests passed, 10 skipped. `worker-role-contract.integration.test.ts` ran as `worker_app` and passed all 154 tests. The 1 failure is `crm-deal-naming-reader.integration.test.ts` (`shop_order_line_target_xor` in setup). It was already failing before this merge (see above), and the merge touches neither that test nor the schema. |
