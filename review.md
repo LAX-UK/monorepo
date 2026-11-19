@@ -74,3 +74,36 @@ Re-run on Postgres 16 :55432 with Redis, `vitest run --maxWorkers=2`:
 | `tsc --noEmit` (shop-api, persistence) and biome on the changed files | clean |
 
 The worker and types are untouched.
+
+## Final recheck
+
+Rechecked head `994cc967` (`fix/zoho-artwork-audit`), which includes the fix commits `e21c8767`, `ae392f95` and `994cc967`. The PR branch was not changed. It still merges cleanly with the current `origin/main` (`b3e9f9ce`) and with #1570. The worker and `@auction/types` are untouched by this round.
+
+**Verdict: SHIP.**
+
+### Follow-up 1: a resolved stock code conflict no longer reads Failed (confirmed)
+
+- **Reader.** `drizzle-zoho-mirror-ledger.reader.ts:74-94` groups `artwork_register_conflict` rows by register for `field = 'stockCode'`. It returns `max(resolved_at)` only when `bool_or(status = 'open')` is false. The schema allows only `open | resolved` and `kept_lax | accepted_zoho`, so both resolutions, and the system's own `kept_lax` close (`drizzle-artwork-register.repository.ts:845`), are covered. The read runs only for artworks; `ids` is empty-guarded above it.
+- **State.** `derive-zoho-mirror-state.ts:217` `settledByResolution` ignores only `stock_code_conflict_raised` skips recorded at or before that time. It is applied in `standingFailure` and in `newestThatDecides`, so a settled conflict neither wins as a failure nor decides the newest state. A conflict raised again is open, so it reads Failed, which is tested. A Status conflict is not settled, which is tested.
+- **Both resolutions are tested at the DB level.** `zoho-mirror-ledger.integration.test.ts:318` covers accepted_zoho, kept_lax (latest of two), still open, other field and none. The unit `it.each` names both resolutions, but the reader treats them alike, so that test is the same case twice. The DB test is the one that tells them apart. Not blocking.
+- **Event model is unchanged.** The fix is reader-side only: no event is published on resolve and no worker code changed. Nothing is re-sent to Zoho, so there are no extra writes beyond the normal compare. On a later re-delivery the writeback still compares as before: blank fills, equal is in sync, different raises a new (open) conflict.
+
+### Follow-up 2: a `writeback_off` skip with the listing on does not read off (confirmed)
+
+- `newestThatDecides` passes over non-listing deliveries whose outcome is `off`, or that are not good while the writeback is configured `off`, but only while `listingMode` is `dry_run` or `live`. The listing's newest delivery then decides, or the artwork reads `not_sent_yet` in the listing's mode. With the listing off it still reads mirroring off.
+- Standing failures are evaluated first, so a failed writeback delivery is never hidden by this.
+- Tests are at `:282`. The one changed expectation (`:438`) is the intended new reading.
+
+### Follow-ups 3 and 4, and docs
+
+`zoho.md:223` (stock code residual race), `:258` (the extra read on a retryable errored Status write), `:415` (a resolution settles a stock code conflict) and `:419` (`writeback_off` is passed over while the listing is on) match the code.
+
+### Runs (Postgres 16 on :55432 and Redis, `vitest run --maxWorkers=2`)
+
+| Check | Result |
+|---|---|
+| @auction/shop-api | passed (exit 0) |
+| @auction/persistence on a fresh DB | 1141 passed, 22 failed, 8 skipped. Every failure is in `artwork-register.integration.test.ts` and `stock-location.integration.test.ts` (untouched). Both wipe the shared `artwork_register*` tables, and they clashed while running in parallel (FK on `artwork_register_event`, a deadlock). Re-run alone, they pass 57/57 and 23/23, and `zoho-mirror-ledger.integration.test.ts` passes 12/12. The changed mirror test works in its own schema, so it does not cause the clash. A first run on the database the shop-api suite had already used also failed in these files, on `artwork_consignor_link` rows (an append-only table) left by shop-api tests. That came from the test setup, not this PR. |
+| Worker role contract (`DATABASE_URL_WORKER` set) | passes locally; GitHub `worker-role-contract` is `success` |
+| `tsc --noEmit` (shop-api, persistence, types, worker) | clean |
+| `pnpm lint:deps` | passes |
