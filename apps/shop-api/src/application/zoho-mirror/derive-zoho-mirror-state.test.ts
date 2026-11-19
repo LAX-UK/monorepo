@@ -223,6 +223,109 @@ describe("deriveZohoMirrorState", () => {
     ).toBe("mirrored");
   });
 
+  describe("a resolved stock code conflict settles the stock code part", () => {
+    const WRITEBACK = { ...STOCK_CODE, consumer: "zoho_artwork_writeback" };
+    const conflictAt = (minute: number) =>
+      skipped(ARTWORK_WRITEBACK_SKIP.stockCodeConflictRaised, {
+        ...WRITEBACK,
+        updatedAt: at(minute),
+      });
+    const context = (resolvedAt: Date | null) =>
+      ({
+        mode: "live",
+        listingMode: "live",
+        paid: null,
+        stockCodeConflictResolvedAt: resolvedAt,
+      }) as const;
+
+    // Accepting Zoho's code and keeping LAX's both resolve the conflict row; neither publishes a
+    // further stock code event, so the resolution itself is what the reader goes by.
+    it.each(["accepted Zoho's code", "kept LAX's code"])(
+      "stops reading failed once staff have %s",
+      () => {
+        const sent = delivery("succeeded", {
+          ...STATUS,
+          consumer: "zoho_artwork_writeback",
+          updatedAt: at(5),
+        });
+        const conflict = conflictAt(10);
+        expect(deriveZohoMirrorState("artwork", [sent, conflict], context(null)).state).toBe(
+          "failed",
+        );
+        expect(deriveZohoMirrorState("artwork", [sent, conflict], context(at(20)))).toMatchObject({
+          state: "mirrored",
+          mode: "live",
+        });
+      },
+    );
+
+    it("stays failed when the conflict was raised again after the last resolution", () => {
+      const first = conflictAt(10);
+      const again = conflictAt(30);
+      expect(deriveZohoMirrorState("artwork", [first, again], context(at(20))).state).toBe(
+        "failed",
+      );
+    });
+
+    it("does not settle any other failure", () => {
+      const statusConflict = skipped(ARTWORK_WRITEBACK_SKIP.statusConflictRaised, {
+        ...STATUS,
+        consumer: "zoho_artwork_writeback",
+        updatedAt: at(10),
+      });
+      expect(deriveZohoMirrorState("artwork", [statusConflict], context(at(20))).state).toBe(
+        "failed",
+      );
+    });
+  });
+
+  describe("a write-back that is off does not read as mirroring off while the listing is on", () => {
+    const WRITEBACK_OFF = skipped(ARTWORK_WRITEBACK_SKIP.writebackOff, {
+      ...STOCK_CODE,
+      consumer: "zoho_artwork_writeback",
+    });
+
+    it("reads the listing's newest delivery behind a newer writeback_off skip", () => {
+      const listed = delivery("succeeded", { ...LISTING, providerReference: "1" });
+      const off = { ...WRITEBACK_OFF, eventId: listed.eventId + 1 };
+      expect(
+        deriveZohoMirrorState("artwork", [listed, off], {
+          mode: "off",
+          listingMode: "live",
+          paid: null,
+        }),
+      ).toMatchObject({ state: "mirrored", mode: "live" });
+    });
+
+    it("reads not sent yet, in the listing's mode, when only writeback_off skips are recorded", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [WRITEBACK_OFF], {
+          mode: "off",
+          listingMode: "dry_run",
+          paid: null,
+        }),
+      ).toMatchObject({
+        state: "not_applicable",
+        notApplicableReason: "not_sent_yet",
+        mode: "dry_run",
+      });
+    });
+
+    it("still reads mirroring off when the listing is off too", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [WRITEBACK_OFF], {
+          mode: "off",
+          listingMode: "off",
+          paid: null,
+        }),
+      ).toMatchObject({
+        state: "not_applicable",
+        notApplicableReason: "mirroring_off",
+        mode: "off",
+      });
+    });
+  });
+
   describe("an artwork reads its LAX listing's outcome too", () => {
     it("is failed when the listing dead-lettered after the Status was sent", () => {
       const dead = delivery("dead_lettered", { ...LISTING, lastError: "PRODUCT_NOT_FOUND" });
@@ -333,13 +436,19 @@ describe("deriveZohoMirrorState", () => {
       });
 
       it("still reads a Status writeback delivery against the writeback's mode", () => {
+        // A write-back delivery waiting while the write-back is off never reads "mirroring off"
+        // while the listing is on: it is passed over, and nothing else was sent.
         expect(
           deriveZohoMirrorState(
             "artwork",
             [delivery("pending", { ...STATUS, consumer: "zoho_artwork_writeback" })],
             writebackOffListingLive,
           ),
-        ).toMatchObject({ state: "not_applicable", notApplicableReason: "mirroring_off" });
+        ).toMatchObject({
+          state: "not_applicable",
+          notApplicableReason: "not_sent_yet",
+          mode: "live",
+        });
         expect(
           deriveZohoMirrorState(
             "artwork",
