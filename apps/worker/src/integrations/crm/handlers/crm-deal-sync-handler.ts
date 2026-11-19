@@ -52,8 +52,11 @@ export class CrmDealSyncHandler {
     const existingReal =
       link && !link.erasedAt && isRealZohoLink(link.zohoModule, link.zohoRecordId);
     if (existingReal) {
+      // The stage is set when the deal is created and moved only by the events that move it: a
+      // replayed event never puts a later stage back.
+      const { Stage: _stage, ...fieldsAfterCreate } = intent.fields;
       const fields = this.normalizeDealFields({
-        ...intent.fields,
+        ...fieldsAfterCreate,
         ...(contactLookup ? { Contact_Name: contactLookup } : {}),
       });
       const result = await this.deps.gateway.updateById({
