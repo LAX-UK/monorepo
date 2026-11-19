@@ -195,6 +195,17 @@ export type RecordCatalogueStatusConflictResult = {
   status: "not_found" | "unchanged" | "recorded";
 };
 
+export type RecordStockCodeConflictInput = {
+  registerId: string;
+  /** The stock code the Zoho Product shows now. */
+  zohoStockCode: string;
+  /** The stock code LAX would have written. */
+  laxStockCode: string;
+  /** When the Zoho Product was last modified, as read with the stock code. */
+  zohoModifiedAt: Date;
+  now: Date;
+};
+
 export type RecordGallerySaleInput = { registerId: string; now: Date };
 
 export type RecordGallerySaleResult =
@@ -318,6 +329,14 @@ export interface IArtworkRegisterRepository
    */
   recordCatalogueStatusConflict(
     input: RecordCatalogueStatusConflictInput,
+  ): Promise<RecordCatalogueStatusConflictResult>;
+  /**
+   * Raises a stock code conflict: Zoho shows a stock code LAX did not write, so LAX left it alone.
+   * The same conflict the inbound sync raises; raising it again with the same values changes
+   * nothing, with other values it updates the open one.
+   */
+  recordStockCodeConflict(
+    input: RecordStockCodeConflictInput,
   ): Promise<RecordCatalogueStatusConflictResult>;
   /**
    * Decides a conflict. Keeping LAX's value changes nothing in the register. Accepting Zoho's value

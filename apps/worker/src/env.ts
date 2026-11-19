@@ -9,6 +9,7 @@ import { parseAuthDekKey } from "@auction/identity-contracts";
 import { stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
+import { zohoCrmAllowlistIssues } from "./integrations/zoho/zoho-crm-allowlist-rules.js";
 import { zohoCrmNeedsSandboxOrg } from "./integrations/zoho/zoho-live-modes.js";
 
 function parseFromByProduct(val: unknown): unknown {
@@ -714,6 +715,13 @@ export const envSchema = z
           code: z.ZodIssueCode.custom,
           message:
             "ZOHO_CRM_ENABLED_EVENT_TYPES must list at least one event type when ZOHO_CRM_SYNC_MODE is not off",
+          path: ["ZOHO_CRM_ENABLED_EVENT_TYPES"],
+        });
+      }
+      for (const message of zohoCrmAllowlistIssues(e)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message,
           path: ["ZOHO_CRM_ENABLED_EVENT_TYPES"],
         });
       }

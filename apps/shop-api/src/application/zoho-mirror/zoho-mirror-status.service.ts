@@ -31,7 +31,10 @@ export class ZohoMirrorStatusService {
     ids: readonly string[],
   ): Promise<AdminZohoMirrorStatus[]> {
     const unique = [...new Set(ids)];
-    const { consumer, deliveries } = await this.deps.ledger.read(entity, unique);
+    const { consumer, deliveries, stockCodeConflictResolvedAt } = await this.deps.ledger.read(
+      entity,
+      unique,
+    );
     const mode = this.deps.modes[entity];
     const paid = await this.paidOfUnsent(entity, mode, unique, deliveries);
     return unique.map((id) => ({
@@ -42,6 +45,7 @@ export class ZohoMirrorStatusService {
         mode,
         listingMode: entity === "artwork" ? (this.deps.artworkListingMode ?? null) : null,
         paid: paid.get(id) ?? null,
+        stockCodeConflictResolvedAt: stockCodeConflictResolvedAt?.get(id) ?? null,
       }),
     }));
   }

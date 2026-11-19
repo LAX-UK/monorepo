@@ -5,8 +5,10 @@ import { createDrizzleCrmDealNamingReader } from "./crm-deal-naming-reader.js";
 import type { CrmGateway } from "./crm-gateway.js";
 import {
   createDrizzleCrmAttributionReader,
+  createDrizzleCrmDealSourceReader,
   createDrizzleCrmEnquiryReader,
   createDrizzleCrmPaymentLotReader,
+  createDrizzleCrmShopRefundReader,
 } from "./crm-readers.js";
 import { createDrizzleCrmShopEnquiryReader } from "./crm-shop-enquiry-reader.js";
 import { CrmSyncService, type CrmSyncServiceDeps } from "./crm-sync-service.js";
@@ -28,6 +30,8 @@ export function createCrmSyncService(input: {
     enquiryReader: createDrizzleCrmEnquiryReader(input.db),
     dealNamingReader: createDrizzleCrmDealNamingReader(input.db),
     shopEnquiryReader: createDrizzleCrmShopEnquiryReader(input.db),
+    shopRefundReader: createDrizzleCrmShopRefundReader(input.db),
+    dealSourceReader: createDrizzleCrmDealSourceReader(input.db),
     ...(log
       ? {
           // Only the field's API name and Zoho's code: never the value that was refused.

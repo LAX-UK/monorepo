@@ -926,6 +926,34 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       expect(open[0]).toMatchObject({ zohoValue: "Sold", laxValue: "Available" });
     });
 
+    it("raises the stock code conflict the inbound sync raises, once for the same two values", async () => {
+      const entry = await created();
+      const input = {
+        registerId: entry.id,
+        zohoStockCode: "LAX-ORI-PH-GAC-26-0999",
+        laxStockCode: entry.stockCode,
+        zohoModifiedAt: T0,
+        now: T1,
+      };
+      expect(await repo.recordStockCodeConflict(input)).toEqual({ status: "recorded" });
+      expect(await repo.recordStockCodeConflict(input)).toEqual({ status: "unchanged" });
+      const open = await repo.listOpenConflicts(10);
+      expect(open).toHaveLength(1);
+      expect(open[0]).toMatchObject({
+        registerId: entry.id,
+        field: "stockCode",
+        zohoValue: "LAX-ORI-PH-GAC-26-0999",
+        laxValue: entry.stockCode,
+        status: "open",
+      });
+      expect(
+        await repo.recordStockCodeConflict({
+          ...input,
+          registerId: "00000000-0000-4000-8000-000000000000",
+        }),
+      ).toEqual({ status: "not_found" });
+    });
+
     it("closes the open conflict, with a history event, when LAX and Zoho agree again", async () => {
       const entry = await created();
       await repo.recordCatalogueStatusConflict({

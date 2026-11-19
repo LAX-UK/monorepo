@@ -13,6 +13,7 @@ function fakeGateway(
     updateMany: vi.fn(),
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
+    findNoteIds: vi.fn().mockResolvedValue([]),
     executeCoql: vi.fn(),
     queryCoql: vi.fn(),
     createRecord: vi.fn(),

@@ -15,6 +15,7 @@ function setup(gatewayOverrides = {}) {
     gateway,
     linkRepo,
     personHandler: new CrmPersonSyncHandler({ gateway, linkRepo }),
+    dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     paidBuyerHandler: new CrmPaidBuyerHandler({
       gateway,
       linkRepo,
@@ -72,6 +73,29 @@ describe("CrmDealSyncHandler purchases", () => {
     expect(fields.Contact_Name).toEqual({ id: "contact-1" });
     expect(gateway.createRecord).not.toHaveBeenCalled();
     expect((await linkRepo.findByEntity("deal", "shop-order:o1"))?.zohoModule).toBe("Deals");
+  });
+
+  it("sends the stage only when it creates the deal, so a replay never moves a deal back", async () => {
+    const { gateway, linkRepo, handler } = setup();
+    await linkRepo.seedSubject("sub-1", "Contacts", "contact-1");
+
+    await handler.syncDeal(shopOrder);
+    // Refunded meanwhile; the paid event is then delivered again.
+    await handler.updateDealStage("shop-order:o1", "Refunded");
+    const replay = await handler.syncDeal(shopOrder);
+
+    expect(replay.outcome).toBe("success");
+    const created = gateway.upsert.mock.calls[0]?.[0]?.fields as Record<string, unknown>;
+    expect(created.Stage).toBe("Paid");
+    const updates = gateway.updateById.mock.calls
+      .map((c: unknown[]) => c[0] as { module: string; fields: Record<string, unknown> })
+      .filter((c) => c.module === "Deals")
+      .map((c) => c.fields);
+    expect(updates).toEqual([
+      { Stage: "Refunded" },
+      expect.objectContaining({ Deal_Name: "Shop order o1", Amount: 480 }),
+    ]);
+    expect(updates[1]).not.toHaveProperty("Stage");
   });
 
   it("holds an unpaid lot win for a lead without touching the lead", async () => {

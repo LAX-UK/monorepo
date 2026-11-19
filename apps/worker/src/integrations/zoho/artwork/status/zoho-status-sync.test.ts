@@ -659,6 +659,82 @@ describe("ZohoStatusSync: checks the Product again after writing", () => {
       expect(w.world.zoho?.status).toBe("Reserved");
     });
 
+    it("records a write that timed out but landed, shown as the integration user, as written", async () => {
+      const w = withdrawnLaxWrote();
+      w.products.write.mockImplementationOnce(async () => {
+        w.world.zoho = {
+          status: "In Auction",
+          modifiedAt: new Date("2026-11-03T11:00:02Z"),
+          modifiedBy: INTEGRATION_USER,
+        };
+        throw new CrmGatewayError({
+          code: "TIMEOUT",
+          message: "timed out",
+          status: 504,
+          retryable: true,
+        });
+      });
+      w.integrationUserId.mockResolvedValue(INTEGRATION_USER);
+      const [outcome] = await w.sync().sync([REGISTER_ID]);
+      expect(outcome).toMatchObject({ kind: "written", status: "In Auction" });
+      expect(w.register.recordCatalogueStatusWritten).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "In Auction" }),
+      );
+      expect(w.world.written).toBe("In Auction");
+    });
+
+    it("still fails a write that errored when Zoho does not show it landed as LAX", async () => {
+      const timeout = () =>
+        new CrmGatewayError({
+          code: "TIMEOUT",
+          message: "timed out",
+          status: 504,
+          retryable: true,
+        });
+      const notApplied = withdrawnLaxWrote();
+      notApplied.products.write.mockRejectedValueOnce(timeout());
+      notApplied.integrationUserId.mockResolvedValue(INTEGRATION_USER);
+      expect((await notApplied.sync().sync([REGISTER_ID]))[0]).toMatchObject({
+        kind: "failed",
+        code: "TIMEOUT",
+        retryable: true,
+      });
+
+      const bySomeoneElse = withdrawnLaxWrote();
+      bySomeoneElse.products.write.mockImplementationOnce(async () => {
+        bySomeoneElse.world.zoho = {
+          status: "In Auction",
+          modifiedAt: new Date("2026-11-03T11:00:02Z"),
+          modifiedBy: STAFF,
+        };
+        throw timeout();
+      });
+      bySomeoneElse.integrationUserId.mockResolvedValue(INTEGRATION_USER);
+      expect((await bySomeoneElse.sync().sync([REGISTER_ID]))[0]).toMatchObject({
+        kind: "failed",
+      });
+
+      for (const w of [notApplied, bySomeoneElse]) {
+        expect(w.register.recordCatalogueStatusWritten).not.toHaveBeenCalled();
+      }
+    });
+
+    it("never re-reads after a refusal Zoho was certain about", async () => {
+      const w = withdrawnLaxWrote();
+      w.products.write.mockRejectedValueOnce(
+        new CrmGatewayError({
+          code: "INVALID_DATA",
+          message: "picklist",
+          status: 400,
+          retryable: false,
+        }),
+      );
+      const reads = w.products.read.mock.calls.length;
+      const [outcome] = await w.sync().sync([REGISTER_ID]);
+      expect(outcome).toMatchObject({ kind: "failed", code: "INVALID_DATA", retryable: false });
+      expect(w.products.read.mock.calls.length - reads).toBe(2);
+    });
+
     it("asks for the integration user only when a change is found", async () => {
       const w = withdrawnLaxWrote();
       await w.sync().sync([REGISTER_ID]);

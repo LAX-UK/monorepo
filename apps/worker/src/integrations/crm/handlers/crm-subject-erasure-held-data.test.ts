@@ -79,4 +79,31 @@ describe("erasing a person with purchase notes, tasks and held deals", () => {
       expect.objectContaining({ module: "Leads" }),
     );
   });
+
+  it("finds a note whose send was cut off on its deal by title, and deletes it", async () => {
+    const { gateway, linkRepo, handler } = await seed();
+    await linkRepo.upsertLink({
+      entityType: "note",
+      entityId: "fulfilment:f1:delivered",
+      zohoModule: "__note_pending__",
+      zohoRecordId: "__none__",
+      subjectId: "sub-1",
+      heldPayload: { dealRecordId: "deal-9", title: "Shop order delivered" },
+    });
+    gateway.findNoteIds.mockResolvedValueOnce(["note-9"]);
+
+    const result = await handler.eraseSubject("sub-1");
+
+    expect(result.outcome).toBe("success");
+    expect(gateway.findNoteIds).toHaveBeenCalledWith({
+      parentModule: "Deals",
+      parentId: "deal-9",
+      title: "Shop order delivered",
+    });
+    expect(gateway.deleteRecord).toHaveBeenCalledWith({ module: "Notes", recordId: "note-9" });
+    expect(gateway.purgeFromRecycleBin).toHaveBeenCalledWith("note-9");
+    expect(
+      (await linkRepo.findByEntity("note", "fulfilment:f1:delivered"))?.erasedAt,
+    ).not.toBeNull();
+  });
 });

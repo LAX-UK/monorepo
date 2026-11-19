@@ -87,7 +87,10 @@ export async function runDomainEventDelivery(
     const attemptsAfterClaim = delivery.attempts;
 
     // Waiting on something to settle elsewhere is not a failed attempt: never dead-lettered for it.
-    const waiting = isWaitingDeliveryError(err);
+    const waiting = isWaitingDeliveryError(err, {
+      createdAt: delivery.createdAt,
+      now: options.now ?? new Date(),
+    });
     if (classification === "fatal" || (!waiting && attemptsAfterClaim >= maxAttempts)) {
       await repo.deadLetter({
         deliveryId: delivery.id,

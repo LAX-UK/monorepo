@@ -234,6 +234,8 @@ function buildService(enquiryRecord: CrmEnquiryRecord | null) {
     enquiryReader: { findById },
     dealNamingReader: noDealNaming,
     shopEnquiryReader: { find: vi.fn() },
+    shopRefundReader: { findById: vi.fn() },
+    dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
   });
   return { service, gateway, links, findById };
 }

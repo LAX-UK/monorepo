@@ -50,13 +50,13 @@ export class ZohoListingWriteback {
       });
       return retry ? { outcome: "retry", error } : { outcome: "fatal", error };
     }
-    if (report.changed > 0) {
-      return this.deps.mode === "dry_run"
-        ? { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.dryRun }
-        : { outcome: "success", providerReference: `Products:${report.changed}` };
-    }
     if (report.checked === 0)
       return { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.notAnOriginal };
+    // A dry run wrote nothing, so it never reads as in sync: that would tell staff it is live.
+    if (this.deps.mode === "dry_run")
+      return { outcome: "skipped", reason: ARTWORK_LISTING_SKIP.dryRun };
+    if (report.changed > 0)
+      return { outcome: "success", providerReference: `Products:${report.changed}` };
     return {
       outcome: "skipped",
       reason:

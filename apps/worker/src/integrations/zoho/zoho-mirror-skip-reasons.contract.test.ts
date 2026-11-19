@@ -10,8 +10,10 @@ const SOURCES = [
   "./fulfilment/order-mirror.ts",
   "./artwork/zoho-artwork-writeback-service.ts",
   "./artwork/listing/zoho-listing-writeback.ts",
+  "./artwork/status/zoho-status-sync.ts",
   "../../projectors/zoho-fulfilment-projector.ts",
   "../../projectors/zoho-artwork-writeback-projector.ts",
+  "../../projectors/zoho-artwork-listing-projector.ts",
 ];
 
 describe("Zoho mirror skip reasons and consumers", () => {

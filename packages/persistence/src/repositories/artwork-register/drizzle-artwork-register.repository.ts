@@ -57,6 +57,7 @@ import type {
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
   RecordOfferConflictInput,
+  RecordStockCodeConflictInput,
   RecordZohoLinkInput,
   RegisterActor,
   RegisterConflict,
@@ -778,11 +779,39 @@ export class DrizzleArtworkRegisterRepository
   async recordCatalogueStatusConflict(
     input: RecordCatalogueStatusConflictInput,
   ): Promise<RecordCatalogueStatusConflictResult> {
+    return this.raiseConflict(
+      input.registerId,
+      { field: "catalogueStatus", zohoValue: input.zohoStatus, laxValue: input.laxStatus },
+      input.zohoModifiedAt,
+      input.now,
+      input.cause ? { cause: input.cause } : {},
+    );
+  }
+
+  async recordStockCodeConflict(
+    input: RecordStockCodeConflictInput,
+  ): Promise<RecordCatalogueStatusConflictResult> {
+    return this.raiseConflict(
+      input.registerId,
+      { field: "stockCode", zohoValue: input.zohoStockCode, laxValue: input.laxStockCode },
+      input.zohoModifiedAt,
+      input.now,
+    );
+  }
+
+  /** Raises a conflict under the record's lock, unless an open one already holds both values. */
+  private async raiseConflict(
+    registerId: string,
+    found: Omit<FieldConflict, "field"> & { field: RegisterConflictField },
+    zohoModifiedAt: Date,
+    now: Date,
+    extra: Record<string, string> = {},
+  ): Promise<RecordCatalogueStatusConflictResult> {
     return this.db.transaction(async (tx) => {
       const [locked] = await tx
         .select({ id: register.id })
         .from(register)
-        .where(eq(register.id, input.registerId))
+        .where(eq(register.id, registerId))
         .for("update");
       if (!locked) return { status: "not_found" };
       const [open] = await tx
@@ -791,22 +820,15 @@ export class DrizzleArtworkRegisterRepository
         .where(
           and(
             eq(conflict.registerId, locked.id),
-            eq(conflict.field, "catalogueStatus"),
+            eq(conflict.field, found.field),
             eq(conflict.status, "open"),
           ),
         )
         .limit(1);
-      if (open && open.zohoValue === input.zohoStatus && open.laxValue === input.laxStatus) {
+      if (open && open.zohoValue === found.zohoValue && open.laxValue === found.laxValue) {
         return { status: "unchanged" };
       }
-      await this.recordConflict(
-        tx,
-        locked.id,
-        { field: "catalogueStatus", zohoValue: input.zohoStatus, laxValue: input.laxStatus },
-        input.zohoModifiedAt,
-        input.now,
-        input.cause ? { cause: input.cause } : {},
-      );
+      await this.recordConflict(tx, locked.id, found, zohoModifiedAt, now, extra);
       return { status: "recorded" };
     });
   }

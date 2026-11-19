@@ -64,6 +64,13 @@ export type CrmCreateInput = {
   fields: Record<string, CrmFieldValue>;
 };
 
+/** The notes on one record that carry a title. */
+export type CrmFindNotesInput = {
+  parentModule: CrmModule;
+  parentId: string;
+  title: string;
+};
+
 export type CrmDeleteRecordInput = {
   module: CrmModule;
   recordId: string;
@@ -118,6 +125,8 @@ export interface CrmGateway {
   findByEmail(input: CrmSearchByEmailInput): Promise<CrmSearchByEmailResult>;
   findDealIdsByContact(contactId: string): Promise<string[]>;
   executeCoql(selectQuery: string): Promise<string[]>;
+  /** Ids of the notes with this title on one record; empty when it has none. */
+  findNoteIds(input: CrmFindNotesInput): Promise<string[]>;
   /** Inserts one record (a Note or Task); there is nothing to match it against. */
   createRecord(input: CrmCreateInput): Promise<CrmRecordResult>;
   /** Reads a lead's status, owner and, once an admin converted it, the new Contact. */
