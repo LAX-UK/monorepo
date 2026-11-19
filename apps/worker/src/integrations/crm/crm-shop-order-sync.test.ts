@@ -182,7 +182,10 @@ describe("CrmSyncService shop.refund.completed", () => {
 
     const result = await service.syncEvent(refundCompleted("succeeded"));
 
-    expect(result).toMatchObject({ outcome: "retry", error: { code: "deal_link_missing" } });
+    expect(result).toMatchObject({
+      outcome: "retry",
+      error: { code: "deal_link_missing", waiting: true, retryAfterMs: 60_000 },
+    });
     expect(gateway.createRecord).not.toHaveBeenCalled();
   });
 
@@ -278,7 +281,11 @@ describe("CrmSyncService shop.fulfilment.status_changed", () => {
     // Zoho may have the note: not found yet, and the claim is fresh, so it is not sent again.
     const retried = await service.syncEvent(fulfilmentStatus("delivered", 21));
 
-    expect(retried).toMatchObject({ outcome: "retry", error: { code: "deal_note_in_flight" } });
+    // A wait on the claimant, not a failure: it uses up no attempt (review observation 1).
+    expect(retried).toMatchObject({
+      outcome: "retry",
+      error: { code: "deal_note_in_flight", waiting: true, retryAfterMs: 60_000 },
+    });
     expect(gateway.createRecord).toHaveBeenCalledTimes(1);
     expect(
       await linkRepo.findByEntity(CRM_ENTITY.note, `fulfilment:${FULFILMENT_ID}:delivered`),
