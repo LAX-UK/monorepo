@@ -13,6 +13,8 @@ export type DeliveryLedgerStatus =
 
 /** One consumer's delivery of one event for a record, as `domain_event_delivery` holds it. */
 export type ZohoMirrorLedgerDelivery = {
+  /** The consumer that made the delivery: an artwork's writeback or its LAX listing. */
+  consumer: string;
   eventId: number;
   /** The event's type: which of the record's writes this delivery made. */
   eventType: string;
@@ -26,9 +28,12 @@ export type ZohoMirrorLedgerDelivery = {
 };
 
 export type ZohoMirrorLedger = {
-  /** The delivery consumer the rows were read from. */
+  /** The record's own mirror consumer (an artwork's listing deliveries are read alongside it). */
   consumer: string;
-  /** Each asked-for id with its deliveries, oldest event first; ids with none are present and empty. */
+  /**
+   * Each asked-for id with its deliveries, oldest event first (on one event, the record's own
+   * consumer first); ids with none are present and empty.
+   */
   deliveries: Map<string, ZohoMirrorLedgerDelivery[]>;
 };
 

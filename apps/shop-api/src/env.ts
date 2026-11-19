@@ -140,10 +140,12 @@ export const shopApiEnvSchema = z.object({
   /**
    * The worker's Zoho mirror modes, read here only to word LAX Admin's "Mirrored to Zoho" badge
    * (an order reads "Zoho mirroring is off" when the fulfilment mirror is off). Set them to the
-   * worker's values. Unset, the badge says only what the delivery ledger shows.
+   * worker's values. Unset, the badge says only what the delivery ledger shows. An artwork's LAX
+   * listing deliveries read `ZOHO_ARTWORK_LISTING_MODE`, its Status writeback's the writeback mode.
    */
   ZOHO_FULFILMENT_MIRROR_MODE: z.enum(ZOHO_MIRROR_MODES).optional(),
   ZOHO_ARTWORK_WRITEBACK_MODE: z.enum(ZOHO_MIRROR_MODES).optional(),
+  ZOHO_ARTWORK_LISTING_MODE: z.enum(ZOHO_MIRROR_MODES).optional(),
   /**
    * Turns on the Shop and lax.art alert retention prune. Off (the default) it runs as a dry run:
    * it logs what it would remove and deletes nothing. Read like the worker's flags: `1`, `true`,

@@ -6,10 +6,16 @@ import { DrizzleZohoMirrorLedgerReader } from "./drizzle-zoho-mirror-ledger.read
 
 const url = process.env.DATABASE_URL;
 
-// Private copies of the two ledger tables in a schema of its own (first on the search path), so
-// nothing here touches, or is touched by, rows other integration files keep in the public ones.
+// Private copies of the ledger tables, and of the register tables that tie an artwork to its lax.art
+// listing, in a schema of its own (first on the search path), so nothing here touches, or is
+// touched by, rows other integration files keep in the public ones.
 const SCHEMA = `zoho_mirror_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
-const TABLES = ["domain_events", "domain_event_delivery"];
+const TABLES = [
+  "domain_events",
+  "domain_event_delivery",
+  "artwork_register",
+  "artwork_register_event",
+];
 let db: Database = null as never;
 
 const ORDER_A = randomUUID();
@@ -80,7 +86,7 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
 
   beforeEach(async () => {
     await db.execute(
-      sql.raw(`TRUNCATE "${SCHEMA}".domain_events, "${SCHEMA}".domain_event_delivery`),
+      sql.raw(`TRUNCATE ${TABLES.map((table) => `"${SCHEMA}"."${table}"`).join(", ")}`),
     );
   });
 
@@ -134,7 +140,7 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
     expect(deliveries.get(ORDER_A)?.map((row) => row.status)).toEqual(["succeeded"]);
   });
 
-  it("reads an artwork from its register events and the write-back consumer only", async () => {
+  it("reads an artwork from its register events, and the write-back and listing consumers only", async () => {
     const moved = await event({
       type: "artwork_register.offer_changed",
       aggregateType: "artwork_register",
@@ -145,7 +151,8 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
       error: "Zoho refused",
       attempts: 5,
     });
-    await deliver(moved, "zoho_artwork_listing", "succeeded");
+    await deliver(moved, "zoho_artwork_listing", "succeeded", { reference: "Products:1" });
+    await deliver(moved, "zoho", "dead_lettered", { error: "crm failed" });
     // Same id on a different aggregate type is not this artwork.
     const stranger = await event({
       type: "shop.artwork.updated",
@@ -159,8 +166,15 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
       REGISTER,
     ]);
     expect(consumer).toBe("zoho_artwork_writeback");
+    // On one event, the write-back's own delivery comes before the listing's.
     expect(deliveries.get(REGISTER)).toMatchObject([
-      { status: "dead_lettered", attempts: 5, lastError: "Zoho refused" },
+      {
+        consumer: "zoho_artwork_writeback",
+        status: "dead_lettered",
+        attempts: 5,
+        lastError: "Zoho refused",
+      },
+      { consumer: "zoho_artwork_listing", status: "succeeded", providerReference: "Products:1" },
     ]);
   });
 
@@ -202,5 +216,101 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
   it("answers an empty batch without reading", async () => {
     const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("order", []);
     expect(deliveries.size).toBe(0);
+  });
+  describe("an artwork's LAX listing deliveries", () => {
+    let stockNumber = 0;
+    const OFFER_STATE = { shop_artwork: "lax_art", bid_lot: "bid_sale" } as const;
+
+    async function registerEntry(
+      id: string,
+      offer: { kind: keyof typeof OFFER_STATE; id: string } | null = null,
+    ): Promise<void> {
+      stockNumber += 1;
+      const stockCode = `LAX-ORI-PH-GAC-26-${String(stockNumber).padStart(4, "0")}`;
+      await db.execute(sql`
+        INSERT INTO artwork_register
+          (id, zoho_product_id, stock_code, kind, title, artist_name, artist_code,
+           offer_state, offer_ref_kind, offer_ref_id)
+        VALUES (${id}, ${`zp-${id}`}, ${stockCode}, 'original', 'Untitled', 'A. Artist', 'AA',
+          ${offer ? OFFER_STATE[offer.kind] : "held"}, ${offer?.kind ?? null}, ${offer?.id ?? null})
+      `);
+    }
+
+    const laxArtEvent = (type: string, artworkId: string) =>
+      event({ type, aggregateType: "shop_artwork", aggregateId: artworkId, payload: {} });
+
+    it("reads the listing's deliveries for the lax.art listing the artwork is offered through", async () => {
+      const listing = randomUUID();
+      await registerEntry(REGISTER, { kind: "shop_artwork", id: listing });
+      const moved = await event({
+        type: "artwork_register.offer_changed",
+        aggregateType: "artwork_register",
+        aggregateId: REGISTER,
+        payload: { registerId: REGISTER },
+      });
+      await deliver(moved, "zoho_artwork_writeback", "succeeded");
+      const updated = await laxArtEvent("shop.artwork.updated", listing);
+      await deliver(updated, "zoho_artwork_listing", "dead_lettered", {
+        error: "PRODUCT_NOT_FOUND",
+      });
+      // The fulfilment mirror hears the same event; it is not the artwork's listing.
+      await deliver(updated, "zoho_fulfilment", "succeeded");
+
+      const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("artwork", [
+        REGISTER,
+      ]);
+      expect(
+        deliveries.get(REGISTER)?.map((row) => [row.consumer, row.eventType, row.status]),
+      ).toEqual([
+        ["zoho_artwork_writeback", "artwork_register.offer_changed", "succeeded"],
+        ["zoho_artwork_listing", "shop.artwork.updated", "dead_lettered"],
+      ]);
+    });
+
+    it("reads a lax.art listing drafted from the record, for each record it was drafted from", async () => {
+      const other = randomUUID();
+      const listing = randomUUID();
+      await registerEntry(REGISTER);
+      await registerEntry(other);
+      for (const registerId of [REGISTER, other]) {
+        await db.execute(sql`
+          INSERT INTO artwork_register_event (register_id, type, payload, actor)
+          VALUES (${registerId}, 'lax_art_draft_created',
+            ${JSON.stringify({ artworkId: listing })}::jsonb, 'system')
+        `);
+      }
+      const created = await laxArtEvent("shop.artwork.created", listing);
+      await deliver(created, "zoho_artwork_listing", "skipped", {
+        error: "listing_already_in_sync",
+      });
+
+      const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("artwork", [
+        REGISTER,
+        other,
+      ]);
+      for (const id of [REGISTER, other]) {
+        expect(deliveries.get(id)?.map((row) => [row.consumer, row.lastError])).toEqual([
+          ["zoho_artwork_listing", "listing_already_in_sync"],
+        ]);
+      }
+    });
+
+    it("leaves out lax.art listings the artwork is not tied to, and lot events", async () => {
+      await registerEntry(REGISTER, { kind: "bid_lot", id: randomUUID() });
+      const unrelated = await laxArtEvent("shop.artwork.updated", randomUUID());
+      await deliver(unrelated, "zoho_artwork_listing", "dead_lettered");
+      const lot = await event({
+        type: "lot.published",
+        aggregateType: "lot",
+        aggregateId: REGISTER,
+        payload: {},
+      });
+      await deliver(lot, "zoho_artwork_listing", "dead_lettered");
+
+      const { deliveries } = await new DrizzleZohoMirrorLedgerReader(db).read("artwork", [
+        REGISTER,
+      ]);
+      expect(deliveries.get(REGISTER)).toEqual([]);
+    });
   });
 });

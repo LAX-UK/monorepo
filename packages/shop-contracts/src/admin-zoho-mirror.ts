@@ -55,7 +55,7 @@ export const AdminZohoMirrorStatusSchema = Type.Object({
   entity: Entity,
   id: Type.String(),
   state: Type.Union(ZOHO_MIRROR_STATES.map((state) => Type.Literal(state))),
-  /** The delivery consumer the state was read from. */
+  /** The record's own mirror consumer; an artwork's LAX listing deliveries are read with it. */
   consumer: Type.String(),
   /** Set only when `state` is `not_applicable`. */
   notApplicableReason: Type.Union([
