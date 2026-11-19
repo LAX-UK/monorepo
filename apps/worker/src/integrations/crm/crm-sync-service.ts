@@ -11,9 +11,12 @@ import {
 import type { CrmGateway } from "./crm-gateway.js";
 import type {
   CrmAttributionReader,
+  CrmDealSourceReader,
   CrmEnquiryReader,
   CrmEnquiryRecord,
   CrmPaymentLotReader,
+  CrmShopRefundReader,
+  CrmShopRefundRecord,
 } from "./crm-readers.js";
 import type { CrmShopEnquiryReader, CrmShopEnquiryRecord } from "./crm-shop-enquiry-reader.js";
 import type { CrmSyncResult } from "./crm-sync-result.js";
@@ -42,6 +45,8 @@ export type CrmSyncServiceDeps = {
   enquiryReader: CrmEnquiryReader;
   dealNamingReader: CrmDealNamingReader;
   shopEnquiryReader: CrmShopEnquiryReader;
+  shopRefundReader: CrmShopRefundReader;
+  dealSourceReader: CrmDealSourceReader;
   /** Told when a person upsert leaves out an optional field the CRM refused. */
   onPersonFieldDropped?: CrmPersonSyncHandlerDeps["onFieldDropped"];
 };
@@ -69,6 +74,7 @@ export class CrmSyncService {
       gateway: deps.gateway,
       linkRepo: deps.linkRepo,
       personHandler: this.personHandler,
+      dealSourceReader: deps.dealSourceReader,
       paidBuyerHandler: new CrmPaidBuyerHandler({
         gateway: deps.gateway,
         linkRepo: deps.linkRepo,
@@ -162,6 +168,15 @@ export class CrmSyncService {
       enquiry = await this.deps.enquiryReader.findById(event.aggregateId);
     }
 
+    // The event carries ids only: the refund and its order's refund state are read by id.
+    let shopRefund: CrmShopRefundRecord | null | undefined;
+    if (event.eventType === "shop.refund.completed") {
+      const p = event.payload as { refundId?: unknown; status?: unknown } | null;
+      if (p && typeof p.refundId === "string" && p.status === "succeeded") {
+        shopRefund = await this.deps.shopRefundReader.findById(p.refundId);
+      }
+    }
+
     const shopEnquiry = await this.resolveShopEnquiry(event);
     const dealNaming = await this.resolveDealNaming(event);
 
@@ -174,6 +189,7 @@ export class CrmSyncService {
       {
         ...(paymentRefundLotId !== undefined ? { paymentRefundLotId } : {}),
         ...(enquiry !== undefined ? { enquiry } : {}),
+        ...(shopRefund !== undefined ? { shopRefund } : {}),
         ...(shopEnquiry !== undefined ? { shopEnquiry } : {}),
         ...(dealNaming !== undefined ? { dealNaming } : {}),
       },
@@ -239,9 +255,11 @@ export class CrmSyncService {
       case "deal_upsert":
         return this.dealHandler.syncDeal(intent);
       case "deal_stage":
-        return this.dealHandler.updateDealStage(intent.dealEntityId, intent.stage, {
-          retryWhileDealMissing: intent.retryWhileDealMissing === true,
-        });
+        return this.dealHandler.updateDealStage(
+          intent.dealEntityId,
+          intent.stage,
+          intent.dealCreatedBy,
+        );
       case "deal_note":
         return this.dealHandler.addDealNote(intent);
       case "purchase_paid":

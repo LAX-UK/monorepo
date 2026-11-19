@@ -38,9 +38,9 @@ export function crmPersonNotLinkedError(): CrmGatewayError {
 }
 
 /**
- * The deal an event moves is not in the ledger yet (its paid event is still retrying, or has not
- * been handled). Retryable: the delivery is tried again under the usual retry and dead-letter
- * policy, so a deal created meanwhile is moved, and one never created dead-letters.
+ * The deal an event moves is not in the ledger yet, and the CRM delivery of the event that creates
+ * it is still to run. Retryable: the delivery is tried again under the usual retry and dead-letter
+ * policy, so the deal is moved once that event has created it.
  */
 export function crmDealNotLinkedError(): CrmGatewayError {
   return new CrmGatewayError({
@@ -49,6 +49,27 @@ export function crmDealNotLinkedError(): CrmGatewayError {
     status: 409,
     retryable: true,
   });
+}
+
+/** Another delivery has claimed the note and may be sending it; tried again once it is done. */
+export function crmNoteInFlightError(): CrmGatewayError {
+  return new CrmGatewayError({
+    code: "deal_note_in_flight",
+    message: "deal_note_in_flight",
+    status: 409,
+    retryable: true,
+  });
+}
+
+/**
+ * True when the CRM certainly did not apply a write: Zoho answered with a 4xx other than a request
+ * timeout, or the request was never sent (circuit open). A 5xx, a timeout or a dropped connection
+ * may have been applied.
+ */
+export function isDefiniteCrmRefusal(err: unknown): boolean {
+  if (!(err instanceof CrmGatewayError)) return false;
+  if (err.code === "circuit_open") return true;
+  return err.status >= 400 && err.status < 500 && err.status !== 408;
 }
 
 /** Zoho error codes are upper-case words such as `INVALID_DATA`; anything else is not kept. */

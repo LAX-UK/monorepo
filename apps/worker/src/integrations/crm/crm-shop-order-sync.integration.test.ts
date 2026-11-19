@@ -49,6 +49,14 @@ describe.skipIf(!workerUrl)("CRM Shop refund and fulfilment sync (integration)",
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: { forLotWon: vi.fn(), forShopOrder: vi.fn() },
       shopEnquiryReader: { find: vi.fn() },
+      shopRefundReader: {
+        findById: vi.fn(async () => ({
+          amountPence: 1000,
+          refundedTotalPence: 1000,
+          orderTotalPence: 1000,
+        })),
+      },
+      dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     });
   }
 
@@ -104,7 +112,7 @@ describe.skipIf(!workerUrl)("CRM Shop refund and fulfilment sync (integration)",
     });
   });
 
-  it("does not add a note twice when its ledger write failed after Zoho added it", async () => {
+  it("finds a note whose ledger write failed after Zoho added it, instead of adding it twice", async () => {
     const gateway = fakeCrmGateway();
     const sync = service(gateway);
     const delivered = (id: number) => ({
@@ -124,14 +132,27 @@ describe.skipIf(!workerUrl)("CRM Shop refund and fulfilment sync (integration)",
 
     expect((await sync.syncEvent(delivered(4))).outcome).not.toBe("success");
     spy.mockRestore();
-    expect(await sync.syncEvent(delivered(5))).toEqual({
-      outcome: "skipped",
-      reason: "deal_note_maybe_added",
+    const pending = {
+      zohoModule: "__note_pending__",
+      zohoRecordId: "__none__",
+      subjectId,
+      heldPayload: { dealRecordId, title: "Shop order delivered" },
+    };
+    // Not found on the deal yet, and claimed moments ago: left to the delivery that claimed it.
+    expect(await sync.syncEvent(delivered(5))).toMatchObject({
+      outcome: "retry",
+      error: { code: "deal_note_in_flight" },
     });
+    expect(
+      await linkRepo.findByEntity(CRM_ENTITY.note, `fulfilment:${fulfilmentId}:delivered`),
+    ).toMatchObject(pending);
 
+    // Found on the deal by its title: recorded, not sent again.
+    gateway.findNoteIds.mockResolvedValueOnce(["note-found"]);
+    expect((await sync.syncEvent(delivered(6))).outcome).toBe("success");
     expect(gateway.createRecord).toHaveBeenCalledTimes(1);
     expect(
       await linkRepo.findByEntity(CRM_ENTITY.note, `fulfilment:${fulfilmentId}:delivered`),
-    ).toMatchObject({ zohoModule: "__note_pending__", zohoRecordId: "__none__", subjectId });
+    ).toMatchObject({ zohoModule: "Notes", zohoRecordId: "note-found", subjectId });
   });
 });

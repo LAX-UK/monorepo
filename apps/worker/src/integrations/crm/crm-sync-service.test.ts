@@ -104,6 +104,8 @@ describe("CrmSyncService payment.refunded", () => {
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: noDealNaming,
       shopEnquiryReader: { find: vi.fn() },
+      shopRefundReader: { findById: vi.fn() },
+      dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     });
 
     const result = await service.syncEvent({
@@ -145,6 +147,8 @@ describe("CrmSyncService payment.refunded", () => {
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: noDealNaming,
       shopEnquiryReader: { find: vi.fn() },
+      shopRefundReader: { findById: vi.fn() },
+      dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     });
 
     const result = await service.syncEvent({

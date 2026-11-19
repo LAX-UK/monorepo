@@ -1,4 +1,4 @@
-import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
+import type { CrmRecordLinkRow, ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
 import { CRM_ENTITY } from "../crm-field-constants.js";
 import { CrmGatewayError } from "../crm-gateway-error.js";
 import type { CrmModule } from "../crm-gateway.js";
@@ -6,6 +6,7 @@ import type { CrmGateway } from "../crm-gateway.js";
 import { formatProviderReference } from "../crm-sync-policy.js";
 import type { CrmSyncResult } from "../crm-sync-result.js";
 import { CRM_TOMBSTONE_MODULE, CRM_TOMBSTONE_RECORD_ID, isRealZohoLink } from "../crm-tombstone.js";
+import { CRM_NOTE_PENDING_MODULE, readPendingNote } from "./crm-deal-sync-handler.js";
 
 export type CrmSubjectLifecycleHandlerDeps = {
   gateway: CrmGateway;
@@ -149,31 +150,31 @@ export class CrmSubjectLifecycleHandler {
     }
   }
 
-  /** The purchase notes and "please convert" tasks the platform created for the subject. */
+  /**
+   * The purchase notes and "please convert" tasks the platform created for the subject. A note
+   * left pending (its send was cut off) is looked up on its deal by title, as it may be in Zoho.
+   */
   private async deleteNotesAndTasksForSubject(subjectId: string): Promise<CrmSyncResult | null> {
     const rows = await this.deps.linkRepo.listActiveLinksBySubject(subjectId, [
       CRM_ENTITY.note,
       CRM_ENTITY.task,
     ]);
     for (const row of rows) {
-      if (isRealZohoLink(row.zohoModule, row.zohoRecordId)) {
-        const deleted = await this.deps.gateway.deleteRecord({
-          module: row.zohoModule as CrmModule,
-          recordId: row.zohoRecordId,
-        });
+      for (const record of await this.zohoRecordsOf(row)) {
+        const deleted = await this.deps.gateway.deleteRecord(record);
         if (deleted.status === "error") {
           return {
             outcome: "retry",
             error: new CrmGatewayError({
               code: deleted.code ?? "record_delete_failed",
-              message: `${row.entityType}_delete_failed:${row.zohoRecordId}`,
+              message: `${row.entityType}_delete_failed:${record.recordId}`,
               status: 503,
               retryable: true,
             }),
           };
         }
         try {
-          await this.deps.gateway.purgeFromRecycleBin(row.zohoRecordId);
+          await this.deps.gateway.purgeFromRecycleBin(record.recordId);
         } catch (err) {
           return {
             outcome: "retry",
@@ -194,6 +195,23 @@ export class CrmSubjectLifecycleHandler {
       });
     }
     return null;
+  }
+
+  private async zohoRecordsOf(
+    row: CrmRecordLinkRow,
+  ): Promise<{ module: CrmModule; recordId: string }[]> {
+    if (isRealZohoLink(row.zohoModule, row.zohoRecordId)) {
+      return [{ module: row.zohoModule as CrmModule, recordId: row.zohoRecordId }];
+    }
+    const pending =
+      row.zohoModule === CRM_NOTE_PENDING_MODULE ? readPendingNote(row.heldPayload) : null;
+    if (!pending) return [];
+    const noteIds = await this.deps.gateway.findNoteIds({
+      parentModule: "Deals",
+      parentId: pending.dealRecordId,
+      title: pending.title,
+    });
+    return noteIds.map((recordId) => ({ module: "Notes" as const, recordId }));
   }
 
   private async cascadeDeleteDealsForSubject(

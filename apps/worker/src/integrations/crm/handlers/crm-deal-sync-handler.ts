@@ -1,9 +1,18 @@
-import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
+import type {
+  ClaimCrmRecordLinkInput,
+  ICrmRecordLinkRepository,
+} from "@auction/persistence/interfaces";
 import type { CrmMappedIntent } from "../crm-event-mappers.js";
 import { CRM_ENTITY, CRM_FIELD } from "../crm-field-constants.js";
-import { CrmGatewayError, crmDealNotLinkedError } from "../crm-gateway-error.js";
+import {
+  CrmGatewayError,
+  crmDealNotLinkedError,
+  crmNoteInFlightError,
+  isDefiniteCrmRefusal,
+} from "../crm-gateway-error.js";
 import type { CrmFieldValue, CrmGateway } from "../crm-gateway.js";
 import { type CrmHeldDeal, readHeldDeal, toHeldPayload } from "../crm-held-deal.js";
+import type { CrmDealSource, CrmDealSourceReader } from "../crm-readers.js";
 import { formatProviderReference } from "../crm-sync-policy.js";
 import type { CrmSyncResult } from "../crm-sync-result.js";
 import { CRM_HELD_MODULE, CRM_TOMBSTONE_RECORD_ID, isRealZohoLink } from "../crm-tombstone.js";
@@ -11,18 +20,39 @@ import type { CrmPaidBuyerHandler } from "./crm-paid-buyer-handler.js";
 import type { CrmPersonSyncHandler } from "./crm-person-sync-handler.js";
 
 /**
- * Ledger module of a note being added: written before the note is sent to Zoho and replaced by the
- * real link once Zoho answers. Not a Zoho record (its id is `__none__`), so erasure never sends it.
- * One left behind means the note may already be in Zoho (the ledger write after it failed), so the
- * note is not sent again.
+ * Ledger module of a note being added: claimed before the note is sent to Zoho and replaced by the
+ * real link once Zoho answers. Its id is `__none__`; its held payload keeps the deal and the note's
+ * title, so a note whose send was cut off can be found in Zoho again, before it is re-sent or when
+ * the person is erased.
  */
 export const CRM_NOTE_PENDING_MODULE = "__note_pending__";
+
+/** Ledger state of a note Zoho refused: not in Zoho, so it may be claimed and sent again. */
+const CRM_NOTE_REFUSED = { zohoModule: "Notes", zohoRecordId: CRM_TOMBSTONE_RECORD_ID } as const;
+
+/**
+ * How long a pending note is left to the delivery that claimed it, which may still be sending it.
+ * Well past one Zoho request: a note still missing after that was not sent by a running delivery.
+ */
+export const CRM_NOTE_PENDING_GRACE_MS = 10 * 60_000;
+
+/** What a pending note's ledger row keeps, to find the note in Zoho again. */
+export type CrmPendingNote = { dealRecordId: string; title: string };
+
+export function readPendingNote(payload: Record<string, unknown> | null): CrmPendingNote | null {
+  const dealRecordId = payload?.dealRecordId;
+  const title = payload?.title;
+  return typeof dealRecordId === "string" && typeof title === "string"
+    ? { dealRecordId, title }
+    : null;
+}
 
 export type CrmDealSyncHandlerDeps = {
   gateway: CrmGateway;
   linkRepo: ICrmRecordLinkRepository;
   personHandler: CrmPersonSyncHandler;
   paidBuyerHandler: CrmPaidBuyerHandler;
+  dealSourceReader: CrmDealSourceReader;
 };
 
 export class CrmDealSyncHandler {
@@ -138,16 +168,19 @@ export class CrmDealSyncHandler {
     return { outcome: "success", providerReference: `deal:${intent.dealEntityId}:held_paid` };
   }
 
+  /**
+   * `dealCreatedBy`: the event that creates the deal. While the deal is not in the ledger and that
+   * event's delivery is still to run, this one is retried; otherwise it is skipped
+   * (`deal_link_missing`), so `replay:crm-skipped` sends it again after the event that creates it.
+   */
   async updateDealStage(
     dealEntityId: string,
     stage: string,
-    options: { retryWhileDealMissing?: boolean } = {},
+    dealCreatedBy?: CrmDealSource,
   ): Promise<CrmSyncResult> {
     const link = await this.deps.linkRepo.findByEntity(CRM_ENTITY.deal, dealEntityId);
-    if (!link && options.retryWhileDealMissing) {
-      return { outcome: "retry", error: crmDealNotLinkedError() };
-    }
-    if (!link || link.erasedAt) {
+    if (!link) return this.dealMissing(dealCreatedBy);
+    if (link.erasedAt) {
       return { outcome: "skipped", reason: "deal_link_missing" };
     }
     if (!isRealZohoLink(link.zohoModule, link.zohoRecordId)) {
@@ -184,16 +217,18 @@ export class CrmDealSyncHandler {
    * Adds a note to a deal in Zoho, once: the ledger records the note, so a replay adds nothing. A
    * held deal has no Zoho record to note, as for a stage change.
    *
-   * The ledger row is written as pending before the note is sent and made real after. If Zoho
-   * refuses the note or the call fails, the row is set back to "not added" and the delivery is
-   * retried. If the row is left pending (the note was sent, then the ledger write failed), the note
-   * may be in Zoho, so it is not sent again: a note is added at most once, never twice.
+   * The ledger row is claimed as pending (insert, or take over a refused note's row) before the
+   * note is sent, so two deliveries never both send it, and made real after. Only a definite
+   * refusal (Zoho answered 4xx or refused the record, or the request was never sent) sets the row
+   * back to "not added". Otherwise the row stays pending, and the note is looked up on the deal by
+   * its title before it is sent again: a note is added once, never twice.
    */
   async addDealNote(
     intent: Extract<CrmMappedIntent, { kind: "deal_note" }>,
   ): Promise<CrmSyncResult> {
     const link = await this.deps.linkRepo.findByEntity(CRM_ENTITY.deal, intent.dealEntityId);
-    if (!link || link.erasedAt) {
+    if (!link) return this.dealMissing(intent.dealCreatedBy);
+    if (link.erasedAt) {
       return { outcome: "skipped", reason: "deal_link_missing" };
     }
     if (!isRealZohoLink(link.zohoModule, link.zohoRecordId)) {
@@ -203,32 +238,47 @@ export class CrmDealSyncHandler {
       const blocked = await this.guardSubjectForDeal(link.subjectId);
       if (blocked) return blocked;
     }
-    const recorded = await this.deps.linkRepo.findByEntity(CRM_ENTITY.note, intent.noteRecordId);
-    if (recorded && !recorded.erasedAt) {
-      if (isRealZohoLink(recorded.zohoModule, recorded.zohoRecordId)) {
-        return {
-          outcome: "success",
-          providerReference: formatProviderReference({
-            module: "Notes",
-            recordId: recorded.zohoRecordId,
-            action: "insert",
-          }),
-        };
-      }
-      if (recorded.zohoModule === CRM_NOTE_PENDING_MODULE) {
-        return { outcome: "skipped", reason: "deal_note_maybe_added" };
-      }
-    }
     const subject = link.subjectId ? { subjectId: link.subjectId } : {};
-    const mark = (zohoModule: string) =>
+    const pendingState = {
+      zohoModule: CRM_NOTE_PENDING_MODULE,
+      zohoRecordId: CRM_TOMBSTONE_RECORD_ID,
+    };
+    const pending = {
+      entityType: CRM_ENTITY.note,
+      entityId: intent.noteRecordId,
+      ...pendingState,
+      heldPayload: { dealRecordId: link.zohoRecordId, title: intent.title },
+      ...subject,
+    };
+    const recorded = await this.deps.linkRepo.findByEntity(CRM_ENTITY.note, intent.noteRecordId);
+    // Erasure removed the note with the person's other records.
+    if (recorded?.erasedAt) return { outcome: "skipped", reason: "subject_erased" };
+    if (recorded && isRealZohoLink(recorded.zohoModule, recorded.zohoRecordId)) {
+      return noteAdded(recorded.zohoRecordId);
+    }
+    let from: ClaimCrmRecordLinkInput["from"] = CRM_NOTE_REFUSED;
+    if (recorded?.zohoModule === CRM_NOTE_PENDING_MODULE) {
+      // A send was cut off: the note may be in Zoho. Sent again only when it is not there and no
+      // live delivery can still be sending it.
+      const [found] = await this.deps.gateway.findNoteIds({
+        parentModule: "Deals",
+        parentId: link.zohoRecordId,
+        title: intent.title,
+      });
+      if (found) return this.recordNote(intent.noteRecordId, found, subject);
+      from = { ...pendingState, updatedBefore: new Date(Date.now() - CRM_NOTE_PENDING_GRACE_MS) };
+    }
+    const claimed = await this.deps.linkRepo.claimLink({ ...pending, from });
+    // Another delivery holds the note: it is tried again once that one is done.
+    if (!claimed) return { outcome: "retry", error: crmNoteInFlightError() };
+
+    const refused = () =>
       this.deps.linkRepo.upsertLink({
         entityType: CRM_ENTITY.note,
         entityId: intent.noteRecordId,
-        zohoModule,
-        zohoRecordId: CRM_TOMBSTONE_RECORD_ID,
+        ...CRM_NOTE_REFUSED,
         ...subject,
       });
-    await mark(CRM_NOTE_PENDING_MODULE);
     let note: Awaited<ReturnType<CrmGateway["createRecord"]>>;
     try {
       note = await this.deps.gateway.createRecord({
@@ -240,11 +290,11 @@ export class CrmDealSyncHandler {
         },
       });
     } catch (error) {
-      await mark("Notes");
+      if (isDefiniteCrmRefusal(error)) await refused();
       throw error;
     }
     if (note.status === "error") {
-      await mark("Notes");
+      await refused();
       throw new CrmGatewayError({
         code: note.code ?? "ERROR",
         message: note.message ?? "deal_note_failed",
@@ -252,21 +302,30 @@ export class CrmDealSyncHandler {
         retryable: false,
       });
     }
+    return this.recordNote(intent.noteRecordId, note.recordId, subject);
+  }
+
+  private async recordNote(
+    noteRecordId: string,
+    zohoRecordId: string,
+    subject: { subjectId?: string },
+  ): Promise<CrmSyncResult> {
     await this.deps.linkRepo.upsertLink({
       entityType: CRM_ENTITY.note,
-      entityId: intent.noteRecordId,
+      entityId: noteRecordId,
       zohoModule: "Notes",
-      zohoRecordId: note.recordId,
+      zohoRecordId,
       ...subject,
     });
-    return {
-      outcome: "success",
-      providerReference: formatProviderReference({
-        module: "Notes",
-        recordId: note.recordId,
-        action: "insert",
-      }),
-    };
+    return noteAdded(zohoRecordId);
+  }
+
+  /** The deal is not in the ledger: retried while the event that creates it is still to run. */
+  private async dealMissing(dealCreatedBy?: CrmDealSource): Promise<CrmSyncResult> {
+    if (dealCreatedBy && (await this.deps.dealSourceReader.isDeliveryInFlight(dealCreatedBy))) {
+      return { outcome: "retry", error: crmDealNotLinkedError() };
+    }
+    return { outcome: "skipped", reason: "deal_link_missing" };
   }
 
   /**
@@ -430,4 +489,15 @@ export class CrmDealSyncHandler {
     }
     return normalized;
   }
+}
+
+function noteAdded(zohoRecordId: string): CrmSyncResult {
+  return {
+    outcome: "success",
+    providerReference: formatProviderReference({
+      module: "Notes",
+      recordId: zohoRecordId,
+      action: "insert",
+    }),
+  };
 }

@@ -15,6 +15,7 @@ function setup(gatewayOverrides = {}) {
     gateway,
     linkRepo,
     personHandler: new CrmPersonSyncHandler({ gateway, linkRepo }),
+    dealSourceReader: { isDeliveryInFlight: vi.fn().mockResolvedValue(false) },
     paidBuyerHandler: new CrmPaidBuyerHandler({
       gateway,
       linkRepo,
