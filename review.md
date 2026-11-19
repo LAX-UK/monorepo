@@ -1,4 +1,4 @@
-Verdict: FIX FIRST
+Verdict: SHIP
 
 # Independent review of PR #1570: Zoho runtime audit fixes (F5, F6, F7, F9, F10, F11)
 
@@ -197,3 +197,50 @@ Fixed on `fix/zoho-runtime-audit` in `f0aaec44` (after merging `origin/main` at 
 | `tsc --noEmit` (worker, persistence) | clean |
 | biome (changed files) | clean |
 | `pnpm lint:deps` | passes |
+
+## Final recheck 2
+
+Rechecked head `f0aaec44` (`fix/zoho-runtime-audit`), which adds the fix `f0aaec44` on top of a merge of `origin/main` at `b3e9f9ce` (`f2274fc2`). The PR branch was not changed.
+
+**Verdict: SHIP.** The `worker-role-contract` failure is fixed, the PR's CI is fully green, and I found no new defects.
+
+### The fix is correct
+
+- **The lock gets its pool explicitly.** `DrizzleZohoListingLock` now takes a `ZohoListingLockPool` in its constructor (`drizzle-zoho-listing.ts:339`), and `withLock` checks out from `this.pool`. It no longer reads `$client` off a `Database`.
+- **It fails fast with a clear error, in two places:**
+  - `zohoListingLockPool(db)` (`:314`) throws `... pass the root database, not a transaction` when there is no `$client.connect`.
+  - The constructor throws `needs the pg pool ...` for anything without `connect()`.
+  - Both have database-free tests in `drizzle-zoho-listing-lock.integration.test.ts`. They run even without `DATABASE_URL`.
+- **All three factories wire it.** `create-zoho-artwork-listing.ts:61`, `create-zoho-artwork-location.ts:40` and `create-zoho-status-sync.ts:34` each use `new DrizzleZohoListingLock(zohoListingLockPool(db))` on the root `drizzle(pool)` database. No other `new DrizzleZohoListingLock(` remains outside tests.
+- **Session advisory locks are still always released.** The `withLock` body is unchanged apart from where the pool comes from:
+  - It takes locks in sorted key order.
+  - It unlocks in reverse in `finally`.
+  - If a lock or unlock fails, or the connection emits `'error'`, it destroys the connection instead of returning it to the pool, which ends the session and its locks.
+  - It removes its `'error'` listener before `release`.
+
+### The role-contract test covers the lock, and the test is not skipped
+
+- The lock is no longer in `STORES` or `ARGUMENTS`, which built it on a transaction. It is now in `COVERED_ELSEWHERE`, with the reason.
+  - `isDatabase` now treats a call that takes the database (`zohoListingLockPool(db)`) as the database. So the container scan still finds the lock in all three factories, and "has a probe for every store" still guards it.
+  - The broader match can only add names to the scan, which makes it stricter. It passes.
+- A new hand probe, "DrizzleZohoListingLock.withLock takes and frees its advisory lock as worker_app", builds the lock on the `worker_app` database. It checks `pg_locks` while `fn` runs (granted = 1), and again afterwards (0). Its `classid`/`objid` split of the `hashtext` bigint key is correct for negative hashes too.
+- **It runs.** With `--reporter=verbose` and `DATABASE_URL_WORKER` set, the probe is listed as ✓ (passed), not skipped.
+- **It catches a break.** I replaced `pg_advisory_unlock` with a no-op and rebuilt persistence. The probe then fails with `expected 1 to be +0`. I restored the file and confirmed the tree was clean afterwards.
+
+### Runs (throwaway Postgres 16 on :55432, migrated, probes seeded, `db:roles`, Redis; `DATABASE_URL_WORKER=postgresql://worker_app:…`, `WORKER_ROLE_CONTRACT_REQUIRED=true`, `--maxWorkers=2`)
+
+| Check | Result |
+|---|---|
+| `worker-role-contract` CI step (its 15 files) | 15 files, 616 passed, `not proven (0 of 321)` and `(0 of 151)` |
+| @auction/persistence | 185 files passed, 1 skipped; 1163 passed, 11 skipped, 0 failed |
+| @auction/worker | 2911 passed, 3 skipped. 1 file failed: `crm-deal-naming-reader.integration.test.ts`, with `shop_order_line_target_xor` in setup. This failure predates the PR and was noted in the first final recheck; the PR does not touch it, and it is not in a CI gate. (A first worker run hit `ECONNREFUSED` after the local Postgres crashed when its scratch data directory lost permissions. That was environmental. I moved the cluster and re-ran, and the re-run gave the result above.) |
+| `tsc --noEmit` (worker, persistence) | clean |
+| biome (files in `f0aaec44`) | clean |
+| `pnpm lint:deps` | passes |
+
+### GitHub checks on `f0aaec44` (via REST, because `gh pr checks` needs GraphQL, which is blocked here)
+
+38 check runs: 34 `success` and 4 `skipped` (the browser gates and the shop phase smoke, gated off by path). None are pending or failing.
+
+- Passed: `ci-result`, `worker-role-contract`, `auth-role-contract`, `static-checks`, `test`, `build`, every api/web/shop-api vitest shard, and the docker images.
+- The PR is open and mergeable.
