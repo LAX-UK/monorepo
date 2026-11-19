@@ -3,6 +3,7 @@ import {
   domainEventDelivery as delivery,
   domainEvent,
   artworkRegister as register,
+  artworkRegisterConflict as registerConflict,
   artworkRegisterEvent as registerEvent,
 } from "@auction/db/schema";
 import {
@@ -64,8 +65,32 @@ export class DrizzleZohoMirrorLedgerReader implements IZohoMirrorLedgerReader {
     if (entity === "artwork") rows.push(...(await this.listingRows(ids)));
 
     for (const { key: id, ...row } of rows) deliveries.get(id)?.push(row);
-    if (entity === "artwork") for (const list of deliveries.values()) list.sort(byEvent(consumer));
-    return { consumer, deliveries };
+    if (entity !== "artwork") return { consumer, deliveries };
+    for (const list of deliveries.values()) list.sort(byEvent(consumer));
+    return { consumer, deliveries, stockCodeConflictResolvedAt: await this.stockCodeResolved(ids) };
+  }
+
+  /** When each artwork's stock code conflicts were last resolved, for those with none still open. */
+  private async stockCodeResolved(registerIds: readonly string[]): Promise<Map<string, Date>> {
+    const rows = await this.db
+      .select({
+        registerId: registerConflict.registerId,
+        resolvedAt: sql<Date | string | null>`max(${registerConflict.resolvedAt})`,
+        open: sql<boolean>`bool_or(${registerConflict.status} = 'open')`,
+      })
+      .from(registerConflict)
+      .where(
+        and(
+          inArray(registerConflict.registerId, [...registerIds]),
+          eq(registerConflict.field, "stockCode"),
+        ),
+      )
+      .groupBy(registerConflict.registerId);
+    const resolved = new Map<string, Date>();
+    for (const { registerId, resolvedAt, open } of rows) {
+      if (!open && resolvedAt) resolved.set(registerId, new Date(resolvedAt));
+    }
+    return resolved;
   }
 
   private async rows(consumer: string, key: SQL<string>, where: SQL | undefined): Promise<Row[]> {

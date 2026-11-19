@@ -27,11 +27,15 @@ function service(
     paid?: Record<string, boolean>;
     modes?: ZohoMirrorStatusDeps["modes"];
     artworkListingMode?: ZohoMirrorStatusDeps["artworkListingMode"];
+    stockCodeConflictResolvedAt?: Map<string, Date>;
   } = {},
 ) {
   const read = vi.fn<ZohoMirrorLedgerReader["read"]>(async (_entity, ids) => ({
     consumer: "zoho_fulfilment",
     deliveries: new Map(ids.map((id) => [id, deliveries[id] ?? []])),
+    ...(options.stockCodeConflictResolvedAt
+      ? { stockCodeConflictResolvedAt: options.stockCodeConflictResolvedAt }
+      : {}),
   }));
   const paidOf = vi.fn<OrderPaymentStateReader["paidOf"]>(
     async (ids) =>
@@ -118,5 +122,28 @@ describe("ZohoMirrorStatusService", () => {
       { modes: { order: null, artwork: "off" }, artworkListingMode: "live" },
     );
     expect(await mirror.status("artwork", "r")).toMatchObject({ state: "failed", mode: "live" });
+  });
+
+  it("passes each artwork's stock code conflict resolution to the reading", async () => {
+    const conflict: MirrorDelivery = {
+      ...sent,
+      consumer: "zoho_artwork_writeback",
+      eventType: "artwork_register.stock_code_assigned",
+      status: "skipped",
+      providerReference: null,
+      lastError: "stock_code_conflict_raised",
+    };
+    const { service: mirror } = service(
+      { resolved: [conflict], open: [conflict] },
+      {
+        modes: { order: null, artwork: "live" },
+        stockCodeConflictResolvedAt: new Map([["resolved", new Date("2026-11-14T16:30:00.000Z")]]),
+      },
+    );
+    const items = await mirror.statuses("artwork", ["resolved", "open"]);
+    expect(items.map((item) => [item.id, item.state])).toEqual([
+      ["resolved", "not_applicable"],
+      ["open", "failed"],
+    ]);
   });
 });

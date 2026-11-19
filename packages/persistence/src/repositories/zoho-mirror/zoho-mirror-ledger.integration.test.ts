@@ -15,6 +15,7 @@ const TABLES = [
   "domain_event_delivery",
   "artwork_register",
   "artwork_register_event",
+  "artwork_register_conflict",
 ];
 let db: Database = null as never;
 
@@ -311,6 +312,65 @@ describe.skipIf(!url)("DrizzleZohoMirrorLedgerReader (Postgres)", { timeout: 30_
         REGISTER,
       ]);
       expect(deliveries.get(REGISTER)).toEqual([]);
+    });
+  });
+
+  describe("an artwork's resolved stock code conflicts", () => {
+    async function conflict(
+      registerId: string,
+      field: string,
+      resolved: { resolution: "accepted_zoho" | "kept_lax"; at: string } | null,
+    ) {
+      await db.execute(sql`
+        INSERT INTO artwork_register_conflict
+          (register_id, field, zoho_value, lax_value, status, resolution, resolved_by, resolved_at,
+           zoho_modified_at)
+        VALUES (${registerId}, ${field}, '"LAX-ORG-0002"'::jsonb, '"LAX-ORG-0001"'::jsonb,
+          ${resolved ? "resolved" : "open"}, ${resolved?.resolution ?? null},
+          ${resolved ? "staff:1" : null}, ${resolved?.at ?? null}, now())
+      `);
+    }
+
+    it("says when each artwork's stock code conflicts were last resolved, whichever way", async () => {
+      const acceptedZoho = randomUUID();
+      const keptLax = randomUUID();
+      const stillOpen = randomUUID();
+      const otherField = randomUUID();
+      const none = randomUUID();
+      await conflict(acceptedZoho, "stockCode", {
+        resolution: "accepted_zoho",
+        at: "2026-11-14T16:10:00Z",
+      });
+      await conflict(keptLax, "stockCode", { resolution: "kept_lax", at: "2026-11-14T16:05:00Z" });
+      await conflict(keptLax, "stockCode", { resolution: "kept_lax", at: "2026-11-14T16:20:00Z" });
+      await conflict(stillOpen, "stockCode", {
+        resolution: "kept_lax",
+        at: "2026-11-14T16:05:00Z",
+      });
+      await conflict(stillOpen, "stockCode", null);
+      await conflict(otherField, "catalogueStatus", {
+        resolution: "kept_lax",
+        at: "2026-11-14T16:05:00Z",
+      });
+
+      const ledger = await new DrizzleZohoMirrorLedgerReader(db).read("artwork", [
+        acceptedZoho,
+        keptLax,
+        stillOpen,
+        otherField,
+        none,
+      ]);
+      expect(ledger.stockCodeConflictResolvedAt).toEqual(
+        new Map([
+          [acceptedZoho, new Date("2026-11-14T16:10:00Z")],
+          [keptLax, new Date("2026-11-14T16:20:00Z")],
+        ]),
+      );
+    });
+
+    it("reads no conflicts for an order", async () => {
+      const ledger = await new DrizzleZohoMirrorLedgerReader(db).read("order", [ORDER_A]);
+      expect(ledger.stockCodeConflictResolvedAt).toBeUndefined();
     });
   });
 });
