@@ -105,7 +105,9 @@ export type PrivateSalePolicyGap =
   | "terms_version"
   | "commission_rate"
   | "vat_treatments"
-  | "payment_due_days";
+  | "payment_due_days"
+  /** No finance system issues deal invoices. Not part of the policy: the API adds it. */
+  | "invoice_issuer";
 
 /** What must still be configured before a real deal can be agreed and invoiced. */
 export function privateSalePolicyGaps(policy: PrivateSalePolicy): PrivateSalePolicyGap[] {

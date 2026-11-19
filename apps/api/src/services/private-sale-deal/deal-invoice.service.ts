@@ -1,10 +1,30 @@
-import { type DealBlocker, type DealInvoiceIssuer, computeDealMoney } from "@auction/domain";
-import type { IPrivateSaleDealFinanceStore } from "@auction/persistence/interfaces";
-import type { DealTransitionOutcome, DealTransitionService } from "./deal-transition.service.js";
+import type { Database } from "@auction/db";
+import {
+  type DealBlocker,
+  type DealInvoiceIssuer,
+  type DealInvoiceRequest,
+  computeDealMoney,
+} from "@auction/domain";
+import type {
+  IPrivateSaleDealFinanceStore,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
+import type { PrivateSaleDealDetail } from "@auction/types";
+import type {
+  DealTransitionOutcome,
+  DealTransitionScope,
+  DealTransitionService,
+} from "./deal-transition.service.js";
+
+/** The move to invoiced and the reference it records, bound to one transaction. */
+export type DealInvoiceScope = DealTransitionScope & {
+  finance: Pick<IPrivateSaleDealFinanceStore, "recordInvoiceReference">;
+};
 
 export type DealInvoiceDeps = {
   transitions: Pick<DealTransitionService, "transition">;
-  finance: Pick<IPrivateSaleDealFinanceStore, "recordInvoiceReference">;
+  transactionRunner: ITransactionRunner;
+  scopeForTx: (tx: Database) => DealInvoiceScope;
   /**
    * The finance system that issues invoices. `null` until one is connected, and then no deal can
    * be invoiced: a deal never reaches invoiced without a system that raises its invoice.
@@ -12,9 +32,20 @@ export type DealInvoiceDeps = {
   issuer: DealInvoiceIssuer | null;
 };
 
+/** The finance system gave no reference: the move to invoiced is undone. */
+class InvoiceNotIssued extends Error {}
+
+const NOT_ISSUED: DealTransitionOutcome = {
+  kind: "blocked",
+  blockers: [{ code: "invoice_not_issued" }],
+};
+
 /**
- * Moves a cleared deal to invoiced and records the reference of the invoice the finance system
- * raised for it, when there is one. This system never numbers or renders an invoice itself.
+ * Moves a cleared deal to invoiced together with the reference of the invoice the finance system
+ * raised for it, in one transaction: if the finance system returns no reference or fails, the move
+ * is undone and the deal stays where it was. This system never numbers or renders an invoice
+ * itself. The issuer is asked inside the transaction, so it must treat a repeat for the same deal
+ * as the same invoice (a move undone after it answered is tried again).
  */
 export class DealInvoiceService {
   constructor(private readonly deps: DealInvoiceDeps) {}
@@ -29,59 +60,78 @@ export class DealInvoiceService {
     actorUserId: string;
     expectedVersion?: number;
   }): Promise<DealTransitionOutcome> {
-    const blockers = this.blockers();
-    if (blockers.length > 0) return { kind: "blocked", blockers };
+    const { issuer } = this.deps;
+    if (!issuer) return { kind: "blocked", blockers: this.blockers() };
 
-    const outcome = await this.deps.transitions.transition(input.dealId, "issue_invoice", {
-      actorUserId: input.actorUserId,
-      ...(input.expectedVersion !== undefined ? { expectedVersion: input.expectedVersion } : {}),
-    });
-    if (outcome.kind !== "ok" || !this.deps.issuer) return outcome;
-
-    const { deal } = outcome;
-    if (
-      !deal.buyer ||
-      deal.priceMinor === null ||
-      deal.vatTreatment === null ||
-      deal.paymentDueAt === null
-    ) {
-      return outcome;
-    }
     try {
-      const issued = await this.deps.issuer.issue({
-        dealId: deal.id,
-        reference: deal.reference,
-        buyerLegalEntityId: deal.buyer.legalEntityId,
-        sellerLegalEntityId: deal.seller.legalEntityId,
-        money: computeDealMoney({
-          priceMinor: deal.priceMinor,
-          buyerFeeBps: deal.buyerFeeBps,
-          sellerCommissionBps: deal.sellerCommissionBps,
-          costsMinor: deal.costsMinor,
-        }),
-        vatTreatment: deal.vatTreatment,
-        paymentDueAt: deal.paymentDueAt,
+      return await this.deps.transactionRunner.runInTransaction(async (tx) => {
+        const scope = this.deps.scopeForTx(tx);
+        const outcome = await this.deps.transitions.transition(
+          input.dealId,
+          "issue_invoice",
+          {
+            actorUserId: input.actorUserId,
+            ...(input.expectedVersion !== undefined
+              ? { expectedVersion: input.expectedVersion }
+              : {}),
+          },
+          scope,
+        );
+        if (outcome.kind !== "ok") return outcome;
+        const reference = await raise(issuer, outcome.deal);
+        await scope.finance.recordInvoiceReference(outcome.deal.id, reference);
+        return { kind: "ok", deal: { ...outcome.deal, invoiceReference: reference } };
       });
-      if (!issued) return outcome;
-      await this.deps.finance.recordInvoiceReference(deal.id, issued.externalReference);
-      return { kind: "ok", deal: { ...deal, invoiceReference: issued.externalReference } };
     } catch (e) {
-      // The deal is invoiced; the reference can be attached when the finance system recovers.
+      if (!(e instanceof InvoiceNotIssued)) throw e;
       console.error(
         JSON.stringify({
-          msg: "private_sale_invoice_reference_failed",
-          dealId: deal.id,
-          error: e instanceof Error ? e.message : String(e),
+          msg: "private_sale_invoice_not_issued",
+          dealId: input.dealId,
+          error: e.message,
         }),
       );
-      return outcome;
+      return NOT_ISSUED;
     }
   }
+}
 
-  /** Attaches the reference of an invoice raised outside this system. */
-  async attachReference(input: { dealId: string; externalReference: string }): Promise<void> {
-    const reference = input.externalReference.trim();
-    if (reference === "") throw new RangeError("an invoice reference cannot be empty");
-    await this.deps.finance.recordInvoiceReference(input.dealId, reference);
+/** The reference the finance system returns for the deal's invoice; throws `InvoiceNotIssued` without one. */
+async function raise(issuer: DealInvoiceIssuer, deal: PrivateSaleDealDetail): Promise<string> {
+  const request = invoiceRequest(deal);
+  if (!request) throw new InvoiceNotIssued("deal_missing_invoice_terms");
+  let issued: Awaited<ReturnType<DealInvoiceIssuer["issue"]>>;
+  try {
+    issued = await issuer.issue(request);
+  } catch (e) {
+    throw new InvoiceNotIssued(e instanceof Error ? e.message : String(e));
   }
+  const reference = issued?.externalReference.trim() ?? "";
+  if (reference === "") throw new InvoiceNotIssued("no_reference_returned");
+  return reference;
+}
+
+function invoiceRequest(deal: PrivateSaleDealDetail): DealInvoiceRequest | null {
+  if (
+    !deal.buyer ||
+    deal.priceMinor === null ||
+    deal.vatTreatment === null ||
+    deal.paymentDueAt === null
+  ) {
+    return null;
+  }
+  return {
+    dealId: deal.id,
+    reference: deal.reference,
+    buyerLegalEntityId: deal.buyer.legalEntityId,
+    sellerLegalEntityId: deal.seller.legalEntityId,
+    money: computeDealMoney({
+      priceMinor: deal.priceMinor,
+      buyerFeeBps: deal.buyerFeeBps,
+      sellerCommissionBps: deal.sellerCommissionBps,
+      costsMinor: deal.costsMinor,
+    }),
+    vatTreatment: deal.vatTreatment,
+    paymentDueAt: deal.paymentDueAt,
+  };
 }
