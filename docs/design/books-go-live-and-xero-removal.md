@@ -192,7 +192,239 @@ What that means in practice:
 
 ## 4. Xero removal inventory
 
-INVENTORY_PLACEHOLDER
+Taken from `git grep -il xero` on `main` at #1575: **454 files** (156 of them tests), plus 5 files
+with Xero only in their path (`packages/db/src/xero-token-sealing/index.ts` and the 4 screenshots in
+`docs/design/screenshots/xero-reconnect-required/`). By area: `apps/api` 125, `apps/worker` 65,
+`apps/web` 59, `packages/persistence` 35, `packages/finance-runtime` 22, `packages/db` 20 + 10
+migrations, `packages/types` 14, `packages/background-runtime` 12, docs 42, and about 30 others
+(CI, env files, scripts, `shop-*`, staff-ui, exports, validators, queues, finance-cron-app).
+
+"Replaced by" names the Books path that already covers the job, or **delete** when nothing replaces
+it. **Rework** means the feature stays and only its Xero step goes.
+
+### 4.1 Packages and dependencies
+
+| Item | Where | Replaced by |
+| --- | --- | --- |
+| `xero-node` ^9 | `apps/api/package.json:84` (one `import type { TokenSet }` in `services/xero-oauth.service.ts`) | delete |
+| `xero-node` ^10 | `apps/worker/package.json:66` (not imported directly) | delete |
+| `xero-node` ^10 | `packages/finance-runtime/package.json:34` (the SDK user: `src/accounting/xero-*.ts`, `src/bill-to-xero.ts`) | delete; regenerate `pnpm-lock.yaml` and check that the transitive `openid-client@5` and `axios` have no other dependants |
+| `@auction/db/xero-token-sealing` export and `db:backfill-xero-token-sealing` | `packages/db/package.json:19-21,57`, `packages/db/src/xero-token-sealing/*`, `src/scripts/backfill-xero-token-sealing.ts` | delete. The Books sealer (`accounting-zoho-books/src/token-sealer.ts`) uses `@auction/identity-contracts` directly and does not depend on it |
+
+### 4.2 Environment variables
+
+Read by `apps/api/src/env.ts` and/or `apps/worker/src/env.ts` (and `packages/finance-runtime/src/env-slice.ts`):
+
+| Variable | Read by | Declared / passed in | Replaced by |
+| --- | --- | --- | --- |
+| `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REDIRECT_URI`, `XERO_TOKEN_DEK_KEY` | API, worker | `.env.example`, `.env.production.example`, `turbo.json`, `docker-compose.prod.yml`, 5 Terraform workflows | Books OAuth client settings and `ZOHO_BOOKS_TOKEN_DEK_KEY` (section 2A3) |
+| `XERO_WEBHOOK_KEY`, `XERO_WEBHOOK_INBOX_MODE` | API | `.env*`, `turbo.json`, compose (key only), 5 workflows (key only) | `ZOHO_BOOKS_NOTICE_SECRET` |
+| `XERO_POST_CONNECT_WEB_REDIRECT` | API | `.env.production.example`, `turbo.json`, compose, 5 workflows | Books connect flow redirect |
+| `XERO_DEFAULT_REVENUE_ACCOUNT_CODE`, `XERO_DEFAULT_TAX_TYPE`, `XERO_PAYOUT_BILL_ACCOUNT_CODE`, `XERO_USE_LEGAL_ENTITY_CONTACT` | API, worker | `.env*`, `turbo.json`, compose (first two), prod Terraform workflows | `ZOHO_BOOKS_ORG_CONFIG` (accounts, tax ids per organisation) |
+| `XERO_INVOICE_BLOCKING` | API | `.env*`, `turbo.json`, compose, prod workflows | delete (Books invoices come from events, never block checkout) |
+| `XERO_PAYMENT_BANK_ACCOUNT_CODE` | API, worker | `.env.production.example:351` only | `payments.depositAccountId` in `ZOHO_BOOKS_ORG_CONFIG` |
+| `XERO_API_WRITES_DISABLED` | API, worker, finance-runtime `xero-api-writes-guard.ts` | `.env.example:402` only (not passed by turbo, compose or workflows: must come from the infra repository) | delete with the writers; until then set `true` on test for the proof (section 5) |
+| `XERO_PROJECTOR_MODE`, `XERO_PROJECTOR_LIVE_OPERATIONS` | worker (`lib/runtime-ownership-config.ts`, `integrations/xero/xero-projector-config.ts`), background-runtime `validate.ts:96` | nowhere (defaults) | delete |
+| `TF_VAR_xero_invoice_due_days` | no consumer in this repository | prod workflows | delete |
+
+CI and Terraform: `terraform-apply-prod.yml` and `terraform-plan-prod.yml` pass 12 `TF_VAR_xero_*` each;
+`terraform-apply-test.yml`, `terraform-apply-test-dispatch.yml` and `terraform-test-up.yml` pass 6 each.
+GitHub secrets: `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_TOKEN_DEK_KEY`, `XERO_REDIRECT_URI`,
+`XERO_WEBHOOK_KEY`, `XERO_POST_CONNECT_WEB_REDIRECT`. The matching `variable "xero_*"` blocks and
+container env mappings are in the separate infra repository. Order: the infra repository makes them
+optional, this repository drops the `TF_VAR` lines, the infra repository deletes the variables, then
+the secrets are deleted. Removing a variable first fails plan and apply on an undeclared `TF_VAR`.
+
+Constants and Redis keys that go with their modules: `xero:refresh:` lock prefix, `xero:oauth_state:<state>`,
+`XERO_SCOPES`, `XERO_CAPTURE_VIAS`, `XERO_CONSUMER`/`XERO_EVENT_TYPES`, `XERO_LIVE_LOCAL_OPERATIONS`,
+`PAYMENT_XERO_FILTERS`, `XERO_SYNC_STATUS_LABELS`, `XERO_CALLBACK_ERROR_MESSAGES`, `XERO_FILTERS`.
+
+### 4.3 Database
+
+New migrations start after `0408`; each needs its `_rollback.sql`, journal entry and Drizzle schema change.
+
+| Object | Created in | Schema | Data |
+| --- | --- | --- | --- |
+| `xero_connection` (+ indexes, enum `xero_connection_status`, health columns, sealed token columns and checks) | 0016, 0078, 0367 | `schema/xero-integration.ts` | Drop, after revoking the app in Xero. |
+| `payment_external_ref` (+ enum `payment_external_sync_status`, indexes) | 0016 | same | The only link from a Bid payment to its Xero invoice. Under D1 nothing moves to Books; if any environment that must keep records (production) holds rows, export them to private storage before the drop. On test, drop. |
+| `xero_webhook_event` (+ indexes from 0042) | 0016, 0042 | same | Drop. |
+| `legal_entity.xero_contact_id` | 0027 | `schema/legal-entities.ts:91` | Export if production holds values, then drop. Books keeps its own contacts by LAX reference. |
+| `payout.xero_bill_id` | 0027 | `schema/payouts.ts:66` | As above. Books bills are `accounting_document` rows (kind `bill`). |
+| `accounting_source_setting.xero_mode`, `accounting_source_setting_xero_mode_ck`, `accounting_source_setting_one_live_ck`, generated `live_source`, seed `('bid','live','off')` | 0368 | `schema/accounting.ts:185-202` | Drop the column and checks; `live_source` is generated from `xero_mode`, so drop and recreate it (or drop it) in the same migration. |
+| `accounting_document.provider` / `target_provider` checks `IN ('xero','books')` | 0368 (+0374 unique key) | `schema/accounting.ts:57,59` | Count rows with `'xero'` first (expected 0), then narrow to `'books'`. |
+| Rows in shared tables | `domain_event_delivery` (consumer `xero`), `projector_state` (`xero`), `webhook_event` (source `xero`) | — | Purge. `audit_log` history is kept. |
+
+Grants (`packages/db/src/migrate-roles.ts`): `WORKER_FINANCE_INTEGRATION_TABLES` (L1077-1083) loses the
+three Xero tables and keeps `payment_refund_reconcile`; `SHOP_ACCOUNTING_READ_COLUMNS` (L594) gives
+`shop_app` a column grant on `xero_mode` and must change in the same release as the drop. Role contract
+tests (`api-app-role.contract.test.ts`, `worker-app-role.contract.test.ts`, `migrate-roles.test.ts`),
+migration tests (`migration-0367-*`, `migration-0368-*`, `migration-0374-*`, `migration-0389-*`) and the
+dev seed (`seed/dev/legacy-demo-seed.ts`: Xero tables, `xeroContactId`, `xeroBillId`,
+`xero_payout_bill_sync`) change with them.
+
+### 4.4 Jobs, crons, projectors, webhooks
+
+| Item | Files | Replaced by |
+| --- | --- | --- |
+| Cron `refresh-xero-tokens` (6 h) | `packages/queues/src/queue-names-finance-cron.ts`, `registries/finance-cron.ts`, worker `workers/register-finance-cron-workers.ts`, `jobs/payment-ops-cron.ts` | Books token manager refreshes on use |
+| Cron `retry-xero-webhook-failures` (15 min) | same | Books nightly status check (`accounting-reconcile`) and notices |
+| Cron `retry-xero-stripe-capture-sync` (15 min) | same | `accounting` projector (Bid payments) and `stripe-books-sync.service.ts` |
+| Cron `retry-xero-invoice-creation` (15 min) | same | `accounting` projector and sender retries |
+| Repeatable schedules already in Redis and their Sentry cron monitors | registered with `repeat` | one-off `removeRepeatable` for the 4 job ids (pattern in `register-webhook-worker.ts`); delete the monitors |
+| `ensure-lot-invoices` | `background-runtime/src/registry.ts:52`, finance-runtime `lot-invoice-initiation.service.ts:15,75,277-286` | **Rework**: keep raising payment rows, drop `ensureXeroInvoiceForPayment` |
+| `retry-refund-reconciles` | `packages/finance-cron-app/src/accounting-replay-cron.service.ts`, `accounting-replay-ports.ts` | **Rework**: keep the cron, delete the Xero credit-note step (Books: Bid refund credit notes) |
+| Finance cron paths | `background-runtime/src/finance-cron-paths.ts`, `finance-ownership-matrix.ts`, `finance-cron-app/src/finance-cron-paths.ts`, worker `finance-cron-dispatch.ts`, `create-worker-finance-cron.ts` | delete the 4 Xero paths |
+| Ownership registry and smoke gates | `background-runtime/src/{registry,types,validate,smoke-gates,runtime-ownership-smoke-gate-map,domain-event-smoke-gates,domain-event-smoke-gate-map,index}.ts` | delete entries **in the same PR** as the test files they point at |
+| Domain-event projector `xero` | `apps/worker/src/projectors/xero-projector.ts`, `xero-payout-bill-sync.ts`, `projector-registry.ts:60,105`, `lib/projector.types.ts`; `scripts/ci/worker-projector-names.mjs:27` | `accounting` projector |
+| Catalogue consumer `"xero"` | `packages/types/src/domain-event-catalog/registry.ts` (5 events), `types.ts:19`, `financial-payload-schemas.ts:163` (`lotEndedXeroPayloadSchemaV1`) | `accounting` consumer (already listed) |
+| Xero live executor (worker calls API `/internal/jobs/xero-*`) | `apps/worker/src/integrations/xero/*` (7 files), `container/create-worker-container.ts:636-640,729-740` | delete |
+| Inbound webhook dispatch `xero` | API `xero-webhook-ingress-application.service.ts`, worker `jobs/process-inbound-webhook-event.ts:28,67-83,163` | Books notices (`/webhooks/zoho-books/notices`) and status check; the Xero sync only records the Xero payment id and changes no payment state |
+
+### 4.5 API (`apps/api/src`)
+
+Routes to delete: `GET /admin/integrations/xero/status`, `GET …/oauth/consent-url`,
+`POST …/oauth/complete`, `POST …/disconnect` (`routes/xero-admin.ts`, mounted in
+`routes/admin/finance.routes.ts`); `POST /admin/payments/:id/xero-sync`; the `?xero=` filter on the
+admin payments list (`routes/admin/payments.routes.ts:36`); `POST /webhooks/xero` (`routes/xero-webhook.ts`,
+`app.ts`); `POST /internal/jobs/xero-payout-bill`, `retry-xero-webhook-failures`, `refresh-xero-tokens`,
+`retry-xero-stripe-capture-sync`, `retry-xero-invoice-creation`, `xero-sync-invoice-webhook`,
+`xero-record-stripe-capture`, `xero-record-refund-credit-note`, `xero-acknowledge-payout-settlement`
+(`routes/internal-cron.ts`); access rules in `routes/admin.ts:207-208`; route-DIP lists in
+`apps/api/scripts/check-*-dip*.mjs`; `docs/openapi.yaml`. **Rename, do not delete,**
+`ContainerXeroWebhookRoutesSlice` (`container/container-slices.ts:848`): the Books notice route uses it.
+
+Services to delete: `services/accounting/xero-*.ts` (11 re-exports of finance-runtime),
+`services/xero-oauth.service.ts`, `services/bill-to-xero.ts`, `services/payment/ensure-xero-invoice.ts`,
+`services/admin/admin-xero-application.service.ts`, `services/finance/xero-webhook-ingress-application.service.ts`,
+`lib/xero-api-writes-guard.ts`, `lib/xero-webhook-signature.ts`, the Xero methods of
+`services/finance/finance-accounting-cron-application.service.ts`.
+
+Rework (the money flow stays; Books already receives the same facts through domain events):
+
+| File | Xero step today | After |
+| --- | --- | --- |
+| `services/payment/checkout-orchestrator.ts:21,46,205-226`, `container/create-payment-group-services.ts` | Creates a Xero invoice at checkout (`xeroInvoiceBlocking`, 503 `accounting_unavailable`) | none; `invoice.raised` → Books |
+| `services/payment/payment-capture.service.ts:11,30,199-205` | Records the capture in Xero | none; `payment.captured` → Books |
+| `services/payment/refund-execution.ts`, `payment-refund-ops.ts` | Xero credit note on refund | none; `payment.refunded` → Books credit note |
+| `services/payment/payment-admin-ops.ts`, `payment.service.ts`, `payment-service-types.ts`, `admin/admin-payments-application.service.ts` | Admin Xero backfill and sync | Finance › Accounting Try again / Release |
+| `services/cron/settlement-cron.service.ts:40-41`, `finance/internal-cron-application.service.ts` | Xero payout bill | `payout.settlement_created` / `payout.paid` → Books bill |
+| `services/payment-me-presenter.ts:26-30,129-130` | Buyer invoice link and number from `payment_external_ref` | LAX's Books copy (`accounting_document_copy`, purchase invoice card) |
+| `subject-export/categories/invoices.category.ts` | DSAR lists Xero invoice numbers | Books documents |
+| `services/admin/admin-payment-list-query.service.ts`, `organization-onboarding.service.ts:81` | Xero filter, `xeroContactId` | Books document state, or drop |
+| Failed jobs: `admin/failed-jobs/sources/integration-registry.ts`, `integration-deliveries.source.ts`, `integration-payload-mask.ts`, `routes/admin/failed-jobs.routes.ts`; `middleware/dangerous-staff-actions.ts:310` | Source `integrations.xero` | `integrations.books` stays |
+| Containers: `container.ts`, `container/create-{payments-services,cron-services,finance-route-services,payments-repos,repositories,admin-services}.ts`, `services/admin/create-admin-*-services.ts`, `interfaces/admin-routes/*`, `interfaces/finance-routes/*`, `lib/runtime-ownership-config.ts` | Wiring | delete wiring |
+
+About 45 API test files carry Xero fixtures or mocks and change with these.
+
+### 4.6 Worker (`apps/worker/src`)
+
+- **Rework:** `finance/create-worker-finance-services.ts` (builds `createXeroAccountingStack`, sets the
+  payment maintenance provider, Xero cron handlers), `finance/create-worker-lot-invoice-initiation.ts:64-94`,
+  `finance/worker-payment-maintenance-adapter.ts:25-47`, `jobs/payout-statement.renderer.ts:140` and the
+  payout statement repository ("Xero bill id" on the seller statement: print the Books bill number or drop it),
+  `subject-export/summary.content.ts:38,62,88` (DSAR copy names Xero as the accounting processor).
+- **Delete:** `finance/worker-ensure-lot-invoices.ts` (not imported anywhere; it also passes a lot id
+  where a payment id is expected), Xero cron stubs and dispatch, `jobs/payment-ops-cron.ts` Xero jobs,
+  the `xero` branch of `jobs/process-inbound-webhook-event.ts`, `projectors/xero-*`, `integrations/xero/*`,
+  env entries and container wiring.
+- **Books code naming Xero:** `finance/accounting/accounting-projection.service.ts:187`,
+  `books-backfill.service.ts:18`, `repositories/drizzle-books-history.reader.ts` (deleted with the import),
+  `testing/in-memory-accounting-store.ts:53-82` (default `bid: { xero: "live" }` models "Books off":
+  change to `books: "off"`), and 22 Books integration tests that set `xero_mode`.
+
+### 4.7 Web and staff UI
+
+- **Delete:** `apps/web/src/app/admin/(finance)/integrations/xero/` (`page.tsx`, `loading.tsx`, `error.tsx`,
+  `callback/route.ts`; the `integrations/` folder holds nothing else; redirect the path to
+  `/admin/finance/accounting`), `components/admin/xero-integration-panel.tsx`,
+  `lib/admin/finance/load-xero-integration-page.ts`, `lib/admin/finance/xero-callback-error.ts`,
+  `lib/admin/xero-sync-status-presenter.ts`, `lib/admin/xero-sync-status.copy.ts`, the Xero server actions in
+  `lib/actions/admin/admin-payments.ts:115-167` and `lib/actions/admin.ts:81-88`, the Xero parts of
+  `lib/data/http/admin-payments.{reader,schema,server,types}.ts`, `lib/services/impl/admin-payment-ops.service.ts`.
+- **Navigation:** `components/layout/staff-nav.ts:427-432` (Xero item) and `L623` (`FINANCE_MOBILE_TAB_IDS`:
+  replace `"xero"` with `"accounting"`); finance hub card `lib/admin/finance/finance-hub.vm.ts:157-160`;
+  `scripts/staff-list-template-allowlist.json:22`; e2e `e2e/helpers/staff-routes.ts:45`, `e2e/admin-a11y.spec.ts:178-179`.
+- **Rework:** payments list and quick view (`components/admin/payments/payments-staff-list.tsx`,
+  `payment-quick-view.tsx`, `lib/admin/finance/payments-staff-list.vm.ts` with the saved views "Captured, no
+  invoice yet" and "Invoice sync failed", `lib/admin/list-controllers/payments-list-controller.ts`,
+  `lib/admin/build-payments-list-page-model.ts`, `app/admin/(finance)/payments/loading.tsx`),
+  `components/admin/admin-user-commerce-panel.tsx:88-93`, `lib/data/http/admin-parse.server.ts`,
+  `lib/data/view-models/admin-payments-table.vm.ts`, `admin-legal-entities.schema.ts:128`,
+  `seller-payouts.schema.ts:40`, buyer `lib/data/view-models/dashboard-payments.vm.ts:27` (opens the hosted
+  Xero invoice). Replacement: the Books document number and state from the accounting queue, and the
+  buyer's purchase invoice card (already on Books).
+- About 25 web test files and 5 `packages/staff-ui` tests use Xero only as fixture text.
+
+### 4.8 shop-api and shop-admin
+
+No Xero write path. `apps/shop-api/src/infrastructure/drizzle-order-invoice-books.reader.ts:24-36` reads
+`xero_mode` for `booksTargetMode` and must ship the Books-only switch **before** the column is dropped
+(tests: `drizzle-order-invoice-books.integration.test.ts`, `phase/original-sale-books.integration.test.ts`).
+shop-admin tests list the `integrations.xero` failed-job source
+(`server/domain/zoho-mirror.vm.test.ts`, `app/(staff)/orders/[orderId]/page.test.tsx`).
+
+### 4.9 Shared packages
+
+- **finance-runtime:** delete `src/accounting/xero-*.ts`, `src/bill-to-xero.ts`, `src/create-xero-accounting-stack.ts`,
+  `src/ensure-xero-invoice.ts`, `src/xero-api-writes-guard.ts`, the Xero env slice, `src/interfaces/invoice-accounting.ts`
+  and `src/accounting/no-op-accounting.provider.ts` (only the Xero path uses them), exports in `src/index.ts`;
+  rework `src/lot-invoice-initiation.service.ts`.
+- **persistence:** delete `interfaces/xero.repository.ts`, `repositories/drizzle-xero-connection.repository.ts`,
+  `drizzle-xero-webhook-event.repository.ts`, `drizzle-payment-external-ref.repository.ts`; rework
+  `drizzle-payment.repository.ts` (admin list joins), `drizzle-payment-refund-reconcile.repository.ts`
+  (`listPendingStripeCaptureSync`, `listPaymentsMissingXeroInvoice`), `drizzle-account-record-search.reader.ts`
+  (staff search by Xero invoice number), `drizzle-bid-portfolio.reader.ts`, `drizzle-legal-entity.{reader,repository}.ts`
+  (`setXeroContactId`, `findPrimaryAddressForXero`), `drizzle-payout.repository.ts` (`updateXeroBillId`), and the
+  accounting switch reader and writer (`repositories/accounting/drizzle-accounting-source-setting.{reader,writer}.ts`,
+  `drizzle-accounting-document.registry.ts:78`, `drizzle-accounting-document.work-queue.ts:43,173,201`).
+- **types:** `failed-job-sources.ts`, `failed-jobs.ts` (`integrations.xero`), `legal-entity.ts:73`, `payout.ts:51`,
+  `audit-log.ts:17` (`xero.` filter prefix: keep for history or remove), `domain-event-catalog/*`,
+  `domain-event-pii/allowlists.ts:14`.
+- **validators:** delete `xero.ts`; `payment.ts:37-54` (`adminPaymentXeroFilterSchema`).
+- **exports:** `providers/payments.provider.ts` (CSV filter `xero` and column `xero_invoice`: a user-visible
+  export change), `ports/*`, `infrastructure/drizzle-export-payout.reader.ts:22`.
+- **domain:** `src/purchase-invoice-state.ts:65` (comment).
+- **accounting-domain:** `src/source-switch.ts` (`SOURCES = ["xero","books"]`, `ProductSwitch`,
+  `validateProductSwitch`, `documentTarget`, `booksTargetMode`, `mayClaim`) becomes Books-only:
+  `ProductSwitch = { books: Mode }`, `two_live_sources` removed. README sections on rehearsing beside Xero.
+- **accounting-zoho-books:** comments only (README "Xero → Zoho Books move", token-sealer parity note).
+
+### 4.10 Scripts, CI and config
+
+`scripts/ci/authorize-cutover-preflight.mjs:11`, `scripts/ci/worker-projector-names.mjs:27`,
+`scripts/circular-deps-allowlist.json:118`, `scripts/staff-list-template-allowlist.json:22`,
+`scripts/ci/verify-client-copy.mjs:44` (forbids "Xero" in client copy: keep, it is still a valid guard),
+`turbo.json:106-117` (12 entries), `docker-compose.prod.yml:87-96,175-178`, `.env.example:230-231,358-402`,
+`.env.production.example:298-351`, `.gitleaks.toml:30` and `.gitleaksignore:9` (allow-list the Xero runbook;
+remove with it), the 5 Terraform workflows. Metrics `xero_invoice_deferred`, `xero_invoice_backfilled`,
+`xero_payment_record_failed`, `xero_refund_credit_note_failed` and any alert rules on them.
+Outside the repository: the Xero app (redirect URI, webhook subscription) in the Xero developer portal,
+the Sentry cron monitors, the infra repository variables.
+
+### 4.11 Docs
+
+Delete `docs/runbooks/xero-stripe-payment-setup.md`, `docs/runbooks/xero-token-loss.md`,
+`docs/design/screenshots/xero-reconnect-required/`. Replace `docs/runbooks/zoho-books-cutover.md` (PR 1).
+Edit: `docs/runbooks/{worker-runtime-cutover,atg-manual-settlement,async-delivery-phase-two,buyer-payment-flow,bid-checkout-go-live-notes,monitoring-alerts,stripe-connect-go-live,dispute-clawback,test-campaign-ops-pack,stripe-incident}.md`;
+`docs/architecture/0{1,2,3,4,6,7}-*.md` (add an ADR in `02-decisions.md`: Xero removed, Books only);
+`docs/SYSTEM_ANALYSIS.md`, `docs/DIAGRAMS.md`, `docs/README.md`, `docs/LOAD_TESTING.md`;
+`docs/security/secrets-management.md`, `docs/security/dpas.md` (Xero as data processor; the DPA list
+changes); `docs/openapi.yaml`; `docs/integrations/atg.md`; `docs/onboarding/0{1,3,4,5}-*.md`;
+`docs/ui/{redesign-program,staff-ui-architecture,staff-route-redesign-matrix}.md`;
+`docs/design/storage-terms.md`; `packages/accounting-domain/README.md`, `packages/accounting-zoho-books/README.md`.
+
+### 4.12 Safe removal order
+
+Each step is its own PR (section 6, PRs 14–17) and merges only after the section 5 proof. API, worker
+and web call each other, so each step ships in one release.
+
+| Step | What | Must hold first | Acceptance |
+| --- | --- | --- | --- |
+| X0 (ops) | `XERO_API_WRITES_DISABLED=true` and `XERO_PROJECTOR_MODE=off` on every environment; Xero webhook subscription deleted and the app's connection revoked in Xero; `domain_event_delivery` rows for consumer `xero` settled; exports taken (section 4.3) where an environment must keep records. | Section 5 passed. | No Xero call in logs for 7 days; nothing in Failed jobs under Xero. |
+| X1 | **Stop writing.** Worker: projector, live executor, 4 crons (+ `removeRepeatable`, Sentry monitors), inbound dispatch, catalogue consumer `"xero"`, smoke-gate entries. API: `/internal/jobs/xero-*`, `/webhooks/xero`, Xero steps in checkout, capture, refund, lot invoice initiation and settlement. finance-runtime and finance-cron-app Xero code. | The `accounting` projector carries every Bid flow on test (section 5). | `git grep -il xero` empty in `apps/worker`, `packages/finance-runtime`, `packages/finance-cron-app`, `packages/queues`, `packages/background-runtime`; checkout, capture, refund and settlement suites pass. |
+| X2 | **Stop reading and showing.** API admin Xero routes and `?xero=` filter, web Xero pages, nav, hub card, payments list/quick view, buyer invoice link (PR 9 already moved it to Books), staff search, portfolio, DSAR, CSV export, failed-job source `integrations.xero` (types, API, web, shop-admin). Persistence repos stop selecting Xero columns. Books-only switch everywhere, shop-api included (PR 2). | X1 released. | No code reads `xero_connection`, `payment_external_ref`, `xero_webhook_event`, `xero_contact_id`, `xero_bill_id` or `xero_mode`; e2e and a11y pass on the payments pages. |
+| X3 | **Drop the schema** (expand/contract: one release after X2). Migration drops the three Xero tables and enums, `xero_contact_id`, `xero_bill_id`, `xero_mode` and its checks, recreates `live_source`, narrows the `accounting_document` provider checks; purges Xero rows in shared tables; grants and role contract tests; Drizzle schema; seed. | X2 released; exports taken; `SELECT count(*) FROM accounting_document WHERE 'xero' IN (provider, target_provider)` is 0. | Migration and rollback tested on PostgreSQL 16; `db:roles` passes. |
+| X4 | **Config, dependencies, docs.** Infra repository variables, `TF_VAR_xero_*` lines, GitHub secrets (`XERO_TOKEN_DEK_KEY` only after X3), `turbo.json`, compose, `.env*`, `xero-node` ×3 and lockfile, `@auction/db/xero-token-sealing`, gitleaks entries, docs, ADR, DPA list. | X3 released. | `git grep -il xero` returns only historical migrations (and their tests), the ADR and this document; Terraform plan clean on test and prod. |
 
 ## 5. End-to-end proof on test (all must pass before any Xero removal PR merges)
 
@@ -264,9 +496,16 @@ means the in-memory fake and `SimulatedBooks`; no PR before B1 reaches Zoho.
 | 11 | **Real-Books fixes from the test organisation** | B | Mapper and classifier fixes for whatever item 4 of B finds; README "to confirm" list closed. | Contract suite updated to the confirmed shapes; one document of every kind issued on test. |
 | 12 | **End-to-end proof on test** | B | Run section 5 with `XERO_API_WRITES_DISABLED=true` on test; evidence under `docs/pr-evidence/books-test-proof/`. | Every box in section 5 ticked; accountant sign-off recorded (no personal data). |
 | 13 | **Accountant answers** (one PR per answer, any order) | C | C1–C9 code changes listed in section 2C. | Parked documents of that kind rebuild and issue on test; tests pin the treatment. |
-| 14–17 | **Xero removal** (section 4 steps X1–X4) | After 12 | One PR per removal step, in order. | Each step's acceptance in section 4; `git grep -i xero` is empty at the end except the historical migrations and this document. |
+| 14 | **Xero removal X1: stop writing** | After 12, X0 done | Section 4.12 X1. | As X1. |
+| 15 | **Xero removal X2: stop reading and showing** | After 14 is released | Section 4.12 X2. | As X2. |
+| 16 | **Xero removal X3: drop the schema** | After 15 is released | Section 4.12 X3. | As X3. |
+| 17 | **Xero removal X4: config, dependencies, docs** | After 16 is released | Section 4.12 X4. | As X4. |
 | 18 | **Go-live on production** | C1, C2, C8, C9, after 17 | Live organisations created and bound (`BOOKS_ORGANISATIONS.live`), production secrets and infra variables, both products `off → live` on the agreed date. | First live Bid invoice and Shop invoice issued and checked by the accountant; reconciliation clean for the first week. |
 
 Removal (14–17) goes before production go-live so that production never runs Xero and Books side
-by side: until PR 18 production keeps whatever Xero does today, and the switch to Books live is the
-last change.
+by side, and launches with Books only (D2). This assumes production has not launched with Xero
+writing real records. If it has, PRs 14 and 18 must ship in the same release (Books `live` the moment
+Xero writes stop), and the exports in section 4.3 are mandatory before PR 16.
+
+PRs 1–9 are independent of each other except 5 (after 3 and 4) and 7 and 8 (after 6), and can be
+reviewed in parallel. PR 13 can land at any point; each answer's documents stay parked until it does.
