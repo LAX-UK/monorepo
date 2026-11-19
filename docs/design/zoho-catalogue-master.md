@@ -29,8 +29,10 @@ Rules that follow from it:
    numbers LAX allocated.
 4. **Gallery print sales are recorded in LAX Admin**, not in Zoho. (Gallery sales of originals stay
    as they are: Zoho `Status` = `Sold`, recorded by LAX as sold in the gallery.)
-5. **Identity codes are issued by LAX** (stock code, print group code, SKU), as today. Zoho shows them
-   read-only.
+5. **Identity codes are issued by LAX** (stock code, print group code, SKU) in the shapes of the
+   owners' locked ID conventions (section 10). LAX issues numbers; Zoho never does. Zoho shows them
+   locked. LAX also owns the artist-code and collection-code registries the codes are built from
+   (10.2).
 
 This settles the "Owner decision pending: which system is master for prints" note in
 [zoho.md](../integrations/zoho.md#print-orders-to-zoho-outbound). Today LAX makes print groups and SKUs
@@ -56,7 +58,8 @@ not name the field, the name is marked *(confirm)* and must be checked in the or
 | `Year` | Z | `year` | |
 | `Unit_Price` | Z | `zoho_price` | Reference price shown beside LAX's offer price; never copied into an offer. |
 | Record image and attachments | Z | `image_refs`, `image_sources` | Existing image sync. |
-| `Reference_Stock_Code` | L | `stock_code` | LAX issues; a Zoho edit is the existing stock-code conflict. |
+| `Collection_Code` | Z (values from the LAX registry) | collection part of the stock code | **NEW** picklist; values are the LAX collection registry's codes (10.2). Read when LAX issues the stock code; an unknown value is a hold. Fixed once the code is issued. |
+| `Reference_Stock_Code` | L | `stock_code` | LAX issues `LAX-ORI-<ART>-<COL>-<YY>-<####>` when Zoho's is blank (owners' rule 3); staff leave it blank and Zoho shows it locked. A code typed in Zoho before the switch is read as legacy; a typed code on a new Product after it is a hold. A Zoho edit is the existing stock-code conflict. |
 | `Status` | **G** | `catalogue_status`, `catalogue_status_written` | Existing compare-and-set and "Zoho Status" conflict. Staff set `Sold` for a gallery sale of an original. |
 | `LAX_Listing`, `LAX_Listing_Detail`, `LAX_Listing_Link`, `LAX_Listing_Updated` | L | computed from register, lots, lax.art | Existing. |
 | `LAX_Location` | L | `artwork_location_move` (latest) | Existing. |
@@ -73,13 +76,13 @@ and images are reused unchanged. Per-category fields are in section 5.
 | `Product_Name`, `Year`, `Dimensions`, `Unit_Price`, images | Z | as originals | `Medium` is reused as "Materials" on the object layouts. |
 | `Item_Type` | Z | `item_type` | **NEW** (above). |
 | `Maker` | Z | `maker` | **NEW** text. Brand, house or designer. Replaces `Artist` for non-art; `Artist` stays empty. |
-| `Maker_Code` | Z | used in the stock code | **NEW** text (2 to 4 capitals or digits), optional; LAX uses `GEN` when empty. |
+| `Maker_Code` | Z (values from the LAX registry) | used in the stock code | **NEW** picklist of the LAX maker registry's codes (2 to 4 capitals or digits), optional; LAX uses `GEN` when empty. |
 | Category fields (section 5) | Z | `category_details` (jsonb) | **NEW**, per layout. |
 | `Condition_Summary` | Z | `condition_summary` | **NEW** multi-line. Full condition reports stay on the lot in LAX. |
 | `Provenance` | Z | `provenance` | **NEW** multi-line. |
 | `Restricted_Material` | Z | blocks offering | **NEW** picklist: `None`, `Ivory`, `Tortoiseshell`, `Other CITES`, `Unknown`. Anything but `None` blocks "Offer at auction" until a person with `artwork_register.review` clears it in LAX (the decision is LAX's; the fact is Zoho's). |
 | `Consignor` | Z | matched to the LAX client by `crm_record_link` | **NEW** lookup to `Contacts` *(confirm name)*. The agreement terms (lowest price, commission) stay in LAX's consignor agreement. |
-| `Reference_Stock_Code` | L | `stock_code` | Issued by LAX as `LAX-OBJ-{CAT}-{MAKER}-{YY}-{NNNN}`, e.g. `LAX-OBJ-WAT-GEN-26-0001` (`CAT` = `WAT`, `JWL`, `OBJ`). Fits the existing `STOCK_CODE_PATTERN` shape with a new `OBJ` kind segment. |
+| `Reference_Stock_Code` | L | `stock_code` | Issued by LAX as `LAX-OBJ-{CAT}-{MAKER}-{YY}-{NNNN}`, e.g. `LAX-OBJ-WAT-GEN-26-0001` (`CAT` = `WAT`, `JWL`, `OBJ`). Fits the existing `STOCK_CODE_PATTERN` shape with a new `OBJ` kind segment. **A new convention for owner approval** (10.3). |
 | `Status` | **G** | as originals | Same compare-and-set. |
 | `LAX_Listing*`, `LAX_Location`, `LAX_Sync_Issue` | L | as originals | `LAX_Listing` places for objects: Not offered, Draft lot in LAX Bid, In a LAX Bid sale, In a private sale, Sold in LAX Bid, Sold privately, Sold in the gallery, Withdrawn. |
 | `LAX_Estimate` | L | the open lot's estimate | **NEW** text (255), e.g. "£2,000–3,000 (sale 14 Dec)". Read-only visibility for Zoho users; empty when not in a sale. |
@@ -95,7 +98,7 @@ create it in Zoho.
 | `Linked_Original_Artwork` | Z | L | `source_original_id` | Must point at a Product already in the register as an original. Fixed once the group has a register row (changing it is a hold, section 3). |
 | `Edition_Type` (`Numbered` / `Open`) | Z | L | `shop_artwork.run_kind` (`limited` / `open`) | Fixed after the first print is sold (hold). |
 | `Total_Edition_Quantity` | Z | L | `run_size` | Hold if lower than the numbers LAX already allocated. |
-| `Collector_Allocation` | Z | L | `alloc_buyer` | Hold if lower than collector prints already sold. |
+| `Collector_Allocation` | Z | L | `alloc_buyer` | Prints held for the original's buyer (SKU `COL`). Hold if lower than collector prints already sold. Must be 0 for `Open` (10.2). |
 | `Artist_Allocation` | Z | L | `alloc_artist` | Same rule per bucket. |
 | `LAX_Allocation` | Z | L | `alloc_lax` | Same rule per bucket. A Zoho validation rule keeps the three equal to the total for `Numbered`. |
 | `Print_Sizes` | Z | — | `print_size` | **NEW** multi-select: `A4`, `A3`, `A2`, `A1` (`PRINT_SIZE_CODES`). The sizes this group may be sold in. |
@@ -138,15 +141,17 @@ to 192 with every size and paper):
 - **LAX writes the SKU record** the first time a SKU is sold (as the order mirror does today), only
   when every part is in the group's Zoho-defined offer. A listing or framing choice outside the offer
   cannot be published or sold in LAX Shop (section 3).
-- The SKU code and format are unchanged: `LAX-PRT-{group}-{SIZE}-{PAPER}-{FRAME}-{ALLOC}`
-  (`buildPrintSku`). No existing SKU is renamed or merged.
+- The SKU code and format are unchanged and match owners' rule 5: `<PRINTGROUP>-<SIZE>-<PAPER>-<FRAME>-<ALLOC>`,
+  e.g. `LAX-PRT-MP-GAC-26-0037-A3-COT-FRB-ART` (`buildPrintSku`). `ALLOC` is whose print it is:
+  `COL` the original's buyer (collector), `ART` the artist, `LAX` LAX (10.2). No existing SKU is
+  renamed or merged.
 
 | Zoho field | Owner | Notes |
 | --- | --- | --- |
 | `SKU` | L | Unique (existing requirement). |
 | `Linked_Print_Product_Group` | L | |
 | `Size`, `Paper`, `Frame` | L (values constrained by Z) | Always one of the group's `Print_Sizes` / `Print_Papers` / `Frames_Offered`. |
-| `Allocation_Bucket` | L | Who holds the edition sold. |
+| `Allocation_Bucket` | L | Who holds the edition sold: `COL`, `ART` or `LAX`. Never `COL` on an open edition. |
 | `Edition_Type` | L | Copy of the group's. |
 
 Staff profiles: read only, no create. If the owner later wants staff to create SKU records directly,
@@ -180,7 +185,7 @@ flowchart TD
     N["Nightly check 02:30"] --> D
     C --> D["Worker reads the Product by COQL<br/>assess and decide outcome"]
     D -->|"skipped: missing title, artist or maker, demo"| S["Outcome row with reason<br/>LAX_Sync_Issue written to Zoho"]
-    D -->|create| E["Register entry, held, Not offered<br/>LAX issues stock code"]
+    D -->|create| E["Register entry, held, Not offered<br/>LAX issues stock code from artist and<br/>Collection_Code (Zoho's code left blank)"]
     E --> F["Reference_Stock_Code written back<br/>LAX_Listing = Not offered"]
     E --> G{"Staff choose in LAX Admin<br/>From Zoho record"}
     G -->|"Offer at auction"| H["Draft lot in LAX Bid<br/>prefilled, linked to the entry"]
@@ -221,7 +226,7 @@ sequenceDiagram
     S->>S: Staff add description, edition facts, print batches,<br/>authorise editions, publish
     S-->>ZC: LAX_Listing On LAX Shop and LAX_Stock_Available
     Note over S,O: A buyer pays (online or gallery sale, 2.3)
-    S->>S: LAX allocates the edition number
+    S->>S: LAX reserves the edition number (final at fulfilment, ED ##/TOTAL)
     S->>O: shop.order.paid, shop.edition.sold
     O->>ZC: Print_Sold
     O->>ZC: Print_SKUs upsert (first sale of that SKU),<br/>Edition_Ledgers counters, Framing_Jobs, Dispatch
@@ -276,7 +281,7 @@ flowchart TD
 | Zoho-owned field changed in Zoho | Applies it. If a lax.art listing, Shop listing or Bid lot copies the field, raises the existing catalogue change so staff decide whether the copy follows (live lots and paid orders are never changed silently). | "Catalogue changes" section on the record (existing `CatalogueChanges`). | Their edit, as saved. |
 | Zoho-owned field edited in LAX | Not possible: no input is drawn, and the admin APIs refuse the field for a Zoho-linked record with `409 managed_in_zoho`. | Field shown as `SourcedField` with source "Managed in Zoho" and an "Open in Zoho" button. | — |
 | `LAX_*` field edited in Zoho | Only possible for Administrator or the integration user (field permissions). The next event or nightly pass writes LAX's value back, as the listing and location passes already do. Logged as drift. | Nothing new; drift count in Sync health. | Value returns to LAX's. |
-| Identity code (`Reference_Stock_Code`, `Print_Group_ID`, `SKU`) changed in Zoho | Never applied. Existing stock-code conflict card; for `Print_Group_ID` and `SKU` the same card with that field name. | Conflict card (existing `ConflictCard`): "Keep LAX's" or, for the stock code only, "Accept Zoho's". | Read-only for staff, so normally impossible. |
+| Identity code (`Reference_Stock_Code`, `Print_Group_ID`, `SKU`) changed in Zoho | Never applied. Existing stock-code conflict card; for `Print_Group_ID` and `SKU` the same card with that field name. | Conflict card (existing `ConflictCard`): "Keep LAX's". "Accept Zoho's" stays only for a legacy stock code that came from Zoho before the switch; a code LAX issued is never replaced (10.2). | Read-only for staff, so normally impossible. |
 | `Status` | Existing compare-and-set, unchanged. | Existing "Zoho Status" conflict. | Existing behaviour. |
 | Zoho value LAX cannot apply (a **hold**) | Keeps the last applied value, writes the reason to `LAX_Sync_Issue`, raises one open hold per field and value. Closed automatically when Zoho is corrected. | Hold card in the From Zoho record and an item in the From Zoho queue (same `ConflictCard` and `AttentionList` patterns): "Zoho says X, LAX keeps Y because …", with "Open in Zoho". No "accept" button: the fix is in Zoho. | `LAX_Sync_Issue`, e.g. "Edition size 20 is below the 24 numbers already allocated. LAX keeps 25." |
 | Record deleted in Zoho | Existing `zoho-product-gone` handling for Products. For a print group with editions or orders: hold, nothing deleted in LAX, listing withdrawn from sale. | Hold card. | Recycle bin; restore to clear. |
@@ -438,6 +443,10 @@ Sandbox (`laxintegrationtest`) first, then production. LAX never creates Zoho fi
 
 **Field permissions**
 
+- [ ] `Products`: `Collection_Code` picklist (values = LAX collection registry, section 10.2);
+      `Maker_Code` as a picklist of the LAX maker registry.
+- [ ] `Artists`: `Artist_Code1` read-only for staff (LAX writes it from its registry); retire
+      `Artist_Code2` after the registry backfill.
 - [ ] Every `LAX_*` field, `Reference_Stock_Code`, `Print_Group_ID`: read-only for every profile except
       the integration user's (Administrator keeps settings access by design).
 - [ ] `Edition_Ledgers` and `Print_SKUs`: module read-only for staff profiles (no create, edit,
@@ -504,11 +513,13 @@ switched.
 
 | # | Scope | Acceptance |
 | --- | --- | --- |
-| 1 | **Contracts.** Ownership table per module and item type in `field-ownership.ts`; hold rules for prints; SKU-in-offer check; `item_type` and `OBJ` stock-code kind; `managed_in_zoho` error code. No wiring. | Pure tests cover every row of section 1 and every hold in 3.1; existing tests unchanged. |
-| 2 | **Inbound print sync, dry run.** `Print_Products` reader (COQL), webhook route and nightly pass, outcome table, Last check view; `ZOHO_PRINT_CATALOGUE_MODE` (`off` / `dry_run` / `live`), live path not reachable yet. | Sandbox dry run reports create, update, hold and skip outcomes for seeded groups; writes nothing. |
-| 3 | **Migration script and flip.** `zoho:catalogue-master-migrate` (dry run, apply); live inbound print sync (register row, Edition_Ledgers creation, Shop listing fields, `Print_Group_ID`, `LAX_*` and `LAX_Sync_Issue` write-back); retire the `group` trigger and close superseded deliveries; order mirror checks SKUs against the offer. | Sandbox: dry run clean, apply idempotent, a full live pass changes nothing, mirror badge reads correctly; rollback by mode works. |
-| 4 | **Staff UX.** `SourcedField` "Managed in Zoho" and "Open in Zoho" on the LAX Shop prints listing, From Zoho record (label change) and Bid lot detail; API refusals; hold cards and queue items; **Record gallery sale** for prints in LAX Admin (channel `gallery`, payment method, optional client). | Playwright: fields read-only, button opens the record, hold shown; gallery sale allocates a number, emits `shop.order.paid` and mirrors to Zoho in the sandbox; light, dark, 375 px. |
-| 5 | **Bid items.** Inbound sync reads `Item_Type`, maker and category fields; register kind object and `LAX-OBJ` codes; `Restricted_Material` and consignor holds; "Offer at auction" prefill with the category map; `LAX_Estimate` write-back. | Sandbox: a watch goes from Zoho intake to a draft lot with prefilled fields, to sold and to unsold, with Status and `LAX_Listing` correct at each step. |
+| 1 | **Contracts.** Ownership table per module and item type in `field-ownership.ts`; hold rules for prints; SKU-in-offer check; `item_type` and `OBJ` stock-code kind (after owner approval, 10.3); `managed_in_zoho` error code. **Conventions (10.4):** artist, collection and maker registry types and rules (unique, never renamed or reused); `Collection_Code` hold; `COL` refused on open editions; QR content builders (stock number only; `<SKU> \| ED ##/TOTAL`), never a URL; `formatEditionLabel` above 99 per the owners' answer. No wiring. | Pure tests cover every row of section 1, every hold in 3.1 and rules 1 to 6 of section 10; existing tests unchanged. |
+| 2 | **Inbound print sync, dry run.** `Print_Products` reader (COQL), webhook route and nightly pass, outcome table, Last check view; `ZOHO_PRINT_CATALOGUE_MODE` (`off` / `dry_run` / `live`), live path not reachable yet. **Conventions:** originals' intake reads `Collection_Code` and, in dry run, reports "would issue" for a blank `Reference_Stock_Code` instead of `missing_stock_code`, and a hold for a typed code on a new Product. | Sandbox dry run reports create, update, hold and skip outcomes for seeded groups and the stock codes LAX would issue; writes nothing. |
+| 3 | **Migration script and flip.** `zoho:catalogue-master-migrate` (dry run, apply); live inbound print sync (register row, Edition_Ledgers creation, Shop listing fields, `Print_Group_ID`, `LAX_*` and `LAX_Sync_Issue` write-back); retire the `group` trigger and close superseded deliveries; order mirror checks SKUs against the offer. **Conventions:** LAX issues the original's stock code live (`issue()` gets its first production caller) and writes it back locked; "Accept Zoho's" limited to legacy codes; registry backfill from codes already issued, with non-conforming ones reported. | Sandbox: dry run clean, apply idempotent, a full live pass changes nothing, mirror badge reads correctly; rollback by mode works. |
+| 4 | **Staff UX.** `SourcedField` "Managed in Zoho" and "Open in Zoho" on the LAX Shop prints listing, From Zoho record (label change) and Bid lot detail; API refusals; hold cards and queue items; **Record gallery sale** for prints in LAX Admin (channel `gallery`, payment method, optional client). **Conventions:** artist, collection and maker registry screens (Administrator adds; no rename); staff labels show `ED ##/TOTAL`; printable QR labels for stock codes (frame back, inventory tag, storage docs) and for editions (packing checklist), stock number or SKU and edition only. | Playwright: fields read-only, button opens the record, hold shown; gallery sale allocates a number, emits `shop.order.paid` and mirrors to Zoho in the sandbox; light, dark, 375 px. |
+| 5 | **Bid items.** Inbound sync reads `Item_Type`, maker and category fields; register kind object and `LAX-OBJ` codes; `Restricted_Material` and consignor holds; "Offer at auction" prefill with the category map; `LAX_Estimate` write-back. **Conventions:** `LAX-OBJ` codes from the maker registry (only once approved); consignment deal named with type Auction Consignment. | Sandbox: a watch goes from Zoho intake to a draft lot with prefilled fields, to sold and to unsold, with Status and `LAX_Listing` correct at each step. |
+
+| 6 | **Conventions outside the catalogue flip** (independent of PRs 1 to 5). Deal names: entity client names, all five deal types wired (Part-Exchange, Commission / Placement, Auction Consignment have no producer today), decision on the ` +N` suffix and the reference fallback. Document names: stock code or SKU in the third part, the other eight document types use the formatter. `STO-<YY>-<####>` storage instructions with ADD / REMOVE / MOVE / RELEASE over `artwork_location_move` and print storage. `PRN-<YY>-<####>` printing jobs with PRINT / REPRINT / QC / FRAME. | Pure tests for each format; every producer listed in 10.1 rows 7 to 10 emits the convention; existing names on past deals and documents are not rewritten. |
 
 Docs (`docs/integrations/zoho.md`) are updated in the PR that changes each behaviour.
 
@@ -529,5 +540,104 @@ Docs (`docs/integrations/zoho.md`) are updated in the PR that changes each behav
    They carry a named confirmation and the certificate authority record in LAX; Zoho gets a read-only
    summary if wanted.
 6. **Stock code for Bid items.** *Recommended:* `LAX-OBJ-{WAT|JWL|OBJ}-{Maker_Code or GEN}-{YY}-{NNNN}`.
+   A **new convention** in the family of the owners' locked rules (10.3); needs owner approval before
+   PR 5 issues any.
 7. **Who may clear a `Restricted_Material` hold?** *Recommended:* Administrator only, with a reason
    and a recent sign-in, as the existing gallery-sale reopen.
+8. **Collector share of open editions.** The conventions define `COL` for numbered runs (the
+   original's buyer's prints, 10 of the LAX standard 24) but **do not define a collector revenue
+   share for open editions**, and LAX has none (artist / LAX split only). *Recommended until decided:*
+   no `COL` on open editions. Owner question.
+9. **When is the edition number assigned?** Rule 6 says at print fulfilment; LAX fixes the number at
+   payment and allows a swap until packing. *Recommended:* reserved at payment, final at the packing
+   check, where the `ED ##/TOTAL` identifier and QR are produced.
+10. **Smaller convention details.** YY for a work acquired in an earlier year (*recommended:* the
+    registration year, as the code does); the final size list (A4 to A1 today); the `ED` form for runs
+    over 99, proofs (`AP`, `PP`, `HC`, `BAT`) and open-edition prints; whether the deal-name ` +N`
+    suffix and the reference fallback for works without a stock code are acceptable.
+
+## 10. Owners' ID conventions: coverage
+
+The owners' "ID Logic & Naming Conventions" are locked. This section checks each rule against the
+code as it is today (file and line on this branch's base), says whether it fully matches, and states
+the exact gap. Every gap is an item in the PR plan (section 8); the ones that need an owner decision
+are in section 9.
+
+### 10.1 Rule by rule
+
+| # | Rule (owners' wording, short) | Where the code implements it today | Matches? | Gap |
+| --- | --- | --- | --- | --- |
+| 1 | **Artist code**: 2 to 3 letters, unique. | `ARTIST_CODE_PATTERN` and `assertSeries` in `packages/artwork-register-contracts/src/stock-code.ts:30`, `:86` (checked only when LAX issues a code; reading is lenient, `:24`). Zoho `Artists.Artist_Code1` / `Artist_Code2` read by `apps/worker/src/integrations/zoho/artwork/coql.ts:16` and resolved in `apps/worker/src/integrations/zoho/artwork/assess-product.ts:49`. Unique only on `shop_artist.zoho_artist_code` (`packages/db/src/schema/shop-commerce.ts:291`, `:299`). | Partly | No registry: the code lives in two free-text Zoho fields with no uniqueness, and `artwork_register.artist_code` is a plain copy (`packages/db/src/schema/artwork-register.ts:35`). Drift is already detected as the `artist_code_differs_from_stock_code` gap (`assess-product.ts:93`), not prevented. Legacy codes outside 2 to 3 letters are read and flagged (`non_standard_code_parts`, `stock-code.ts:101`). |
+| 2 | **Collection code**: 2 to 4 characters, unique within the artist. | `COLLECTION_CODE_PATTERN` in `stock-code.ts:31`, checked by `assertSeries` (`:86`) when LAX issues. The repository takes it as free input (`IssueRegisterEntry.collectionCode`, `packages/persistence/src/repositories/artwork-register/drizzle-artwork-register.repository.ts:152`). | Partly | No registry anywhere (no table, no Zoho field): a collection exists only as a segment inside codes already issued. "Unique within artist" is not enforceable because nothing lists an artist's collections or their names. |
+| 3 | **Original stock number** `LAX-ORI-<ART>-<COL>-<YY>-<####>`; YY = year registered/acquired; `####` sequential within artist + collection; QR content = stock number only; QR labels on frame back, inventory tag, packing checklist, storage docs. | Shape and parse: `STOCK_CODE_PATTERN`, `formatStockCode`, `nextStockCode` in `stock-code.ts:25`, `:109`, `:126` ("LAX issues numbers; Zoho never does", `:12`). Issuing: `issue()` in `drizzle-artwork-register.repository.ts:152` with a per-series advisory lock (`:264`), highest-number scan across years (`:269`) and YY = London calendar year at issue (`:1128`). | Partly | (a) **Nothing in production calls `issue()` for an original**: the only callers are tests. Originals come in from Zoho with `Reference_Stock_Code` already typed by staff (`apps/worker/src/integrations/zoho/artwork/to-catalogue-product.ts:70`); a blank code is a `missing_stock_code` skip (`assess-product.ts:15`). So today Zoho staff, not LAX, choose the number. (b) The stock-code conflict offers "Accept Zoho's" (section 3.1), which lets a Zoho value replace LAX's. (c) YY is always the registration year; "acquired" is not supported (recommended: keep registration year, section 9). (d) **No QR or label for stock codes exists.** The only QR code in LAX Admin encodes a short marketing URL for a sale or lot (`apps/web/src/components/admin/qr-code/admin-sale-lot-qr-print-button.tsx:158`); it must not be reused, since the rule forbids URLs. |
+| 4 | **Print group ID** `LAX-PRT-<ART>-<COL>-<YY>-<####>`, mirroring the original. | `printCodeForOriginal` in `stock-code.ts:141`; issued by `issuePrintGroup` (`drizzle-artwork-register.repository.ts:191`) from the mirror (`apps/worker/src/integrations/zoho/fulfilment/print-group-mirror.ts:114`). Legacy `PRI` is read as a print, never issued (`stock-code.ts:20`). | Yes | Edge only: `printCodeForOriginal` re-validates the parts (`formatStockCode` → `assertSeries`), so an original with a legacy non-conforming artist or collection code cannot get a print group. The migration reports it as `blocked` (4.2); the fix is the owners' re-code decision, not a code change. |
+| 5 | **Print SKU** `<PRINTGROUP>-<SIZE>-<PAPER>-<FRAME>-<ALLOC>`; SIZE `A4/A3/A2/A1` (or final list), PAPER `COT/BAR/HAH/MUN`, FRAME `UNF/FRB/FRW/FRN`, ALLOC `ART/COL/LAX`. | `buildPrintSku`, `parsePrintSku` and the code lists in `packages/artwork-register-contracts/src/print-sku.ts:11` to `:83`; holder mapping `original_buyer_entitlement → COL`, `artist → ART`, `lax → LAX` in `apps/worker/src/integrations/zoho/fulfilment/plan-order.ts:31`. | Yes | The size list is still "A4 to A1 or final list": confirm with the owners (section 9). Nothing checks a SKU against what the group offers yet (section 1.5, PR 1). |
+| 6 | **Edition identifier** `ED <##>/<TOTAL>` at fulfilment; QR content `<SKU> \| ED 07/25`; number assigned at print fulfilment; QR holds the ID only, never URLs. | `formatEditionLabel` in `print-sku.ts:90` gives `ED 07/25`; used for the Zoho fulfilment mirror by `editionAssigned` (`plan-order.ts:93`). | Partly | (a) No QR content is built: `parcelPrints` (`plan-order.ts:105`) joins SKU and edition with a space (`<SKU> ED 07/25`), not `<SKU> \| ED 07/25`. (b) Staff and pack screens use `printLabel` (`packages/shop-domain/src/edition-run.ts:362`): `7/24`, `AP 2/3`, `OE-0021`, not `ED 07/24`. (c) `shop_edition.label_code` is free text (seeded as initials plus stock ref, `apps/shop-api/src/infrastructure/seed/edition-runs-seed.ts:245`), not the convention. (d) `formatEditionLabel` returns null above 99 (runs of 100+ fall back to the shop label). (e) **Timing:** numbered prints are created with their numbers when the run is made and the buyer's number is fixed at payment, changeable by a print swap until packing (`apps/shop-api/src/application/print-fulfilment/swap-print.service.ts`); the rule says the number is assigned at fulfilment. (f) Proofs and open editions have no identifier in the conventions. |
+| 7 | **Deal name** `<Client Surname/Entity> — <Artist Code> — <Artwork Stock No> — <Deal Type> — <YYYY-MM>`; types Acquisition, Part-Exchange, Print Order, Commission / Placement, Auction Consignment. | `formatDealName` and `DEAL_TYPES` in `packages/artwork-register-contracts/src/naming.ts:14`, `:112`; facts from `apps/worker/src/integrations/crm/crm-deal-naming-reader.ts`; called in `apps/worker/src/integrations/crm/crm-event-mappers.ts:148` (`dealNameFor`) for a won lot (`:403`, Acquisition) and a paid shop order (`:565`, Acquisition or Print Order). | Partly | (a) Entity names are never used: the mapper passes only `personName` to `clientLabel` (`crm-event-mappers.ts:156`), so an organisation client gets a person's surname or nothing. (b) When the work has no stock code, the artist code is dropped and the lot or order reference stands in for the stock number (`naming.ts:113` to `:115`). (c) A multi-work order adds ` +N` (`naming.ts:116`), an extension the rule does not define. (d) Part-Exchange, Commission / Placement and Auction Consignment have no producer: no flow names a deal with them (a Bid consignment, section 2.4, would be Auction Consignment). |
+| 8 | **Document name** `<Doc Type> — <Client> — <Stock/SKU> — <Date YYYY-MM-DD>`; nine doc types. | `formatDocumentName`, `formatDocumentFileName`, `DOCUMENT_TYPES` in `naming.ts:23`, `:139`, `:158`. Only caller: the shop paid invoice, `apps/shop-api/src/application/order-invoice.ts:145`. | Partly | (a) The third part is the shop **order reference**, not a stock code or SKU. (b) The other eight document types have no caller; private-sale invoices and certificates are named elsewhere without the formatter. |
+| 9 | **Storage instruction** `STO-<YY>-<####> — <Stock No> — <Action>`; ADD / REMOVE / MOVE / RELEASE. | Moves of originals: `artwork_location_move` (`packages/db/src/schema/artwork-location.ts:56`), `LocationMove` and `planLocationMove` in `packages/artwork-register-contracts/src/stock-location.ts:45`, `:147`. Prints: free-text `shop_edition.storage_location` and `shop_edition_stock_batch` (`packages/db/src/schema/shop-commerce.ts:507`, `:691`). | No | No `STO` number, no sequence and no action: every row is an implicit MOVE (the first move doubles as ADD); REMOVE and RELEASE are not modelled; prints have no move history at all. |
+| 10 | **Printing job** `PRN-<YY>-<####> — <SKU> — <Action>`; PRINT / REPRINT / QC / FRAME. | Nearest things: open-run stock batches (`shop_edition_stock_batch`, `shop-commerce.ts:691`), framing tasks per order line (`shop_framing_task`, `packages/db/src/schema/shop-framing.ts:147`), Zoho `Framing_Jobs` from the mirror, and Zoho's own QC steps. | No | No `PRN` job, number or action list. Printing and reprints are not recorded as jobs; QC lives only in Zoho; FRAME exists as a task without the convention's ID. |
+
+### 10.2 What the catalogue-master design now says, to match the conventions
+
+- **The stock code is issued only by LAX.** When a Product arrives from Zoho with a blank
+  `Reference_Stock_Code`, LAX issues the next number for the artist and collection and writes it back
+  (flow 2.1). Zoho shows it locked (field permission, section 6). A code already typed in Zoho before
+  the switch is read as today (legacy). After the switch, a non-blank code on a **new** Product is a
+  hold ("Leave the stock code blank. LAX issues it."), and the stock-code conflict card keeps only
+  **Keep LAX's**; "Accept Zoho's" stays only for entries whose code came from Zoho before the switch.
+- **Registries: LAX owns both the artist-code and collection-code registries** (recommended). Reasons:
+  the codes are parts of identity codes only LAX issues, so uniqueness has to be checked in the same
+  transaction that issues the number (`lockSeries`); a code can never change once a number is issued
+  under it, which Zoho cannot enforce on a text field; Zoho today holds two unvalidated artist-code
+  fields and LAX already has to report drift. In practice: a small LAX Admin registry (artist code ↔
+  Zoho `Artists` record; collection code and name per artist), Administrator-only to add, never
+  renamed or reused. Zoho shows the artist code read-only in `Artist_Code1` (written by LAX;
+  `Artist_Code2` retired) and picks the collection in a **NEW** `Collection_Code` picklist on
+  `Products` whose values are the registry's codes; an unknown value is a hold. The choice of which
+  collection a work belongs to stays Zoho's (a catalogue fact), constrained by LAX's list, the same
+  pattern as `Print_Sizes`. `Maker_Code` for Bid items follows the same rule (LAX registry, Zoho
+  picklist).
+- **Print group ID mirrors the original** (rule 4): `Print_Group_ID` is always
+  `printCodeForOriginal(original's stock code)`; staff never type it (section 1.3, unchanged).
+- **ALLOC is whose print it is.** `COL` = an edition held for the **original's buyer (collector)**
+  (`original_buyer_entitlement`); `ART` = the artist's; `LAX` = LAX's. It is fixed per edition by
+  LAX's allocation, never chosen in Zoho. The LAX standard run is 24 numbered prints split **10
+  collector (`COL`) / 10 artist (`ART`) / 4 LAX (`LAX`)** (`LAX_STANDARD_ALLOCATION`,
+  `packages/shop-domain/src/edition-run.ts:63`), which is Zoho's `Collector_Allocation` /
+  `Artist_Allocation` / `LAX_Allocation` on the group. A custom numbered run uses the same three
+  holders with other counts.
+- **Open editions.** An open run has no numbered holders: LAX models it as an artist / LAX revenue
+  split (`OpenSplit = { artistPct, laxPct }`, `edition-run.ts:28`). **The conventions do not define a
+  collector revenue share for open editions**, and LAX has none. Until the owners decide, an
+  open-edition SKU uses `ART` or `LAX` only and `COL` is refused. Listed as open question 9.8.
+- **Edition number timing.** Section 2.2 says "LAX allocates the edition number" at payment. To
+  match rule 6, read it as: LAX **reserves** the number at payment and it becomes **final at
+  fulfilment** (the packing check, where a swap can still change it); the `ED ##/TOTAL` identifier and
+  its QR are produced at that point. Open question 9.9.
+
+### 10.3 Proposed Bid item code (new convention, needs owner approval)
+
+The locked conventions cover originals and prints only. For Bid items (watches, jewellery, objects)
+this design proposes, in the same family:
+
+`LAX-OBJ-<CAT>-<MAKER>-<YY>-<####>`, for example `LAX-OBJ-WAT-GEN-26-0001`.
+
+- `OBJ` takes the place of `ORI` / `PRT`. `CAT` (`WAT`, `JWL`, `OBJ`) takes the artist slot and fits
+  its 2 to 3 letter shape; `MAKER` takes the collection slot (2 to 4 characters from the LAX maker
+  registry, `GEN` when there is none).
+- `YY` is the registration year; `####` runs per category and maker across years, as rule 3.
+- QR content is the stock number only, as rule 3; deal type for a consignment is Auction
+  Consignment (rule 7).
+- **This is a new convention, not one of the owners' ten.** It is not built until the owners approve
+  it (open question 9.6).
+
+### 10.4 Where the gaps go
+
+| Gap | PR (section 8) |
+| --- | --- |
+| Artist-code and collection-code registries; `Collection_Code` hold; `OBJ` kind (after approval); open-edition `COL` refusal; `ED` label above 99 decision; QR content builders (`<stock no>`, `<SKU> \| ED ##/TOTAL`) as pure functions | 1 |
+| LAX issues the original's stock code on a blank Zoho code; non-blank new code is a hold; "Accept Zoho's" limited to legacy codes | 2 (dry run) and 3 (live) |
+| Registry screens in LAX Admin; staff labels show `ED ##/TOTAL`; QR labels for stock codes and editions (frame back, inventory tag, packing checklist, storage docs) | 4 |
+| Bid item `LAX-OBJ` codes and maker registry; Auction Consignment deal name | 5 |
+| Deal names with entity clients and all five deal types; document names with stock code or SKU and all nine document types; `STO` storage instructions with actions; `PRN` printing jobs with actions | 6 (new, outside the catalogue flip) |
