@@ -14,6 +14,7 @@ import {
   publicRequestHost,
 } from "@/lib/seo/art-indexing";
 import { resolveLegacyRedirect } from "@/lib/seo/legacy-redirects";
+import { resolveThelaxArtHostRedirect } from "@/lib/seo/thelax-art-redirects";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -22,6 +23,17 @@ export function middleware(request: NextRequest) {
     laxAccountUrl,
     shopBaseUrl: shopBaseUrl(loadArtCrossProductFooterLinks()),
   };
+  // thelax.art → lax.art host move: one permanent hop to the final URL, before any other rule.
+  const hostMove = resolveThelaxArtHostRedirect(
+    request.nextUrl,
+    publicRequestHost(request.headers),
+    loadArtStorefrontBaseUrl(),
+  );
+  if (hostMove) {
+    const location = followRetiredArtRoute(hostMove, loadArtStorefrontBaseUrl(), destinations);
+    return NextResponse.redirect(location, 301);
+  }
+
   const retired = resolveRetiredArtRoute(request.nextUrl.pathname, destinations);
   if (retired) {
     return NextResponse.redirect(new URL(retired, request.url), 308);
