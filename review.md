@@ -127,3 +127,45 @@ Re-run on Postgres 16 :55432 with Redis, `vitest run --maxWorkers=2`:
 | @auction/worker | 2406 passed, 508 skipped (299 files) |
 | @auction/persistence | 1160 passed, 11 skipped. One failure, `consignor-agreement.integration.test.ts` "lets one of two replaces of the same version win", is a race test in an untouched file. It passed on 2 of 2 reruns. |
 | `tsc --noEmit` (worker, persistence) and biome on the changed files | clean |
+
+## Final recheck
+
+Rechecked head `1937641c` (`fix/zoho-runtime-audit`), which includes the fix commits `630268e9` and `1937641c`. The PR branch was not changed. The branch still merges cleanly with the current `origin/main` (`b3e9f9ce`) and with #1571.
+
+**Verdict: FIX FIRST.** The B1 fix and the two hardening notes are correct. But the PR's own CI is red: the `worker-role-contract` job fails, which makes `ci-result` fail. That is a regression from F11 (`b199cf5c`), and this round's fixes do not touch it.
+
+### B1 and notes 1 to 3: confirmed fixed
+
+- **Slot reserved synchronously.** `zoho-crm-gateway-limiter.ts:101-112`: after `throwIfCircuitOpen(now)`, `slot = max(now, nextSlotMs)` and `nextSlotMs = slot + 100` are set before the only `await`. Overlapping callers therefore get successive slots 100 ms apart.
+- **Open circuit.** It is checked before a slot is reserved, so a refused call never takes a slot, and it throws the same retryable 503 (`zoho_crm_circuit_open`, `status: 503`, `retryable: true`) before Zoho is called. It is checked again after the sleep (`:111`). A caller refused after its sleep counts no failure.
+- **No deadlock and no unbounded queue.** There is no lock or chained promise, only one timer per waiting caller, so the number waiting is the number of callers in flight (bounded by job concurrency).
+  - Minor: slots reserved by callers later refused at the re-check are not given back, so the first call after the circuit closes may wait out their leftover slots. That costs at most 100 ms per refused caller, against a circuit that stays open for at least 60 s. It is harmless, so not blocking.
+- **Tests fail against the old limiter.** With `b199cf5c`'s limiter put back, "spaces concurrent calls at least 100 ms apart" and "re-checks the circuit after waiting for a slot" fail (2 failed, 4 passed). With the fix, all 6 pass. `oauth-token-refresh.test.ts` also passes.
+- **Note 1.** `AbortSignal.timeout(15_000)` is on the token fetch, and it is tested.
+- **Note 2.** The `'error'` listener is attached for the hold and removed before `release(destroy)`. After a dropped connection, the unlock queries fail and are caught, `destroy` is already true, and the client is destroyed. This is correct.
+- **Docs.** `zoho.md:330` is now accurate: combined cap, slot reservation, 503 after the wait, shared failure count, 15 s refresh timeout.
+
+### New blocking finding: the worker store role contract fails (F11)
+
+- **Where.** `DrizzleZohoListingLock.withLock` (`drizzle-zoho-listing.ts:326`) now does `(this.db as …).$client.connect()`.
+- **Why it fails.** `worker-store-role-contract.integration.test.ts` builds every store on a rolled-back transaction (`new Store(tx)`, `:568`). A drizzle transaction has no `$client`, so the probe throws `DrizzleZohoListingLock.withLock: Cannot read properties of undefined (reading 'connect')`. The test "reports the calls that never reached PostgreSQL" (`:602-605`) then fails.
+- **Evidence:**
+  - Reproduced locally with `DATABASE_URL_WORKER` set: the file run alone fails 1 test.
+  - On #1571's head (same base, without F11) the same file passes.
+  - On GitHub, #1570's `worker-role-contract` check is `failure` and `ci-result` is `failure`. #1571's `worker-role-contract` is `success`.
+  - The earlier review runs and the fixer's runs did not set `DATABASE_URL_WORKER`, so they skipped this test. That is how it was missed.
+- **Production is not affected.** The three factories (`create-zoho-artwork-listing.ts:60`, `create-zoho-artwork-location.ts:39`, `create-zoho-status-sync.ts:33`) pass the root `drizzle(pool)` database, which has `$client`. But the merge gate is red, and a lock silently built on a transaction would fail at run time with the same opaque `TypeError`.
+- **Fix, either one:**
+  - give the lock its pool explicitly (constructor argument, or fail fast with a clear error when `$client` is missing) and teach the contract test that this class is not built on a transaction;
+  - or write a hand probe in `ARGUMENTS`/`BUILT_BY_FACTORY` that runs `pg_advisory_lock`/`pg_advisory_unlock` as `worker_app`.
+
+  Either way, re-run `worker-role-contract` green.
+
+### Runs (Postgres 16 on :55432 and Redis, `vitest run --maxWorkers=2`, with `DATABASE_URL_WORKER` set)
+
+| Check | Result |
+|---|---|
+| @auction/persistence | 1164 passed, 8 skipped (186 files), including `drizzle-zoho-listing-lock.integration.test.ts` and its new dropped-connection test |
+| @auction/worker | 2905 passed, 1 failed, 8 skipped. The failure is the role contract above. 3 more files failed in `beforeAll`: 2 with `tuple concurrently updated` from `applyApplicationRoleGrants` racing across parallel files, which pass when re-run alone; and `crm-deal-naming-reader.integration.test.ts` with `shop_order_line_target_xor`, which fails the same way on #1571's tree (it predates both PRs, is untouched, and is not a CI gate here) |
+| `tsc --noEmit` (worker, persistence) | clean |
+| `pnpm lint:deps` | passes |
