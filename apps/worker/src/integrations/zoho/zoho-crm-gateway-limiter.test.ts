@@ -88,4 +88,68 @@ describe("ZohoCrmGatewayLimiter", () => {
     });
     await expect(limiter.upsert(input)).resolves.toMatchObject({ status: "success" });
   }, 15_000);
+  it("spaces concurrent calls at least 100 ms apart", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const startedAt: number[] = [];
+    const inner = fakeGateway({
+      executeCoql: vi.fn().mockImplementation(async () => {
+        startedAt.push(Date.now());
+        return [];
+      }),
+    });
+    const limiter = new ZohoCrmGatewayLimiter(inner);
+    const calls = Array.from({ length: 6 }, () => limiter.executeCoql("select id from Products"));
+    await vi.advanceTimersByTimeAsync(1_000);
+    await Promise.all(calls);
+
+    expect(startedAt).toHaveLength(6);
+    const gaps = startedAt.slice(1).map((t, i) => t - (startedAt[i] as number));
+    for (const gap of gaps) {
+      expect(gap).toBeGreaterThanOrEqual(100);
+    }
+  });
+
+  it("throws the retryable 503 before calling Zoho while the circuit is open", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const upsert = vi.fn().mockRejectedValue(new ZohoCrmHttpError(503, "unavailable"));
+    const limiter = new ZohoCrmGatewayLimiter(fakeGateway({ upsert }));
+    const input = { module: "Leads" as const, fields: {}, duplicateCheckFields: [] as string[] };
+    for (let i = 0; i < 5; i++) {
+      const call = expect(limiter.upsert(input)).rejects.toThrow();
+      await vi.advanceTimersByTimeAsync(100);
+      await call;
+    }
+    expect(upsert).toHaveBeenCalledTimes(5);
+
+    await expect(limiter.upsert(input)).rejects.toMatchObject({
+      message: "zoho_crm_circuit_open",
+      status: 503,
+      retryable: true,
+    });
+    expect(upsert).toHaveBeenCalledTimes(5);
+  });
+
+  it("re-checks the circuit after waiting for a slot", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    const upsert = vi.fn().mockRejectedValue(new ZohoCrmHttpError(503, "unavailable"));
+    const limiter = new ZohoCrmGatewayLimiter(fakeGateway({ upsert }));
+    const input = { module: "Leads" as const, fields: {}, duplicateCheckFields: [] as string[] };
+    // Five failing calls and a sixth queued behind them. The fifth failure opens
+    // the circuit while the sixth is still waiting for its slot.
+    const calls = Array.from({ length: 6 }, () =>
+      limiter.upsert(input).catch((err: unknown) => err),
+    );
+    await vi.advanceTimersByTimeAsync(1_000);
+    const results = await Promise.all(calls);
+
+    expect(upsert).toHaveBeenCalledTimes(5);
+    expect(results[5]).toMatchObject({
+      message: "zoho_crm_circuit_open",
+      status: 503,
+      retryable: true,
+    });
+  });
 });

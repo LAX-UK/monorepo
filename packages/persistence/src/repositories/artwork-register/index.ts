@@ -9,6 +9,9 @@ export {
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
   DrizzleZohoListingSourceReader,
+  type ZohoListingLockPool,
+  zohoListingLockKey,
+  zohoListingLockPool,
 } from "./drizzle-zoho-listing.js";
 export { DrizzleSoldAttentionStore } from "./drizzle-sold-attention.store.js";
 export { DrizzleStockLocationStore } from "./drizzle-stock-location.store.js";

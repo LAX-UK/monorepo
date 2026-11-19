@@ -297,21 +297,89 @@ export class DrizzleZohoListingSourceReader
   }
 }
 
+/** The one pooled connection the lock is held on. */
+type LockClient = {
+  query(text: string, params?: unknown[]): Promise<unknown>;
+  release(destroy?: boolean): void;
+  on(event: "error", listener: (error: Error) => void): unknown;
+  off(event: "error", listener: (error: Error) => void): unknown;
+};
+/** The pg pool the lock checks its connection out of: the root database's `$client`. */
+export type ZohoListingLockPool = { connect(): Promise<LockClient> };
+
 /**
- * Per-artwork transaction-scoped advisory locks, taken in id order so two holders of overlapping
- * sets can never deadlock. The transaction writes nothing; it only holds the locks.
+ * The pg pool behind a root `drizzle(pool)` database, for `DrizzleZohoListingLock`. A transaction
+ * has no pool of its own (and the lock must not be held inside one), so it is refused here.
+ */
+export function zohoListingLockPool(db: Database): ZohoListingLockPool {
+  const pool = (db as unknown as { $client?: ZohoListingLockPool }).$client;
+  if (typeof pool?.connect !== "function") {
+    throw new Error(
+      "zohoListingLockPool: the database has no pg pool ($client); pass the root database, not a transaction",
+    );
+  }
+  return pool;
+}
+
+/** The advisory-lock key for one register entry, shared by every Zoho Products writer. */
+export function zohoListingLockKey(registerId: string): string {
+  return `zoho_listing:${registerId}`;
+}
+
+/**
+ * Per-artwork session-level advisory locks on one dedicated pool connection, taken in id order so
+ * two holders of overlapping sets can never deadlock, and unlocked explicitly when `fn` settles.
+ *
+ * No transaction is open while `fn` runs. `fn` makes Zoho HTTP calls for a whole batch, so a
+ * transaction-scoped lock would leave its connection idle in transaction for that long, where an
+ * `idle_in_transaction_session_timeout` aborts it after the Zoho writes were sent. If unlocking
+ * fails, the connection is destroyed instead of returned, which ends the session and its locks.
  */
 export class DrizzleZohoListingLock implements IZohoListingLock {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly pool: ZohoListingLockPool) {
+    if (typeof pool?.connect !== "function") {
+      throw new Error(
+        "DrizzleZohoListingLock: needs the pg pool (see zohoListingLockPool), not a database or transaction",
+      );
+    }
+  }
 
   async withLock<T>(registerIds: readonly string[], fn: () => Promise<T>): Promise<T> {
-    const ids = [...new Set(registerIds)].sort();
-    return this.db.transaction(async (tx) => {
-      for (const id of ids) {
-        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`zoho_listing:${id}`}))`);
+    const keys = [...new Set(registerIds)].sort().map(zohoListingLockKey);
+    const client = await this.pool.connect();
+    const held: string[] = [];
+    // A connection that failed mid-lock (or mid-unlock) is not reused: dropping it ends the session.
+    let destroy = false;
+    // pg-pool drops its idle 'error' listener on checkout. Without one of our own, a server that
+    // drops this connection while `fn` runs emits an unhandled 'error' that can crash the process.
+    // The session (and its locks) is gone anyway, so just mark the connection for destruction.
+    const onError = () => {
+      destroy = true;
+    };
+    client.on("error", onError);
+    try {
+      for (const key of keys) {
+        try {
+          await client.query("select pg_advisory_lock(hashtext($1))", [key]);
+        } catch (error) {
+          destroy = true;
+          throw error;
+        }
+        held.push(key);
       }
-      return fn();
-    });
+      return await fn();
+    } finally {
+      for (const key of destroy ? [] : held.reverse()) {
+        try {
+          await client.query("select pg_advisory_unlock(hashtext($1))", [key]);
+        } catch {
+          destroy = true;
+          break;
+        }
+      }
+      client.off("error", onError);
+      client.release(destroy);
+    }
   }
 }
 

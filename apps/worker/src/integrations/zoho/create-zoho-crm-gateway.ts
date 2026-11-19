@@ -5,26 +5,41 @@ import { ZohoCrmGatewayCrmErrorAdapter } from "./zoho-crm-gateway-crm-error-adap
 import { ZohoCrmGatewayLimiter } from "./zoho-crm-gateway-limiter.js";
 import { ZohoCrmGateway } from "./zoho-crm-gateway.js";
 
-/** The Zoho gateway behind its limiter and error mapping; one stack serves writes and COQL reads. */
+/**
+ * One limiter per worker process (the worker parses its env once), shared by every Zoho CRM stack:
+ * CRM sync, write-back, Status, listing, location, fulfilment, QC and the scripts. All of them
+ * spend one org's API credits, so they share one call spacing and one circuit breaker.
+ */
+const processLimiters = new WeakMap<WorkerEnv, ZohoCrmGatewayLimiter>();
+
+export function zohoCrmGatewayLimiter(env: WorkerEnv): ZohoCrmGatewayLimiter {
+  let limiter = processLimiters.get(env);
+  if (!limiter) {
+    const inner = new ZohoCrmGateway(env, {
+      apiHost: env.ZOHO_CRM_API_HOST,
+      trigger: parseZohoCrmTrigger(env.ZOHO_CRM_UPSERT_TRIGGER),
+    });
+    limiter = new ZohoCrmGatewayLimiter(inner);
+    processLimiters.set(env, limiter);
+  }
+  return limiter;
+}
+
+/** The Zoho gateway behind the process's shared limiter and error mapping. */
 function createZohoCrmStack(env: WorkerEnv): ZohoCrmGatewayCrmErrorAdapter {
-  const inner = new ZohoCrmGateway(env, {
-    apiHost: env.ZOHO_CRM_API_HOST,
-    trigger: parseZohoCrmTrigger(env.ZOHO_CRM_UPSERT_TRIGGER),
-  });
-  const limited = new ZohoCrmGatewayLimiter(inner);
-  return new ZohoCrmGatewayCrmErrorAdapter(limited);
+  return new ZohoCrmGatewayCrmErrorAdapter(zohoCrmGatewayLimiter(env));
 }
 
 export function createZohoCrmGateway(env: WorkerEnv): CrmGateway {
   return createZohoCrmStack(env);
 }
 
-/** One stack for the writeback's read (COQL) and write (update), so both share one rate limiter. */
+/** COQL reads and writes, for the write-back, Status, fulfilment and QC. */
 export function createZohoCrmGatewayWithCoql(env: WorkerEnv): CrmGateway & CrmCoqlQuery {
   return createZohoCrmStack(env);
 }
 
-/** COQL reads and batched updates through one limiter, for the LAX listing on Zoho Products. */
+/** COQL reads and batched updates, for the LAX listing and location on Zoho Products. */
 export function createZohoCrmBatchStack(env: WorkerEnv): CrmCoqlQuery & CrmBatchUpdate {
   return createZohoCrmStack(env);
 }

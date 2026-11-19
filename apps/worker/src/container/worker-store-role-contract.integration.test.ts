@@ -55,7 +55,10 @@ import {
   DrizzleZohoListingSourceReader,
   DrizzleZohoLocationSourceReader,
   DrizzleZohoSyncHealthStore,
+  zohoListingLockKey,
+  zohoListingLockPool,
 } from "@auction/persistence/repositories";
+import { sql } from "drizzle-orm";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { DrizzleAtgSyncStore } from "../integrations/atg/drizzle-atg-sync-store.js";
@@ -122,7 +125,6 @@ const STORES: Record<string, Store> = {
   DrizzleAtgSyncStore,
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoListingSourceReader,
-  DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
   DrizzleZohoLocationSourceReader,
   DrizzleZohoSyncHealthStore,
@@ -171,6 +173,8 @@ const COVERED_ELSEWHERE: Record<string, string> = {
   DrizzleRepositoryFactory: "its repositories are listed in BUILT_BY_FACTORY",
   DrizzleTransactionRunner:
     "opens a transaction for its caller; it reads and writes no table itself",
+  DrizzleZohoListingLock:
+    "holds its locks on a pool connection, never a transaction; probed below (advisory locks as worker_app)",
 };
 
 /**
@@ -313,7 +317,6 @@ const ARGUMENTS: Record<string, (tx: WorkerDb) => unknown[]> = {
     null,
     1,
   ],
-  "DrizzleZohoListingLock.withLock": () => [[NIL], async () => undefined],
   "DrizzleUnsoldChoiceDeadlineStore.keep": () => [[{ ...outcomeKey, chooseBy: today }]],
   "DrizzleUnsoldChoiceDeadlineStore.kept": () => [[outcomeKey]],
   "DrizzleUnsoldLotFollowUpRepository.findForOutcome": () => [outcomeKey],
@@ -494,6 +497,8 @@ async function storesBuiltInContainerFiles(): Promise<string[]> {
 
 function isDatabase(node: ts.Expression): boolean {
   if (ts.isIdentifier(node)) return node.text === "db" || node.text === "tx";
+  // Something derived from the database, such as its pool: `zohoListingLockPool(db)`.
+  if (ts.isCallExpression(node)) return node.arguments.some(isDatabase);
   return ts.isPropertyAccessExpression(node) && node.name.text === "db";
 }
 
@@ -597,6 +602,25 @@ describe.skipIf(!ownerUrl || !workerUrl)("worker stores as worker_app", () => {
     if (outcome.denied) throw new Error(`${label}: ${outcome.denied}`);
     if (!outcome.reachedDatabase)
       unreached.push(`${label}: ${outcome.failure ?? `${outcome.statements} statements sent`}`);
+  });
+
+  // The lock needs the root pool (a transaction has none), so it is not built on `runRolledBack`'s
+  // transaction like the stores above. It writes no table: the proof is that worker_app takes and
+  // frees the advisory lock.
+  it("DrizzleZohoListingLock.withLock takes and frees its advisory lock as worker_app", async () => {
+    const lock = new DrizzleZohoListingLock(zohoListingLockPool(db));
+    const registerId = crypto.randomUUID();
+    const key = zohoListingLockKey(registerId);
+    const held = async () => {
+      const result = await db.execute<{ n: number }>(sql`
+        SELECT count(*)::int AS n FROM pg_locks
+         WHERE locktype = 'advisory' AND granted AND objsubid = 1
+           AND classid::bigint = ((hashtext(${key})::bigint >> 32) & 4294967295)
+           AND objid::bigint = (hashtext(${key})::bigint & 4294967295)`);
+      return result.rows[0]?.n ?? 0;
+    };
+    expect(await lock.withLock([registerId], held)).toBe(1);
+    expect(await held()).toBe(0);
   });
 
   it("reports the calls that never reached PostgreSQL", () => {

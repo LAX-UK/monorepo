@@ -4,6 +4,7 @@ import {
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
   DrizzleZohoListingSourceReader,
+  zohoListingLockPool,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
@@ -57,7 +58,7 @@ export function createZohoArtworkListing(deps: {
       createInventoryPeerClient({ baseUrl: shopUrl, clientId, clientSecret }),
     ),
     products: new CrmZohoListingProducts(createZohoCrmBatchStack(env)),
-    lock: new DrizzleZohoListingLock(db),
+    lock: new DrizzleZohoListingLock(zohoListingLockPool(db)),
     links: new ListingLinks({ artPublicUrl, laxAdminUrl, bidPublicUrl: env.WEB_ORIGIN }),
     log,
   });

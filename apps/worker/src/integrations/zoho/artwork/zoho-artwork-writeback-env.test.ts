@@ -26,9 +26,28 @@ describe("ZOHO_ARTWORK_WRITEBACK_MODE", () => {
     expect(loadWorkerEnv().ZOHO_ARTWORK_WRITEBACK_MODE).toBe("off");
   });
 
-  it("accepts dry_run without Zoho credentials, since it never calls Zoho", () => {
-    stubEnv({ ZOHO_ARTWORK_WRITEBACK_MODE: "dry_run" });
+  it("accepts dry_run once Zoho credentials are set", () => {
+    stubEnv({ ...CREDENTIALS, ZOHO_ARTWORK_WRITEBACK_MODE: "dry_run" });
     expect(loadWorkerEnv().ZOHO_ARTWORK_WRITEBACK_MODE).toBe("dry_run");
+  });
+
+  it("refuses dry_run without Zoho credentials, since the nightly Status pass reads Zoho", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    stubEnv({ ZOHO_ARTWORK_WRITEBACK_MODE: "dry_run" });
+    expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
+    expect(JSON.stringify(error.mock.calls)).toContain(
+      "required when ZOHO_ARTWORK_WRITEBACK_MODE is not off",
+    );
+  });
+
+  it("refuses dry_run with only part of the OAuth trio", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    stubEnv({
+      ZOHO_CLIENT_ID: "client",
+      ZOHO_CLIENT_SECRET: "secret", // gitleaks:allow
+      ZOHO_ARTWORK_WRITEBACK_MODE: "dry_run",
+    });
+    expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
   });
 
   it("accepts live once Zoho credentials are set", () => {

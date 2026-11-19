@@ -3,6 +3,7 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleZohoListingLock,
   DrizzleZohoListingSourceReader,
+  zohoListingLockPool,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
@@ -30,7 +31,7 @@ export function createZohoStatusSync(deps: {
     sources: new DrizzleZohoListingSourceReader(db),
     register: new DrizzleArtworkRegisterRepository(db),
     products: new CrmZohoStatusProducts(stack, stack),
-    lock: new DrizzleZohoListingLock(db),
+    lock: new DrizzleZohoListingLock(zohoListingLockPool(db)),
     log,
     // Asked only when a check after a write finds a change, then kept for the process.
     integrationUserId: () =>

@@ -8,6 +8,9 @@ type TokenCache = {
 
 let cached: TokenCache | null = null;
 
+/** The refresh in progress, shared by every caller that misses the cache meanwhile (single-flight). */
+let inflight: Promise<string> | null = null;
+
 /** Told how each refresh went, so the connection's health can be kept. It must never throw. */
 export type ZohoTokenRefreshObserver = {
   refreshed(expiresAt: Date): void;
@@ -38,22 +41,39 @@ export async function getZohoCrmAccessToken(env: WorkerEnv): Promise<string | nu
     return cached.accessToken;
   }
 
+  // Concurrent misses wait for one refresh instead of each asking Zoho for a new token.
+  if (inflight) {
+    return inflight;
+  }
+
   const url = new URL("/oauth/v2/token", env.ZOHO_ACCOUNTS_HOST);
   url.searchParams.set("refresh_token", env.ZOHO_REFRESH_TOKEN);
   url.searchParams.set("client_id", env.ZOHO_CLIENT_ID);
   url.searchParams.set("client_secret", env.ZOHO_CLIENT_SECRET);
   url.searchParams.set("grant_type", "refresh_token");
 
-  try {
-    return await refreshAccessToken(url, now);
-  } catch (error) {
-    observer?.failed(failureCode(error));
-    throw error;
-  }
+  const refresh = refreshAccessToken(url, now)
+    .catch((error: unknown) => {
+      observer?.failed(failureCode(error));
+      throw error;
+    })
+    .finally(() => {
+      if (inflight === refresh) {
+        inflight = null;
+      }
+    });
+  inflight = refresh;
+  return refresh;
 }
 
+/** Every Zoho caller in the process waits on one refresh, so a hung request must not stall them for long. */
+const TOKEN_REFRESH_TIMEOUT_MS = 15_000;
+
 async function refreshAccessToken(url: URL, now: number): Promise<string> {
-  const res = await fetch(url, { method: "POST" });
+  const res = await fetch(url, {
+    method: "POST",
+    signal: AbortSignal.timeout(TOKEN_REFRESH_TIMEOUT_MS),
+  });
   const text = await res.text();
   if (!res.ok) {
     throw new ZohoCrmAuthError(
@@ -89,4 +109,5 @@ export function invalidateZohoCrmAccessToken(): void {
 /** Test hook */
 export function resetZohoTokenCacheForTests(): void {
   invalidateZohoCrmAccessToken();
+  inflight = null;
 }
