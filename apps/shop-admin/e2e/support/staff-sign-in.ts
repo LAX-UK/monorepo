@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { TOTP } from "otpauth";
+import { flushAuthRateLimitsOnLocalStack } from "./flush-auth-rate-limits.js";
 
 const SHOP_ADMIN_DESTINATION = /test-shop-admin\.lax\.bid|localhost:3030/;
 
@@ -246,14 +247,44 @@ async function submitStaffTotp(page: Page, authBaseUrl: string, totpSecret: stri
     });
 }
 
-export async function signInStaffThroughIdentity(input: {
+type StaffSignInInput = {
   page: Page;
   authBaseUrl: string;
   email: string;
   password: string;
   totpSecret?: string;
   returnTo?: string;
-}): Promise<void> {
+};
+
+/**
+ * A refused callback (a failed code or Shop API token exchange, for one) sends the browser back
+ * to LAX Admin's own /login with an error. That is on LAX Admin's host, so without this check the
+ * sign-in would count as done and the spec would fail later on a signed-out request.
+ */
+async function assertNotBackOnLogin(page: Page): Promise<void> {
+  if (isShopAdminOidcCallbackUrl(page.url())) {
+    await page
+      .waitForURL((url) => !isShopAdminOidcCallbackUrl(url.toString()), {
+        timeout: 30_000,
+        waitUntil: "domcontentloaded",
+      })
+      .catch(() => {});
+  }
+  const url = new URL(page.url());
+  if (reachedShopAdmin(url.toString(), SHOP_ADMIN_DESTINATION) && url.pathname === "/login") {
+    throw new Error(
+      `Staff sign-in came back to LAX Admin's login page (${url.searchParams.get("error") ?? "no error given"})`,
+    );
+  }
+}
+
+export async function signInStaffThroughIdentity(input: StaffSignInInput): Promise<void> {
+  flushAuthRateLimitsOnLocalStack(input.authBaseUrl);
+  await signInStaffThroughIdentityOnce(input);
+  await assertNotBackOnLogin(input.page);
+}
+
+async function signInStaffThroughIdentityOnce(input: StaffSignInInput): Promise<void> {
   const authBase = input.authBaseUrl.replace(/\/+$/, "");
   const destination = SHOP_ADMIN_DESTINATION;
   const returnTo = input.returnTo ?? "/";
