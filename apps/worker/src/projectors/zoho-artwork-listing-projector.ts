@@ -1,7 +1,8 @@
+import { ZOHO_ARTWORK_LISTING_CONSUMER } from "@auction/types";
 import type { Projector, ProjectorRunContext } from "./lib/projector.types.js";
 import { processZohoProductDeliveries } from "./lib/zoho-product-deliveries.js";
 
-export const ZOHO_ARTWORK_LISTING_PROJECTOR = "zoho_artwork_listing";
+export const ZOHO_ARTWORK_LISTING_PROJECTOR = ZOHO_ARTWORK_LISTING_CONSUMER;
 
 /**
  * Keeps the LAX listing on Zoho Products in line as register moves, lax.art listings, and Bid lots

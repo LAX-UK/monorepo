@@ -29,6 +29,13 @@ function text(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
+function time(value: unknown): Date | null {
+  const raw = text(value);
+  if (!raw) return null;
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /** Uses the existing Zoho gateway: COQL for the read, a Products update for the write. */
 export class CrmZohoProductWriter implements ZohoProductWriter {
   constructor(
@@ -40,7 +47,7 @@ export class CrmZohoProductWriter implements ZohoProductWriter {
     const page = await this.coql.queryCoql(productWriteStateQuery(productId));
     const row = page.rows[0];
     if (!row) return null;
-    return { stockCode: text(row.Reference_Stock_Code) };
+    return { stockCode: text(row.Reference_Stock_Code), modifiedAt: time(row.Modified_Time) };
   }
 
   async update(productId: string, fields: Record<string, string>): Promise<void> {

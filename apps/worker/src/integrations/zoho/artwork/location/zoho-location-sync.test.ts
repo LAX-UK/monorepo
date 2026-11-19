@@ -66,6 +66,16 @@ describe("ZohoLocationSync", () => {
     expect(report).toMatchObject({ checked: 2, changed: 0, unchanged: 2 });
   });
 
+  it("sends nothing again for a name with stray spaces Zoho already shows trimmed", async () => {
+    const { sync, products } = setup({
+      sources: [source(ID_A, "1", " Store  room ")],
+      shown: { "1": "Store room" },
+    });
+    const report = await sync.sync([ID_A]);
+    expect(products.update).not.toHaveBeenCalled();
+    expect(report).toMatchObject({ checked: 1, changed: 0, unchanged: 1 });
+  });
+
   it("clears a value edited into Zoho for an artwork with no location recorded", async () => {
     const { sync, products } = setup({
       sources: [source(ID_A, "1", null)],

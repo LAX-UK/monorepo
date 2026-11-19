@@ -11,6 +11,7 @@ import type {
   IZohoStatusSourceReader,
   RegisterStatusSource,
 } from "@auction/persistence/interfaces";
+import { ARTWORK_WRITEBACK_SKIP } from "@auction/types";
 import type { Logger } from "pino";
 import { crmErrorOutcome } from "../../../crm/classify-crm-error.js";
 import { decideStatusWrite } from "./decide-status-write.js";
@@ -49,11 +50,11 @@ export type StatusOutcome = Subject &
     | { kind: "stale" }
     | {
         kind: "skipped";
-        reason:
-          | "register_entry_missing"
-          | "print_group_not_a_product"
+        reason: (typeof ARTWORK_WRITEBACK_SKIP)[
+          | "registerEntryMissing"
+          | "printGroupNotAProduct"
           /** A gallery sale is Zoho's: LAX never writes Sold back over a Status staff changed. */
-          | "gallery_sale_owned_by_zoho";
+          | "gallerySaleOwnedByZoho"];
       }
     | { kind: "failed"; code: string; retryable: boolean }
   );
@@ -199,13 +200,17 @@ export class ZohoStatusSync {
         stockCode: "",
         zohoProductId: "",
         kind: "skipped" as const,
-        reason: "register_entry_missing" as const,
+        reason: ARTWORK_WRITEBACK_SKIP.registerEntryMissing,
       }));
 
     const products = sources.filter(({ entry }) => zohoModuleOf(entry) === "Products");
     for (const { entry } of sources) {
       if (zohoModuleOf(entry) === "Print_Products") {
-        outcomes.push({ ...subject(entry), kind: "skipped", reason: "print_group_not_a_product" });
+        outcomes.push({
+          ...subject(entry),
+          kind: "skipped",
+          reason: ARTWORK_WRITEBACK_SKIP.printGroupNotAProduct,
+        });
       }
     }
     if (products.length === 0) return outcomes;
@@ -248,7 +253,7 @@ export class ZohoStatusSync {
         { registerId: entry.id, zohoStatus: state.status },
         "zoho_status_gallery_sale_left_to_zoho",
       );
-      return { ...who, kind: "skipped", reason: "gallery_sale_owned_by_zoho" };
+      return { ...who, kind: "skipped", reason: ARTWORK_WRITEBACK_SKIP.gallerySaleOwnedByZoho };
     }
     const decision = decideStatusWrite({
       wanted,
@@ -293,7 +298,7 @@ export class ZohoStatusSync {
           this.deps.log.info({ registerId: entry.id, wanted }, "zoho_status_changed_before_write");
           return { ...who, kind: "stale" };
         }
-        await this.deps.products.write(entry.zohoProductId, wanted);
+        await this.send(entry, wanted);
       }
 
       if (live && decision.kind === "write" && latest) {
@@ -321,6 +326,31 @@ export class ZohoStatusSync {
       const { retryable, error } = crmErrorOutcome(err);
       return { ...who, kind: "failed", code: error.code, retryable };
     }
+  }
+
+  /**
+   * Sends the Status. A failure Zoho may have applied all the same (a timeout or a dropped
+   * connection: one that can be retried) is checked with one more read: if the Product now shows
+   * `wanted`, last changed as the integration user, the write landed and is carried on as written,
+   * so its record is not lost and a later pass does not take LAX's own value for staff's.
+   */
+  private async send(entry: ArtworkRegisterEntry, wanted: string): Promise<void> {
+    try {
+      await this.deps.products.write(entry.zohoProductId, wanted);
+    } catch (err) {
+      if (!crmErrorOutcome(err).retryable || !(await this.landedAsLax(entry, wanted))) throw err;
+      this.deps.log.info({ registerId: entry.id, wanted }, "zoho_status_write_landed_after_error");
+    }
+  }
+
+  /** Zoho shows `wanted`, last set as the integration user. A failed read proves nothing. */
+  private async landedAsLax(entry: ArtworkRegisterEntry, wanted: string): Promise<boolean> {
+    const after = await this.deps.products
+      .read([entry.zohoProductId])
+      .then((shown) => shown.get(entry.zohoProductId))
+      .catch(() => undefined);
+    if (after?.status !== wanted || !after.modifiedBy) return false;
+    return (await this.causeOf(after.modifiedBy)) === "zoho_automation";
   }
 
   /**

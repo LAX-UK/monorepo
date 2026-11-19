@@ -22,6 +22,9 @@ function offerEvent(toState: OfferState = "bid_sale") {
   };
 }
 
+/** When staff last edited the Zoho Product, as the writeback reads it. */
+const ZOHO_EDITED = new Date("2026-11-03T09:00:00.000Z");
+
 const stockCodeEvent = {
   id: 2,
   eventType: STOCK_CODE_ASSIGNED_EVENT,
@@ -49,12 +52,15 @@ function setup(
     source: held ? { entry: held, lastMove: null } : null,
     ...(options.zohoGone ? { zoho: undefined } : {}),
   });
-  const zoho: ZohoProductState = { stockCode: options.stockCode ?? null };
+  const zoho: ZohoProductState = { stockCode: options.stockCode ?? null, modifiedAt: ZOHO_EDITED };
   const products = {
     read: vi.fn(async () => zoho),
     update: vi.fn(async () => undefined),
   };
-  const register = { findById: vi.fn(async () => world.world.source?.entry ?? null) };
+  const register = {
+    findById: vi.fn(async () => world.world.source?.entry ?? null),
+    recordStockCodeConflict: vi.fn(async () => ({ status: "recorded" as const })),
+  };
   const service = new ZohoArtworkWritebackService({
     mode,
     products,
@@ -248,6 +254,22 @@ describe("ZohoArtworkWritebackService live: the stock code and events", () => {
       Reference_Stock_Code: "LAX-ORI-PH-GAC-26-0001",
     });
     expect(status.write).not.toHaveBeenCalled();
+  });
+
+  it("never overwrites a stock code edited in Zoho: it raises the register's conflict", async () => {
+    const { service, products, register } = setup("live", { stockCode: "LAX-ORI-PH-GAC-26-0099" });
+    expect(await service.deliver(stockCodeEvent)).toEqual({
+      outcome: "skipped",
+      reason: "stock_code_conflict_raised",
+    });
+    expect(products.update).not.toHaveBeenCalled();
+    expect(register.recordStockCodeConflict).toHaveBeenCalledWith({
+      registerId: REGISTER_ID,
+      zohoStockCode: "LAX-ORI-PH-GAC-26-0099",
+      laxStockCode: "LAX-ORI-PH-GAC-26-0001",
+      zohoModifiedAt: ZOHO_EDITED,
+      now: NOW,
+    });
   });
 
   it("skips an event whose register entry is gone", async () => {

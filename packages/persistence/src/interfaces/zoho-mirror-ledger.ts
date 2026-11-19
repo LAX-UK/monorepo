@@ -35,6 +35,13 @@ export type ZohoMirrorLedger = {
    * consumer first); ids with none are present and empty.
    */
   deliveries: Map<string, ZohoMirrorLedgerDelivery[]>;
+  /**
+   * Artworks only: for each asked-for id whose stock code conflicts staff have all resolved
+   * (accepted Zoho's code or kept LAX's), when the last one was resolved. An id with an open
+   * stock code conflict, or none ever, is absent. A stock code conflict skip recorded before this
+   * is settled: no further stock code delivery comes after a resolution.
+   */
+  stockCodeConflictResolvedAt?: Map<string, Date>;
 };
 
 /** Reads what the Zoho mirror consumers did for a record; changes nothing. */

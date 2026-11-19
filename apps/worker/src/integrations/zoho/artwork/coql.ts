@@ -41,9 +41,12 @@ export function productByIdQuery(id: string): string {
   return `select ${PRODUCT_FIELDS} from Products where id = '${escapeCoqlString(id)}' limit 1`;
 }
 
-/** The stock code LAX writes, read before a write so a value Zoho already holds is not sent again. */
+/**
+ * The stock code LAX writes, read before a write so a value Zoho already holds is not sent again,
+ * with when the Product was modified for a conflict raised over it.
+ */
 export function productWriteStateQuery(id: string): string {
-  return `select id, Reference_Stock_Code from Products where id = '${escapeCoqlString(id)}' limit 1`;
+  return `select id, Reference_Stock_Code, Modified_Time from Products where id = '${escapeCoqlString(id)}' limit 1`;
 }
 
 export function artistsQuery(offset: number, pageSize: number = COQL_PAGE_SIZE): string {

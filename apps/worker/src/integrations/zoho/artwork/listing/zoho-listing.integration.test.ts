@@ -35,7 +35,7 @@ function fakeZohoProduct(id: string) {
   const statusWriter: ZohoProductWriter = {
     async read(productId): Promise<ZohoProductState | null> {
       if (productId !== id) return null;
-      return { stockCode: fields.Reference_Stock_Code ?? null };
+      return { stockCode: fields.Reference_Stock_Code ?? null, modifiedAt: null };
     },
     async update(_productId, values) {
       counter.writes += 1;
