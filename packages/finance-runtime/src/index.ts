@@ -10,6 +10,10 @@ export {
 } from "./books/accounting-queue.service.js";
 export { createBooksDocumentLinks } from "./books/books-document-links.js";
 export {
+  createZohoBooksHttpClient,
+  type ZohoBooksHttpClientDeps,
+} from "./books/create-zoho-books-client.js";
+export {
   RedisCallBudget,
   RedisRateWindow,
   RedisRefreshLock,

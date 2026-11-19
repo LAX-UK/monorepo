@@ -7,6 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { CallBudgetShare } from "../call-budget.js";
 import { ZohoBooksClient } from "../client.js";
+import { inProcessZohoBooksLimits } from "../limits.js";
 import type { BudgetDecision, CallBudget } from "../ports.js";
 import { FakeClock } from "../testing/fake-clock.js";
 import {
@@ -242,7 +243,7 @@ describe("the status check's share of the daily Books budget", () => {
       clock,
       logger: new RecordingLogger(),
       random: () => 0.5,
-      budget: shared,
+      ...inProcessZohoBooksLimits({ budget: shared }),
     });
     await client.registerRefreshToken(
       orgs.london_art_exchange?.organizationId as string,

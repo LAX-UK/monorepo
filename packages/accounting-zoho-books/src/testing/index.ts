@@ -9,3 +9,4 @@ export * from "./fake-accounting.js";
 export * from "./faults.js";
 export * from "./org-fixtures.js";
 export * from "./simulated-books.js";
+export { inProcessZohoBooksLimits } from "../limits.js";

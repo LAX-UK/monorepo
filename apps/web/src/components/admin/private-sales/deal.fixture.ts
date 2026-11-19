@@ -147,7 +147,13 @@ export function unconfiguredDeal(overrides: Partial<DealRecord> = {}): DealRecor
       netToSellerMinor: null,
     },
     policy: {
-      gaps: ["terms_version", "commission_rate", "vat_treatments", "payment_due_days"],
+      gaps: [
+        "terms_version",
+        "commission_rate",
+        "vat_treatments",
+        "payment_due_days",
+        "invoice_issuer",
+      ],
       termsVersion: null,
       vatTreatments: [],
     },

@@ -45,9 +45,11 @@ The client therefore takes three shared ports (`ports.ts`):
 
 Each fails closed: a budget or window that cannot be read, or a lock that cannot be taken, stops the
 call before anything is sent (`budget_unavailable`, `rate_window_unavailable`, `refresh_lock_unavailable`).
-The Redis implementations are in `@auction/finance-runtime` (`redisZohoBooksLimits(redis, config)`, for the
-runtime to pass when it builds a client; the HTTP client is not wired in the worker yet); the in-memory defaults are for tests and single-process tools.
-Production must pass the shared ones explicitly.
+The client cannot be built without all three: its constructor throws `zoho_books_shared_limits_required`
+unless they are passed. The Redis implementations are in `@auction/finance-runtime`, and a runtime builds the
+client only through `createZohoBooksHttpClient({ redis, ... })` there, which passes them (the HTTP client is not
+wired in the worker yet). The in-memory defaults are opted into explicitly with `inProcessZohoBooksLimits()`
+from `@auction/accounting-zoho-books/testing`, for tests and single-process tools only.
 
 ## Not here yet
 
@@ -105,23 +107,31 @@ organisation is modelled as registered only so the VAT paths have an organisatio
   the domain builders still produce standard-rated lines for Shop. Every such document is refused by the adapter
   (`zoho_books_mapping_vat_on_unregistered_entity`) and held for staff. Which treatment Shop lines should use is a
   domain decision, not something the adapter changes.
-- **Partial credits whose VAT Books rounds differently.** The domain now gives each partial credit line the VAT
-  Books works out for it (`vatInsideGross`: half-up of gross x rate / (1 + rate), per line), and splits the credit
-  that finishes a line into a few lines when Books' rounding of the parts would not add up to the VAT left
-  (`creditLines` in `accounting-domain/src/document.ts`). Every partial credit, and every rest after up to two
-  partials, matches Books to the penny (`adapter/mappers/credit-note.test.ts`). What is left is refused
-  (`zoho_books_mapping_vat_differs_from_books`) and goes to staff: a rest of a few pence whose VAT no whole-pence
-  line can carry (60 of 53,880 one-partial-then-rest runs on lines up to £3), or a rest after many partial
-  refunds of one line, whose roundings can drift by 2p or more (half-up rounds every gross of 3p mod 6p up, so
-  many small partials can use up a line's VAT early; the totals stay exact and the rest goes to staff).
-  The rule is decided per credit note and stored with it (`creditVatRule: "books"` in the payload). A note
-  stored before it has no marker and is only ever replayed, or rebuilt on release, with the earlier cumulative
-  rule, exactly as it was made; the two rules are never mixed within one note or tried one after the other.
-  A note that the splits would take past 1,000 lines is made without them instead.
-  **Needs the accountant / the Books test organisation:** that Books rounds tax-inclusive lines half-up per line,
-  as `booksLineVat` assumes. The headline case (3p of a 25p line gives 1p VAT) is an exact half: under banker's
-  rounding Books would give 0p. No Zoho documentation found states the rule. A wrong assumption fails safe (the
-  adapter's own check and the read-back totals refuse the note for staff; wrong VAT is never posted), but it
+- **Partial credits whose VAT Books rounds differently.** Everything here rests on one assumption, not yet
+  confirmed: that Books rounds a tax-inclusive line's VAT half-up, per line (`vatInsideGross`: half-up of
+  gross x rate / (1 + rate)). On that assumption the domain gives each partial credit line the VAT Books would
+  work out for it, kept within what is left on the invoice line (`creditVat`), and splits the credit that
+  finishes a line into a few lines when Books' rounding of the parts would not add up to the VAT left
+  (`creditLines` in `accounting-domain/src/document.ts`; `adapter/mappers/credit-note.test.ts`). Most partial
+  credits and rests then match Books to the penny, but not all:
+  - a partial credit whose Books VAT falls outside what is left on its line is clamped to the nearest bound and
+    then differs from Books (about 0.75% of lines under the new rule in fuzzing, mostly after many small
+    partials of one line: half-up rounds every gross of 3p mod 6p up, so they can use up a line's VAT early);
+  - a rest of a few pence whose VAT no whole-pence line can carry (60 of 53,880 one-partial-then-rest runs on
+    lines up to £3), or a rest after many partials whose roundings drifted by 2p or more;
+  - with a note that the splits would take past 1,000 lines, splitting stops at the cap and the unsplit lines
+    after it can differ.
+
+  Every line that differs is refused (`zoho_books_mapping_vat_differs_from_books`) and goes to staff; the totals
+  stay exact and wrong VAT is never posted. The rule is decided per credit note and stored with it
+  (`creditVatRule: "books"` in the payload). A note stored before it has no marker and is only ever replayed, or
+  rebuilt on release, with the earlier cumulative rule, exactly as it was made; the two rules are never mixed
+  within one note or tried one after the other. Once a note with the marker exists the change is forward-fix
+  only (see `docs/runbooks/zoho-books-cutover.md`, Rolling back).
+  **To confirm with the accountant, in the Books test organisation:** that Books rounds tax-inclusive lines
+  half-up per line, as `vatInsideGross` assumes. The headline case (3p of a 25p line gives 1p VAT) is an exact
+  half: under banker's rounding Books would give 0p. No Zoho documentation found states the rule. A wrong
+  assumption fails safe (the adapter's own check and the read-back totals refuse the note for staff), but it
   must be confirmed before Books goes live.
 
 - **Seller and artist payouts (PR 12).** Which VAT treatment a bill line for what a seller or artist is owed

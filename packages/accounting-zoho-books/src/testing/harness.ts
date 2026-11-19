@@ -1,5 +1,6 @@
 import { ZohoBooksClient } from "../client.js";
 import type { ZohoBooksConfig } from "../config.js";
+import { inProcessZohoBooksLimits } from "../limits.js";
 import { Secret } from "../secret.js";
 import { FakeClock } from "./fake-clock.js";
 import { FakeZohoTransport, tokenReply } from "./fake-transport.js";
@@ -71,7 +72,7 @@ export function createClientHarness(
     logger,
     metrics,
     random: () => 0.5,
-    ...(options.budget ? { budget: options.budget } : {}),
+    ...inProcessZohoBooksLimits(options.budget ? { budget: options.budget } : {}),
   });
   return {
     client,
