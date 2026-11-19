@@ -1,3 +1,4 @@
+import { dealRecordSchema } from "@/lib/data/http/admin-private-sales.schema";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -108,12 +109,18 @@ describe("DealView: an offer waiting on the buyer's acceptance", () => {
 });
 
 describe("DealView: terms not configured", () => {
+  it("reads every gap the API can send, including a missing invoicing system", () => {
+    const parsed = dealRecordSchema.safeParse(unconfiguredDeal());
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.policy.gaps).toContain("invoice_issuer");
+  });
+
   it("says so at the top, and on each line that waits for it, never with a guessed value", () => {
     renderView(unconfiguredDeal());
     expect(screen.getAllByText("Terms not configured").length).toBeGreaterThanOrEqual(5);
     expect(
       screen.getByText(
-        /the private sale terms, the commission rate, the VAT treatments and the payment deadline/,
+        /the private sale terms, the commission rate, the VAT treatments, the payment deadline and invoicing for private sales are set up/,
       ),
     ).toBeInTheDocument();
     const terms = screen.getByRole("region", { name: "Terms" });

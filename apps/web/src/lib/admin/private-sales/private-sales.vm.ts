@@ -157,6 +157,7 @@ export const POLICY_GAP_LABELS = {
   commission_rate: "the commission rate",
   vat_treatments: "the VAT treatments",
   payment_due_days: "the payment deadline",
+  invoice_issuer: "invoicing for private sales",
 } as const satisfies Record<PrivateSalePolicyGap, string>;
 
 export function policyGapSentence(gaps: readonly PrivateSalePolicyGap[]): string {

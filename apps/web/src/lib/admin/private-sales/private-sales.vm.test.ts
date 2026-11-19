@@ -118,6 +118,13 @@ describe("policyGapSentence", () => {
       "the private sale terms, the commission rate, the VAT treatments and the payment deadline",
     );
   });
+
+  it("names a missing invoicing system with the terms", () => {
+    expect(policyGapSentence(["invoice_issuer"])).toBe("invoicing for private sales");
+    expect(policyGapSentence(["payment_due_days", "invoice_issuer"])).toBe(
+      "the payment deadline and invoicing for private sales",
+    );
+  });
 });
 
 describe("formatBps", () => {

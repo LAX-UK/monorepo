@@ -231,6 +231,18 @@ Before position 4, and again a day after it:
 
 Move the product's switch back one position (4 → 3, 3 → 2, 2 → 1) with the statement above.
 
+**Code: forward-fix only, never revert after the first Books-rule note.** Once any credit note has
+been stored with `creditVatRule: "books"` (the default for every new note since #1566), never revert
+or roll back a deploy to a build from before #1566. The older reader accepts the marker but replays
+those notes with the cumulative rule: about one partial line in nine then no longer matches, and
+every later credit on that invoice is refused. Fix forward instead, and move the switches above if
+Books must stop. To check whether such a note exists:
+
+```sql
+SELECT count(*) FROM accounting_document
+ WHERE kind = 'credit_note' AND payload->>'creditVatRule' = 'books';
+```
+
 - **From 4 (Books live) back to Xero**: this is the cutover window run backwards, so both
   products together (the flag is global). In this order:
   1. **Flip the switches first**: set `xero_mode = 'live'`, `books_mode = 'off'` for each product in

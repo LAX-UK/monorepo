@@ -197,7 +197,13 @@ export const dealRecordSchema = z.object({
   ),
   policy: z.object({
     gaps: z.array(
-      z.enum(["terms_version", "commission_rate", "vat_treatments", "payment_due_days"]),
+      z.enum([
+        "terms_version",
+        "commission_rate",
+        "vat_treatments",
+        "payment_due_days",
+        "invoice_issuer",
+      ]),
     ),
     termsVersion: z.string().nullable(),
     vatTreatments: z.array(z.object({ code: z.string(), label: z.string() })),

@@ -5,6 +5,7 @@ export * from "./config.js";
 export * from "./errors.js";
 export * from "./fetch-transport.js";
 export * from "./gate.js";
+export type { ZohoBooksInProcessLimits, ZohoBooksSharedLimits } from "./limits.js";
 export * from "./outcome.js";
 export * from "./ports.js";
 export * from "./redact.js";

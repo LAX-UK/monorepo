@@ -17,11 +17,14 @@ import {
 import { RequestGate } from "./gate.js";
 import { sendWithTimeout } from "./http.js";
 import {
+  IN_PROCESS_LIMITS,
+  type ZohoBooksInProcessLimits,
+  type ZohoBooksSharedLimits,
+} from "./limits.js";
+import {
   type CallBudget,
   type Clock,
   METRIC,
-  type RateWindow,
-  type RefreshLock,
   type TransportRequest,
   type ZohoLogger,
   type ZohoMetrics,
@@ -71,22 +74,23 @@ export interface ZohoWriteOptions {
   readonly fence?: WriteFence;
 }
 
-export interface ZohoBooksClientDeps {
+interface ZohoBooksClientBaseDeps {
   readonly config: ZohoBooksConfig;
   readonly transport: ZohoTransport;
   readonly tokenStore: ZohoTokenStore;
   readonly clock?: Clock;
-  /** Required in production, shared by every process (see the README); the default counts this process only. */
-  readonly budget?: CallBudget;
-  /** The rate window shared by every process; the default is this process's own. */
-  readonly rateWindow?: RateWindow;
-  /** The refresh lock shared by every process; the default is single-flight in this process only. */
-  readonly refreshLock?: RefreshLock;
   readonly logger?: ZohoLogger;
   readonly metrics?: ZohoMetrics;
   /** Uniform in [0, 1): the source of backoff jitter. */
   readonly random?: () => number;
 }
+
+/**
+ * The shared budget, rate window and refresh lock are required (see the README). In-process
+ * defaults (per replica) only with `inProcessZohoBooksLimits()` from `./testing`.
+ */
+export type ZohoBooksClientDeps = ZohoBooksClientBaseDeps &
+  (ZohoBooksSharedLimits | ZohoBooksInProcessLimits);
 
 const PATH_PATTERN = /^\/[A-Za-z0-9._~\-/]*$/;
 const ORG_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -124,6 +128,11 @@ export class ZohoBooksClient {
 
   constructor(private readonly deps: ZohoBooksClientDeps) {
     const { config } = deps;
+    const inProcess = "inProcessLimits" in deps && deps.inProcessLimits === IN_PROCESS_LIMITS;
+    if (!inProcess && !(deps.budget && deps.rateWindow && deps.refreshLock)) {
+      // Per-replica limits would multiply Zoho's rate limit and budget by the replica count.
+      throw new Error("zoho_books_shared_limits_required");
+    }
     this.clock = deps.clock ?? systemClock;
     this.budget = deps.budget ?? new InMemoryCallBudget(this.clock, config.dailyCallBudget);
     this.logger = redactingLogger(deps.logger ?? noopLogger);

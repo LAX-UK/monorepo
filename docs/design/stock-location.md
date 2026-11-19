@@ -35,8 +35,8 @@ option so the owner can approve or change it before anything is built. Nothing h
    Every move and list change writes a LAX Admin audit row and publishes
    `artwork_register.location_changed`. Who holds them is set in the one role table,
    `packages/shop-domain/src/staff-capabilities.ts`; see **Roles** below.
-5. **Zoho mirror.** A new read-only Products field **`LAX_Location`** (picklist kept in step with the
-   list, or text if the owner prefers not to maintain a picklist in Zoho), written by the existing
+5. **Zoho mirror.** A new read-only Products field **`LAX_Location`**, shipped in #1564 as a
+   255-character single-line text field (not a picklist; to confirm with owner), written by the existing
    outbound pattern: the writeback projector reads the register's current state on
    `artwork_register.location_changed`, skips the write when Zoho already holds the value, honours
    its own `ZOHO_ARTWORK_LOCATION_MODE` (`off` / `dry_run` / `live`) and the wrong-org guard (built:
@@ -74,7 +74,7 @@ it now sits with the Catalogue editor instead.
 
 - Q35 / ZI-6: approve the controlled list + move history above, or say what "STO actions" should
   cover (for example, a fixed set of stores rather than a staff-managed list).
-- Zoho: a new `LAX_Location` field (recommended) or a different existing Products field? Picklist or
-  text?
+- Zoho: `LAX_Location` shipped (#1564) as a new Products field, a 255-character text field rather than
+  a picklist, so no list has to be kept in step in Zoho. **To confirm with owner.**
 - ~~Who may move artworks: Fulfilment, Gallery staff and Admin as proposed?~~ Decided 17 Nov 2026:
   Catalogue editors and Administrators (see **Roles**).

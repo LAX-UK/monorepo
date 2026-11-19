@@ -13,6 +13,7 @@ import { PrivateSaleDealCommandService } from "./deal-command.service.js";
 import { PrivateSaleDealDesk } from "./deal-desk.js";
 import {
   InMemoryDealPayments,
+  inlineTransactions,
   makeDeal,
   makePayment,
   recordingSink,
@@ -129,7 +130,12 @@ function setup(options: Setup = {}) {
   };
   const invoicing = new DealInvoiceService({
     transitions,
-    finance: { recordInvoiceReference: async () => undefined },
+    transactionRunner: inlineTransactions,
+    scopeForTx: () => ({
+      deals: deals as never,
+      events,
+      finance: { recordInvoiceReference: async () => undefined },
+    }),
     issuer:
       options.invoicing === false ? null : { issue: async () => ({ externalReference: "INV-1" }) },
   });
@@ -652,6 +658,8 @@ describe("PrivateSaleDealDeskService act", () => {
       invoicing: false,
     });
     const record = await desk.detail(FINANCE, "PS-0001");
+    // The "Terms not configured" notice names it too.
+    expect(record?.policy.gaps).toContain("invoice_issuer");
     expect(record?.actions.find((a) => a.action === "issue_invoice")?.blockers).toEqual([
       {
         code: "invoice_issuer_not_configured",

@@ -2,6 +2,7 @@ import {
   type DealClearancePort,
   type PartyClearance,
   type PrivateSalePolicy,
+  type PrivateSalePolicyGap,
   canChangeArtwork,
   canLinkArtwork,
   dealCommandsFrom,
@@ -273,7 +274,7 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
         actorName: h.actorUserId ? (names.get(h.actorUserId) ?? "Former staff member") : null,
       })),
       policy: {
-        gaps: privateSalePolicyGaps(policy),
+        gaps: this.policyGaps(),
         termsVersion: policy.termsVersion,
         vatTreatments: [...policy.vatTreatments],
       },
@@ -294,6 +295,15 @@ export class PrivateSaleDealQueryService implements IPrivateSaleDealQueries {
   }
 
   /** The deal's linked artwork as shown on its page, and the artworks its history names. */
+  /** What is still to be set up, including a finance system that issues deal invoices. */
+  private policyGaps(): PrivateSalePolicyGap[] {
+    const gaps = privateSalePolicyGaps(this.deps.policy);
+    const noIssuer = this.deps.invoices
+      .blockers()
+      .some((blocker) => blocker.code === "invoice_issuer_not_configured");
+    return noIssuer ? [...gaps, "invoice_issuer"] : gaps;
+  }
+
   private async artworkOf(
     viewer: DealStaffViewer,
     deal: PrivateSaleDealDetail,

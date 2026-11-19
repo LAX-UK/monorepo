@@ -131,8 +131,8 @@ export class RedisRefreshLock implements RefreshLock {
 }
 
 /**
- * The shared limits a Zoho Books client in a worker replica is built with:
- * `new ZohoBooksClient({ ...deps, ...redisZohoBooksLimits(redis, config) })`.
+ * The shared limits a Zoho Books client in a worker replica is built with
+ * (`createZohoBooksHttpClient` passes them).
  */
 export function redisZohoBooksLimits(
   redis: Redis,
