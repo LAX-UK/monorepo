@@ -262,7 +262,11 @@ test.describe("LAX Admin release alerts @a11y", () => {
     // The page that starts just after Tidal study (the read's own cursor shape): the release is
     // not on it, as for a link shared from the first page once newer releases have pushed it on.
     const cursor = Buffer.from(JSON.stringify({ createdAt: published, id })).toString("base64url");
-    await openStaffPage(page, `${PATH}?cursor=${cursor}&release=${id}`);
+    // The link opens its panel as the page loads, and the panel is modal: once it is up the page
+    // behind it (its heading included) is hidden from assistive tech, so wait for the page's main
+    // content and then the panel, not for the page heading as openStaffPage does.
+    await page.goto(`${PATH}?cursor=${cursor}&release=${id}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#main-content")).toBeVisible({ timeout: 30_000 });
     // Whatever else the stack holds, the rows shown are all older than Tidal study.
     await expect(rowOf(page, "Tidal study")).toHaveCount(0);
     const panel = page.getByRole("dialog", { name: /Tidal study/ });
