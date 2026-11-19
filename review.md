@@ -52,3 +52,39 @@ Results of calling the function directly:
   - The same 14 files on main: the same naming-reader failure, plus one failure in `stripe-books`.
   - The PR's own CRM integration tests (`crm-readers`, `crm-shop-order-sync`) pass as `worker_app`.
 - shop-api: 3746 pass, 3 fail, all in `framing.integration.test.ts`, which also fails on main ("has no price for up_to_40x50").
+
+## Fixes after review
+
+Pushed to `fix/crm-audit-refunds` (head `0a495afb`, with current main `b3e9f9ce` merged in, no conflicts).
+
+1. **CI static-checks: circular dependency `env.ts` -> `zoho-crm-config.ts` -> `env.ts`** (commit `681da135`). The pure allowlist rules now live in a new module with no env import, `apps/worker/src/integrations/zoho/zoho-crm-allowlist-rules.ts`: `zohoCrmAllowlistIssues` is at `:60`, along with `isZohoEventTypeEnabled`, `parseZohoEnabledEventTypes`, `hasZohoPersonSyncEnabled` and the type constants, all typed structurally. `apps/worker/src/env.ts:12` imports the rules from there. `apps/worker/src/integrations/zoho/zoho-crm-config.ts:6` re-exports them, so callers and `zoho-crm-config.test.ts` are unchanged. `circular-deps-allowlist.json` is not touched. `pnpm lint:deps` failed on the PR head and passes now: 46 allowlisted cycles, freeze 47/47.
+2. **Observations 1 and 2: note-in-flight and `deal_link_missing` retries used up attempts** (commit `3d4658cc`).
+   - `apps/worker/src/integrations/crm/crm-gateway-error.ts:73` (`crmDealNotLinkedError`) and `:90` (`crmNoteInFlightError`) are now waiting errors: `waiting: true` (field at `:12`) and `retryAfterMs` 60 s (`CRM_WAITING_RETRY_AFTER_MS`, `:43`). A wait therefore costs no attempt and polls once a minute rather than about once a second, which matters because the note path calls Zoho `findNoteIds` on each try.
+   - **Cap:** the runner had no cap on waiting errors. `isWaitingDeliveryError` (`apps/worker/src/lib/delivery-retry.ts:110`) now honours an optional `maxWaitMs` on the error, measured from the delivery's `createdAt`. The runner passes the delivery in at `apps/worker/src/projectors/lib/domain-event-delivery-runner.ts:90`.
+   - The CRM errors set `CRM_WAITING_MAX_MS` = 24 h (`crm-gateway-error.ts:50`). After that, each retry counts as an attempt again, and the delivery dead-letters (replayable) after the usual 12.
+   - Accounting waiting errors set no `maxWaitMs`, so their behaviour is unchanged.
+   - The natural ends still apply first: the claimant records or refuses the note, or the 10-minute grace lets this delivery take the claim over; and for a refund, the paid delivery links the deal or ends, after which the refund is skipped.
+   - **Tests:**
+     - `apps/worker/src/projectors/lib/domain-event-delivery-runner.test.ts:296` simulates the claim/retry loop. A note in flight at attempt 12 is rescheduled at least 60 s out and not dead-lettered. A note in flight waits out the whole 10-minute grace and then succeeds, in at most 12 tries. A refund waits through a 6-hour outage while the paid delivery is retryable and then succeeds. Both waits still end: past 24 h they dead-letter within 12 attempts.
+     - `apps/worker/src/integrations/crm/crm-shop-order-sync.test.ts:187` and `:322` assert `waiting: true` and `retryAfterMs: 60000` on the handler's errors.
+     - With the error change reverted, all 5 runner tests fail.
+   - `docs/integrations/zoho.md:101-102` documents the one-minute retry and the 24 h cap.
+3. **Observation 6: `upsertLink` cleared `erasedAt`** (commit `0a495afb`). This is a minimal, opt-in fix.
+   - `UpsertCrmRecordLinkInput.keepErased` is declared at `packages/persistence/src/interfaces/crm-record-link.repository.ts:30`.
+   - The Drizzle upsert adds `setWhere: erased_at IS NULL` when it is set (`packages/persistence/src/repositories/drizzle-crm-record-link.repository.ts:76`).
+   - The in-memory double mirrors it (`apps/worker/src/integrations/crm/crm-test-doubles.ts:28`).
+   - The note paths that run after a send pass it: `refused()` at `apps/worker/src/integrations/crm/handlers/crm-deal-sync-handler.ts:281` and `recordNote` at `:321`.
+   - Every other `upsertLink` caller is unchanged.
+   - **Tests:**
+     - `crm-shop-order-sync.test.ts:272`: an erasure that lands mid-send stays erased when Zoho adds the note and when it refuses it, and a redelivery is then skipped as `subject_erased`. Both cases fail without the handler change.
+     - `drizzle-crm-record-link.repository.integration.test.ts:233` checks against Postgres that `keepErased` leaves an erased row alone, still inserts a new row, and that a plain upsert still clears `erasedAt`.
+4. **Observations 3, 4 and 5** are left as documented above. No change.
+
+### Test runs after the fixes
+- Database: throwaway Postgres 16 on 55432, migrated, with role probes seeded and `db:roles` applied. Redis was on 6379. All role URLs were set (`DATABASE_URL_WORKER`, `_API`, `_SHOP`, `_AUTH`). Suites ran with `--maxWorkers=2`.
+- worker, full suite: 2930 passed, 3 skipped. One file errors at suite level: `crm-deal-naming-reader.integration.test.ts`. It is the same `shop_order_line_target_xor` fixture failure that occurs on main, in a file this PR does not touch.
+- shop-api, full suite: 3749 out of 3749 pass.
+- persistence `drizzle-crm-record-link.repository.integration.test.ts`: 9 out of 9 pass.
+- `tsc --noEmit`: worker, shop-api and persistence are all clean.
+- `biome check .`: clean (3 warnings that are already on main, none in changed files).
+- `pnpm lint:deps`: passes.
