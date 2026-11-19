@@ -9,7 +9,7 @@ import { parseAuthDekKey } from "@auction/identity-contracts";
 import { stripeTestModeKeyIssues } from "@auction/stripe-connect";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
-import { zohoCrmAllowlistIssues } from "./integrations/zoho/zoho-crm-config.js";
+import { zohoCrmAllowlistIssues } from "./integrations/zoho/zoho-crm-allowlist-rules.js";
 import { zohoCrmNeedsSandboxOrg } from "./integrations/zoho/zoho-live-modes.js";
 
 function parseFromByProduct(val: unknown): unknown {
