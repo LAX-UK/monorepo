@@ -60,10 +60,10 @@ After changing vars, re-run **Terraform test up** (with image contracts) or **Te
 | `ZOHO_CRM_API_HOST` | CRM API base (sandbox in test) |
 | `ZOHO_CRM_EXPECTED_ORG_TYPE` | `sandbox` or `production` — startup org check (`canary`/`live` only) |
 | `ZOHO_CRM_SYNC_MODE` | `off` \| `dry_run` \| `canary` \| `live`. `canary` and `live` behave the same in every way (see [Canary is live](#canary-is-live)) |
-| `ZOHO_CRM_ENABLED_EVENT_TYPES` | Comma-separated allowlist (**required** whenever `ZOHO_CRM_SYNC_MODE` is not `off`; worker env validation fails if empty) |
+| `ZOHO_CRM_ENABLED_EVENT_TYPES` | Comma-separated allowlist (**required** whenever `ZOHO_CRM_SYNC_MODE` is not `off`). The worker refuses to start when it is empty, lists a type the `zoho` consumer does not receive, enables a deal type without its pipeline and stage, or enables a deal or Shop order type (`bid.lot_won`, `payment.captured`, `payment.refunded`, `shop.order.paid`, `shop.refund.completed`, `shop.fulfilment.status_changed`) while `user.identity_deleted` is off (`zohoCrmAllowlistIssues` in `zoho-crm-config.ts`) |
 | `ZOHO_CRM_UPSERT_TRIGGER` | JSON array; default `[]` suppresses workflows |
-| `ZOHO_CRM_AUCTION_PIPELINE` | Deal pipeline name (required before deal events write) |
-| `ZOHO_CRM_DEAL_STAGE_*` | Stage names per milestone (required when that event type is enabled) |
+| `ZOHO_CRM_AUCTION_PIPELINE` | Deal pipeline name (required at start-up when a deal type that sets a stage is enabled) |
+| `ZOHO_CRM_DEAL_STAGE_*` | Stage names per milestone (required at start-up when that event type is enabled) |
 | `ZOHO_CRM_LEAD_STATUS_NEW` | Lead Status written when the platform creates a lead (default `New (Unassigned)`) |
 | `ZOHO_CRM_CURSOR_BATCH_SIZE` | Domain events ingested into the delivery ledger per projector tick (default `100`) |
 | `ZOHO_CRM_TICK_TIME_BUDGET_MS` | Max ms per projector tick spent claiming and running Zoho deliveries (one claim at a time) |
