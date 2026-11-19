@@ -108,3 +108,22 @@ Code at `drizzle-zoho-listing.ts:321-353`.
 1. **The token fetch has no timeout** (`oauth-token-refresh.ts:70`). With single-flight, one hung refresh now stalls every Zoho caller in the process until undici's 300 s header timeout fires. Before, each caller hung separately. Consider `signal: AbortSignal.timeout(15_000)`.
 2. **A dropped held connection can crash the process.** The checked-out lock connection has no `'error'` listener: pg-pool removes its idle listener on checkout (`pg-pool/index.js:344`). If the server drops that connection while `fn` runs, `pg.Client` emits an unhandled `'error'` and the process can crash. The locks are still released. This was the same with the old `db.transaction` approach, so it is not a regression. Attaching a no-op listener for the hold, and destroying the connection on release, would harden it.
 3. **The shared circuit breaker counts across all stacks.** A success on one stack resets the consecutive-failure count for the others. This follows from "one circuit breaker" as F9 asked; it is noted only so it is a known behaviour.
+
+## Fixes after review
+
+Pushed to `fix/zoho-runtime-audit` as `630268e9` (B1) and `1937641c` (notes 1 and 2).
+
+- **B1, limiter spacing (fixed).** `apps/worker/src/integrations/zoho/zoho-crm-gateway-limiter.ts:103-112`: after the circuit check, `guard()` reserves its slot synchronously (`slot = max(now, nextSlotMs)`, `nextSlotMs = slot + 100`) before awaiting, then re-checks the circuit after the sleep (`:111`). The circuit check is `throwIfCircuitOpen` (`:89`), the same retryable 503.
+  - Tests in `zoho-crm-gateway-limiter.test.ts`: `:90` fires 6 concurrent calls on one limiter and asserts every gap is at least 100 ms; `:112` asserts an open circuit throws the retryable 503 without calling Zoho; `:133` queues a sixth call behind five failures and asserts it gets the 503 without calling Zoho, because the circuit opened while it waited. The `:90` and `:133` tests fail against the old limiter.
+  - `docs/integrations/zoho.md:330` still states the combined cap, which is now true. It also says each call reserves its slot before waiting, that a queued caller gets the 503 if the circuit opened meanwhile, and that one success on any stack resets the shared failure count (note 3).
+- **Note 1, token fetch timeout (applied).** `apps/worker/src/integrations/zoho/oauth-token-refresh.ts:75` aborts the refresh after 15 s (`AbortSignal.timeout`). This is reported as `zoho_token_refresh_unreachable`. Test `oauth-token-refresh.test.ts:71`. Documented at zoho.md:330.
+- **Note 2, dropped lock connection (applied).** `packages/persistence/src/repositories/artwork-register/drizzle-zoho-listing.ts:339` attaches an `'error'` listener for the hold. The listener marks the connection to be destroyed, and the listener is removed before `release`. Integration test `drizzle-zoho-listing-lock.integration.test.ts:106` terminates the holding backend while `fn` runs. Without the listener the run reports an unhandled `57P01` error. With it, `fn` completes, the locks are gone and the next `withLock` succeeds.
+- **Note 3:** no code change. It is now a line in zoho.md:330, as above.
+
+Re-run on Postgres 16 :55432 with Redis, `vitest run --maxWorkers=2`:
+
+| Package | Result |
+|---|---|
+| @auction/worker | 2406 passed, 508 skipped (299 files) |
+| @auction/persistence | 1160 passed, 11 skipped. One failure, `consignor-agreement.integration.test.ts` "lets one of two replaces of the same version win", is a race test in an untouched file. It passed on 2 of 2 reruns. |
+| `tsc --noEmit` (worker, persistence) and biome on the changed files | clean |
