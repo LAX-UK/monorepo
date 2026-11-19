@@ -10,7 +10,7 @@ on:
         options:
           [backfill-dry-run, backfill, replay-skipped, delivery-status, catch-up-preview, catch-up]
       consumer:
-        description: Zoho write-back to catch up after going live (catch-up actions only)
+        description: Zoho write-back to catch up after going live (catch-up actions only). zoho_artwork_location is not listed; its nightly check repairs it
         required: false
         type: choice
         default: zoho_artwork_writeback
@@ -35,20 +35,20 @@ jobs:
       ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
       ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
       ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
-      ZOHO_CRM_SYNC_MODE: ${{ vars.ZOHO_CRM_SYNC_MODE || 'canary' }}
+      ZOHO_CRM_SYNC_MODE: ${{ vars.ZOHO_CRM_SYNC_MODE || 'dry_run' }}
       ZOHO_CRM_ENABLED_EVENT_TYPES: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || 'user.registered' }}
       ZOHO_CRM_AUCTION_PIPELINE: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
       ZOHO_CRM_DEAL_STAGE_LOT_WON: ${{ vars.ZOHO_CRM_DEAL_STAGE_LOT_WON || '' }}
       ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED || '' }}
       ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
       ZOHO_CRM_DEAL_STAGE_SHOP_PAID: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
-      ZOHO_CRM_LEAD_CONVERSION_ENABLED: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
       CRON_INTERNAL_SECRET: ${{ secrets.CRON_INTERNAL_SECRET }}
+      # Fallbacks match terraform-test-up.yml so an unset var means what the deployed worker runs.
       # The write-back modes, as the deployed test worker gets them; the catch-up refuses unless the
       # chosen write-back is live here.
       ZOHO_ARTWORK_WRITEBACK_MODE: ${{ vars.ZOHO_ARTWORK_WRITEBACK_MODE || 'off' }}
       ZOHO_ARTWORK_LISTING_MODE: ${{ vars.ZOHO_ARTWORK_LISTING_MODE || 'dry_run' }}
-      ZOHO_FULFILMENT_MIRROR_MODE: ${{ vars.ZOHO_FULFILMENT_MIRROR_MODE || 'off' }}
+      ZOHO_FULFILMENT_MIRROR_MODE: ${{ vars.ZOHO_FULFILMENT_MIRROR_MODE || 'dry_run' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
