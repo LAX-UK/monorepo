@@ -1501,6 +1501,10 @@ export type {
   ZohoListingRunFailure,
   ZohoListingRunMode,
 } from "./zoho-listing.js";
+export type {
+  IZohoLocationSourceReader,
+  RegisterLocationSource,
+} from "./zoho-location.js";
 
 export type {
   BidAlertLotNotice,

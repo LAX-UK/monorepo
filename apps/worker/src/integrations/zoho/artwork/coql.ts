@@ -50,8 +50,11 @@ export function artistsQuery(offset: number, pageSize: number = COQL_PAGE_SIZE):
   return `select ${ARTIST_FIELDS} from Artists where id is not null order by id limit ${offset}, ${pageSize}`;
 }
 
-/** The Status and when the Product last changed, for the compare before LAX writes the Status. */
+/**
+ * The Status and when and by whom the Product last changed: for the compare before LAX writes the
+ * Status and the check after.
+ */
 export function productStatusQuery(ids: readonly string[]): string {
   const list = ids.map((id) => `'${escapeCoqlString(id)}'`).join(", ");
-  return `select id, Status, Modified_Time from Products where id in (${list}) limit ${ids.length}`;
+  return `select id, Status, Modified_Time, Modified_By from Products where id in (${list}) limit ${ids.length}`;
 }

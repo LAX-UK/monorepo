@@ -805,6 +805,7 @@ export class DrizzleArtworkRegisterRepository
         { field: "catalogueStatus", zohoValue: input.zohoStatus, laxValue: input.laxStatus },
         input.zohoModifiedAt,
         input.now,
+        input.cause ? { cause: input.cause } : {},
       );
       return { status: "recorded" };
     });
@@ -1032,6 +1033,8 @@ export class DrizzleArtworkRegisterRepository
     found: Omit<FieldConflict, "field"> & { field: RegisterConflictField },
     zohoModifiedAt: Date,
     now: Date,
+    /** Extra facts for the history event only, such as who made the change in Zoho. */
+    extra: Record<string, string> = {},
   ): Promise<void> {
     await tx
       .insert(conflict)
@@ -1056,6 +1059,7 @@ export class DrizzleArtworkRegisterRepository
       field: found.field,
       zohoValue: found.zohoValue,
       laxValue: found.laxValue,
+      ...extra,
     });
   }
 

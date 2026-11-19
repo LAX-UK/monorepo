@@ -530,8 +530,10 @@ function describeEvent(
             typeof payload.zohoValue === "string" ? payload.zohoValue : null,
           )
         : null;
+      // A Status set as Zoho's integration user is a workflow or blueprint, not a person.
+      const who = payload.cause === "zoho_automation" ? "Zoho automation changed" : "Zoho changed";
       return {
-        title: `Zoho changed ${what}; LAX kept its own until someone decides`,
+        title: `${who} ${what}; LAX kept its own until someone decides`,
         ...(zoho ? { detail: `Zoho now has ${zoho}` } : {}),
         tone: "warning",
       };

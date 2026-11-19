@@ -36,8 +36,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Lines are rebuilt through the domain's constructors. An invoice or bill line is tax-exclusive:
  * the stored VAT must be what `buildLine` computes. A credit line is tax-inclusive (the domain
- * allocates its VAT cumulatively across a split line, so it cannot be recomputed from the line
- * alone): it is rebuilt with `buildInclusiveLine` from its gross and stored VAT, which checks the
+ * allocates its VAT across a split line by the note's `creditVatRule`, so it cannot be recomputed
+ * from the line alone): it is rebuilt with `buildInclusiveLine` from its gross and stored VAT, which checks the
  * VAT is whole pence between 0 and the gross and only on a standard rated line.
  */
 function readLines(value: unknown, inclusive: boolean): Result<readonly Line[], "bad_document"> {
@@ -154,6 +154,14 @@ export function readDocumentPayload(
   }
   if (kind !== "credit_note" && value.refund !== undefined)
     return bad("only a credit note is refunded");
+  // A credit note made under the Books VAT rule says so; one stored before the rule existed has
+  // no marker and is replayed with the cumulative rule (`creditVatRuleOf`). Nothing else is read.
+  if (
+    value.creditVatRule !== undefined &&
+    (kind !== "credit_note" || value.creditVatRule !== "books")
+  ) {
+    return bad("only a credit note names its VAT rule, and only the books rule");
+  }
   // A credit note is always VAT-inclusive; an invoice is when LAX numbered it at inclusive prices
   // (Shop), and then it must carry LAX's number. Nothing else may claim either.
   const inclusiveInvoice = kind === "invoice" && value.amountsAre === "tax_inclusive";

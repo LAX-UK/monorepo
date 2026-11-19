@@ -210,6 +210,12 @@ export const envSchema = z
      */
     ZOHO_ARTWORK_LISTING_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /**
+     * The artwork's stock location on Zoho Products (`LAX_Location`). `off` does nothing and never
+     * calls Zoho; `dry_run` reads LAX and Zoho and logs what it would change; `live` writes, and
+     * only to the org the org check allows. Never `live` unless set on purpose.
+     */
+    ZOHO_ARTWORK_LOCATION_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
      * Mirrors print groups and print orders from LAX to Zoho CRM, one way. `off` does
      * nothing and never calls Zoho; `dry_run` reads LAX and Zoho and logs what it would write;
      * `live` writes, and only to the org the org check allows. Never `live` unless set on purpose.
@@ -637,6 +643,17 @@ export const envSchema = z
           path: ["ZOHO_ARTWORK_LISTING_MODE"],
         });
       }
+    }
+    if (
+      e.ZOHO_ARTWORK_LOCATION_MODE !== "off" &&
+      (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_LOCATION_MODE is not off",
+        path: ["ZOHO_ARTWORK_LOCATION_MODE"],
+      });
     }
     if (e.ZOHO_FULFILMENT_MIRROR_MODE !== "off") {
       const fulfilmentSettings = [

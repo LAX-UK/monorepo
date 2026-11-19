@@ -164,8 +164,24 @@ export function cumulativeVat(lineVat: Pence, lineGross: Pence, creditedGross: P
 }
 
 /**
+ * The VAT inside a VAT-inclusive gross, worked out the way Books works it out for one
+ * tax-inclusive line: `round_half_up(gross * rate / (1 + rate))`, per line, to the penny. Only
+ * `standard` carries VAT. Integer (BigInt) arithmetic, so no product loses precision.
+ */
+export function vatInsideGross(
+  grossPence: Pence,
+  treatment: VatTreatment,
+  rateBps: number = STANDARD_VAT_RATE_BPS,
+): Pence {
+  if (treatment !== "standard" || grossPence <= 0) return 0;
+  const n = BigInt(grossPence) * BigInt(rateBps);
+  const d = 10_000n + BigInt(rateBps);
+  return Number((2n * n + d) / (2n * d));
+}
+
+/**
  * A one-quantity, tax-inclusive line for a known gross and the VAT inside it, used for partial
- * credits. The caller allocates the VAT (see `cumulativeVat`) so several credits on one line can
+ * credits. The caller allocates the VAT (see `vatInsideGross`) so several credits on one line can
  * never credit more VAT than the line charged. Only `standard` carries VAT, and VAT cannot exceed
  * the gross; the net is the gross less that VAT.
  */

@@ -169,6 +169,8 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     const entry = DOMAIN_EVENT_REGISTRY["artwork_register.location_changed"];
     expect(entry.piiClassification).toBe("operational");
     expect(entry.producers).toEqual(["packages/db"]);
+    // The Zoho LAX_Location mirror is its only consumer, with its own cursor and ledger.
+    expect(entry.consumers).toEqual(["zoho_artwork_location"]);
     expect(parseDomainEventPayload("artwork_register.location_changed", 1, payload).ok).toBe(true);
     expect(
       parseDomainEventPayload("artwork_register.location_changed", 1, {

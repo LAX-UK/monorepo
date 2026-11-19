@@ -11,6 +11,7 @@ import {
   bidDeliveryRefundedPolicy,
   bidPaymentGroupSettledPolicy,
   canTryAgain,
+  creditVatRuleOf,
   isLockedPeriodReason,
   laxReference,
   parkReasonOf,
@@ -425,6 +426,9 @@ export class AccountingQueueService implements IAccountingQueueService {
         defaultedOn: read.facts.defaultedOn,
         inBooks: "issued",
         priorCredits: prior,
+        // Rebuilt with the VAT rule the parked note was made with, so a note stored before the
+        // Books rule is reproduced exactly (cumulative), not remade with it.
+        creditVatRule: creditVatRuleOf(document.document),
       });
       return projected.ok ? projected.value : null;
     }
@@ -442,6 +446,7 @@ export class AccountingQueueService implements IAccountingQueueService {
       ...read.facts,
       refundedPence: Number(delivery[2]),
       priorCredits: prior,
+      creditVatRule: creditVatRuleOf(document.document),
     });
     return projected.ok ? projected.value : null;
   }

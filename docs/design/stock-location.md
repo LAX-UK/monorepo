@@ -39,9 +39,11 @@ option so the owner can approve or change it before anything is built. Nothing h
    list, or text if the owner prefers not to maintain a picklist in Zoho), written by the existing
    outbound pattern: the writeback projector reads the register's current state on
    `artwork_register.location_changed`, skips the write when Zoho already holds the value, honours
-   `ZOHO_ARTWORK_WRITEBACK_MODE` (`off` / `dry_run` / `live`) and the wrong-org guard, and is rolled
+   its own `ZOHO_ARTWORK_LOCATION_MODE` (`off` / `dry_run` / `live`) and the wrong-org guard (built:
+   [Zoho integration](../integrations/zoho.md#stock-location-to-zoho-products-outbound)), and is rolled
    out sandbox `dry_run` → sandbox `live` → production. Zoho stays read-only for this field; a value
-   edited in Zoho is overwritten by LAX on the next change and reported in Sync health drift.
+   edited in Zoho is overwritten by LAX on the next change or by the nightly drift check, which
+   logs what it corrected (`zoho_location_reconcile_finished`); it is not shown in Sync health.
    `LAX_Listing` is **not** reused: it already means the sales place, and mixing the two would make
    both unreliable.
 6. **Migration.** One additive migration (two new tables, one event type, role grants) with a

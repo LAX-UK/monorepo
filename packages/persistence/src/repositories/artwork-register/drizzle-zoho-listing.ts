@@ -29,7 +29,11 @@ import { toEntry } from "./artwork-register.mapper.js";
 const OPEN_LOT_STATUSES = ["draft", "scheduled", "active"] as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** The delivery consumers that write to Zoho Products for the register. */
-export const ZOHO_PRODUCT_WRITE_CONSUMERS = ["zoho_artwork_writeback", "zoho_artwork_listing"];
+export const ZOHO_PRODUCT_WRITE_CONSUMERS = [
+  "zoho_artwork_writeback",
+  "zoho_artwork_listing",
+  "zoho_artwork_location",
+];
 
 function stateOf(value: unknown): OfferState | null {
   const state = value && typeof value === "object" ? (value as { state?: unknown }).state : null;

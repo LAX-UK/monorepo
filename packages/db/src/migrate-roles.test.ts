@@ -56,6 +56,7 @@ import {
   WORKER_ACCOUNTING_READ_TABLES,
   WORKER_ANONYMISATION_DELETE_TABLES,
   WORKER_ANONYMISATION_SCRUB_COLUMNS,
+  WORKER_ARTWORK_LOCATION_READ_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
@@ -819,6 +820,17 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_ARTWORK_LOCATION_TABLES]).not.toContain("artwork_location_move");
     for (const table of [...SHOP_ARTWORK_LOCATION_TABLES, ...SHOP_ARTWORK_LOCATION_MOVE_TABLES]) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker read stock locations and moves for the Zoho LAX_Location mirror, and nothing more", () => {
+    expect([...WORKER_ARTWORK_LOCATION_READ_TABLES]).toEqual([
+      "artwork_location",
+      "artwork_location_move",
+    ]);
+    for (const table of WORKER_ARTWORK_LOCATION_READ_TABLES) {
+      expect([...WORKER_READ_TABLES]).toContain(table);
+      expect([...WORKER_FULL_TABLES]).not.toContain(table);
     }
   });
 

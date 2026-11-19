@@ -13,9 +13,9 @@ function setup(
 }
 
 describe("productStatusQuery", () => {
-  it("selects the Status and the time of the last change, escaping each id", () => {
+  it("selects the Status and when and by whom it last changed, escaping each id", () => {
     expect(productStatusQuery(["1", "2' or '1'='1"])).toBe(
-      "select id, Status, Modified_Time from Products where id in ('1', '2\\' or \\'1\\'=\\'1') limit 2",
+      "select id, Status, Modified_Time, Modified_By from Products where id in ('1', '2\\' or \\'1\\'=\\'1') limit 2",
     );
   });
 });
@@ -23,15 +23,21 @@ describe("productStatusQuery", () => {
 describe("CrmZohoStatusProducts", () => {
   it("reads each Product's Status and change time, treating blanks as none", async () => {
     const { products } = setup([
-      { id: "1", Status: "Reserved", Modified_Time: "2026-11-03T12:00:00+00:00" },
-      { id: "2", Status: " ", Modified_Time: null },
+      {
+        id: "1",
+        Status: "Reserved",
+        Modified_Time: "2026-11-03T12:00:00+00:00",
+        Modified_By: { id: "5000000000000099001", name: "Staff" },
+      },
+      { id: "2", Status: " ", Modified_Time: null, Modified_By: null },
     ]);
     const read = await products.read(["1", "2", "3"]);
     expect(read.get("1")).toEqual({
       status: "Reserved",
       modifiedAt: new Date("2026-11-03T12:00:00Z"),
+      modifiedBy: "5000000000000099001",
     });
-    expect(read.get("2")).toEqual({ status: null, modifiedAt: null });
+    expect(read.get("2")).toEqual({ status: null, modifiedAt: null, modifiedBy: null });
     expect(read.has("3")).toBe(false);
   });
 
