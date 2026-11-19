@@ -182,7 +182,11 @@ export function createPrivateSaleDealServices(
   const gateway = new StripeDealCheckoutGateway(input.stripeClientFactory);
   const invoices = new DealInvoiceService({
     transitions,
-    finance,
+    transactionRunner: input.transactionRunner,
+    scopeForTx: (tx) => ({
+      ...transitionScopeForTx(tx),
+      finance: new DrizzlePrivateSaleDealFinanceStore(tx),
+    }),
     issuer: input.invoiceIssuer ?? null,
   });
   const dealPayments = new DealPaymentService({

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ZohoBooksClient } from "./client.js";
+import { ZohoBooksClient, type ZohoBooksClientDeps } from "./client.js";
+import { inProcessZohoBooksLimits } from "./limits.js";
 import type { CallBudget, RateWindow, RefreshLock } from "./ports.js";
 import {
   FakeClock,
@@ -33,7 +34,7 @@ function twoProcesses(
       tokenStore: store,
       clock,
       random: () => 0.5,
-      ...shared,
+      ...inProcessZohoBooksLimits(shared),
     });
   return { a: make(), b: make(), transport, clock, store };
 }
@@ -47,6 +48,24 @@ async function connected(p: ReturnType<typeof twoProcesses>) {
 }
 
 describe("limits shared across processes", () => {
+  it("refuses to build a client without the shared limits unless it opts into in-process ones", () => {
+    const base = { config: testConfig(), transport: new FakeZohoTransport() };
+    const tokenStore = new InMemoryTokenStore();
+    const partial = {
+      budget: new FixedBudget(10),
+      rateWindow: new SharedRateWindow(new FakeClock()),
+    };
+    const build = (deps: object) => () =>
+      new ZohoBooksClient({ ...base, tokenStore, ...deps } as ZohoBooksClientDeps);
+    expect(build({})).toThrow("zoho_books_shared_limits_required");
+    expect(build(partial)).toThrow("zoho_books_shared_limits_required");
+    expect(build({ ...partial, inProcessLimits: Symbol("forged") })).toThrow(
+      "zoho_books_shared_limits_required",
+    );
+    expect(build(inProcessZohoBooksLimits())).not.toThrow();
+    expect(build({ ...partial, refreshLock: new SharedRefreshLock() })).not.toThrow();
+  });
+
   it("without a shared window each process has its own: two processes send twice the limit", async () => {
     const p = twoProcesses({}, 3);
     await connected(p);
@@ -80,7 +99,13 @@ describe("limits shared across processes", () => {
     const transport = new FakeZohoTransport();
     const store = new InMemoryTokenStore();
     const make = () =>
-      new ZohoBooksClient({ config, transport, tokenStore: store, clock, rateWindow });
+      new ZohoBooksClient({
+        config,
+        transport,
+        tokenStore: store,
+        clock,
+        ...inProcessZohoBooksLimits({ rateWindow }),
+      });
     const a = make();
     const b = make();
     await a.registerRefreshToken(TEST_ORG, TEST_REFRESH_TOKEN);

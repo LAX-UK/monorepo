@@ -31,8 +31,26 @@ with its reason. Nothing is ever guessed.
 | `PRIVATE_SALE_BUYER_FEE_BPS` | Nothing; there is no buyer's fee by default |
 
 **Issue the invoice** also stays blocked ("Invoicing for private sales has not been set up yet.")
-until a finance system that issues deal invoices is connected. Which system that is remains an open
-owner and accountant decision (PS-6). A deal never moves to Invoiced without one.
+until a finance system that issues deal invoices is connected, and the "Terms not configured" notice
+names "invoicing for private sales" among what is missing. Which system that is remains an open
+owner and accountant decision (PS-6).
+
+Once one is connected, the move to Invoiced and the invoice reference are saved together: the deal
+moves, the finance system is asked for the invoice, and its reference is recorded, all in one
+transaction. If the finance system fails or returns no reference, the move is undone, the deal
+stays Cleared and finance sees "The finance system did not issue the invoice, so the deal has not
+moved. Try again." A deal issued through the product is never Invoiced without a reference. The
+finance system must treat a second request for the same deal as the same invoice, since a move
+undone after it answered is tried again.
+
+Deals moved to Invoiced before this guard may still have no reference. What to do with them is an
+owner decision (PS-6); to list them, someone with production read access runs:
+
+```sql
+SELECT reference, stage, updated_at FROM private_sale_deal
+ WHERE stage IN ('invoiced', 'paid') AND invoice_reference IS NULL
+ ORDER BY updated_at;
+```
 
 Approved defaults live in code: source of funds from £9,000 (`SOF_THRESHOLD_AMOUNT`), AML threshold
 £10,000, parties anonymous to each other.

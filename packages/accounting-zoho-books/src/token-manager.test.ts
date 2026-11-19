@@ -167,7 +167,7 @@ describe("token handling", () => {
   it("refuses to be built without a key, so there is no way to run unsealed", async () => {
     const { ZohoBooksClient } = await import("./client.js");
     const { Secret } = await import("./secret.js");
-    const { testConfig } = await import("./testing/index.js");
+    const { inProcessZohoBooksLimits, testConfig } = await import("./testing/index.js");
     const h = createClientHarness();
     expect(
       () =>
@@ -175,6 +175,7 @@ describe("token handling", () => {
           config: testConfig({ tokenDekKey: new Secret("") }),
           transport: h.transport,
           tokenStore: h.store,
+          ...inProcessZohoBooksLimits(),
         }),
     ).toThrow(expect.objectContaining({ code: "key_missing" }));
   });

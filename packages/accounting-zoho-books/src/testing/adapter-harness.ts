@@ -3,6 +3,7 @@ import type { ZohoOrgConfigs } from "../adapter/org-config.js";
 import type { ZohoWriteMode } from "../adapter/write-gate.js";
 import { InMemoryCallBudget } from "../call-budget.js";
 import { ZohoBooksClient } from "../client.js";
+import { inProcessZohoBooksLimits } from "../limits.js";
 import type { AccountingSubject, SubjectOptions } from "./adapter-contract.js";
 import { InMemoryAccounting } from "./fake-accounting.js";
 import { FakeClock } from "./fake-clock.js";
@@ -45,9 +46,9 @@ export async function createAdapterHarness(
     transport: books,
     tokenStore: new InMemoryTokenStore(),
     clock,
-    budget,
     logger: new RecordingLogger(),
     random: () => 0.5,
+    ...inProcessZohoBooksLimits({ budget }),
   });
   const organizationIds = Object.values(orgs).map((o) => o?.organizationId as string);
   for (const organizationId of organizationIds) {

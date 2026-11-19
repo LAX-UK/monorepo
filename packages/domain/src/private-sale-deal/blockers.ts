@@ -20,6 +20,7 @@ export type DealBlockerCode =
   | "checks_pending"
   | "payment_due_days_not_configured"
   | "invoice_issuer_not_configured"
+  | "invoice_not_issued"
   | "same_person_agreed_and_invoiced"
   | "cancel_reason_required"
   | "release_note_required"
@@ -76,6 +77,8 @@ export function describeDealBlocker(blocker: DealBlocker): string {
       return "The payment deadline has not been set up yet.";
     case "invoice_issuer_not_configured":
       return "Invoicing for private sales has not been set up yet.";
+    case "invoice_not_issued":
+      return "The finance system did not issue the invoice, so the deal has not moved. Try again.";
     case "same_person_agreed_and_invoiced":
       return "The person who recorded the agreement cannot issue the invoice.";
     case "cancel_reason_required":
