@@ -45,3 +45,32 @@ On "last written": the PR records no separate last-written stock code. Instead i
 2. **F16 residual with deliveries.** `derive-zoho-mirror-state.ts:267`: when the newest delivery is a writeback `writeback_off` skip (for example a `stock_code_assigned`, which the listing does not consume) and the listing is on, the artwork still reads "Zoho mirroring is off". This is outside what F16 asked for (the no-delivery case) but against its spirit.
 3. **The stock code read-then-write is not compare-and-set.** A staff edit between the read and `products.update` (`zoho-artwork-writeback-service.ts:110-127`) can still be overwritten. The window is narrow, and only for a Product that was blank at the read. This is the same class as the documented Status residual race, and was already there before the PR.
 4. **Doc nit.** `zoho.md:258` ("3 COQL reads + 1 update") does not mention the one extra read on an errored write (F12).
+
+## Fixes after review
+
+These are pushed to `fix/zoho-artwork-audit` as `e21c8767` (follow-up 1), `ae392f95` (follow-up 2) and `994cc967` (docs, follow-ups 3 and 4).
+
+- **1. A resolved stock code conflict no longer reads Failed (fixed, reader side).** I chose the reader-side fix over publishing `stock_code_assigned`. On "keep LAX's", a new delivery would find that Zoho still differs and raise the conflict again, unless the writeback also learnt to overwrite Zoho. Overwriting Zoho is a behaviour change, and this PR keeps it out of scope. The reader change also gives the event no new meaning.
+  - `packages/persistence/src/repositories/zoho-mirror/drizzle-zoho-mirror-ledger.reader.ts:74`: for artworks, the reader returns `stockCodeConflictResolvedAt`. That is the latest `resolved_at` of the artwork's `stockCode` conflicts, and it is given only when none of them is still open. Its type is at `interfaces/zoho-mirror-ledger.ts:44` and `apps/shop-api/src/application/ports/zoho-mirror.ports.ts:27`. The service passes it through at `zoho-mirror-status.service.ts:48`. `shop_app` already has SELECT on `artwork_register_conflict`, so no grant change was needed.
+  - `apps/shop-api/src/application/zoho-mirror/derive-zoho-mirror-state.ts:217` (`settledByResolution`): a `stock_code_conflict_raised` skip recorded at or before that time no longer stands. It is used at `:264` (`standingFailure`) and passed over in `newestThatDecides` (`:233`). If a conflict is raised again after the resolution, it is open, so it still reads Failed.
+  - Tests:
+    - `derive-zoho-mirror-state.test.ts:226` covers both resolutions (accepted Zoho's code, kept LAX's code), the conflict being raised again after a resolution, and that no other failure is settled this way.
+    - `zoho-mirror-ledger.integration.test.ts:318` covers accepted_zoho, kept_lax (latest of two), one still open, another field, none, and an order.
+    - `zoho-mirror-status.service.test.ts:127` covers the pass-through.
+- **2. A newest `writeback_off` skip no longer reads "off" while the listing is on (fixed).** In `derive-zoho-mirror-state.ts:233` (`newestThatDecides`), when an artwork's `listingMode` is `dry_run` or `live`, newer writeback deliveries that only say the writeback is off are passed over. The listing's newest delivery then decides; if there is none, the artwork reads `not_sent_yet` in the listing's mode.
+  - "Only say the writeback is off" means the skip is `writeback_off`, or the delivery is not good while the writeback is configured `off`.
+  - Tests at `derive-zoho-mirror-state.test.ts:282`: listing success behind a `writeback_off` skip reads mirrored live; only `writeback_off` with the listing in dry_run reads not sent yet in dry_run; with the listing off too it still reads mirroring off.
+  - I changed one existing expectation (`:438`). A pending writeback delivery with the writeback off and the listing live now reads `not_sent_yet` (live), no longer `mirroring_off`.
+- **3. Stock code read-then-write is not compare-and-set (left as a documented residual).** `docs/integrations/zoho.md:223` now has a one-line residual note.
+- **4. Doc nit (fixed).** `docs/integrations/zoho.md:258` now says that a retryable errored Status write costs one more read, to see whether it landed.
+- Badge docs: `zoho.md:415` (failed: a resolution settles a stock code conflict) and `:419` (`writeback_off` skips are passed over while the listing is on).
+
+Re-run on Postgres 16 :55432 with Redis, `vitest run --maxWorkers=2`:
+
+| Package | Result |
+|---|---|
+| @auction/shop-api | 3104 passed, 638 skipped |
+| @auction/persistence | 1152 passed, 19 skipped |
+| `tsc --noEmit` (shop-api, persistence) and biome on the changed files | clean |
+
+The worker and types are untouched.
