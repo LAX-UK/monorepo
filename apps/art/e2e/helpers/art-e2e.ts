@@ -40,9 +40,19 @@ export async function signInArtBuyer(
     .getByRole("button", { name: /sign in|log in|continue/i })
     .first()
     .click();
-  await page.waitForURL((url) => url.pathname.startsWith(returnTo.split("?")[0] ?? returnTo), {
-    timeout: 60_000,
-  });
+  // Wait until the sign-in has landed back on lax.art. waitForURL resolves at once when the current
+  // URL already matches, and every path starts with "/", so a bare prefix check on the path let a
+  // returnTo of "/" return while the browser was still on the sign-in page; the caller's next goto
+  // then cancelled the sign-in and the visitor stayed a guest.
+  const appOrigin = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3050").origin;
+  const returnPath = returnTo.split("?")[0] ?? returnTo;
+  await page.waitForURL(
+    (url) =>
+      url.origin === appOrigin &&
+      url.pathname !== "/login" &&
+      (returnPath === "/" ? url.pathname === "/" : url.pathname.startsWith(returnPath)),
+    { timeout: 60_000 },
+  );
   // The spec fixture signs this browser out when the spec ends.
   rememberSignIn(page.context(), signOutContextThroughMenu);
 }
