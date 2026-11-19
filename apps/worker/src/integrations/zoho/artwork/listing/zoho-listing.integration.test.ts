@@ -7,6 +7,7 @@ import {
   DrizzleZohoListingLock,
   DrizzleZohoListingRunStore,
   DrizzleZohoListingSourceReader,
+  zohoListingLockPool,
 } from "@auction/persistence/repositories";
 import { eq, sql } from "drizzle-orm";
 import type { Logger } from "pino";
@@ -97,7 +98,7 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
     sources,
     laxArt: { find: async () => [] },
     products: zoho.listingProducts,
-    lock: new DrizzleZohoListingLock(db),
+    lock: new DrizzleZohoListingLock(zohoListingLockPool(db)),
     links: new ListingLinks({
       artPublicUrl: "https://lax.art",
       laxAdminUrl: "https://admin.lax.art",
@@ -123,7 +124,7 @@ describe.skipIf(!url)("LAX listing on Zoho (Postgres)", { timeout: 30_000 }, () 
       sources,
       register,
       products: zoho.statusProducts,
-      lock: new DrizzleZohoListingLock(db),
+      lock: new DrizzleZohoListingLock(zohoListingLockPool(db)),
       log,
       now,
     }),

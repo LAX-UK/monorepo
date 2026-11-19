@@ -304,7 +304,22 @@ type LockClient = {
   on(event: "error", listener: (error: Error) => void): unknown;
   off(event: "error", listener: (error: Error) => void): unknown;
 };
-type LockPool = { connect(): Promise<LockClient> };
+/** The pg pool the lock checks its connection out of: the root database's `$client`. */
+export type ZohoListingLockPool = { connect(): Promise<LockClient> };
+
+/**
+ * The pg pool behind a root `drizzle(pool)` database, for `DrizzleZohoListingLock`. A transaction
+ * has no pool of its own (and the lock must not be held inside one), so it is refused here.
+ */
+export function zohoListingLockPool(db: Database): ZohoListingLockPool {
+  const pool = (db as unknown as { $client?: ZohoListingLockPool }).$client;
+  if (typeof pool?.connect !== "function") {
+    throw new Error(
+      "zohoListingLockPool: the database has no pg pool ($client); pass the root database, not a transaction",
+    );
+  }
+  return pool;
+}
 
 /** The advisory-lock key for one register entry, shared by every Zoho Products writer. */
 export function zohoListingLockKey(registerId: string): string {
@@ -321,12 +336,17 @@ export function zohoListingLockKey(registerId: string): string {
  * fails, the connection is destroyed instead of returned, which ends the session and its locks.
  */
 export class DrizzleZohoListingLock implements IZohoListingLock {
-  constructor(private readonly db: Database) {}
+  constructor(private readonly pool: ZohoListingLockPool) {
+    if (typeof pool?.connect !== "function") {
+      throw new Error(
+        "DrizzleZohoListingLock: needs the pg pool (see zohoListingLockPool), not a database or transaction",
+      );
+    }
+  }
 
   async withLock<T>(registerIds: readonly string[], fn: () => Promise<T>): Promise<T> {
     const keys = [...new Set(registerIds)].sort().map(zohoListingLockKey);
-    const pool = (this.db as unknown as { $client: LockPool }).$client;
-    const client = await pool.connect();
+    const client = await this.pool.connect();
     const held: string[] = [];
     // A connection that failed mid-lock (or mid-unlock) is not reused: dropping it ends the session.
     let destroy = false;

@@ -3,6 +3,7 @@ import {
   DrizzleZohoListingLock,
   DrizzleZohoListingSourceReader,
   DrizzleZohoLocationSourceReader,
+  zohoListingLockPool,
 } from "@auction/persistence/repositories";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
@@ -36,7 +37,7 @@ export function createZohoArtworkLocation(deps: {
     sources: new DrizzleZohoLocationSourceReader(db),
     products: new CrmZohoLocationProducts(createZohoCrmBatchStack(env)),
     // The listing's per-artwork lock: a later writer always reads newer facts.
-    lock: new DrizzleZohoListingLock(db),
+    lock: new DrizzleZohoListingLock(zohoListingLockPool(db)),
     log,
   });
   return {

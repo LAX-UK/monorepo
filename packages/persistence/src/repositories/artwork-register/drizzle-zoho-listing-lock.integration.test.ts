@@ -1,7 +1,11 @@
 import { closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { DrizzleZohoListingLock, zohoListingLockKey } from "./drizzle-zoho-listing.js";
+import {
+  DrizzleZohoListingLock,
+  zohoListingLockKey,
+  zohoListingLockPool,
+} from "./drizzle-zoho-listing.js";
 
 const url = process.env.DATABASE_URL;
 const db = url ? createDb(url) : (null as never);
@@ -35,8 +39,18 @@ async function waitFor(check: () => Promise<boolean>): Promise<boolean> {
   return false;
 }
 
+describe("DrizzleZohoListingLock pool", () => {
+  it("refuses a database with no pg pool, such as a transaction", () => {
+    expect(() => zohoListingLockPool({} as never)).toThrow(/not a transaction/);
+  });
+
+  it("refuses to be built without a pool", () => {
+    expect(() => new DrizzleZohoListingLock({} as never)).toThrow(/needs the pg pool/);
+  });
+});
+
 describe.skipIf(!url)("DrizzleZohoListingLock (Postgres)", { timeout: 30_000 }, () => {
-  const lock = new DrizzleZohoListingLock(db);
+  const lock = new DrizzleZohoListingLock(zohoListingLockPool(db));
 
   afterAll(async () => {
     if (url) await closeDb(db);
