@@ -23,9 +23,9 @@ Run on a throwaway Postgres 16 on :55432 plus local Redis, `vitest run --maxWork
 | @auction/accounting-zoho-books | 361/361 passed |
 | @auction/finance-runtime | 263/263 passed (the Redis Books-limits integration test ran) |
 | @auction/worker | 2287 passed, 465 skipped (role-scoped integration tests need `DATABASE_URL_WORKER`/owner URLs, unset here and in CI `test`) |
-| @auction/api | running (updated in follow-up commit) |
-| @auction/shop-api | running (updated in follow-up commit) |
-| tsc (accounting-domain, accounting-zoho-books, finance-runtime, worker, api, shop-api, persistence) | running (updated in follow-up commit) |
+| @auction/api | 8025/8025 passed |
+| @auction/shop-api | 3749/3749 passed (348 files) |
+| tsc (accounting-domain, accounting-zoho-books, finance-runtime, worker, api, shop-api, persistence) | all clean (exit 0) |
 
 ## Findings
 
