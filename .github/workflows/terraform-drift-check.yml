@@ -77,6 +77,24 @@ jobs:
       APP_ID: ${{ matrix.env == 'test' && secrets.DO_TEST_APP_ID || secrets.DO_PROD_APP_ID }}
     steps:
       - uses: actions/checkout@v4
+      # Zoho write-back modes the test up/apply workflows pass (same fallbacks). Test only: prod
+      # does not pass them, so prod plans keep the infra repo's defaults.
+      - name: Zoho write-back inputs (test)
+        if: matrix.env == 'test'
+        env:
+          ZOHO_ARTWORK_LISTING_MODE: ${{ vars.ZOHO_ARTWORK_LISTING_MODE || 'dry_run' }}
+          ZOHO_ARTWORK_LOCATION_MODE: ${{ vars.ZOHO_ARTWORK_LOCATION_MODE || 'dry_run' }}
+          ZOHO_FULFILMENT_MIRROR_MODE: ${{ vars.ZOHO_FULFILMENT_MIRROR_MODE || 'dry_run' }}
+          ZOHO_QC_READY_MODE: ${{ vars.ZOHO_QC_READY_MODE || 'off' }}
+          ZOHO_QC_WEBHOOK_SECRET: ${{ secrets.ZOHO_QC_WEBHOOK_SECRET }}
+        run: |
+          {
+            echo "TF_VAR_zoho_artwork_listing_mode=$ZOHO_ARTWORK_LISTING_MODE"
+            echo "TF_VAR_zoho_artwork_location_mode=$ZOHO_ARTWORK_LOCATION_MODE"
+            echo "TF_VAR_zoho_fulfilment_mirror_mode=$ZOHO_FULFILMENT_MIRROR_MODE"
+            echo "TF_VAR_zoho_qc_ready_mode=$ZOHO_QC_READY_MODE"
+            echo "TF_VAR_zoho_qc_webhook_secret=$ZOHO_QC_WEBHOOK_SECRET"
+          } >> "$GITHUB_ENV"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         if: matrix.layer == 'ephemeral'
