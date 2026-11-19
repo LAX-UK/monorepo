@@ -96,6 +96,22 @@ describe("ZohoListingWriteback", () => {
     });
   });
 
+  it("never reads a dry run as in sync, so it cannot pass for live", async () => {
+    const event = {
+      eventType: "artwork_register.offer_changed",
+      payload: { registerId: REGISTER },
+    };
+    for (const report of [
+      { checked: 1, unchanged: 1 },
+      { checked: 1, stale: 1 },
+    ]) {
+      expect(await setup(report, "dry_run").writeback.deliver(event)).toEqual({
+        outcome: "skipped",
+        reason: "dry_run",
+      });
+    }
+  });
+
   it("retries a retryable failure and dead-letters one that cannot succeed", async () => {
     const event = {
       eventType: "artwork_register.offer_changed",

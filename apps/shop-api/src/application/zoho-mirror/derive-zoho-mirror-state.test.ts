@@ -256,14 +256,37 @@ describe("deriveZohoMirrorState", () => {
     });
 
     it.each([ARTWORK_LISTING_SKIP.listingAlreadyInSync, ARTWORK_LISTING_SKIP.newerListingInZoho])(
-      "is mirrored, live, when the listing skipped %s",
+      "is mirrored, in the listing's configured mode, when the listing skipped %s",
       (reason) => {
-        expect(deriveZohoMirrorState("artwork", [skipped(reason, LISTING)])).toMatchObject({
-          state: "mirrored",
-          mode: "live",
-        });
+        expect(
+          deriveZohoMirrorState("artwork", [skipped(reason, LISTING)], {
+            mode: "off",
+            listingMode: "live",
+            paid: null,
+          }),
+        ).toMatchObject({ state: "mirrored", mode: "live" });
       },
     );
+
+    it("never reads a listing skip as proof of live when the listing runs dry", () => {
+      expect(
+        deriveZohoMirrorState(
+          "artwork",
+          [skipped(ARTWORK_LISTING_SKIP.listingAlreadyInSync, LISTING)],
+          { mode: "off", listingMode: "dry_run", paid: null },
+        ),
+      ).toMatchObject({ mode: "dry_run" });
+    });
+
+    it("reads a listing success as live whatever mode shop-api is told", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [delivery("succeeded", LISTING)], {
+          mode: "off",
+          listingMode: "dry_run",
+          paid: null,
+        }),
+      ).toMatchObject({ state: "mirrored", mode: "live" });
+    });
 
     it("is a dry run when the listing's newest delivery was one", () => {
       expect(
@@ -377,6 +400,18 @@ describe("deriveZohoMirrorState", () => {
     it("still shows a failure, and a record already in Zoho, when the mirror is off", () => {
       expect(deriveZohoMirrorState("order", [delivery("dead_lettered")], off).state).toBe("failed");
       expect(deriveZohoMirrorState("order", [delivery("succeeded")], off).state).toBe("mirrored");
+    });
+
+    it("says an artwork with nothing sent is off only when its writeback and listing both are", () => {
+      expect(
+        deriveZohoMirrorState("artwork", [], { mode: "off", listingMode: "off", paid: null }),
+      ).toMatchObject({ notApplicableReason: "mirroring_off", mode: "off" });
+      expect(
+        deriveZohoMirrorState("artwork", [], { mode: "off", listingMode: "dry_run", paid: null }),
+      ).toMatchObject({ notApplicableReason: "not_sent_yet", mode: "dry_run" });
+      expect(
+        deriveZohoMirrorState("artwork", [], { mode: "live", listingMode: "off", paid: null }),
+      ).toMatchObject({ notApplicableReason: "not_sent_yet", mode: "live" });
     });
 
     it("says only paid orders are sent for an unpaid order with nothing sent", () => {

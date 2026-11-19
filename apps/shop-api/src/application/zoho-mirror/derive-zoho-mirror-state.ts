@@ -139,12 +139,17 @@ function outcomeOf(delivery: MirrorDelivery, reading: LedgerReading): Outcome {
 }
 
 /**
- * The mode a delivery proves. The worker records a success or an "already in sync" skip only when
- * it runs live (a dry run returns before either), a dry-run skip only in a dry run, and an off skip
- * only when off. Anything else proves nothing.
+ * The mode a delivery proves. The writeback records a success or an "already in sync" skip only
+ * when it runs live (a dry run returns before either), a dry-run skip only in a dry run, and an off
+ * skip only when off. The listing's "already in sync" skips predate it recording every dry run as
+ * one, so only a listing success proves live. Anything else proves nothing.
  */
-function modeProvedBy(outcome: Outcome): ZohoMirrorMode | null {
-  if (outcome === "good") return "live";
+function modeProvedBy(outcome: Outcome, delivery: MirrorDelivery): ZohoMirrorMode | null {
+  if (outcome === "good") {
+    const listingSkip =
+      delivery.consumer === ZOHO_ARTWORK_LISTING_CONSUMER && delivery.status !== "succeeded";
+    return listingSkip ? null : "live";
+  }
   if (outcome === "dry_run") return "dry_run";
   if (outcome === "off") return "off";
   return null;
@@ -185,6 +190,15 @@ function configuredModeOf(
   return delivery.consumer === ZOHO_ARTWORK_LISTING_CONSUMER
     ? (context.listingMode ?? null)
     : context.mode;
+}
+
+/**
+ * The mode a record with no delivery reads in. An artwork is mirrored by its writeback and its LAX
+ * listing, so it is off only when both are; otherwise it reads in the mode of whichever is on.
+ */
+function modeOfUnsent(entity: ZohoMirrorEntity, context: ZohoMirrorContext): ZohoMirrorMode | null {
+  if (entity !== "artwork" || context.mode !== "off") return context.mode;
+  return context.listingMode ?? null;
 }
 
 /** The newest failure that no later good delivery of the same part has put right, if any. */
@@ -238,10 +252,10 @@ export function deriveZohoMirrorState(
   const newest = deliveries[latest];
   const newestOutcome = outcomes[latest];
   if (!newest || newestOutcome === undefined) {
-    if (context.mode === "off") return notApplicable("mirroring_off", "off");
-    if (entity === "order" && context.paid === false)
-      return notApplicable("not_paid", context.mode);
-    return notApplicable("not_sent_yet", context.mode);
+    const mode = modeOfUnsent(entity, context);
+    if (mode === "off") return notApplicable("mirroring_off", "off");
+    if (entity === "order" && context.paid === false) return notApplicable("not_paid", mode);
+    return notApplicable("not_sent_yet", mode);
   }
 
   // Off, nothing more will be sent: only a record already in Zoho still reads as mirrored. The mode
@@ -251,7 +265,7 @@ export function deriveZohoMirrorState(
     return notApplicable("mirroring_off", "off", newest);
   }
 
-  const mode = modeProvedBy(newestOutcome) ?? configured;
+  const mode = modeProvedBy(newestOutcome, newest) ?? configured;
   switch (newestOutcome) {
     case "good": {
       const reference = [...deliveries]
