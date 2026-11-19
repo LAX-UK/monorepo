@@ -987,7 +987,7 @@ describe("the credit VAT rule is decided per credit note (review B1)", () => {
 });
 
 describe("a credit note's lines are capped (review N4)", () => {
-  it("drops the Books splits rather than go past MAX_LINES", () => {
+  it("drops the split that would go past MAX_LINES", () => {
     const r = buildInvoice({
       ...common,
       contactReference: contact,
@@ -1029,4 +1029,65 @@ describe("a credit note's lines are capped (review N4)", () => {
     const all = creditedOnInvoiceLines(inv, [first.value, rest.value]);
     expect(all.ok && all.value.every((g) => g === 25)).toBe(true);
   });
+
+  // Each invoice line is its own lot of 21p net (25p gross, 4p VAT). A 3p credit on the first `started` lines
+  // leaves 22p with 3p VAT on each; Books gives 22p 4p, so each rest is split into two lines.
+  it.each([
+    { lines: 10, started: 10, expected: 20, splits: 10 },
+    { lines: 999, started: 1, expected: MAX_LINES, splits: 1 },
+    { lines: 995, started: 10, expected: MAX_LINES, splits: 5 },
+    { lines: MAX_LINES, started: 3, expected: MAX_LINES, splits: 0 },
+  ])(
+    "stops splitting at the cap: $lines lines, $started started, $splits split",
+    ({ lines, started, expected, splits }) => {
+      const r = buildInvoice({
+        ...common,
+        contactReference: contact,
+        issuedOn: "2026-01-01",
+        dueOn: "2026-01-31",
+        lines: Array.from({ length: lines }, (_, i) =>
+          lineInput({ description: `Lot ${i + 1}`, unitNetPence: 21 }),
+        ),
+      });
+      if (!r.ok) throw new Error("fixture");
+      const inv = r.value;
+      const total = inv.totals.grossPence;
+      const buckets = (refunded: number) => ({
+        paidGoodsPence: total,
+        paidDeliveryPence: 0,
+        refundedGoodsPence: refunded,
+        refundedDeliveryPence: 0,
+      });
+      const prior: CreditNote[] = [];
+      for (let index = 0; index < started; index++) {
+        const note = buildCreditNoteFor(inv, {
+          sourceId: `cn-3p-${index}`,
+          issuedOn: "2026-02-01",
+          buckets: buckets(3 * index),
+          request: { goodsPence: 3, deliveryPence: 0 },
+          priorCredits: prior,
+          lines: [index],
+        });
+        if (!note.ok) throw new Error(note.refusal.message);
+        prior.push(note.value);
+      }
+      const rest = buildCreditNoteFor(inv, {
+        sourceId: "cn-rest",
+        issuedOn: "2026-02-01",
+        buckets: buckets(3 * started),
+        request: { goodsPence: total - 3 * started, deliveryPence: 0 },
+        priorCredits: prior,
+      });
+      if (!rest.ok) throw new Error(rest.refusal.message);
+      expect(rest.value.lines).toHaveLength(expected);
+      // The splits are kept in invoice order: the first `splits` started lines, then whole lines.
+      const unsplitRests = rest.value.lines.filter((l) => lineGrossPence(l) === 22).length;
+      expect(unsplitRests).toBe(started - splits);
+      expect(rest.value.lines.length - lines).toBe(splits);
+      const vat = prior.reduce((n, c) => n + c.totals.vatPence, rest.value.totals.vatPence);
+      expect(vat).toBe(inv.totals.vatPence);
+      const all = creditedOnInvoiceLines(inv, [...prior, rest.value]);
+      expect(all.ok && all.value.every((g) => g === 25)).toBe(true);
+    },
+  );
 });

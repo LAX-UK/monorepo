@@ -866,8 +866,9 @@ function missingPriorCredit(role: LineRole): Result<never, DocumentCode> {
  * line takes exactly the VAT left on it, split into a few parts on that same line when Books'
  * rounding of the whole rest would differ (`creditLines`). However a line is split its credits
  * never total more VAT or gross than the invoice line charged. A note that would have more than
- * `MAX_LINES` lines with those splits is made without them instead (the unsplit lines that differ
- * from Books are then refused by the adapter for staff, as before). The invoice is rebuilt
+ * `MAX_LINES` lines with those splits keeps them, in order, only while they fit: splitting stops
+ * at the cap (the unsplit lines after it that differ from Books are then refused by the adapter
+ * for staff, as before). The invoice is rebuilt
  * through the same constructors as a new one, so a forged or hand-edited Invoice is refused
  * (`bad_invoice`).
  */
@@ -922,10 +923,15 @@ export function buildCreditNoteFor(
   if (rule !== "books" && rule !== "cumulative") {
     return refuse("bad_invoice", "unknown credit VAT rule");
   }
-  let lines = creditNoteLines(invoice, input, plan.value, rule, true);
+  let lines = creditNoteLines(invoice, input, plan.value, rule, Number.POSITIVE_INFINITY);
   if (lines.ok && lines.value.length > MAX_LINES) {
-    // Splits only ever add lines: without them a note has at most one line per invoice line.
-    lines = creditNoteLines(invoice, input, plan.value, rule, false);
+    // Splits only ever add lines: without them a note has at most one line per invoice line. Keep
+    // the splits that fit under the cap, in order, and stop splitting there.
+    const unsplit = creditNoteLines(invoice, input, plan.value, rule, 0);
+    const capped = unsplit.ok
+      ? creditNoteLines(invoice, input, plan.value, rule, MAX_LINES - unsplit.value.length)
+      : unsplit;
+    lines = capped.ok && capped.value.length <= MAX_LINES ? capped : unsplit;
   }
   if (!lines.ok) return lines;
   if (lines.value.length > MAX_LINES) {
@@ -951,8 +957,8 @@ export function buildCreditNoteFor(
 
 /**
  * The lines of the credit note `buildCreditNoteFor` makes, after replaying `priorCredits`, with
- * every partial credit's VAT by `rule`; `split` allows a finishing credit to be split
- * (`creditLines`).
+ * every partial credit's VAT by `rule`. Finishing credits are split (`creditLines`) while the
+ * splits add no more than `spareLines` lines in all; a split that would go past it is not made.
  */
 function creditNoteLines(
   invoice: Invoice,
@@ -963,8 +969,17 @@ function creditNoteLines(
   },
   plan: { readonly goodsPence: Pence; readonly deliveryPence: Pence },
   rule: CreditVatRule,
-  split: boolean,
+  spareLines: number,
 ): Result<Line[], DocumentCode> {
+  let spare = spareLines;
+  const creditFor = (entries: readonly LineLedger[], entry: LineLedger, take: Pence) => {
+    const credit = creditLines(entries, entry, take, rule, spare > 0);
+    if (!credit.ok || credit.value.length - 1 <= spare) {
+      if (credit.ok) spare -= credit.value.length - 1;
+      return credit;
+    }
+    return creditLines(entries, entry, take, rule, false);
+  };
   const replayed = replayPriorCredits(invoice, input.priorCredits);
   if (!replayed.ok) return replayed;
   const ledger = replayed.value;
@@ -1006,7 +1021,7 @@ function creditNoteLines(
       const entry = (entries as LineLedger[]).find((e) => e.creditedGross < e.gross);
       if (!entry) return refuse("exceeds_invoice", "the credit exceeds what is left on its lines");
       const take = Math.min(remaining, entry.gross - entry.creditedGross);
-      const credit = creditLines(ledger[first.role], entry, take, rule, split);
+      const credit = creditFor(ledger[first.role], entry, take);
       if (!credit.ok) return credit;
       for (const line of credit.value) {
         lines.push(line);
@@ -1027,7 +1042,7 @@ function creditNoteLines(
       if (remaining === 0) break;
       const take = Math.min(remaining, entry.gross - entry.creditedGross);
       if (take === 0) continue;
-      const credit = creditLines(ledger[role], entry, take, rule, split);
+      const credit = creditFor(ledger[role], entry, take);
       if (!credit.ok) return credit;
       for (const line of credit.value) {
         lines.push(line);
