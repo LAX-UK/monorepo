@@ -297,21 +297,59 @@ export class DrizzleZohoListingSourceReader
   }
 }
 
+/** The one pooled connection the lock is held on. */
+type LockClient = {
+  query(text: string, params?: unknown[]): Promise<unknown>;
+  release(destroy?: boolean): void;
+};
+type LockPool = { connect(): Promise<LockClient> };
+
+/** The advisory-lock key for one register entry, shared by every Zoho Products writer. */
+export function zohoListingLockKey(registerId: string): string {
+  return `zoho_listing:${registerId}`;
+}
+
 /**
- * Per-artwork transaction-scoped advisory locks, taken in id order so two holders of overlapping
- * sets can never deadlock. The transaction writes nothing; it only holds the locks.
+ * Per-artwork session-level advisory locks on one dedicated pool connection, taken in id order so
+ * two holders of overlapping sets can never deadlock, and unlocked explicitly when `fn` settles.
+ *
+ * No transaction is open while `fn` runs. `fn` makes Zoho HTTP calls for a whole batch, so a
+ * transaction-scoped lock would leave its connection idle in transaction for that long, where an
+ * `idle_in_transaction_session_timeout` aborts it after the Zoho writes were sent. If unlocking
+ * fails, the connection is destroyed instead of returned, which ends the session and its locks.
  */
 export class DrizzleZohoListingLock implements IZohoListingLock {
   constructor(private readonly db: Database) {}
 
   async withLock<T>(registerIds: readonly string[], fn: () => Promise<T>): Promise<T> {
-    const ids = [...new Set(registerIds)].sort();
-    return this.db.transaction(async (tx) => {
-      for (const id of ids) {
-        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`zoho_listing:${id}`}))`);
+    const keys = [...new Set(registerIds)].sort().map(zohoListingLockKey);
+    const pool = (this.db as unknown as { $client: LockPool }).$client;
+    const client = await pool.connect();
+    const held: string[] = [];
+    // A connection that failed mid-lock (or mid-unlock) is not reused: dropping it ends the session.
+    let destroy = false;
+    try {
+      for (const key of keys) {
+        try {
+          await client.query("select pg_advisory_lock(hashtext($1))", [key]);
+        } catch (error) {
+          destroy = true;
+          throw error;
+        }
+        held.push(key);
       }
-      return fn();
-    });
+      return await fn();
+    } finally {
+      for (const key of destroy ? [] : held.reverse()) {
+        try {
+          await client.query("select pg_advisory_unlock(hashtext($1))", [key]);
+        } catch {
+          destroy = true;
+          break;
+        }
+      }
+      client.release(destroy);
+    }
   }
 }
 
