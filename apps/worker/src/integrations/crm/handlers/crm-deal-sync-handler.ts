@@ -278,6 +278,7 @@ export class CrmDealSyncHandler {
         entityId: intent.noteRecordId,
         ...CRM_NOTE_REFUSED,
         ...subject,
+        keepErased: true,
       });
     let note: Awaited<ReturnType<CrmGateway["createRecord"]>>;
     try {
@@ -316,6 +317,8 @@ export class CrmDealSyncHandler {
       zohoModule: "Notes",
       zohoRecordId,
       ...subject,
+      // An erasure that ran while the note was being sent stays done: the row stays erased.
+      keepErased: true,
     });
     return noteAdded(zohoRecordId);
   }

@@ -73,6 +73,7 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
           erasedAt: null,
           updatedAt: now,
         },
+        ...(input.keepErased ? { setWhere: isNull(crmRecordLink.erasedAt) } : {}),
       });
   }
 

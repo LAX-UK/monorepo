@@ -25,6 +25,7 @@ export class InMemoryCrmLinkRepo implements ICrmRecordLinkRepository {
   async upsertLink(input: UpsertCrmRecordLinkInput): Promise<void> {
     const now = input.now ?? new Date();
     const existing = this.rows.get(this.key(input.entityType, input.entityId));
+    if (input.keepErased && existing?.erasedAt) return;
     this.rows.set(this.key(input.entityType, input.entityId), {
       entityType: input.entityType,
       entityId: input.entityId,
@@ -49,7 +50,7 @@ export class InMemoryCrmLinkRepo implements ICrmRecordLinkRepository {
         existing.zohoRecordId === input.from.zohoRecordId &&
         (!input.from.updatedBefore || existing.updatedAt < input.from.updatedBefore));
     if (!claimable) return false;
-    const { from: _from, ...link } = input;
+    const { from: _from, keepErased: _keepErased, ...link } = input;
     await this.upsertLink(link);
     return true;
   }

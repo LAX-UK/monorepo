@@ -265,6 +265,41 @@ describe("CrmSyncService shop.fulfilment.status_changed", () => {
     ).toMatchObject({ zohoModule: "Notes", zohoRecordId: "notes-1" });
   });
 
+  it.each([
+    ["Zoho adds the note", { status: "success", recordId: "notes-1" }],
+    ["Zoho refuses the note", { status: "error", code: "INVALID_DATA", message: "refused" }],
+  ] as const)(
+    "an erasure that lands while the note is being sent stays done when %s (review observation 6)",
+    async (_case, answer) => {
+      const { gateway, linkRepo, service } = setup();
+      await seedDeal(linkRepo, "Deals");
+      const noteId = `fulfilment:${FULFILMENT_ID}:delivered`;
+      gateway.createRecord.mockImplementationOnce(async () => {
+        // The person's erasure runs while the request is out.
+        await linkRepo.tombstone({
+          entityType: CRM_ENTITY.note,
+          entityId: noteId,
+          tombstoneModule: "__tombstone__",
+          tombstoneRecordId: "__none__",
+        });
+        return answer as never;
+      });
+
+      await service.syncEvent(fulfilmentStatus("delivered"));
+
+      expect(await linkRepo.findByEntity(CRM_ENTITY.note, noteId)).toMatchObject({
+        zohoModule: "__tombstone__",
+        erasedAt: expect.any(Date),
+      });
+      // A redelivery sees the erasure and sends nothing.
+      expect(await service.syncEvent(fulfilmentStatus("delivered", 21))).toMatchObject({
+        outcome: "skipped",
+        reason: "subject_erased",
+      });
+      expect(gateway.createRecord).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("keeps the note pending when the send fails without a definite answer", async () => {
     const { gateway, linkRepo, service } = setup();
     await seedDeal(linkRepo, "Deals");

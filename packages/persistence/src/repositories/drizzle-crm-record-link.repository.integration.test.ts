@@ -230,6 +230,52 @@ describe.skipIf(!HAS_DB)("DrizzleCrmRecordLinkRepository (integration)", () => {
     expect(rows.map((r) => r.zohoModule).sort()).toEqual(["Notes", "Tasks"]);
   });
 
+  it("keepErased leaves an erased link erased; a plain upsert still overwrites it (review observation 6)", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const repo = new DrizzleCrmRecordLinkRepository(db);
+    const noteId = `keep-erased-${randomUUID()}`;
+
+    await repo.tombstone({
+      entityType: "note",
+      entityId: noteId,
+      tombstoneModule: "__tombstone__",
+      tombstoneRecordId: "__none__",
+    });
+    await repo.upsertLink({
+      entityType: "note",
+      entityId: noteId,
+      zohoModule: "Notes",
+      zohoRecordId: "zoho-note-1",
+      keepErased: true,
+    });
+    const kept = await repo.findByEntity("note", noteId);
+    expect(kept?.erasedAt).not.toBeNull();
+    expect(kept?.zohoModule).toBe("__tombstone__");
+
+    const fresh = `keep-erased-new-${randomUUID()}`;
+    await repo.upsertLink({
+      entityType: "note",
+      entityId: fresh,
+      zohoModule: "Notes",
+      zohoRecordId: "zoho-note-2",
+      keepErased: true,
+    });
+    expect(await repo.findByEntity("note", fresh)).toMatchObject({
+      zohoModule: "Notes",
+      zohoRecordId: "zoho-note-2",
+      erasedAt: null,
+    });
+
+    await repo.upsertLink({
+      entityType: "note",
+      entityId: noteId,
+      zohoModule: "Notes",
+      zohoRecordId: "zoho-note-1",
+    });
+    expect((await repo.findByEntity("note", noteId))?.erasedAt).toBeNull();
+  });
+
   it("claims a link for one writer: inserts it, or takes over only the state it names", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);

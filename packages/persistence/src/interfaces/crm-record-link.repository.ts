@@ -23,6 +23,11 @@ export type UpsertCrmRecordLinkInput = {
   subjectId?: string | null;
   heldPayload?: Record<string, unknown> | null;
   now?: Date;
+  /**
+   * Leave an erased row as it is (no update, `erasedAt` kept) instead of overwriting it and
+   * clearing `erasedAt`. For a write that finishes a send started before an erasure may have run.
+   */
+  keepErased?: boolean;
 };
 
 /**
