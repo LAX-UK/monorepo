@@ -213,6 +213,16 @@ describe("deriveZohoMirrorState", () => {
     });
   });
 
+  it("is failed while a stock code edited in Zoho is left for staff, until a later stock code write", () => {
+    const conflict = skipped(ARTWORK_WRITEBACK_SKIP.stockCodeConflictRaised, STOCK_CODE);
+    expect(deriveZohoMirrorState("artwork", [conflict, delivery("succeeded", STATUS)]).state).toBe(
+      "failed",
+    );
+    expect(
+      deriveZohoMirrorState("artwork", [conflict, delivery("succeeded", STOCK_CODE)]).state,
+    ).toBe("mirrored");
+  });
+
   describe("an artwork reads its LAX listing's outcome too", () => {
     it("is failed when the listing dead-lettered after the Status was sent", () => {
       const dead = delivery("dead_lettered", { ...LISTING, lastError: "PRODUCT_NOT_FOUND" });

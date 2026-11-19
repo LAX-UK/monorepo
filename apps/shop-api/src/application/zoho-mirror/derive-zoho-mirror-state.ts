@@ -94,7 +94,10 @@ const READING: Record<ZohoMirrorEntity, LedgerReading> = {
       ARTWORK_LISTING_SKIP.newerListingInZoho,
     ],
     dryRun: [ARTWORK_WRITEBACK_SKIP.dryRun, ARTWORK_LISTING_SKIP.dryRun],
-    failed: [ARTWORK_WRITEBACK_SKIP.statusConflictRaised],
+    failed: [
+      ARTWORK_WRITEBACK_SKIP.statusConflictRaised,
+      ARTWORK_WRITEBACK_SKIP.stockCodeConflictRaised,
+    ],
     off: [ARTWORK_WRITEBACK_SKIP.writebackOff],
     notPaid: [],
     notInRegister: [ARTWORK_WRITEBACK_SKIP.registerEntryMissing],

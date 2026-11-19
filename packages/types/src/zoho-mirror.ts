@@ -95,6 +95,8 @@ export const ARTWORK_WRITEBACK_SKIP = {
   stockCodeAlreadyInSync: "stock_code_already_in_sync",
   /** Zoho's Status disagrees with LAX and staff were told; nothing was written. */
   statusConflictRaised: "status_conflict_raised",
+  /** Zoho holds a stock code LAX did not write and staff were told; nothing was written. */
+  stockCodeConflictRaised: "stock_code_conflict_raised",
 } as const;
 export type ArtworkWritebackSkipReason =
   (typeof ARTWORK_WRITEBACK_SKIP)[keyof typeof ARTWORK_WRITEBACK_SKIP];

@@ -19,7 +19,7 @@ function setup(rows: Record<string, unknown>[] = []) {
 describe("productWriteStateQuery", () => {
   it("selects the stock code LAX writes for one Product, escaping the id", () => {
     expect(productWriteStateQuery("1' or '1'='1")).toBe(
-      "select id, Reference_Stock_Code from Products where id = '1\\' or \\'1\\'=\\'1' limit 1",
+      "select id, Reference_Stock_Code, Modified_Time from Products where id = '1\\' or \\'1\\'=\\'1' limit 1",
     );
   });
 });
@@ -27,8 +27,22 @@ describe("productWriteStateQuery", () => {
 describe("CrmZohoProductWriter", () => {
   it("reads the stock code, treating blanks as none", async () => {
     const { writer, coql } = setup([{ id: "1", Reference_Stock_Code: " " }]);
-    expect(await writer.read("1")).toEqual({ stockCode: null });
+    expect(await writer.read("1")).toEqual({ stockCode: null, modifiedAt: null });
     expect(coql.queryCoql).toHaveBeenCalledWith(productWriteStateQuery("1"));
+  });
+
+  it("reads when the Product was modified, for a conflict raised over the stock code", async () => {
+    const { writer } = setup([
+      {
+        id: "1",
+        Reference_Stock_Code: "LAX-ORI-PH-GAC-26-0001",
+        Modified_Time: "2026-11-03T12:00:00+00:00",
+      },
+    ]);
+    expect(await writer.read("1")).toEqual({
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      modifiedAt: new Date("2026-11-03T12:00:00.000Z"),
+    });
   });
 
   it("returns null for a Product Zoho does not have", async () => {

@@ -13,7 +13,7 @@ import {
   type ZohoStatusSync,
   wantedStatus,
 } from "./status/zoho-status-sync.js";
-import { type ZohoProductUpdate, planStockCodeUpdate } from "./writeback-mapping.js";
+import { planStockCodeUpdate } from "./writeback-mapping.js";
 import type { ZohoProductWriter } from "./zoho-product-writer.js";
 
 /** `off` does nothing; `dry_run` logs what would be sent without calling Zoho; `live` sends it. */
@@ -28,7 +28,7 @@ const SKIP = ARTWORK_WRITEBACK_SKIP;
 export type ZohoArtworkWritebackDeps = {
   mode: ZohoArtworkWritebackMode;
   products: ZohoProductWriter;
-  register: Pick<IArtworkRegisterRepository, "findById">;
+  register: Pick<IArtworkRegisterRepository, "findById" | "recordStockCodeConflict">;
   /** Compares the Zoho Status and sets it only where that is safe. */
   status: Pick<ZohoStatusSync, "sync">;
   /** For a dry run, which reads LAX alone and never reaches Zoho. */
@@ -98,14 +98,33 @@ export class ZohoArtworkWritebackService {
     return statusResult(entry, outcome);
   }
 
-  private async sendStockCode(entry: ArtworkRegisterEntry, event: WritebackEvent) {
+  /** A stock code edited in Zoho is raised as the register's stock code conflict, never overwritten. */
+  private async sendStockCode(
+    entry: ArtworkRegisterEntry,
+    event: WritebackEvent,
+  ): Promise<CrmSyncResult> {
     if (this.deps.mode === "dry_run") {
       return this.dryRun(entry, event, { Reference_Stock_Code: entry.stockCode });
     }
     const current = await this.requireProduct(entry);
-    const update = planStockCodeUpdate(entry.stockCode, current);
-    if (update) await this.deps.products.update(entry.zohoProductId, update.fields);
-    return this.finish(entry, update, SKIP.stockCodeAlreadyInSync);
+    const plan = planStockCodeUpdate(entry.stockCode, current);
+    if (plan.kind === "in_sync") return { outcome: "skipped", reason: SKIP.stockCodeAlreadyInSync };
+    if (plan.kind === "conflict") {
+      await this.deps.register.recordStockCodeConflict({
+        registerId: entry.id,
+        zohoStockCode: plan.zohoStockCode,
+        laxStockCode: entry.stockCode,
+        zohoModifiedAt: current.modifiedAt ?? this.now(),
+        now: this.now(),
+      });
+      this.deps.log.info(
+        { registerId: entry.id, zohoStockCode: plan.zohoStockCode, stockCode: entry.stockCode },
+        "zoho_stock_code_conflict",
+      );
+      return { outcome: "skipped", reason: SKIP.stockCodeConflictRaised };
+    }
+    await this.deps.products.update(entry.zohoProductId, plan.update.fields);
+    return { outcome: "success", providerReference: `Products:${entry.zohoProductId}` };
   }
 
   private dryRun(
@@ -136,16 +155,6 @@ export class ZohoArtworkWritebackService {
       status: 404,
       retryable: false,
     });
-  }
-
-  private finish(
-    entry: ArtworkRegisterEntry,
-    update: ZohoProductUpdate | null,
-    unchangedReason: string,
-  ): CrmSyncResult {
-    return update
-      ? { outcome: "success", providerReference: `Products:${entry.zohoProductId}` }
-      : { outcome: "skipped", reason: unchangedReason };
   }
 }
 
