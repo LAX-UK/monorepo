@@ -8,6 +8,7 @@ import {
   CRM_LEAD_SOURCE_SHOP_ENQUIRY,
   CRM_LEAD_SOURCE_SHOP_GUEST,
   CRM_LEAD_SOURCE_SIGN_UP,
+  fulfilmentMilestoneNoteRecordId,
   lotWonDealEntityId,
   lotWonDealKey,
   shopOrderDealEntityId,
@@ -58,7 +59,24 @@ export type CrmMappedIntent =
        */
       purchase?: CrmPurchase;
     }
-  | { kind: "deal_stage"; dealEntityId: string; stage: string }
+  | {
+      kind: "deal_stage";
+      dealEntityId: string;
+      stage: string;
+      /**
+       * Retry, instead of skipping, while the deal is not in the ledger yet: for an event that can
+       * arrive before the one that creates the deal (a Shop refund before the paid order's deal).
+       */
+      retryWhileDealMissing?: true;
+    }
+  | {
+      kind: "deal_note";
+      dealEntityId: string;
+      /** Ledger id of the note, so a replay never adds it twice. */
+      noteRecordId: string;
+      title: string;
+      content: string;
+    }
   | {
       kind: "purchase_paid";
       dealEntityId: string;
@@ -148,6 +166,13 @@ function parsePayload(event: DomainEventRowForCrm): unknown | null {
   const parsed = parseDomainEventPayload(event.eventType, event.schemaVersion ?? 1, event.payload);
   return parsed.ok ? parsed.data : null;
 }
+
+/** The Shop fulfilment statuses that add a note to the order's deal, and the milestone each is. */
+const SHOP_FULFILMENT_MILESTONE: Readonly<Record<string, string>> = {
+  in_transit: "Dispatched",
+  delivered: "Delivered",
+  collected: "Collected",
+};
 
 const GUEST_LEAD_STATUS_LABEL = {
   abandoned_checkout: "abandoned checkout",
@@ -407,6 +432,34 @@ export function mapDomainEventToCrmIntent(
         kind: "deal_stage",
         dealEntityId: lotWonDealEntityId(lotId),
         stage: dealConfig.stage,
+      };
+    }
+    case "shop.refund.completed": {
+      // A Shop refund moves the order's deal to the refunded stage, as a Bid refund moves the lot's.
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as { orderId: string; status: "succeeded" | "failed" };
+      if (p.status !== "succeeded") return { kind: "skip", reason: "refund_not_succeeded" };
+      const dealConfig = requireDealConfig(ctx, ctx.dealStagePaymentRefunded);
+      if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
+      return {
+        kind: "deal_stage",
+        dealEntityId: shopOrderDealEntityId(p.orderId),
+        stage: dealConfig.stage,
+        // The refund can be handled before the paid order's deal exists (its paid event retrying).
+        retryWhileDealMissing: true,
+      };
+    }
+    case "shop.fulfilment.status_changed": {
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as { fulfilmentId: string; orderId: string; status: string };
+      const milestone = SHOP_FULFILMENT_MILESTONE[p.status];
+      if (!milestone) return { kind: "skip", reason: "fulfilment_status_not_milestone" };
+      return {
+        kind: "deal_note",
+        dealEntityId: shopOrderDealEntityId(p.orderId),
+        noteRecordId: fulfilmentMilestoneNoteRecordId(p.fulfilmentId, p.status),
+        title: `Shop order ${milestone.toLowerCase()}`,
+        content: `Shop order fulfilment: ${milestone}`,
       };
     }
     case "shop.artwork.created": {

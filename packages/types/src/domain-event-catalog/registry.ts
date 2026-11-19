@@ -1327,10 +1327,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
+  /**
+   * A Shop fulfilment moved status: the fulfilment mirror brings the order's Zoho records into line,
+   * and the CRM (`zoho`) adds a note to the order's deal at dispatch, delivery and collection.
+   */
   "shop.fulfilment.status_changed": {
     schema: shopFulfilmentStatusChangedPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: ["zoho_fulfilment"],
+    consumers: ["zoho_fulfilment", "zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
@@ -1371,12 +1375,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   /**
    * A Shop refund went through (Stripe, or staff settled it outside Stripe), written with the refund
-   * in one transaction; ids only. The books credit the order's invoice from the stored rows.
+   * in one transaction; ids only. The books credit the order's invoice from the stored rows; the CRM
+   * (`zoho`) moves the order's deal to its refunded stage, as for a Bid refund.
    */
   "shop.refund.completed": {
     schema: shopRefundCompletedPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: ["accounting"],
+    consumers: ["accounting", "zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },

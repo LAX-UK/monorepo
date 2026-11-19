@@ -66,7 +66,7 @@ After changing vars, re-run **Terraform test up** (with image contracts) or **Te
 
 Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runbooks/zoho-crm-phase0-prerequisites.md) exit criteria pass.
 
-**Shop gaps:** refund/fulfilment domain events are not emitted yet; catalogue sync requires the env var above. A Shop original enquiry creates a Lead and needs no stage variable.
+**Shop:** catalogue sync requires the env var above. A Shop original enquiry creates a Lead and needs no stage variable. A Shop refund uses `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED`, as a Bid refund does; fulfilment milestones add notes and need no stage variable.
 
 ## Architecture
 
@@ -77,11 +77,34 @@ Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runb
 
 ## Event mapping (catalog consumers)
 
-- Identity: `user.registered`, `user.email_verified`, `user.profile_updated`, `user.deletion_requested`, `user.deletion_cancelled`, `user.identity_merged`, `user.identity_deleted`  
-  **Lifecycle** (`deletion_*`, `identity_merged`, `identity_deleted`) is always delivered when any person event type is allowlisted, even if omitted from `ZOHO_CRM_ENABLED_EVENT_TYPES`.
-- Enquiries: `marketing_enquiry.received` (private sale and contact enquiries). Off unless the event is in `ZOHO_CRM_ENABLED_EVENT_TYPES`; see the runbook section "Enquiry leads".
-- Bid: `bid.first_for_user`, `bid.lot_won`, `payment.captured`, `payment.refunded`
-- Shop: `shop.order.paid`, optional `shop.artwork.created` (catalogue sync flag), `shop.artwork.interest_registered` (enquiry). Deal patches require an existing person link — run `backfill:crm-users` for shop-only buyers before enabling shop CRM events.
+Every event type the `zoho` consumer receives. Each one writes to Zoho only when it is listed in `ZOHO_CRM_ENABLED_EVENT_TYPES` (or is always-on, below); otherwise its delivery is recorded as `skipped` and `replay:crm-skipped` can send it later. No default enables any of them.
+
+| Event type | What it does in Zoho CRM |
+| --- | --- |
+| `user.registered` | Creates or updates the person's Lead (`LAX Account sign-up`); a person who is already a Contact is updated. |
+| `user.email_verified` | Patches `Email` on the person's Lead or Contact. |
+| `user.profile_updated` | Patches name, email and phone on the person's Lead or Contact. |
+| `user.deletion_requested` | Flags the person in the ledger; deal writes for them are then skipped (`deletion_requested`). Always-on when any person event type is enabled. |
+| `user.deletion_cancelled` | Clears that flag. Always-on when any person event type is enabled. |
+| `user.identity_merged` | Merges the retired subject's CRM links (person and deals) into the kept subject in the ledger. Always-on when any person event type is enabled. |
+| `user.identity_deleted` | Deletes the person's Lead/Contact, platform notes and tasks, and purges them from the recycle bin. Always-on when any person event type, or `marketing_enquiry.received`, is enabled. |
+| `marketing_enquiry.received` | Creates or updates a Lead for a Bid enquiry (private sale or contact form). |
+| `bid.first_for_user` | Sets `Eligibility_LAX_Bid` on the person. |
+| `bid.lot_won` | Creates the lot's Deal at `ZOHO_CRM_DEAL_STAGE_LOT_WON`, or holds it until the buyer has a Contact. |
+| `payment.captured` | Moves the lot's Deal (or held deal) to `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED`; a buyer with no Contact gets the paying-buyer steps below. |
+| `payment.refunded` | Moves the lot's Deal to `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED`. A held deal is skipped (`deal_held_until_contact`). |
+| `shop.order.paid` | Creates the order's Deal at `ZOHO_CRM_DEAL_STAGE_SHOP_PAID`, or holds it with the paying-buyer steps below; sends order financials when `SHOP_ZOHO_FINANCIALS_ENABLED`. |
+| `shop.refund.completed` | A succeeded Shop refund moves the order's Deal to `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED`, as `payment.refunded` does for a lot. A failed refund is skipped (`refund_not_succeeded`); a held deal is skipped (`deal_held_until_contact`). While the order has no deal link yet (its `shop.order.paid` is still retrying or not handled), the refund is retried (`deal_link_missing`) under the usual retry and dead-letter policy, so the deal is moved once it exists. **Known gap:** a refund on a deal still held for a Contact is skipped and not applied when the deal is later released, so that deal is created at the paid stage (same as Bid). |
+| `shop.fulfilment.status_changed` | At a milestone, adds one Note to the order's Deal: `in_transit` → "Shop order dispatched", `delivered` → "Shop order delivered", `collected` → "Shop order collected". The note carries the milestone only. Other statuses are skipped (`fulfilment_status_not_milestone`); a held deal is skipped (`deal_held_until_contact`). The note is recorded in `crm_record_link` (`note` row keyed `fulfilment:<fulfilment id>:<status>`), so a redelivery never adds it twice, and it is deleted with the person's other platform notes on erasure. The row is written as pending (`__note_pending__`) before the note is sent and made real after; a refused or failed send sets it back so the retry sends again, and a row left pending (the note was sent, then the ledger write failed) means the note is not sent again (`deal_note_maybe_added`): at most once, never twice. |
+| `shop.artwork.created` | Upserts a Zoho Product, only with `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED`. |
+| `shop.artwork.interest_registered` | A signed-in enquiry about a Shop original creates or updates a Lead (`LAX Shop enquiry`); `notify_me` interest is skipped. |
+| `shop.guest_lead.recorded` | Creates or updates a guest Lead (`LAX Shop guest`). |
+| `shop.guest_lead.claimed` | Merges the guest lead into the account that claimed it. |
+| `shop.guest_lead.erased` | Deletes and purges the guest Lead. Always-on when `shop.guest_lead.recorded` or `marketing_enquiry.received` is enabled. |
+| `shop.stock_hold.expired`, `shop.third_party_sale.recorded`, `shop.sale_fee.approved` | Routed to the consumer but not mapped: always skipped (`unmapped_event`). |
+| `shop.refund.reversed` | Not routed to the CRM consumer yet: after a Stripe refund reversal the deal stays at the refunded stage. |
+
+Deal events (lot won, payments, Shop order, refunds, fulfilment notes) require an existing person link — run `backfill:crm-users` for shop-only buyers before enabling them. The Shop fulfilment mirror (`zoho_fulfilment`, `ZOHO_FULFILMENT_MIRROR_MODE`) also hears `shop.fulfilment.status_changed`; it writes the Dispatch/Framing modules, not the Deal, and is unaffected by this allowlist.
 
 **Enable order (test/canary):** turn on `user.registered` and run `backfill:crm-users` before any patch-only types (`user.email_verified`, `user.profile_updated`, `bid.first_for_user`) or deal/payment events. Patch handlers retry then dead-letter when the subject has no CRM link yet.
 
